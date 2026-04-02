@@ -93,6 +93,14 @@ Laravel 10 / PHP 8.2 / MySQL 8.0 / Docker・Sail / Tailwind CSS / Alpine.js / Fo
 - **spec/ が唯一の真実** — 仕様変更は必ず spec/ を先に更新してから実装
 - **新規機能は自己完結ページ** — 既存ページからの参照なし。ナビのみ `Route::has()` で制御（Bladeエラー防止）
 
+### 構築ツール
+
+| ツール | 用途 | 適用タイミング |
+|--------|------|--------------|
+| [frontend-design プラグイン](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) | Blade UIの品質向上（AIスロップ回避） | Step 2（仮PJ構築） |
+| Laravel Pint hook（PostToolUse） | PHP自動整形。フォーマットの一貫性保証 | Step 2以降（全工程） |
+| Blade ロック hook（PreToolUse） | .blade.php の編集をブロック（exit 2） | Step 3完了時に有効化 |
+
 ### 構築ワークフロー
 
 | Step | 内容 | 成果物 |
