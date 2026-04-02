@@ -28,7 +28,7 @@ COACHTECHの受講生。以下を修了済み:
 
 Sanctum API認証, 外部API連携, ポリモーフィックリレーション, Has-many-through, DBインデックス, キャッシュ, スロークエリ最適化, モッキング・スタブ, キュー/ジョブ, ファイルストレージ, メール送信, OAuth, レート制限
 
-詳細な判定基準は `spec/overview.md` を参照。
+Basic/Advanceの判定基準は上記の通り。
 
 ### 技術スタック
 
@@ -138,15 +138,15 @@ Laravel 10 / PHP 8.2 / MySQL 8.0 / Docker・Sail / Tailwind CSS / Alpine.js / Fo
 ExampleAnswer-mockcase-ManaBase/
 ├── CLAUDE.md              # 本ファイル（哲学: WHO/WHY/WHAT/HOW/MAP）
 ├── spec/                  # 設計層（構築の唯一の入力）
-│   ├── overview.md        #   LMS全体像 + 技術スタック + 規約 + チケット全体像
+│   ├── overview.md        #   プロダクト定義（ロール・階層・Feature一覧・規約）
 │   ├── features/          #   機能単位のSDD的仕様
 │   │   └── {feature}/
 │   │       ├── requirements.md
 │   │       ├── design.md
 │   │       └── tasks.md
-│   ├── database.md        #   全テーブル定義 + シーダー仕様
-│   ├── routes.md          #   全ルート定義 + Bladeマッピング
-│   └── tickets.md         #   全チケット（受講生向け + 劣化アクション）
+│   ├── database.md        #   データ層（エンティティ・リレーション・テーブル定義・シーダー）
+│   ├── routes.md          #   HTTP層（ルート定義・Bladeマッピング）
+│   └── tickets.md         #   チケット設計（全体像・お手本・AI対策・個別チケット）
 ├── provided/              # 提供PJ（answer/ から派生→劣化）
 ├── answer/                # 模範解答（仮PJ → 通しプレイで確定）
 ├── docs/                  # ドキュメント成果物
