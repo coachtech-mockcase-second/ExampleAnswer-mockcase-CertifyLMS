@@ -159,6 +159,5 @@ ExampleAnswer-mockcase-ManaBase/
 
 ### spec/ 作成ルール
 
-- 必要になった時点で作成する（空ファイルを事前に作らない）
 - features/ の仕様が全成果物の派生元（SDD的アプローチ）
 - 作成順: overview.md → features/ → database.md → routes.md → tickets.md
