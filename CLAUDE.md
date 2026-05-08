@@ -50,7 +50,9 @@ Laravel 10 / PHP 8.2 / MySQL 8.0 / Docker・Sail / Tailwind CSS / Alpine.js / Fo
 
 ### テーマ
 
-**ManaBase** — オンライン学習プラットフォーム（LMS）。3ロール（admin / coach / student）、コンテンツ階層（Course → Chapter → Section）。
+**資格対策LMS**（仮名 ManaBase）— 資格試験対策に特化したオンライン学習プラットフォーム。3ロール（admin / instructor / student）、コンテンツ階層（Part → Chapter → Section + 問題）。
+
+詳細は `spec/overview.md` を参照。
 
 ### 受講生が鍛える力
 
@@ -99,7 +101,7 @@ Laravel 10 / PHP 8.2 / MySQL 8.0 / Docker・Sail / Tailwind CSS / Alpine.js / Fo
 |--------|------|--------------|
 | [frontend-design プラグイン](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) | Blade UIの品質向上（AIスロップ回避） | Step 2（仮PJ構築） |
 | Laravel Pint hook（PostToolUse） | PHP自動整形。フォーマットの一貫性保証 | Step 2以降（全工程） |
-| Blade ロック hook（PreToolUse） | .blade.php の編集をブロック（exit 2） | Step 3完了時に有効化 |
+| Blade ロック hook（PreToolUse） | .blade.php の編集をブロック（exit 2）。**Advanceフロント機能のBladeは対象外**（受講生がゼロから作成するため、Step 3 では未作成） | Step 3完了時に有効化 |
 
 ### 構築ワークフロー
 

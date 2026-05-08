@@ -42,7 +42,8 @@ CLAUDE.md（哲学: WHO/WHY/WHAT/HOW/MAP）
 
 **tickets.md**
 - チケット全体像（カテゴリ → 種類 → 配分）
-- お手本機能の選定
+- 提供テストの範囲（受講生に明示せずコードリーディングで発見させる）
+- Basic API（Advance FE連携用）
 - AI対策ガイドライン
 - 深さの設計指針
 - 個別チケット一覧（受講生向け記述 + 劣化アクション）
@@ -204,11 +205,16 @@ CLAUDE.md（哲学: WHO/WHY/WHAT/HOW/MAP）
 
 **含めうる教材範囲外の要素:**
 
+- **Clean Architecture（軽量版）** — UseCase / Service / Repository の責務分離（プロジェクト全体のパターン）
 - Service層（ビジネスロジックの分離）
+- UseCase層（1業務操作 = 1クラス）
+- Repository層（データアクセス抽象化、外部API依存の切り離し）
 - Query Scope（検索条件の切り出し）
 - Accessor / Mutator（モデルの値加工）
 - カスタムMiddleware（ロール制御等）
 - ViewComposer（共通データの注入）
+
+**Bladeロックの例外:** Advance フロント機能のBladeは受講生がゼロから作成するため、Bladeロックの対象外。詳細は `spec/overview.md` および `tickets.md` を参照。
 
 ## feature の粒度基準
 
