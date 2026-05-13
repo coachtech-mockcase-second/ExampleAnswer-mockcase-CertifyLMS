@@ -2,6 +2,7 @@
 
 > 1タスク = 1コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
 > 関連要件 ID は `requirements.md` の `REQ-auth-NNN` / `NFR-auth-NNN` を参照。
+> **前提**: [[user-management]] の `UserStatusLog` モデル + `UserStatusChangeService` が先行実装されていることが望ましい。auth 実装時点で未実装なら、本 Feature の Action 実装と並行して user-management Step 1-2 を進める必要がある（依存先 Feature の Step 1-2 を流用）。
 
 ## Step 1: Migration & Model
 
@@ -36,10 +37,10 @@
 - [ ] `app/Exceptions/Auth/InvalidInvitationTokenException.php` — HttpException 継承（410）
 - [ ] `app/Exceptions/Auth/InvitationNotPendingException.php` — ConflictHttpException 継承（409）
 - [ ] `app/Services/InvitationTokenService.php` — `generateUrl(Invitation): string` / `verify(Request, Invitation): bool`（REQ-auth-015, 020）
-- [ ] `app/UseCases/Auth/IssueInvitationAction.php` — シグネチャ `__invoke(string $email, UserRole $role, User $invitedBy, bool $force = false): Invitation`。重複検査 → User INSERT or 既存 invited User 再利用 → 旧 pending revoke（force=true 時、cascade なし）→ Invitation INSERT → InvitationMail dispatch を `DB::transaction()` で包む（REQ-auth-011〜014, NFR-auth-005）
-- [ ] `app/UseCases/Auth/OnboardAction.php` — シグネチャ `__invoke(Invitation $invitation, array $validated): User`。Invitation + User 整合性検証 → **User UPDATE**（status=active 等）+ Invitation UPDATE（accepted）+ `Auth::login()` を `DB::transaction()` で包む（REQ-auth-022, 023）
-- [ ] `app/UseCases/Auth/RevokeInvitationAction.php` — シグネチャ `__invoke(Invitation $invitation, bool $cascadeWithdrawUser = true): void`。Invitation revoke、cascade なら `User::withdraw()` 呼び出し（REQ-auth-052）
-- [ ] `app/UseCases/Auth/ExpireInvitationsAction.php` — シグネチャ `__invoke(): int`。期限切れ pending を一括 expired にし、紐付く invited User を cascade withdraw（REQ-auth-050）
+- [ ] `app/UseCases/Auth/IssueInvitationAction.php` — シグネチャ `__invoke(string $email, UserRole $role, User $invitedBy, bool $force = false): Invitation`。`UserStatusChangeService`（[[user-management]]）を constructor injection。重複検査 → User INSERT or 既存 invited User 再利用 → 旧 pending revoke（force=true 時、cascade なし、UserStatusLog 記録なし）→ 新規 User INSERT 時のみ `UserStatusChangeService::record($user, UserStatus::Invited, $invitedBy, '新規招待')` → Invitation INSERT → InvitationMail dispatch を `DB::transaction()` で包む（REQ-auth-011〜014, NFR-auth-005）
+- [ ] `app/UseCases/Auth/OnboardAction.php` — シグネチャ `__invoke(Invitation $invitation, array $validated): User`。`UserStatusChangeService`（[[user-management]]）を constructor injection。Invitation + User 整合性検証 → **User UPDATE**（status=active 等）+ Invitation UPDATE（accepted）+ `UserStatusChangeService::record($user, UserStatus::Active, $user, 'オンボーディング完了')` + `Auth::login()` を `DB::transaction()` で包む（REQ-auth-022, 023）
+- [ ] `app/UseCases/Auth/RevokeInvitationAction.php` — シグネチャ `__invoke(Invitation $invitation, ?User $admin = null, bool $cascadeWithdrawUser = true): void`。`UserStatusChangeService`（[[user-management]]）を constructor injection。Invitation revoke、cascade=true なら `User::withdraw()` 呼び出し + `UserStatusChangeService::record($user, UserStatus::Withdrawn, $admin, '招待取消')`。`DB::transaction()` で包む（REQ-auth-052）
+- [ ] `app/UseCases/Auth/ExpireInvitationsAction.php` — シグネチャ `__invoke(): int`。`UserStatusChangeService`（[[user-management]]）を constructor injection。期限切れ pending を一括 expired にし、紐付く invited User を cascade withdraw + 各 User に対して `UserStatusChangeService::record($user, UserStatus::Withdrawn, null, '招待期限切れ')`（actor=null でシステム自動記録）。`DB::transaction()` で包む（REQ-auth-050）
 - [ ] `app/Mail/InvitationMail.php` — Markdown Mailable + 件名「Certify LMS への招待」（REQ-auth-014）
 - [ ] `resources/views/emails/invitation.blade.php` — 招待者名 / ロール / 有効期限 / 「アカウントを作成」ボタン
 - [ ] `app/Providers/FortifyServiceProvider.php` — view binding + `authenticateUsing()` で `status === active` チェック + `rateLimit('login')`（REQ-auth-030, 032, NFR-auth-002）
@@ -90,16 +91,22 @@
   - `test_user_has_nullable_password_and_name_when_invited`（REQ-auth-001, 005）
   - `test_throws_email_already_registered_for_active_user`（REQ-auth-012）
   - `test_throws_pending_already_exists_when_force_is_false`（REQ-auth-013）
-  - `test_re_invite_with_force_revokes_old_pending_and_keeps_user_invited`（REQ-auth-013, cascade なし）
+  - `test_re_invite_with_force_revokes_old_pending_and_keeps_user_invited_without_status_log`（REQ-auth-013, cascade なし、UserStatusLog 新規挿入なし）
   - `test_dispatches_invitation_mail`（REQ-auth-014）
+  - `test_inserts_user_status_log_with_invited_status_on_new_user_insert`（REQ-auth-011、actor=invitedBy）
+- [ ] `tests/Feature/UseCases/Auth/OnboardActionTest.php`
+  - `test_inserts_user_status_log_with_active_status_on_onboarding`（REQ-auth-022、actor=本人）
 - [ ] `tests/Feature/UseCases/Auth/RevokeInvitationActionTest.php`
   - `test_revokes_pending_invitation_and_cascade_withdraws_user`（REQ-auth-052, cascade=true デフォルト）
-  - `test_revoke_with_cascade_false_keeps_user_invited`（force re-invite で使う internal モード）
+  - `test_revoke_with_cascade_false_keeps_user_invited`（force re-invite で使う internal モード、UserStatusLog 新規挿入なし）
   - `test_throws_invitation_not_pending_for_accepted_invitation`
   - `test_cascade_withdraw_renames_email_and_soft_deletes`（REQ-auth-070）
+  - `test_inserts_user_status_log_with_admin_actor_on_cascade`（REQ-auth-052、actor=$admin）
+  - `test_inserts_user_status_log_with_null_actor_when_admin_is_null`（REQ-auth-052、actor=null でシステム自動相当）
 - [ ] `tests/Feature/UseCases/Auth/ExpireInvitationsActionTest.php`
   - `test_marks_expired_and_cascade_withdraws_users`（REQ-auth-050, product.md state diagram 整合）
   - `test_does_not_touch_active_or_accepted_users`
+  - `test_inserts_user_status_log_with_null_actor_for_each_expired_user`（REQ-auth-050、Schedule Command 由来で actor=null）
 
 ### Unit テスト
 
@@ -124,11 +131,11 @@
 - [ ] `sail bin pint --dirty` で整形
 - [ ] ブラウザで通しシナリオを確認:
   1. 初期 admin で `/login` ログイン → `/dashboard` リダイレクト
-  2. admin 操作（user-management 側、ここでは仮に `sail artisan tinker` から `IssueInvitationAction` を実行）で招待発行
+  2. admin 操作（user-management 側、ここでは仮に `sail artisan tinker` から `IssueInvitationAction` を実行）で招待発行 + phpMyAdmin（http://localhost:8080）で `user_status_logs` に `status='invited' / changed_by_user_id=$admin / reason='新規招待'` の行が挿入されていることを確認
   3. Mailpit（http://localhost:8025）で InvitationMail を受信、署名付き URL をクリック
-  4. オンボーディングフォーム表示 → name / password 入力 → 送信 → 自動ログインで `/dashboard`
+  4. オンボーディングフォーム表示 → name / password 入力 → 送信 → 自動ログインで `/dashboard` + phpMyAdmin で `user_status_logs` に `status='active' / changed_by_user_id=$user / reason='オンボーディング完了'` の行が挿入されていることを確認
   5. ログアウト → `/login` → 同じ email + 新 password でログイン成功
   6. パスワードリセット要求 → Mailpit で受信 → 新パスワード設定 → ログイン
-  7. 期限切れ Invitation でアクセス → `auth/invitation-invalid` 表示 + 該当 User が cascade で withdrawn になっていることを phpMyAdmin（http://localhost:8080）で確認
-- [ ] Schedule Command の動作確認: `sail artisan invitations:expire` 手動実行 → 期限切れ pending が expired になり、紐付く invited User が withdrawn + email リネームされることを phpMyAdmin で確認
+  7. 期限切れ Invitation でアクセス → `auth/invitation-invalid` 表示 + 該当 User が cascade で withdrawn になっていることを phpMyAdmin で確認
+- [ ] Schedule Command の動作確認: `sail artisan invitations:expire` 手動実行 → 期限切れ pending が expired になり、紐付く invited User が withdrawn + email リネームされること、また `user_status_logs` に `status='withdrawn' / changed_by_user_id=NULL / reason='招待期限切れ'` の行が挿入されていることを phpMyAdmin で確認
 - [ ] CSRF / セッション regenerate / Hash::make が想定通り動いているか PR 動作確認動画に収録

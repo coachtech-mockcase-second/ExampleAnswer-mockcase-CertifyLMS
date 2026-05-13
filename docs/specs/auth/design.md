@@ -14,6 +14,7 @@ sequenceDiagram
     participant UM as user-management UI
     participant IA as IssueInvitationAction
     participant DB as DB
+    participant Svc as UserStatusChangeService
     participant Mail as Mail Queue
     participant Invitee as 招待者
     participant OS as OnboardingController.show
@@ -32,9 +33,11 @@ sequenceDiagram
         IA-->>UM: PendingInvitationAlreadyExistsException (409)
     else 既存 invited + pending あり AND force=true
         IA->>DB: UPDATE invitations SET status='revoked' WHERE user_id=? AND status='pending'
-        Note over IA,DB: User は invited のまま継続（cascade なし）
+        Note over IA,DB: User は invited のまま継続 cascade なし UserStatusLog 挿入なし
     else 既存 User なし
         IA->>DB: INSERT users(status=invited, email, role, password=NULL, name=NULL)
+        IA->>Svc: record($user, UserStatus::Invited, $admin, '新規招待')
+        Svc->>DB: INSERT user_status_logs
     end
     IA->>DB: INSERT invitations(user_id, status=pending, expires_at=now+7d)
     IA->>Mail: InvitationMail.dispatch
@@ -54,6 +57,8 @@ sequenceDiagram
     OA->>DB: BEGIN
     OA->>DB: UPDATE users SET status='active', password=hash, name=?, bio=?, profile_setup_completed=true WHERE id=invitation.user_id
     OA->>DB: UPDATE invitations SET status='accepted', accepted_at=now() WHERE id=?
+    OA->>Svc: record($user, UserStatus::Active, $user, 'オンボーディング完了')
+    Svc->>DB: INSERT user_status_logs
     OA->>OA: Auth::login(invitation.user)
     OA->>DB: COMMIT
     OA-->>Invitee: redirect /dashboard
@@ -70,6 +75,7 @@ sequenceDiagram
     participant Admin as 管理者
     participant UM as user-management UI
     participant RA as RevokeInvitationAction
+    participant Svc as UserStatusChangeService
     participant DB as DB
 
     Cron->>EA: __invoke()
@@ -78,14 +84,18 @@ sequenceDiagram
     loop 各期限切れ Invitation
         EA->>DB: UPDATE invitations SET status='expired'
         EA->>DB: UPDATE users SET status='withdrawn', email='{ulid}@deleted.invalid', deleted_at=now() WHERE id=user_id AND status='invited'
+        EA->>Svc: record($user, UserStatus::Withdrawn, null, '招待期限切れ')
+        Svc->>DB: INSERT user_status_logs (changed_by_user_id=NULL)
     end
     EA->>DB: COMMIT
 
     Admin->>UM: 「招待を取消」ボタン
-    UM->>RA: __invoke(invitation, cascadeWithdrawUser=true)
+    UM->>RA: __invoke(invitation, admin, cascadeWithdrawUser=true)
     RA->>DB: BEGIN
     RA->>DB: UPDATE invitations SET status='revoked', revoked_at=now()
     RA->>DB: UPDATE users SET status='withdrawn', email='{ulid}@deleted.invalid', deleted_at=now() WHERE id=user_id AND status='invited'
+    RA->>Svc: record($user, UserStatus::Withdrawn, $admin, '招待取消')
+    Svc->>DB: INSERT user_status_logs
     RA->>DB: COMMIT
 ```
 
@@ -209,16 +219,16 @@ stateDiagram-v2
     revoked: revoked（取消済）
 
     [*] --> pending: IssueInvitationAction
-    pending --> accepted: OnboardAction (オンボーディング完了)
-    pending --> expired: invitations:expire コマンド (日次 00:30) — User も cascade withdrawn
-    pending --> revoked: RevokeInvitationAction (admin 手動取消) — User も cascade withdrawn
-    pending --> revoked: IssueInvitationAction force=true (内部再招待) — User は invited のまま継続
+    pending --> accepted: OnboardAction（オンボーディング完了）
+    pending --> expired: ExpireInvitationsAction（日次バッチ、User も cascade withdrawn）
+    pending --> revoked: RevokeInvitationAction（admin 手動取消、User も cascade withdrawn）
+    pending --> revoked: IssueInvitationAction force=true（内部再招待、User は invited のまま継続）
     accepted --> [*]
     expired --> [*]
     revoked --> [*]
 ```
 
-> **cascade ルール**: Invitation が `expired` または `revoked`（admin 手動）になったとき、対応する User が `invited` 状態なら `withdrawn` + soft delete + email リネーム を同一トランザクション内で行う。**例外**: `IssueInvitationAction(force=true)` 内で旧 Invitation を revoke するときは User を残す（同じ user_id に新 Invitation を紐付けるため）。
+> **cascade ルール**: Invitation が `expired` または `revoked`（admin 手動）になったとき、対応する User が `invited` 状態なら `withdrawn` + soft delete + email リネーム + [[user-management]] の `UserStatusChangeService::record(...)` 呼出（actor は呼出元から渡される。Schedule Command なら null、admin 手動取消なら admin User）を **同一トランザクション内** で行う。**例外**: `IssueInvitationAction(force=true)` 内で旧 Invitation を revoke するときは User を残す（同じ user_id に新 Invitation を紐付けるため、`UserStatusLog` への記録もなし）。
 
 ## コンポーネント
 
@@ -244,7 +254,10 @@ stateDiagram-v2
 ```php
 class IssueInvitationAction
 {
-    public function __construct(private InvitationTokenService $tokenService) {}
+    public function __construct(
+        private InvitationTokenService $tokenService,
+        private UserStatusChangeService $statusChanger,
+    ) {}
 
     /**
      * 招待を発行する。force=true なら同 email に既存 pending Invitation がある場合に
@@ -262,13 +275,15 @@ class IssueInvitationAction
 }
 ```
 
-責務: (1) active User 重複検査、(2) invited User + pending Invitation 検査と force 分岐、(3) User INSERT or 既存 invited User の再利用、(4) Invitation INSERT、(5) `InvitationMail` dispatch。`DB::transaction()` でラップ。
+責務: (1) active User 重複検査、(2) invited User + pending Invitation 検査と force 分岐、(3) User INSERT or 既存 invited User の再利用、(4) 新規 User INSERT 時のみ `UserStatusChangeService::record($user, UserStatus::Invited, $invitedBy, '新規招待')` を呼ぶ（force=true で既存 invited User を再利用する場合は status 変化なしのため呼ばない）、(5) Invitation INSERT、(6) `InvitationMail` dispatch。すべて `DB::transaction()` でラップ。
 
 #### `OnboardAction`
 
 ```php
 class OnboardAction
 {
+    public function __construct(private UserStatusChangeService $statusChanger) {}
+
     /**
      * 招待を受領し、既存 invited User を active に遷移させ、自動ログインする。
      *
@@ -278,32 +293,38 @@ class OnboardAction
 }
 ```
 
-責務: (1) Invitation + User の状態整合性チェック、(2) User UPDATE（`status=active` / `password` / `name` / `bio` / `email_verified_at` / `profile_setup_completed=true`）、(3) Invitation UPDATE（`status=accepted` / `accepted_at=now()`）、(4) `Auth::login($invitation->user)`。
+責務: (1) Invitation + User の状態整合性チェック、(2) User UPDATE（`status=active` / `password` / `name` / `bio` / `email_verified_at` / `profile_setup_completed=true`）、(3) Invitation UPDATE（`status=accepted` / `accepted_at=now()`）、(4) `UserStatusChangeService::record($user, UserStatus::Active, $user, 'オンボーディング完了')` を呼ぶ（actor は本人）、(5) `Auth::login($invitation->user)`。すべて `DB::transaction()` でラップ。
 
 #### `RevokeInvitationAction`
 
 ```php
 class RevokeInvitationAction
 {
+    public function __construct(private UserStatusChangeService $statusChanger) {}
+
     /**
-     * pending Invitation を revoke する。cascadeWithdrawUser=true なら User も withdrawn + soft delete + email リネーム。
+     * pending Invitation を revoke する。cascadeWithdrawUser=true なら User も withdrawn + soft delete + email リネーム + UserStatusLog 記録。
      *
+     * @param ?User $admin 取消操作の actor。null ならシステム自動相当として UserStatusLog に記録される
      * @throws InvitationNotPendingException Invitation.status が pending でない
      */
     public function __invoke(
         Invitation $invitation,
+        ?User $admin = null,
         bool $cascadeWithdrawUser = true,
     ): void;
 }
 ```
 
-責務: (1) Invitation を `revoked` に UPDATE、(2) `cascadeWithdrawUser=true` なら紐付く invited User を `withdrawn` + `deleted_at=now()` + `email='{ulid}@deleted.invalid'` に UPDATE。admin 手動取消では `true`（デフォルト）、`IssueInvitationAction(force=true)` 内部呼び出しでは `false`。
+責務: (1) Invitation を `revoked` に UPDATE、(2) `cascadeWithdrawUser=true` なら紐付く invited User を `withdrawn` + `deleted_at=now()` + `email='{ulid}@deleted.invalid'` に UPDATE + `UserStatusChangeService::record($user, UserStatus::Withdrawn, $admin, '招待取消')` を呼ぶ。`$admin = null` のときはシステム自動相当（`changed_by_user_id = NULL`）として記録される。admin 手動取消では `true`（デフォルト）+ `$admin` に呼出元 admin を渡す、`IssueInvitationAction(force=true)` 内部呼び出しでは `false`（UserStatusLog 記録なし、`$admin` 引数は無視される）。`DB::transaction()` でラップ。
 
 #### `ExpireInvitationsAction`
 
 ```php
 class ExpireInvitationsAction
 {
+    public function __construct(private UserStatusChangeService $statusChanger) {}
+
     /**
      * 期限切れの pending Invitation をすべて expired にし、対応する invited User を cascade withdrawn する。
      *
@@ -313,7 +334,7 @@ class ExpireInvitationsAction
 }
 ```
 
-責務: (1) `pending AND expires_at <= now()` の Invitation を抽出、(2) 各 Invitation を `expired` に UPDATE、(3) 紐付く invited User を cascade withdraw（`status=withdrawn` + soft delete + email リネーム）。すべて `DB::transaction()` 内。
+責務: (1) `pending AND expires_at <= now()` の Invitation を抽出、(2) 各 Invitation を `expired` に UPDATE、(3) 紐付く invited User を cascade withdraw（`status=withdrawn` + soft delete + email リネーム）+ `UserStatusChangeService::record($user, UserStatus::Withdrawn, null, '招待期限切れ')` を呼ぶ（Schedule Command からの呼出のため actor=null でシステム自動として記録）。すべて `DB::transaction()` 内。
 
 #### Fortify 標準採用（独自 Action を作らない）
 
@@ -444,14 +465,14 @@ public function handle(Request $request, Closure $next, string ...$roles): Respo
 
 | 要件ID | 実装ポイント |
 |---|---|
-| REQ-auth-001 〜 005 | `database/migrations/{date}_create_users_table.php`（`name` `password` を nullable）/ `App\Models\User` / `App\Enums\UserRole` / `App\Enums\UserStatus` / email rename ロジック（OnWithdrawUserAction 等の cascade Action） |
-| REQ-auth-010 〜 015 | `database/migrations/{date}_create_invitations_table.php`（`user_id` FK + 複合 INDEX）/ `App\Models\Invitation` / `App\Enums\InvitationStatus` / `IssueInvitationAction`（force flag 含む）/ `InvitationTokenService::generateUrl` / `App\Mail\InvitationMail` |
-| REQ-auth-020 〜 024 | `OnboardingController::show` / `OnboardingController::store` / `OnboardingRequest` / `OnboardAction`（User UPDATE 方式）/ `InvitationTokenService::verify` / `auth/invitation-invalid.blade.php` |
+| REQ-auth-001 〜 005 | `database/migrations/{date}_create_users_table.php`（`name` `password` を nullable）/ `App\Models\User` / `App\Enums\UserRole` / `App\Enums\UserStatus` / email rename ヘルパ（`User::withdraw()` メソッド、UserStatusLog 記録は呼出側責務） |
+| REQ-auth-010 〜 015 | `database/migrations/{date}_create_invitations_table.php`（`user_id` FK + 複合 INDEX）/ `App\Models\Invitation` / `App\Enums\InvitationStatus` / `IssueInvitationAction`（force flag + `UserStatusChangeService` DI、新規 User INSERT 時のみ status log 記録）/ `InvitationTokenService::generateUrl` / `App\Mail\InvitationMail` |
+| REQ-auth-020 〜 024 | `OnboardingController::show` / `OnboardingController::store` / `OnboardingRequest` / `OnboardAction`（User UPDATE 方式 + `UserStatusChangeService` DI で status log 記録）/ `InvitationTokenService::verify` / `auth/invitation-invalid.blade.php` |
 | REQ-auth-030 〜 036 | `FortifyServiceProvider::boot` / `auth/login.blade.php` / `auth/forgot-password.blade.php` / `auth/reset-password.blade.php` / `User::sendPasswordResetNotification` overrides |
 | REQ-auth-040 〜 042 | `App\Http\Middleware\EnsureUserRole` / `App\Http\Kernel::$middlewareAliases` |
-| REQ-auth-050 〜 052 | `ExpireInvitationsAction`（cascade User withdraw 含む）/ `App\Console\Commands\Auth\ExpireInvitationsCommand` / `App\Console\Kernel::schedule()` / `RevokeInvitationAction`（cascade flag 含む） |
+| REQ-auth-050 〜 052 | `ExpireInvitationsAction`（cascade User withdraw + `UserStatusChangeService` DI で actor=null の status log 記録）/ `App\Console\Commands\Auth\ExpireInvitationsCommand` / `App\Console\Kernel::schedule()` / `RevokeInvitationAction`（cascade flag + `$admin` 引数 + `UserStatusChangeService` DI で status log 記録） |
 | REQ-auth-060 〜 062 | `App\Policies\InvitationPolicy` / `routes/web.php`（`onboarding.*` ルートが `auth` middleware の **外** にあること）|
-| REQ-auth-070 〜 071 | User soft delete + email rename を行う共通ヘルパ（例: `User::withdraw()` メソッドまたは `OnWithdrawUserAction`、本 Feature では cascade Action 内で呼ぶ）。能動退会 UI は [[settings-profile]] / [[user-management]] |
+| REQ-auth-070 〜 071 | `User::withdraw()` ヘルパ（email rename + status + soft delete のみ、UserStatusLog 記録は **呼出側 Action の責務**）/ 能動退会 UI は [[settings-profile]] / [[user-management]] |
 | NFR-auth-001 | `config/hashing.php` (default) |
 | NFR-auth-002 | `FortifyServiceProvider::boot` の `Fortify::rateLimit('login')` |
 | NFR-auth-003 | `layouts.guest` を全認証ビューで継承 |

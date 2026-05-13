@@ -74,6 +74,52 @@ app/UseCases/
 | 例 | `SubmitAction`, `ApproveCompletionAction` | `ProgressService`, `ScoreService`, `TermJudgementService` |
 | トランザクション | 必要に応じて `DB::transaction()` で囲む | 原則囲まない（呼び出し元の Action 側で管理） |
 
+## Feature 間連携のラッパー Action
+
+ある Feature の Controller が **他 Feature の Action を呼ぶ** ケース（例: `user-management` の `InvitationController::store` から `auth` の `IssueInvitationAction` を呼ぶ）では、「Controller method 名 = Action クラス名」規約を守るため、**呼出元 Feature 配下に同名のラッパー Action を作成** する。Controller が他 Feature の Action を直接 DI することは規約違反として避ける。
+
+### 配置例
+
+```
+app/UseCases/Invitation/        # user-management Feature が所有
+├── StoreAction.php             #   InvitationController::store の対応 Action（auth/IssueInvitationAction を内部で呼ぶ）
+├── ResendAction.php            #   InvitationController::resend
+└── DestroyAction.php           #   InvitationController::destroy（auth/RevokeInvitationAction を内部で呼ぶ）
+```
+
+### 実装テンプレート
+
+```php
+<?php
+
+namespace App\UseCases\Invitation;
+
+use App\Models\Invitation;
+use App\Models\User;
+use App\Enums\UserRole;
+use App\UseCases\Auth\IssueInvitationAction;
+
+class StoreAction
+{
+    public function __construct(private IssueInvitationAction $issue) {}
+
+    public function __invoke(string $email, UserRole $role, User $admin): Invitation
+    {
+        return ($this->issue)($email, $role, $admin, force: false);
+    }
+}
+```
+
+### ラッパー Action の役割
+
+- **引数整形**: 呼出元 Feature 文脈での admin actor 注入 / フラグ固定 / デフォルト値補完
+- **将来の拡張フック**: 呼出元 Feature 専用の追加責務（監査メタ情報付与 / Feature 固有の前後処理）のフックポイント
+- **規約維持**: 「Controller method 名 = Action クラス名」のコード navigation 一貫性を保つ
+
+### 例外（許容ケース）
+
+ラッパー Action を作らず Controller から他 Feature の Action を直接 DI してよいのは、Controller がそもそも他 Feature 配下（その Feature の Controller として配置されている）の場合のみ。Feature 横断の Controller では必ずラッパーを介する。
+
 ## Policy / 認可との関係（重要）
 
 - **認可（Policy）は Action 内で呼ばない** — `backend-policies.md` 参照
