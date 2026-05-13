@@ -178,11 +178,13 @@
 
 ### Wave 分配（並列実装のグループ化）
 
-| Wave | 性質 | Feature | 並列度 |
-|---|---|---|---|
-| **Wave 1** 基盤（直列） | 共通基盤 + 認証 | `auth` / `user-management` | 1（主セッションが直接、worktree 不要）|
-| **Wave 2** 独立 Feature（並列） | 学習系・コンテンツ系 | `certification-management` / `content-management` / `enrollment` / `learning` / `quiz-answering` / `mock-exam` | 4-6 worktree 並列（`worktree-spawn`）|
-| **Wave 3** 横串（半並列） | 通信・補助・横断 | `mentoring` / `chat` / `qa-board` / `notification` / `dashboard` / `settings-profile` / `public-api` / `ai-chat` | 2-3 worktree 並列（依存により分散）|
+| Wave | 性質 | 内容 | 担当 | 並列度 |
+|---|---|---|---|---|
+| **Wave 0a** Claude Design（共通UI設計） | デザイン基盤 | Design System（カラー / フォント / スペーシング / Button / Form / Card / Modal / Alert / Nav）+ Hero Screens 4-6枚（受講生Dash / mock-exam受験 / 弱点ヒートマップ / qa-board / コーチDash / 管理者Dash） | **User**（Claude Design Web UI、別環境）| 直列 |
+| **Wave 0b** ハンドオフ → 共通UI実装 | Laravel 基盤 + 共通 Blade | Wave 0a のハンドオフコードを受け取り、Laravel 初期セットアップ + Sanctum/Fortify + 共通 Model (User/UserStatusLog) + `resources/views/layouts/` + `resources/views/components/` (Button/Form/Card/Modal/Alert/Nav) を Design System 準拠で実装 + tailwind.config.js / Vite 設定 | Claude Code（主セッション直接） | 直列 |
+| **Wave 1** 基盤 Feature（直列） | 認証 + ユーザー管理 | `auth` / `user-management`（Wave 0b の共通基盤を利用）| Claude Code（主セッション） | 1 |
+| **Wave 2** 独立 Feature（並列） | 学習系・コンテンツ系 | `certification-management` / `content-management` / `enrollment` / `learning` / `quiz-answering` / `mock-exam` | Claude Code（worktree並列） | 4-6 |
+| **Wave 3** 横串（半並列） | 通信・補助・横断 | `mentoring` / `chat` / `qa-board` / `notification` / `dashboard` / `settings-profile` / `public-api` / `ai-chat` | Claude Code（worktree並列） | 2-3 |
 
 ### Wave 1 で確定する基盤資産（Wave 2 以降は編集禁止）
 
