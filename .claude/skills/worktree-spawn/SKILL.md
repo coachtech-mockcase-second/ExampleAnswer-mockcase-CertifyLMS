@@ -87,21 +87,20 @@ database/database.sqlite
 
 - **4-6 worktree 同時** が業界実用上限（端末切替コスト・レビュー律速）
 - **3-5 がスイートスポット**
-- それを超える場合は Wave 分割（CLAUDE.md「実装プラン」参照）
 
 ## CLAUDE.md「実装プラン」との連動
 
-並列実装する Feature の選定は CLAUDE.md「実装プラン」の Wave 分配に従う:
+並列実装する Feature の選定は CLAUDE.md「実装プラン」の Feature 一覧と依存関係を参照:
 
-- Wave 1（基盤）: 直列、主セッションが直接（worktree 不要）
-- Wave 2（独立 Feature）: 4-6 worktree 並列
-- Wave 3（横串）: 2-3 worktree 並列 + 一部直列
+- 後続の前提（`auth` / `user-management`）は **直列で先に完了** させる
+- 独立 Feature は並列起動可
+- 集計依存 Feature（`notification` / `dashboard` 等）は後半 or 直列
 
 ## 制約
 
-- **Wave 1 完了前に Wave 2/3 を並列起動しない**（基盤の競合回避）
+- **基盤 Feature 完了前に依存 Feature を並列起動しない**（競合回避）
 - 各 worktree は **独立 SQLite DB**（`database/database_{name}.sqlite`）を使う
-- `composer.json` / `package.json` / `bootstrap/providers.php` は Wave 1 で確定、worktree では編集禁止
+- `composer.json` / `package.json` / `bootstrap/providers.php` は Wave 0b で確定、worktree では編集禁止
 - worktree 残骸は作業完了後に必ず棚卸し（`git worktree prune`）
 
 ## 完了報告
