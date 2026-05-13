@@ -18,6 +18,10 @@
 | 認証 | Laravel Fortify（Web セッション）+ Laravel Sanctum（API トークン認証）|
 | **FE** | **Blade + Tailwind CSS + 素のJavaScript**（Vite ビルド）。**Alpine.js / Livewire は不採用** |
 | ビルド | Vite（Laravel 10 標準）。`resources/js/` `resources/css/` を `npm run dev` / `npm run build` でバンドル |
+| **PDF生成** | `barryvdh/laravel-dompdf`（修了証 PDF 出力、Blade テンプレート + dompdf による同期生成、Basic 範囲）|
+| **Markdown** | `league/commonmark`（教材 `Section.body` の Markdown → HTML 変換、XSS 対策で `safe_links_policy` + `unallowed_attributes` を設定、Basic 範囲）|
+| **ファイル保存** | Laravel Storage（**private driver**: chat 添付・修了証 PDF / **public driver**: 教材内画像・プロフィールアイコン、private 配信は `AttachmentController` 経由で Policy 当事者チェック + signed URL）|
+| **スケジューラ** | Laravel Schedule（`app/Console/Commands/` 配下、学習途絶検知 / 招待期限切れ判定 / 試験日超過の `failed` 自動遷移 等の日次 Command、Basic 範囲）|
 | 環境 | Docker / Laravel Sail |
 | テスト | PHPUnit（Feature / Unit）|
 | フォーマット | Laravel Pint |

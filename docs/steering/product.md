@@ -41,7 +41,24 @@
   - `mock_practice`（実践ターム）: mock-exam 中心 + 弱点ドリル
   - **切替トリガ**: **初回 mock-exam セッションを開始した時点で自動的に `mock_practice` へ遷移**（iField LMS の `start_project` RPC と同じ思想。事前条件・admin承認は不要、受講生主導）
 
-### 目標（受講生の自己設定ゴール）
+**3. 3種類の「目標」用語の使い分け**
+
+| 用語 | データ | 意味 | 主管 Feature |
+|---|---|---|---|
+| **目標受験日** | `Enrollments.exam_date` | 受講生が予定する本試験日（LMS外イベント）| enrollment |
+| **個人目標** | `EnrollmentGoal` テーブル | 受講生が資格ごとに自由入力する自己設定ゴール（例: 「3月末までに過去問7割正答」）| enrollment |
+| **学習時間目標** | `LearningHourTarget` テーブル | 資格単位の総学習時間ターゲット。`target_total_hours` のみ保存、残り時間・推奨ペースを自動逆算 | learning |
+
+混乱を避けるため、本ドキュメント内では上記3種を必ず別の名前で呼ぶ。
+
+**4. 学習途絶 vs 滞留検知（同じ集計の2視点）**
+
+`StagnationDetectionService` が一意に判定（最終活動日時から 7日以上経過した Enrollment を抽出、`status=learning` のみ対象）。視点が異なる:
+
+- 受講生向け: **「学習途絶リマインド」**（notification、Schedule Command で日次配信）
+- admin / coach 向け: **「滞留検知リスト」**（dashboard、画面表示時に都度集計）
+
+### 個人目標（受講生の自己設定ゴール）
 
 受講生が自分で立てた **個人目標** を Enrollment ごと（= 資格ごと）に記録し、ダッシュボードに **Wantedly 風タイムライン** で時系列表示。**資格に紐づく**ことで「基本情報の目標」「TOEICの目標」を分離して管理でき、コーチ/Admin が担当資格の受講生目標を見て介入判断できる。内容は受講生が自由に入力、コーチ・Admin は受講生詳細画面から閲覧のみ（介入はしない、必要なら chat で声かけ）。
 
@@ -76,7 +93,7 @@ enrollment_goals（受講生×資格 単位）
 **運用モデル（実務LMSに準拠）**:
 - ユーザー新規登録は **管理者からの招待制**。自己サインアップは存在しない
 - コーチの担当資格は **管理者が割当**（`certification_coach_assignments` 中間テーブル）。1コーチ複数資格・1資格複数コーチを許容
-- 受講生の担当コーチは **資格×受講生** 単位で確定（`enrollments.assigned_coach_id` または別中間テーブル）
+- 受講生の担当コーチは **資格×受講生** 単位で確定（`enrollments.assigned_coach_id`、1 Enrollment = 1 担当コーチ）。1コーチが同一受講生の複数資格を担当する場合は各 Enrollment に同じ coach_id を設定。担当変更は admin 操作で `EnrollmentStatusLog` に記録
 
 ---
 
@@ -359,7 +376,7 @@ stateDiagram-v2
     learning --> paused: 受講生または管理者が休止
     paused --> learning: 再開
     learning --> passed: 管理者が修了認定承認
-    learning --> failed: 試験日超過で未達
+    learning --> failed: 試験日超過で未達（Schedule Command 自動）or admin 手動失敗マーク
     failed --> learning: 再挑戦
     passed --> [*]
     failed --> [*]
@@ -462,22 +479,69 @@ stateDiagram-v2
 
 | # | Feature | 主ロール | 主モデル | 概要 | 提供状態 | Advance連携 |
 |---|---|---|---|---|---|---|
-| 1 | **auth** | 全 | `User`, `Invitation` | 招待URL発行 → 招待メール送信 → トークン検証 → オンボーディング（初回パスワード設定 + プロフィール）→ Fortify ログイン / ログアウト / パスワードリセット。Role(`admin`/`coach`/`student`) + `EnsureUserRole` Middleware | 既存実装 | — |
+| 1 | **auth** | 全 | `User`, `Invitation` | 招待URL発行（**有効期限 7日**、`signed:7d` 署名付きトークン、Schedule Command で期限切れ自動失効）→ 招待メール送信 → トークン検証 → オンボーディング（初回パスワード設定 + プロフィール）→ Fortify ログイン / ログアウト / パスワードリセット。Role(`admin`/`coach`/`student`) + `EnsureUserRole` Middleware | 既存実装 | — |
 | 2 | **user-management** | admin | `User`, `UserStatusLog` | コーチ・受講生の招待発行・再招待、ユーザー一覧（フィルタ・検索 + 招待動線）→ **詳細画面でプロフィール編集 / ロール変更 / 退会処理**。**受講状態管理**（`invited`/`active`/`withdrawn` 遷移と履歴ログ）| 既存実装 | — |
-| 3 | **certification-management** | admin | `Certification`, `CertificationCategory`, `CertificationCoachAssignment`, `Certificate` | 資格マスタCRUD（資格コード / 名称 / 分類 / 難易度 / **合格点** / **試験時間** / **総問題数**）+ 公開状態（draft/published/archived）+ 担当コーチ割当 + **修了証発行ログ** | 既存実装 | — |
-| 4 | **content-management** | coach | `Part`, `Chapter`, `Section`, `Question`, `QuestionOption` | 担当資格の Part / Chapter / Section / 問題 CRUD。Section は Markdown 本文、問題は選択肢・正答・解説 + **タグ（出題分野・難易度）**。**`Question.section_id` は nullable**（Section紐づき問題 or mock-exam専用問題のどちらも作成可）。公開制御 + 順序入替 | 既存実装 | — |
-| 5 | **enrollment** | student / admin | `Enrollment`, `EnrollmentGoal` | 受講生 × 資格 多対多（**1受講生が複数資格を同時受講可** — Certify LMS 独自の優位性）。**`exam_date`（目標受験日 / LMS外）** + **`passed_at`（修了達成日 / LMS内）** + **受講状態**（`learning`/`paused`/`passed`/`failed`）+ **`current_term`（`basic_learning`/`mock_practice`、初回mock-exam開始で自動切替）** + 担当コーチ紐付け + **目標**（受講生が資格ごとに自由入力する個人ゴール、コーチ/Admin閲覧のみ）。受講生の自己登録、管理者の一括割当・解除 | 既存実装 | — |
-| 6 | **learning** | student | `SectionProgress`, `LearningSession`, `LearningHourTarget` | Section 読了マーク + 教材閲覧 + **進捗自動集計**（Section→Chapter→Part→資格 完了率%）+ **学習時間トラッキング**（セッション開始/終了の自動記録、教材別集計）+ **学習時間目標**（資格単位、`target_total_hours` のみ保存 / 期間は `Enrollment.created_at` 〜 `Enrollment.exam_date` で代用 / 残り時間・残り日数・日次推奨ペースを自動逆算）+ 継続学習導線 | 既存実装 | — |
-| 7 | **quiz-answering** | student | `Answer`, `QuestionAttempt` | Section 紐づき問題の演習・解答送信・**自動採点**・解答履歴・解説表示・正答率記録 | 既存実装+Basic拡張（API化）| **Advance SPA** で連携 |
-| 8 | **mock-exam** | student / coach / admin | `MockExam`, `MockExamQuestion`, `MockExamSession`, `MockExamAnswer` | **本番形式の模擬試験**（資格LMS中核）: コーチが資格ごとに **MockExam マスタを複数作成** + **`MockExamQuestion` 中間テーブルで問題セットを事前固定** + `order` / `is_published` 設定。受講生は公開模試をいつでも・何度でも受験 → 時間制限 + 一括採点 + 採点後の **分野別正答率ヒートマップ** + **合格可能性スコア**。実践ターム中の主役。**修了判定**: 公開模試すべてに合格点超え達成で修了申請可 → admin 承認。コーチは担当受講生の結果閲覧可 | 未実装(Bladeのみ) | — |
+| 3 | **certification-management** | admin / student | `Certification`, `CertificationCategory`, `CertificationCoachAssignment`, `Certificate`（`user_id` / `enrollment_id` / `certification_id` / `issued_at` / `pdf_path` / `serial_no`）| 資格マスタCRUD（資格コード / 名称 / 分類 / 難易度 / **合格点** / **試験時間** / **総問題数**）+ 公開状態（draft/published/archived）+ 担当コーチ割当 + **受講生向け資格カタログ閲覧**（カタログ一覧・詳細画面、公開ステータスでフィルタ、受講中の資格は別タブで区別表示）+ **修了証発行**（Certificate ログ + Blade 達成画面 + **PDF出力**（`barryvdh/laravel-dompdf` で同期生成、`storage/app/private/certificates/{ulid}.pdf` に保存、受講生がダウンロード可能、テンプレートは Blade で定義）） | 既存実装 | — |
+| 4 | **content-management** | coach | `Part`, `Chapter`, `Section`, `Question`, `QuestionOption`, `SectionImage` | 担当資格の Part / Chapter / Section / 問題 CRUD。Section は Markdown 本文（`league/commonmark` で HTML 変換、`<img>` `<a>` `<code>` 等を許容）、問題は選択肢・正答・解説 + **タグ（出題分野・難易度）**。**`Question.section_id` は nullable**（Section紐づき問題 or mock-exam専用問題のどちらも作成可）。公開制御 + 順序入替 + **教材内画像アップロード**（コーチが教材作成時に画像をアップロード → Storage public driver に保存 → Markdown 内に `![alt](/storage/section-images/{ulid}.{ext})` 形式で参照、許容拡張子 `.png` / `.jpg` / `.webp`、最大 2MB/枚、`SectionImage` で管理）+ **教材全文検索**（受講生向け、`Section.title` / `Section.body` の部分一致検索）| 既存実装 | — |
+| 5 | **enrollment** | student / admin / coach | `Enrollment`, `EnrollmentGoal`, `EnrollmentStatusLog`, `EnrollmentNote` | 受講生 × 資格 多対多（**1受講生が複数資格を同時受講可** — Certify LMS 独自の優位性）。**`exam_date`（目標受験日 / LMS外）** + **`passed_at`（修了達成日 / LMS内）** + **受講状態**（`learning`/`paused`/`passed`/`failed`、`EnrollmentStatusLog` で履歴管理）+ **`current_term`（`basic_learning`/`mock_practice`、初回mock-exam開始で自動切替）** + 担当コーチ紐付け + **個人目標**（受講生が資格ごとに自由入力する自己設定ゴール、`EnrollmentGoal`、コーチ/Admin閲覧のみ）+ **コーチ用受講生メモ**（`EnrollmentNote`、コーチが担当受講生×資格について書く自由ノート、面談以外の日々の観察記録、coach と admin のみ閲覧/編集可、受講生は閲覧不可）+ **修了申請・認定承認フロー**（受講生が公開模試すべて合格達成で `completion_requested_at` 設定 → admin 承認で `passed_at` セット + Certificate INSERT、各遷移を EnrollmentStatusLog に記録。**admin 未承認の間は受講生が `completion_requested_at = NULL` で取消可能**）。受講生の自己登録、管理者の一括割当・解除 | 既存実装 | — |
+| 6 | **learning** | student | `SectionProgress`, `LearningSession`, `LearningHourTarget` | Section 読了マーク + 教材閲覧 + **進捗自動集計**（Section→Chapter→Part→資格 完了率%）+ **学習時間トラッキング**（セッション開始/終了の自動記録、教材別集計）+ **学習時間目標**（資格単位、`target_total_hours` のみ保存 / 期間は `Enrollment.created_at` 〜 `Enrollment.exam_date` で代用 / 残り時間・残り日数・日次推奨ペースを自動逆算）+ **学習ストリーク**（連続学習日数の集計）+ **滞留検知ロジック**（`StagnationDetectionService`、最終活動日時から **7日経過** で判定（`config('app.stagnation_days', 7)` で env 設定可）、`status=learning` の Enrollment のみ対象、notification と dashboard が利用）+ 継続学習導線 | 既存実装 | — |
+| 7 | **quiz-answering** | student | `Answer`, `QuestionAttempt` | Section 紐づき問題の演習・解答送信・**自動採点**・解答履歴・解説表示・正答率記録 + **苦手分野ドリル**（カテゴリ別フィルタによる集中演習、mock-exam の `WeaknessAnalysisService` で抽出した苦手 Question を出題）| 既存実装+Basic拡張（API化）| **Advance SPA** で連携 |
+| 8 | **mock-exam** | student / coach / admin | `MockExam`, `MockExamQuestion`, `MockExamSession`, `MockExamAnswer` | **本番形式の模擬試験**（資格LMS中核）: コーチが資格ごとに **MockExam マスタを複数作成** + **`MockExamQuestion` 中間テーブルで問題セットを事前固定** + `order` / `is_published` 設定。受講生は公開模試をいつでも・何度でも受験 → 時間制限 + 一括採点 + 採点後の **分野別正答率ヒートマップ** + **合格可能性スコア**（直近 3 回の平均得点率を `passing_score` の 90%以上 / 70-90% / 70%未満 で3バンド分け、3回未満は受験回数全体で算出）。実践ターム中の主役。**中断・再開対応**: `MockExamSession.status = in_progress` の間、各問題への解答は `MockExamAnswer` に **逐次保存**（送信ボタン不要、選択時に自動 PATCH）。ブラウザを閉じても再アクセス時に「進行中セッションあり」のバナーから **残り時間カウントダウン継続のまま再開可能**（サーバ時刻基準で残り時間を計算、クライアントタイマー改ざん不可）。**修了判定**: 公開模試すべてに合格点超え達成で修了申請可 → admin 承認。コーチは担当受講生の結果閲覧可 | 未実装(Bladeのみ) | — |
 | 9 | **mentoring** | student / coach | `Meeting`, `MeetingMemo`, `CoachAvailability` | コーチ面談予約申請 → コーチ確定/拒否 → 当日通知 → 実施（メモ記録）→ 履歴。Basic は時間枠手動指定の Blade UI | 既存実装（Basic Blade版） | **Advance FE**（Google Calendar OAuth で空き枠取得・予約反映）|
-| 10 | **chat** | student / coach | `ChatRoom`, `ChatMessage` | 受講生 ↔ 担当コーチ の **1on1 プライベートメッセージング**。Basic は **非同期**（DB保存 + 画面遷移時取得、未読バッジ）。資格スコープ（受講生は登録資格ごとのルーム）。コーチは未対応ルーム一覧から応答 | 未実装(Bladeのみ) | **Advance Broadcasting**（Pusher + WebSocket でリアルタイム化）|
-| 11 | **qa-board** | student / coach | `QaThread`, `QaReply` | **公開Q&A掲示板**: 受講生による技術質問投稿 → コーチ/他受講生による回答 → 解決マーク。資格別フィルタ / 解決済み・未解決の絞り込み。chat (1on1) と異なり **公開・集合知型**、孤独感解消と他受講生からの学習促進 | 未実装(Bladeのみ) | — |
+| 10 | **chat** | student / coach | `ChatRoom`, `ChatMessage`, `ChatAttachment` | 受講生 ↔ 担当コーチ の **1on1 プライベートメッセージング**。Basic は **非同期**（DB保存 + 画面遷移時取得、未読バッジ）。資格スコープ（1 Enrollment = 1 ChatRoom、受講生が複数資格受講中は資格ごとに別ルーム）。コーチは未対応ルーム一覧から応答 + **添付ファイル**（メッセージごとに画像 / PDF を最大 3ファイル × 5MB、**Storage private driver** に保存、`AttachmentController` 経由で配信し Policy で当事者のみ閲覧可、URL は `signed URL` 短期有効、`ChatAttachment` で管理）| 未実装(Bladeのみ) | **Advance Broadcasting**（Pusher + WebSocket でリアルタイム化）|
+| 11 | **qa-board** | student / coach | `QaThread`, `QaReply` | **公開Q&A掲示板**: 受講生による技術質問投稿 → コーチ/他受講生による回答 → 解決マーク。資格別フィルタ / 解決済み・未解決の絞り込み + **全文検索**（`QaThread.title` / `QaThread.body` / `QaReply.body` の部分一致検索）。chat (1on1) と異なり **公開・集合知型**、孤独感解消と他受講生からの学習促進。**添付ファイルは扱わない**（テキストのみ、公開掲示板で画像配信は管理コスト高）| 未実装(Bladeのみ) | — |
 | 12 | **public-api** | 外部 | `PersonalAccessToken`（Sanctum）| Sanctum トークン認証付き公開API。資格・教材・進捗等の取得を外部クライアントへ提供。トークン発行・失効も含む | 既存実装+Basic拡張（Sanctum、BookShelf応用の繰り返し成功体験）| **Advance SPA**（自前FEから同APIを呼ぶSPAを構築）|
-| 13 | **notification** | 全 | `Notification`（Laravel標準）| Laravel Notification（**Database + Mail channel** 二段）: 進捗節目達成 / 面談予約確定 / mock-exam 採点完了 / 新規Q&A回答 / **修了認定承認・修了証発行** / **学習途絶リマインド** / 管理者お知らせ等。受講生は通知一覧画面で既読化 | 既存実装+Basic拡張（教材外、繰り返し成功体験）| **Advance Broadcasting**（Pusher + WebSocket でリアルタイム push）|
-| 14 | **dashboard** | 全 | （集計のみ、独自モデル少）| ロール別ダッシュボード:<br>・admin: 全体KPI / 統計 / 滞留検知 / **修了申請待ち一覧**<br>・coach: 担当受講生進捗 / 今日の面談 / 未対応Q&A / 未読チャット / **担当受講生の弱点ヒートマップ**<br>・student: 学習進捗ゲージ / **試験日カウントダウン** / **学習ストリーク** / **弱点分析パネル** / **学習時間目標ゲージ（残り時間・残り日数・日次推奨ペース）** / **目標タイムライン（自己設定ゴールの達成履歴、Wantedly風）** / 通知 / 面談予定 / 継続学習導線 | 既存実装 | パフォーマンス最適化（Advance: N+1 / インデックス / キャッシュ題材）|
+| 13 | **notification** | 全 | `Notification`（Laravel標準）| Laravel Notification（**Database + Mail channel** 二段）: 進捗節目達成 / 面談予約確定 / mock-exam 採点完了 / 新規Q&A回答 / **修了認定承認・修了証発行** / **学習途絶リマインド**（Schedule Command で定期検知、Advance で Queue 非同期化題材）/ **管理者お知らせ配信**（admin → 全/グループ受講生 への手動一斉 INSERT、通知一覧に統合表示、独立 Feature 化はせず本 Feature 内 Action として実装）。受講生は通知一覧画面で既読化 | 既存実装+Basic拡張（教材外、繰り返し成功体験）| **Advance Broadcasting**（Pusher + WebSocket でリアルタイム push）|
+| 14 | **dashboard** | 全 | （集計のみ、独自モデル少）| ロール別ダッシュボード:<br>・admin: 全体KPI / 統計 / 滞留検知 / **修了申請待ち一覧**<br>・coach: 担当受講生進捗 / 今日の面談 / 未対応Q&A / 未読チャット / **担当受講生の弱点ヒートマップ** / **受講生メモ閲覧・編集**（EnrollmentNote 一覧）/ **滞留検知リスト**（担当受講生のみ）<br>・student: 学習進捗ゲージ / **試験日カウントダウン** / **学習ストリーク** / **弱点分析パネル** / **学習時間目標ゲージ（残り時間・残り日数・日次推奨ペース）** / **目標タイムライン（自己設定ゴールの達成履歴、Wantedly風）** / 通知 / 面談予定 / 継続学習導線 | 既存実装 | パフォーマンス最適化（Advance: N+1 / インデックス / キャッシュ題材）|
 | 15 | **ai-chat** | student | `AiChatConversation`, `AiChatMessage` | Gemini API 連携の学習相談チャット（**問題で詰まった瞬間の補助線**）。会話履歴保存 + プロンプト管理 | 未実装(Bladeのみ) | Advance全体（受講生がBE実装・UX拡張）|
-| 16 | **settings-profile** | 全 | `User`（bio/avatar_url 拡張）, `UserNotificationSetting`, `CoachAvailability`（mentoringと共有）| **自分を管理する画面**（user-management = admin が他者を管理 と責務分離）。プロフィール表示・編集（名前 / メール / 自己紹介 / アイコン）+ パスワード変更 + **通知設定**（通知種別 × channel ごとに on/off）+ **コーチのみ:面談可能時間枠設定**（CoachAvailability） | 既存実装 | — |
+| 16 | **settings-profile** | 全 | `User`（bio/avatar_url 拡張）, `UserNotificationSetting`, `CoachAvailability`（mentoringと共有）| **自分を管理する画面**（user-management = admin が他者を管理 と責務分離）。プロフィール表示・編集（名前 / メール / 自己紹介 / アイコン）+ パスワード変更 + **通知設定**（通知種別 × channel ごとに on/off）+ **自己退会動線**（受講生・コーチ自身が `active → withdrawn` 遷移、`UserStatusLog` に記録、論理削除）+ **コーチのみ:面談可能時間枠設定**（CoachAvailability） | 既存実装 | — |
+
+---
+
+## 集計責務マトリクス
+
+横断的な集計関心事の責務分担。各集計ロジックは **計算 Service の所有 Feature** に一意に配置し、複数 Feature から再利用する。dashboard Feature は **読み取り専用** で結果を集約表示し、独自の集計ロジックは持たない。
+
+| 集計関心事 | 計算 Service | 所有 Feature | 主な利用先 |
+|---|---|---|---|
+| 進捗（Section→Chapter→Part→資格 完了率）| `ProgressService` | learning | learning + dashboard |
+| 学習ストリーク（連続学習日数）| `StreakService` | learning | dashboard |
+| 学習時間目標の残時間・推奨ペース | `LearningHourTargetService` | learning | dashboard |
+| 滞留検知（X日学習途絶）| `StagnationDetectionService` | learning | notification（Schedule Command で日次起動）+ dashboard（admin/coach の滞留リスト）|
+| 弱点ヒートマップ（分野別正答率）| `WeaknessAnalysisService` | mock-exam | mock-exam（結果画面）+ dashboard + quiz-answering（苦手ドリルの問題抽出）|
+| 合格可能性スコア | `WeaknessAnalysisService` | mock-exam | mock-exam + dashboard |
+| 修了判定（公開模試すべて合格）| `CompletionEligibilityService` | enrollment | enrollment（修了申請ボタンの活性判定）+ dashboard |
+| ターム判定（basic_learning / mock_practice）| `TermJudgementService` | enrollment | enrollment（MockExamSession 状態変化時に再計算）|
+| 受講進捗 KPI（admin 用）| `EnrollmentStatsService` | enrollment | dashboard |
+| コーチ稼働状況（admin 用）| `CoachActivityService` | mentoring | dashboard |
+
+> Service は構造的には `app/Services/{Feature}/{Service}.php` 配下に置いてもよいが、Certify LMS は `app/Services/{Service}.php` フラット配置を採用（`tech.md` 参照）。**所有 Feature** は責務マトリクス管理のための論理概念。
+
+---
+
+## スコープ外（明示）
+
+教育PJスコープを引き締めるため、以下は **意図的に Certify LMS に含めない**。受講生に「ここまでがスコープ」と明示する境界線。
+
+| 機能 | 理由 |
+|---|---|
+| 全文検索エンジン（Elasticsearch / Algolia 等）| `LIKE` / `MATCH AGAINST` で十分。検索インフラの学習は別領域。教材検索・Q&A検索は MySQL の部分一致で実装 |
+| qa-board の画像 / ファイル添付 | テキストのみ（chat とは異なる方針）。公開掲示板で画像配信は管理コスト・モデレーション負荷が高い |
+| chat / 教材以外のファイル添付（ZIP / 動画ファイル / Office 形式等）| chat は画像 + PDF のみ、教材は画像のみ。他のメディア種別は扱わない |
+| 動画教材 | Section は Markdown 本文 + 画像のみ。動画埋め込み・ストリーミングは将来拡張領域 |
+| 自己サインアップ | 管理者からの招待制（実務LMS準拠）|
+| SNS連携 / SSO | Fortify ローカル認証 + Sanctum トークンのみ |
+| 多言語化 | UI は日本語のみ |
+| 決済機能 | 入会申込・支払いは LMS外（公式サイト等）|
+| 動画通話（mentoring）| 面談は時間枠予約と当日通知まで。実際の通話 / 録画機能はスコープ外（外部ツール想定）|
+| バッジ / リーダーボード / ランク / 称号 | 両参考LMS（COACHTECH / iField）とも実装なし。学習動機付けは試験日カウントダウン + 進捗ゲージ + ストリーク + 個人目標タイムラインで対応 |
+| 2FA / IP制限 / 詳細セッション管理 / ログイン履歴 | 教育PJスコープ外。Fortify 標準セッション + パスワードリセットのみ |
+| iCal export / カレンダー同期（標準形式）| Advance の Google Calendar OAuth 連携で代替（mentoring の空き枠取得・予約反映）|
+| 学習データの一括エクスポート / インポート（CSV / JSON）| 管理運用領域、教育PJスコープ外。個別 API 取得は public-api で代替可 |
+| 追加ロール（リーダー / メンター / TA / 保護者 等）| admin / coach / student の3ロールのみ。これ以上のロール階層は実務LMSとしても珍しく、スコープ外 |
+| chat メッセージ全文検索 / ピン留め / リアクション | 未対応。チャットは短期的な相談用途、長期参照は qa-board / 面談メモへ誘導 |
+| 解答時の自信度・解答時間記録 | 両参考LMSとも未実装。正答率記録 + 弱点ヒートマップで代替 |
+| お気に入り / ブックマーク（教材・問題）| 両参考LMSとも未実装。受講中の Enrollment 自体がブックマーク的に機能 |
 
 ---
 
@@ -525,7 +589,7 @@ MockExam ↔ Question: 多対多（MockExamQuestion 中間テーブル）
 | 採点 | `MockExamAnswer.is_correct = (selected_option == Question.correct_option)`、`total_score = SUM(is_correct)` | 低 |
 | pass 判定 | `total_score / question_count * 100 >= MockExam.passing_score` | 低 |
 | 分野別ヒートマップ | `GROUP BY questions.category` + `SUM(is_correct) / COUNT(*)` の1クエリ | 低 |
-| 合格可能性スコア | 直近N回の平均得点率 を `passing_score` の 90%以上 / 70-90% / 70%未満 で3バンド分け | 低 |
+| 合格可能性スコア | **直近3回**（受験回数3未満なら受験回数全体）の平均得点率 を `passing_score` の 90%以上 / 70-90% / 70%未満 で3バンド分け | 低 |
 | 修了判定 | `COUNT(mock_exams WHERE is_published)` と `COUNT(DISTINCT mock_exam_id FROM mock_exam_sessions WHERE pass=true)` の一致確認 | 低 |
 
 すべて Basic 範囲で Eloquent + groupBy + aggregate で実装可能。Advance では N+1 / インデックス / キャッシュ最適化の題材として活用。
