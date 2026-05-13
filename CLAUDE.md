@@ -1,131 +1,178 @@
-# ManaBase — 模擬案件②
+# Certify LMS — 模擬案件②
 
-> COACHTECHの受講生が「既存プロジェクトへの参画」を体験するための模擬案件。
-> 本リポジトリは模範解答コード・提供プロジェクト・関連ドキュメントを一元管理する唯一の真実。
+> COACHTECH受講生向け模擬案件②。「既存プロジェクトへの参画」を体験する。
+> 本リポジトリは提供プロジェクト・模範解答プロジェクト・関連ドキュメントを一元管理する唯一の真実。
+
+本模擬案件のプロダクト名: **Certify LMS**（マルチ資格対応の資格取得LMS）。
+
+---
 
 ## ペルソナ（WHO）
 
-COACHTECHの受講生。以下を修了済み:
+本模擬案件は、Web エンジニア育成オンラインスクール **COACHTECH** の受講生向けに設計される。受講生はカリキュラムの最終評価フェーズに到達し、これまで以下を **新規構築型** で修了済み（既存プロジェクトへの参画経験はない）:
 
 - **教材**: HTML/CSS → PHP → Laravel基礎〜応用 → API設計 → テスト
-- **確認テスト**: お問い合わせフォーム（ContactForm）をゼロから構築
-- **模擬案件①**: 書籍レビューアプリ（BookShelf）をゼロから構築
+- **確認テスト**: ContactForm をゼロから構築
+- **模擬案件①**: BookShelf をゼロから構築
 
-### 前提知識（= Basic範囲）
+### 前提知識（Basic範囲の中核）
 
 | 領域 | 技術 |
-|------|------|
-| バックエンド | PHP 8.2, Laravel 10（MVC・Eloquent・認証・ミドルウェア・テスト・API基礎） |
-| DB | MySQL 8.0（CRUD・JOIN・正規化・マイグレーション・シーダー） |
-| ORM | Eloquent（リレーション・Eager Loading・N+1対策・withCount） |
-| 認証・認可 | Fortify, Policy / Gate |
-| バリデーション | FormRequest, カスタムメッセージ |
+|---|---|
+| BE | PHP 8.2, Laravel 10（MVC・Eloquent・認証・ミドルウェア・テスト・API基礎）|
+| DB | MySQL 8.0 |
+| ORM | Eloquent（リレーション・Eager Loading・N+1対策・withCount）|
+| 認証認可 | Fortify, Policy / Gate |
+| バリデーション | FormRequest |
 | テスト | PHPUnit（Feature / Unit）, RefreshDatabase, actingAs |
-| フロントエンド | Blade, Tailwind CSS, Alpine.js |
-| 開発環境 | Docker / Sail, Git / GitHub（ブランチ・PR） |
-
-### 教材範囲外（= Advance範囲）
-
-Sanctum API認証, 外部API連携, ポリモーフィックリレーション, Has-many-through, DBインデックス, キャッシュ, スロークエリ最適化, モッキング・スタブ, キュー/ジョブ, ファイルストレージ, メール送信, OAuth, レート制限
-
-Basic/Advanceの判定基準は上記の通り。
-
-### 技術スタック
-
-Laravel 10 / PHP 8.2 / MySQL 8.0 / Docker・Sail / Tailwind CSS / Alpine.js / Fortify
+| FE | Blade, Tailwind CSS, Alpine.js |
+| 環境 | Docker / Sail, Git / GitHub |
 
 ---
 
 ## コンセプト（WHY）
 
+受講生は最高評価 **S** で卒業して **Pro生**（COACHTECH 提携のフリーランスエージェント所属生）認定を目指す。しかし近年、AI 出力をそのまま提出して S が取れてしまう問題が深刻化し、Pro生として企業に紹介された後に実務で詰むケースが多発。本模擬案件は「Pro生として最終評価される最後の関門」として、以下の3課題に応える。
+
 | # | 課題 | アプローチ |
-|---|------|-----------|
-| 1 | **既存PJ参画の経験不足** — 前2つのテストは基礎力養成のため新規作成で行ったが、実務は既存PJへの参画がほとんど | 既存PJをクローンし、コードリーディング前提で開発させる |
-| 2 | **要件ヒアリングの経験不足** — 実務では完璧な要件が降ってくることはほぼなく、曖昧な状態で依頼が飛んでくる | 詳細度50%の要件を渡し、コーチ（PM）へのヒアリングを促す |
-| 3 | **AIによる理解なき実装** — AIでコードを生成し理解なく提出することで、企業・受講生双方が困っている | チケットを曖昧にし、PRにプロセス記述（調査・原因分析・設計判断）を必須とする |
+|---|---|---|
+| 1 | **既存PJ参画の経験不足** — 前2つのテストは新規構築だった | 提供プロジェクトをクローンしコードリーディング前提で開発 |
+| 2 | **要件ヒアリングの経験不足** — 実務では曖昧な要件が降ってくる | 50%要件 + コーチ（PM役）へのヒアリング誘導 |
+| 3 | **AI丸投げによる理解なき実装** — Pro生でも企業で詰む | チケット曖昧化 + PR記述4項目必須 + 評価配点でAdvance必須化（AI丸投げではS不可）|
 
 ---
 
 ## ゴール（WHAT）
 
-### テーマ
+### 構築するプロダクト
 
-**資格対策LMS**（仮名 ManaBase）— 資格試験対策に特化したオンライン学習プラットフォーム。3ロール（admin / instructor / student）、コンテンツ階層（Part → Chapter → Section + 問題）。
+**Certify LMS** — マルチ資格対応の資格取得LMS。
 
-詳細は `spec/overview.md` を参照。
+プロダクト固有の永続コンテキストは **`docs/steering/`**（メタ階層、構築側のみ参照）に Kiro 流で集約:
 
-### 受講生が鍛える力
+- **`product.md`** — テーマ / ロール / コンテンツ階層 / 主要UXフロー / Feature一覧
+- **`tech.md`** — 技術スタック / Clean Architecture方針 / コード品質ルール / テスト方針 / Git運用
+- **`structure.md`** — Laravel ディレクトリ構成 / 命名規則 / specs/ 作成ルール
 
-既存プロジェクトのコーディング規約と設計方針に従い、コードリーディングを前提にバグ修正・機能開発・リファクタリングの実務タスクを行う。加えて:
+各機能の詳細SDDは **`docs/specs/{name}/`** に展開。
 
-- **ヒアリング** — 50%要件からコーチ（PM）に質問し、仕様を明確化する
-- **自力での問題特定** — 曖昧なチケットから自分で問題を特定し、調査・判断のプロセスを言語化する
+### 扱う技術スコープ
 
-### チケット構成
+受講生の前提知識（Basic範囲の中核）に対して、本模擬案件は以下の範囲を扱う:
 
-3カテゴリ × 8種類。詳細は `spec/tickets.md` を参照。
+#### Basic 拡張範囲（教材外だが既存テストで経験済み → 繰り返し成功体験）
+
+- **Sanctum 公開API**（BookShelf応用で経験）
+- **メール送信**（Mail channel）
+- **通知**（Notification + Database channel + Mail channel）
+
+#### Advance 範囲（教材外、本模擬案件で初出 / 深掘り）
+
+外部API連携（Google Calendar OAuth, Gemini API）/ Sanctum SPA認証 / Broadcasting・WebSocket（Pusher）/ Queue・Job 非同期化 / DBインデックス / キャッシュ / Eager Loading最適化
+
+### チケット構成（受講生の課題）
+
+3カテゴリ × 8種類:
 
 | カテゴリ | 種類 |
-|---------|------|
+|---|---|
 | バグ修正 | データの不正 / アクセス制御の不備 / 機能の不全 |
-| 機能開発 | 既存機能の修正 / 既存機能の拡張 / 新規機能の構築（テスト必須） |
+| 機能開発 | 既存機能の修正 / 既存機能の拡張 / 新規機能の構築（テスト必須）|
 | リファクタリング | コード構造 / パフォーマンス |
 
-- チケット単位でブランチを切りPRを出す
-- **Basic**: 教材範囲内 / **Advance**: 教材範囲外
-- Advance は Basic完成版に対して純粋追加のみ
+**配分（仮、ワークフロー Step 3 で確定）**: Basic 15+α / Advance 6+α = 21+
+**評価配点**: Basic 70% / Advance 30%
+**S取得必須**: Advance 内に3チケット必須化（AI丸投げで埋まらない構成）
+- 候補: 公開API SPA（Sanctum）/ 面談予約UI(Google Calendar OAuth）/ リアルタイム通知UI（Broadcasting）
+
+チケット個別定義（1チケット = 1Markdownセクション）は **`関連ドキュメント/要件シート_詳細度100%.md`**（コーチ用）と **`_詳細度50%.md`**（受講生用）に集約。
 
 ---
 
-## 構築アプローチ（HOW）
+## アプローチ（HOW）
+
+### ワークフロー
+
+**構築フロー**: 模範解答PJ を先に完成させ、**引き算で提供PJ を作る** 方式。完成形 specs/ を起点とするので整合性が高く、要件シートは「完成形のこの部分を提供時こう変える」という diff 指示として書ける。
+
+| Step | 内容 | 主な成果物 |
+|---|---|---|
+| 1 | 設計：プロダクト定義 + Feature一覧 | `docs/steering/`（メタ階層、構築側のみ） |
+| 2 | 設計：**Feature 完成形の SDD**（feature ごと requirements/design/tasks）| `docs/specs/{name}/`（メタ階層、構築側のみ） |
+| 3 | **模範解答PJ実装** + **要件シート定義**（順序不問、両方とも `docs/specs/` を起点）| `模範解答プロジェクト/` + `関連ドキュメント/要件シート_詳細度100%.md` |
+| 4 | **模範解答PJ → 提供PJ 変換**（要件シートに従い引き算 / バグ化 / 巻き戻し）+ Bladeロック有効化 🔒 + 動作確認 | `提供プロジェクト/` コード + README.md |
+| 5 | 残りドキュメント（50%要件 / 評価シート / 完全手順書 / 復習教材、※通しプレイ検証は手順書作成中に都度実施）| 関連ドキュメント/ 全部 |
+| 6 | 配置 → AssignedProject リポへ（`docs/` `.claude/` `要件シート_詳細度100%.md` は **含めない**、提供PJ + 50%要件等のみ）| 公開 |
+
+### Step 4 引き算戦略（要件シートが指示する変換タイプ）
+
+| 要件カテゴリ | 模範解答の状態 | 提供PJへの変換 |
+|---|---|---|
+| **新規機能開発** | 完全実装 | **Blade のみ残してロジック削除**（Controller method / Action / Service / Model 関連を削除）|
+| **バグ修正** | 正しい実装 | **指定箇所をバグった実装に置換**（要件シートに具体的 diff 記述）|
+| **既存機能改修・拡張** | 拡張版 | **拡張前の状態に巻き戻し**（diff スタイル指示）|
+| **リファクタリング** | リファクタ後 | **リファクタ前の状態に巻き戻し**（コード重複・密結合状態に意図的に汚す）|
+
+### Step 3（要件定義）の4観点
+
+要件シート定義時、各チケットを以下の **4観点** で点検する。網羅性チェックリストとしても、過不足判定の枠組みとしても使う。
+
+| 観点 | 何を見るか | チェック項目 |
+|---|---|---|
+| **① 量** | チケット規模と総量 | BookShelf 相対のボリューム / Basic 15+α・Advance 6+α 枠内に収まるか |
+| **② 質** | チケットの教育的密度 | 難易度 / コードリーディング負荷（横断ファイル数）/ 学習効果の連鎖（前後チケットへの波及・他チケットの理解を助けるか）|
+| **③ 構成** | チケット集合の構造 | 評価項目との対応 / 配点（Basic 70% / Advance 30%、S取得 80% には Advance 内 3チケット必須）/ 3カテゴリ比率（バグ / 機能開発 / リファクタ）/ チケット間依存関係（前後関係 / 並列可能性）|
+| **④ AI耐性** | AI 丸投げ排除設計 | AI 出力をそのまま提出して S が取れない構造になっているか（下記の具体手段で点検）|
+
+#### ④ AI耐性の具体的な仕掛け
+
+| 手段 | 効果 |
+|---|---|
+| OAuth・外部API依存（Google Calendar / Pusher / Gemini） | ドキュメント理解 + 環境設定 + トークン管理の壁 |
+| 複数ファイル横断改修 | AI コンテキスト窓を超える / 全体把握が必要 |
+| 既存パターン準拠強制（「既存テストを参考に」等） | AI にプロジェクト固有コンテキストを伝達困難 |
+| 動作確認 + テスト追加必須 | コードのみでは正解判定不可、ブラウザでの挙動確認が必要 |
+| **PR 7セクション記述必須**（関連チケット / 調査 / 原因分析 / 実装 / 自動テスト / **動作確認（手順 + スクショ or 動画、動的機能は動画必須）** / レビュー観点、`tech.md` 参照）| AI 出力をそのままコピペできない / 動作確認は実機操作が必要で AI 生成不可 |
+| ドメイン知識依存（資格LMS固有判断） | 模擬試験の分野配分ロジック / 弱点分析の集計式 等、ドメイン理解が必須 |
 
 ### 成果物
 
 | # | 成果物 | 説明 |
-|---|--------|------|
-| 1 | 提供プロジェクト | 受講生がクローンする既存PJ（バグ込み・一部未実装・Blade全提供） |
-| 2 | 模範解答コード | 全チケット完了後の完成版（Basic / Advance） |
-| 3 | 要件定義書 | 100%版（コーチ用）/ 50%版（受講生用）。2シート構成 |
-| 4 | 評価項目シート | 採点基準 |
+|---|---|---|
+| 1 | 提供プロジェクト | 受講生クローン用既存PJ。全Blade完成 / 実装済み機能（バグ込み）/ 未実装機能はBladeのみ + 最小 README。**完成形仕様（docs/）は含まない**（受講生は要件シートで作業）|
+| 2 | 模範解答プロジェクト | 提供版コピー + 全チケット実装後の完成版（Basic/Advance両ブランチ）|
+| 3 | 要件シート | 100%版（コーチ用）/ 50%版（受講生用）。1チケット = 1セクション |
+| 4 | 評価シート | 採点基準 |
 | 5 | 完全手順書 | Basic / Advance |
 | 6 | 復習教材 | Basic / Advance |
+| 7 | `docs/`（メタ階層）| 構築側のみ参照する **完成形仕様**（steering + specs）。受講生に渡さない |
 
-### 構築の原則
+### 構築原則
 
-- **spec/ が唯一の真実** — 仕様変更は必ず spec/ を先に更新してから実装
-- **新規機能は自己完結ページ** — 既存ページからの参照なし。ナビのみ `Route::has()` で制御（Bladeエラー防止）
+- **steering/ と specs/ が設計の唯一の入力** — 仕様変更は必ず先に `docs/` を更新してから実装
+- **`docs/` はメタ階層に集約、構築側のみ参照** — 受講生には完成形仕様を見せない。受講生は提供PJコード + 要件シートで作業
+- **specs/ = Feature 完成形の SDD（= 模範解答仕様書）** — 完成形を完全記述。提供PJ時点の差分（未実装 / バグ込み / 改修対象）は **要件シート** が示す（specs = What it should be / 要件 = How to get there）
+- **模範解答PJ 先行構築（引き算方式）** — 完成形 specs を起点に模範解答PJ を完成させ、要件シートに従い提供PJ に **引き算変換**（削除 / バグ化 / 巻き戻し）。足し算より整合性が高く、要件シートは diff 指示として書ける
+- **新規機能は自己完結ページ** — 既存ページから参照なし。ナビは `Route::has()` で制御
+- **全Blade提供 + ロック** — Basic既存・Basic新規・Advance のすべての Blade を提供プロジェクトに含める。受講生はコードリーディング + **ロジック・API・JSの実装** が担当（ContactForm / BookShelf 同様）。例外: Advance の自前FE SPA など、提供PJに痕跡を残さないケースは Feature 単位で個別判断
 
 ### 構築ツール
 
-| ツール | 用途 | 適用タイミング |
-|--------|------|--------------|
-| [frontend-design プラグイン](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) | Blade UIの品質向上（AIスロップ回避） | Step 2（仮PJ構築） |
-| Laravel Pint hook（PostToolUse） | PHP自動整形。フォーマットの一貫性保証 | Step 2以降（全工程） |
-| Blade ロック hook（PreToolUse） | .blade.php の編集をブロック（exit 2）。**Advanceフロント機能のBladeは対象外**（受講生がゼロから作成するため、Step 3 では未作成） | Step 3完了時に有効化 |
-
-### 構築ワークフロー
-
-| Step | 内容 | 成果物 |
-|------|------|--------|
-| 1 | 設計 | spec/ 一式 |
-| 2 | 仮PJ構築（全機能動作する完全版） | answer/ |
-| 3 | Blade確定・ロック 🔒 | Blade確定 |
-| 4 | 提供版構築（answer/ → provided/ → 劣化） | provided/ |
-| 5 | 完全手順書作成 | docs/guide-*.md |
-| 6 | 通しプレイ検証（provided/ → answer/ 再構築） | answer/ 確定 |
-| 7 | ドキュメント作成 | docs/ 残り |
-| 8 | 配置 | AssignedProjectリポ |
+| ツール | 用途 | タイミング |
+|---|---|---|
+| [frontend-design プラグイン](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) | Blade UI品質向上（AIスロップ回避）| Step 3（模範解答PJ実装中の Blade 作成）|
+| Laravel Pint hook (PostToolUse) | PHP自動整形 | Step 3以降 |
+| Blade ロック hook (PreToolUse) | `.blade.php` 編集をブロック。提供PJ への変換後 / 受講生作業中の誤改修ガード | Step 4以降（変換完了後の提供PJ にロック適用）|
 
 ### リポジトリ・ブランチ
 
-| リポジトリ | 用途 | 公開 |
-|-----------|------|------|
-| ExampleAnswer-mockcase-ManaBase（本リポ） | 全成果物の一元管理 | ❌ |
-| AssignedProject-mockcase-ManaBase | 受講生がクローンするPJ | ✅ |
+| リポ | 用途 | 公開 |
+|---|---|---|
+| ExampleAnswer-mockcase-CertifyLMS（本リポ）| 全成果物一元管理 | ❌ |
+| AssignedProject-mockcase-CertifyLMS | 受講生クローン用 | ✅ |
 
-- `basic`: メインブランチ（Basic完成版）
-- `advance`: basicから分岐（Basic + Advance追加のみ）
-- Blade専用リポは不要（既存PJクローン形式）
+- `basic`: Basic完成版（メイン）
+- `advance`: basicから分岐、Advance純粋追加
 
 ---
 
@@ -134,40 +181,45 @@ Laravel 10 / PHP 8.2 / MySQL 8.0 / Docker・Sail / Tailwind CSS / Alpine.js / Fo
 ### 参考リポジトリ
 
 | 用途 | パス |
-|------|------|
+|---|---|
 | 教材 | `/Users/yotaro/pj-ct-newtext` |
-| 確認テスト | `/Users/yotaro/ExampleAnswer-ConfirmationTest-ContactForm` |
-| BookShelf（模擬案件①） | `/Users/yotaro/ExampleAnswer-mockcase-BookShelf` |
-| CourseHub（簡素すぎの反面教師） | `/Users/yotaro/pro-cc-coursehub` |
-| ifield LMS（機能・spec構造の参考） | `/Users/yotaro/ifield-lms` |
-| COACHTECH LMS（ドメイン知識の参考） | `/Users/yotaro/lms` |
+| 確認テスト（ContactForm）| `/Users/yotaro/ExampleAnswer-ConfirmationTest-ContactForm` |
+| 模擬案件①（BookShelf）| `/Users/yotaro/ExampleAnswer-mockcase-BookShelf` |
+| ifield LMS（spec構造の参考）| `/Users/yotaro/ifield-lms` |
+| COACHTECH LMS（ドメイン知識の参考）| `/Users/yotaro/lms` |
 
 ### フォルダ構成
 
 ```
-ExampleAnswer-mockcase-ManaBase/
-├── CLAUDE.md              # 本ファイル（哲学: WHO/WHY/WHAT/HOW/MAP）
-├── spec/                  # 設計層（構築の唯一の入力）
-│   ├── overview.md        #   プロダクト定義（ロール・階層・Feature一覧・規約）
-│   ├── features/          #   機能単位のSDD的仕様
-│   │   └── {feature}/
-│   │       ├── requirements.md
-│   │       ├── design.md
-│   │       └── tasks.md
-│   ├── database.md        #   データ層（エンティティ・リレーション・テーブル定義・シーダー）
-│   ├── routes.md          #   HTTP層（ルート定義・Bladeマッピング）
-│   └── tickets.md         #   チケット設計（全体像・お手本・AI対策・個別チケット）
-├── provided/              # 提供PJ（answer/ から派生→劣化）
-├── answer/                # 模範解答（仮PJ → 通しプレイで確定）
-├── docs/                  # ドキュメント成果物
-│   ├── requirements-*.md  #   要件定義書（100% / 50%）
-│   ├── evaluation.md      #   評価項目シート
-│   ├── guide-*.md         #   完全手順書（Basic / Advance）
-│   └── review-*.md        #   復習教材（Basic / Advance）
-└── memo/                  # 旧資料（gitignore済み）
+ExampleAnswer-mockcase-CertifyLMS/
+├── CLAUDE.md                            # 本ファイル（WHO/WHY/WHAT/HOW/MAP）
+├── .claude/                             # 構築側 Claude 設定
+│   ├── settings.local.json
+│   └── rules/                           # Laravel 実装ルール（paths frontmatter で auto-load）
+│       ├── README.md
+│       ├── backend-*.md                 #   models / http / usecases / services / repositories / policies / tests / exceptions
+│       └── frontend-*.md                #   blade / javascript / tailwind
+├── docs/                                # ★ メタ階層: 構築側のみ参照する完成形仕様（受講生には渡さない）
+│   ├── steering/                        #   LMSプロダクト永続コンテキスト（Kiro流）
+│   │   ├── product.md                   #     プロダクト定義（16 Feature 完成形）
+│   │   ├── tech.md                      #     技術スタック・規約
+│   │   └── structure.md                 #     ディレクトリ・命名規則
+│   └── specs/                           #   Feature 完成形 SDD（kebab-case、番号なし、16ディレクトリ）
+│       └── {name}/                      #     例: auth, certification-management, ...
+│           ├── requirements.md
+│           ├── design.md
+│           └── tasks.md
+├── 模範解答プロジェクト/                   # ★ Step 3 で先行構築（specs を満たす完成版、コード = docs/specs と整合）
+│   └── （Laravel PJ）                    #   完成形フル実装
+├── 提供プロジェクト/                      # ★ Step 4 で模範解答PJ から引き算変換して作成（受講生クローン用 = AssignedProject 配置範囲）
+│   ├── README.md                        #   セットアップ手順（Step 4 で作成）
+│   └── （Laravel PJ）                    #   完成形 - 要件分（新規機能=Bladeのみ / バグ修正=ロジック歪曲 / 改修・リファクタ=巻き戻し）
+└── 関連ドキュメント/                       # 受講生・コーチ向け配布物
+    ├── 要件シート_詳細度100%.md           # 全チケットの正解（コーチ用）
+    ├── 要件シート_詳細度50%.md            # 受講生用（50%要件、ヒアリング誘導、AssignedProject リポにコピー）
+    ├── 評価シート.md
+    ├── 完全手順書_Basic.md / _Advance.md
+    └── 復習教材/
 ```
 
-### spec/ 作成ルール
-
-- features/ の仕様が全成果物の派生元（SDD的アプローチ）
-- 作成順: overview.md → features/ → database.md → routes.md → tickets.md
+**AssignedProject リポに配置されるもの**: `提供プロジェクト/` の中身 + `関連ドキュメント/要件シート_詳細度50%.md` 等の受講生向け配布物。**`docs/` `.claude/` `関連ドキュメント/要件シート_詳細度100%.md` は含めない**（構築側メタ情報）。

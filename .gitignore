@@ -1,2 +1,5 @@
 # 旧資料（参照用、リポジトリには含めない）
 memo/
+
+# Claude Code のローカル設定（個人ごと、共有不要）
+.claude/settings.local.json
