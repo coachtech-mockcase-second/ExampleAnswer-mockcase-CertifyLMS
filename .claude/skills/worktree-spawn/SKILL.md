@@ -79,7 +79,7 @@ database/database.sqlite
   2. メインブランチに切り替え: git checkout basic
   3. 各 worktree をマージ: git merge worktree-<feature>
   4. routes/web.php のマージ衝突は標準 Git 手動解決
-  5. 全 Feature マージ後に統合テスト: php artisan test
+  5. 全 Feature マージ後に統合テスト: sail artisan test
   6. worktree クリーンアップ: git worktree remove .claude/worktrees/<feature>
 ```
 

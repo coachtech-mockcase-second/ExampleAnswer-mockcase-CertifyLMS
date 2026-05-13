@@ -25,4 +25,4 @@
 - **Laravel 標準寄せ**: Clean Architecture（軽量版）を採用するが、Laravel コミュニティ標準を主軸とする
 - **既存パターン優先**: 新規実装前に必ず近い既存ファイルを `Read` し、命名・構造・テストパターンを倣う
 - **テスト同時実装**: Controller / UseCase / Service 作成時はテストも同じターンで作成
-- **Pint 整形**: 編集後は `vendor/bin/pint --dirty` または PostToolUse hook で自動整形
+- **Pint 整形**: 編集後は `sail bin pint --dirty` または PostToolUse hook で自動整形（`tech.md` の「コマンド慣習」参照、ホスト側で `vendor/bin/pint` を直叩きしない）

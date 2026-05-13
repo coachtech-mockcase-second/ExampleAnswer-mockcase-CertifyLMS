@@ -17,7 +17,7 @@
 | ORM | Eloquent |
 | 認証 | Laravel Fortify（Web セッション）+ Laravel Sanctum（API トークン認証）|
 | **FE** | **Blade + Tailwind CSS + 素のJavaScript**（Vite ビルド）。**Alpine.js / Livewire は不採用** |
-| ビルド | Vite（Laravel 10 標準）。`resources/js/` `resources/css/` を `npm run dev` / `npm run build` でバンドル |
+| ビルド | Vite（Laravel 10 標準）。`resources/js/` `resources/css/` を `sail npm run dev` / `sail npm run build` でバンドル |
 | **PDF生成** | `barryvdh/laravel-dompdf`（修了証 PDF 出力、Blade テンプレート + dompdf による同期生成、Basic 範囲）|
 | **Markdown** | `league/commonmark`（教材 `Section.body` の Markdown → HTML 変換、XSS 対策で `safe_links_policy` + `unallowed_attributes` を設定、Basic 範囲）|
 | **ファイル保存** | Laravel Storage（**private driver**: chat 添付・修了証 PDF / **public driver**: 教材内画像・プロフィールアイコン、private 配信は `AttachmentController` 経由で Policy 当事者チェック + signed URL）|
@@ -43,6 +43,29 @@
 - **Alpine.js** — 受講生に教材経験なし、Advance で純粋JSを学ぶので役割が重複
 - **Livewire** — 新フレームワーク学習負荷大、教育目標と外れる
 - **Inertia / Vue / React** — Basic スコープに対し過剰
+
+## コマンド慣習（Sail プレフィックス必須）
+
+開発環境は Laravel Sail（Docker Compose）で完結する。**`composer` `php` `npm` `vendor/bin/*` を素のホスト側で実行しない**。これは確認テスト（ContactForm）/ 模擬案件①（BookShelf）と同じ慣習で、受講生が混乱しないよう統一する。
+
+| 操作 | コマンド |
+|---|---|
+| コンテナ起動 / 停止 | `sail up -d` / `sail down` |
+| Artisan | `sail artisan {command}`（例: `sail artisan migrate:fresh --seed` / `sail artisan test` / `sail artisan invitations:expire`）|
+| Composer | `sail composer {command}`（初回 vendor 未配置時のみ Docker 直起動の `laravelsail/php82-composer` で composer install） |
+| npm | `sail npm {command}`（例: `sail npm install` / `sail npm run dev` / `sail npm run build`） |
+| Pint 整形 | `sail bin pint` または `sail bin pint --dirty` |
+| Tinker | `sail artisan tinker` |
+| DB 確認 | phpMyAdmin（http://localhost:8080） |
+| Mail 確認 | Mailpit（http://localhost:8025） |
+| アプリ | http://localhost |
+
+**alias 推奨**（`tech.md` / 受講生資料で共通記載）:
+```bash
+alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'
+```
+
+> Why: spec / 完全手順書 / 復習教材 / PR 動作確認手順に書く **すべてのコマンド** を `sail` プレフィックスで統一すると、受講生は「ホスト側で動かす / Docker 内で動かす」の混乱なく作業できる。確認テスト・模擬案件①と同じ慣習なので、3 プロジェクト連続で同じコマンド感覚が身につく。
 
 ## アーキテクチャ方針
 
@@ -88,7 +111,7 @@
 |---|---|
 | フォーマット | Laravel Pint（コミット前 `sail bin pint`）|
 | ORM | Eloquent 中心。クエリビルダ・生SQLは原則使用しない（パフォーマンス上必要な箇所のみ例外）|
-| N+1対策 | `with()` Eager Loading を適切に使う。Advance で `php artisan db:monitor` 等で検知 |
+| N+1対策 | `with()` Eager Loading を適切に使う。Advance で `sail artisan db:monitor` 等で検知 |
 | バリデーション | FormRequest クラスに分離。Controller では `$request->validated()` を使う |
 | 認可 | Policy + `$this->authorize()` または FormRequest の `authorize()` メソッド |
 | 状態管理 | PHP Enum（`EnrollmentStatus`, `UserRole`, `MockExamSessionStatus` 等）|
@@ -145,7 +168,7 @@
 （主要な変更点を **振る舞い単位** で箇条書き。ファイルリストではなく「何ができるようになったか」「何が直ったか」を書く）
 
 ## 自動テスト
-（追加・修正したテストと、それが何を保証するか。`php artisan test` 結果サマリ。テスト追加なしの場合は理由を明記）
+（追加・修正したテストと、それが何を保証するか。`sail artisan test` 結果サマリ。テスト追加なしの場合は理由を明記）
 
 ## 動作確認
 

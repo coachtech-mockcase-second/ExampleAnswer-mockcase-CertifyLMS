@@ -29,7 +29,7 @@ resources/js/
 
 - `vite.config.js` で `resources/js/app.js` と `resources/css/app.css` をエントリ指定
 - Blade では `@vite(['resources/css/app.css', 'resources/js/app.js'])`
-- 開発: `npm run dev`、本番: `npm run build`
+- 開発: `sail npm run dev`、本番: `sail npm run build`（コマンドは Sail プレフィックス必須、`tech.md` の「コマンド慣習」参照）
 
 ## 必須事項
 
