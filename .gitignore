@@ -3,3 +3,6 @@ memo/
 
 # Claude Code のローカル設定（個人ごと、共有不要）
 .claude/settings.local.json
+
+# Worktree（並列実装用、各セッションで一時的に作成、リポには含めない）
+.claude/worktrees/

@@ -1,0 +1,19 @@
+{
+  "worktree": {
+    "baseRef": "head"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '\\.php\"?\\s*[,}]'; then F=$(echo \"$CLAUDE_TOOL_INPUT\" | grep -oE '\"file_path\":\\s*\"[^\"]+\\.php\"' | head -1 | sed 's/.*\"file_path\":\\s*\"\\([^\"]*\\)\".*/\\1/'); if [ -n \"$F\" ] && [ -f \"$F\" ]; then for D in 模範解答プロジェクト 提供プロジェクト; do if echo \"$F\" | grep -q \"$D\"; then cd \"$CLAUDE_PROJECT_DIR/$D\" 2>/dev/null && [ -f vendor/bin/pint ] && vendor/bin/pint \"$F\" 2>/dev/null; break; fi; done; fi; fi",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}

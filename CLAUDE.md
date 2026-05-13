@@ -161,8 +161,53 @@
 | ツール | 用途 | タイミング |
 |---|---|---|
 | [frontend-design プラグイン](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) | Blade UI品質向上（AIスロップ回避）| Step 3（模範解答PJ実装中の Blade 作成）|
-| Laravel Pint hook (PostToolUse) | PHP自動整形 | Step 3以降 |
+| Laravel Pint hook (PostToolUse) | PHP自動整形 | Step 3以降（`.claude/settings.json` で設定済み）|
 | Blade ロック hook (PreToolUse) | `.blade.php` 編集をブロック。提供PJ への変換後 / 受講生作業中の誤改修ガード | Step 4以降（変換完了後の提供PJ にロック適用）|
+| **Skill `spec-generate`** | 1 Feature の spec 3点セット生成（自己完結・直列）| Step 2 |
+| **Skill `feature-implement`** | 1 Feature の Laravel 実装（自己完結・直列）| Step 3 |
+| **Skill `worktree-spawn`** | 並列実装用 git worktree 作成 + 別 Claude セッション起動手順 | Step 2 / Step 3（並列ピーク時）|
+
+## 実装プラン（Skills が参照する Certify LMS 固有設定）
+
+`.claude/skills/worktree-spawn/` は **プロジェクト固有の Feature 分配・実装ディレクトリを本セクションから読み取る**。Skills 自体は汎用、本セクションが Certify LMS としての具体定義。
+
+### 実装ディレクトリ
+
+- **`模範解答プロジェクト/`** — Step 3 で先行構築、`docs/specs/` と完全整合
+- 提供プロジェクト/ は Step 4 で模範解答PJ から引き算変換
+
+### Wave 分配（並列実装のグループ化）
+
+| Wave | 性質 | Feature | 並列度 |
+|---|---|---|---|
+| **Wave 1** 基盤（直列） | 共通基盤 + 認証 | `auth` / `user-management` | 1（主セッションが直接、worktree 不要）|
+| **Wave 2** 独立 Feature（並列） | 学習系・コンテンツ系 | `certification-management` / `content-management` / `enrollment` / `learning` / `quiz-answering` / `mock-exam` | 4-6 worktree 並列（`worktree-spawn`）|
+| **Wave 3** 横串（半並列） | 通信・補助・横断 | `mentoring` / `chat` / `qa-board` / `notification` / `dashboard` / `settings-profile` / `public-api` / `ai-chat` | 2-3 worktree 並列（依存により分散）|
+
+### Wave 1 で確定する基盤資産（Wave 2 以降は編集禁止）
+
+- `composer.json` / `package.json`（全依存を一括追加してフリーズ）
+- `bootstrap/providers.php`（Service Provider は Package Auto-Discovery 利用）
+- `routes/web.php`（基盤 Feature のルート登録）
+- `routes/api.php`（Sanctum 公開API ベース）
+- 共通 Model（`User`, `UserStatusLog`）+ Migration
+
+### 並列性の物理保証
+
+- **worktree**: `worktree-spawn` Skill で Feature ごとに独立 worktree 作成、各 worktree で別 Claude セッション
+- **DB**: 各 worktree に独立 SQLite（`模範解答プロジェクト/database/database_{name}.sqlite`）
+- **依存**: composer / npm は Wave 1 でフリーズ、worktree では編集禁止
+- **routes**: 各 worktree で `routes/web.php` を編集、マージ時に標準的な Git 手動衝突解決
+
+### Step 2（specs 展開）の進行順
+
+| Wave | 対象 | 進め方 |
+|---|---|---|
+| 1 | auth, user-management | 主セッションで `/spec-generate` を直列実行 |
+| 2-a | certification-management, content-management, enrollment, learning | `/worktree-spawn cert-mgmt,content-mgmt,enrollment,learning` → 4 worktree 並列 |
+| 2-b | quiz-answering, mock-exam | `/worktree-spawn quiz-answering,mock-exam` → 2 worktree 並列 |
+| 3-a | mentoring, chat, qa-board, notification | `/worktree-spawn ...` → 4 worktree 並列 |
+| 3-b | dashboard, settings-profile, public-api, ai-chat | `/worktree-spawn ...` → 4 worktree 並列 |
 
 ### リポジトリ・ブランチ
 
@@ -177,6 +222,38 @@
 ---
 
 ## プロジェクトマップ（MAP）
+
+### Skills
+
+Skills は **3個のみ**（Subagent は撤回、シンプル構成）。並列は git worktree + 別 Claude セッションで実現。
+
+| Skill | 役割 | 並列性 |
+|---|---|---|
+| **`spec-generate <feature>`** | 1 Feature の spec 3点セット生成（自己完結、直列）| なし（worktree-spawn 経由で並列化）|
+| **`feature-implement <feature>`** | 1 Feature の次の未完了 Step を実装（自己完結、直列）| なし（同上）|
+| **`worktree-spawn <feature[,feature,...]>`** | 並列実装用 git worktree 作成 + 各 worktree でのセッション起動手順提示 | 並列の入口 |
+
+**呼出パターン**:
+
+```
+ユーザーの典型的な使い方:
+
+「auth の spec 作って」
+  → /spec-generate auth
+  → docs/specs/auth/{requirements,design,tasks}.md 生成
+
+「mock-exam を実装して」
+  → /feature-implement mock-exam
+  → 模範解答プロジェクト/ に該当 Step 実装
+
+「Wave 2 を並列で進めたい」
+  → /worktree-spawn certification-management,content-management,enrollment,learning
+  → 各 Feature 用 worktree を作成
+  → 各 worktree でターミナルを開き `claude` 起動 → /spec-generate or /feature-implement
+  → 4 セッション並列稼働、各が独立コンテキスト
+```
+
+**Subagent を使わない理由**: 同セッション内 subagent は親のコンテキストを圧迫する。worktree + 別 Claude セッションのほうが真の並列で、Anthropic 公式推奨（`claude --worktree`）。
 
 ### 参考リポジトリ
 

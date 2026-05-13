@@ -6,6 +6,12 @@
 
 ---
 
+## routes/ の方針
+
+**標準は単一 `routes/web.php`**（Laravel 業界標準）。並列実装する場合（`worktree-spawn` Skill 経由で各 Feature を別 worktree に分散）も、各 worktree で `routes/web.php` を編集する。マージ時の Git 衝突は標準的な手動解決で対応。
+
+`routes/features/{name}.php` 分割は採用しない（Laravel 標準ではない）。
+
 ## Laravel ディレクトリ構成
 
 Clean Architecture（軽量版）に従って `app/` 配下を以下のように構成する:
