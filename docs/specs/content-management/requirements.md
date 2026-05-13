@@ -2,13 +2,13 @@
 
 ## 概要
 
-担当資格のコンテンツ階層（**Part → Chapter → Section**）と**問題（Question / QuestionOption）**、**教材内画像（SectionImage）**を管理する Feature。コーチは Markdown による Section 本文編集、選択肢付き問題の作成、画像アップロード、`draft / published` 公開制御、順序入替を行う。受講生向けには教材内 Section の**全文検索**を提供し、階層ブラウジングや読了マークは [[learning]] が担う（本 Feature は Model + Markdown レンダリングヘルパー + 認可基盤の提供に徹する）。`Question.section_id` は nullable で、Section 紐づき問題と mock-exam 専用問題の両方を本 Feature で CRUD する。
+担当資格のコンテンツ階層（**Part → Chapter → Section**）と**問題（Question / QuestionOption）**、**問題カテゴリマスタ（QuestionCategory）**、**教材内画像（SectionImage）**を管理する Feature。コーチは Markdown による Section 本文編集、選択肢付き問題の作成、画像アップロード、`draft / published` 公開制御、順序入替を行う。受講生向けには教材内 Section の**全文検索**を提供し、階層ブラウジングや読了マークは [[learning]] が担う（本 Feature は Model + Markdown レンダリングヘルパー + 認可基盤の提供に徹する）。`Question.section_id` は nullable で、Section 紐づき問題と mock-exam 専用問題の両方を本 Feature で CRUD する。**問題の出題分野は資格ごとに独立した `QuestionCategory` マスタから選択する方式**（業界標準寄せ、表記ゆれ防止）。
 
 ## ロールごとのストーリー
 
 - **受講生（student）**: 自分が登録した資格（[[enrollment]]）の公開済 Section を `Section.title` / `Section.body` で全文検索し、該当 Section の閲覧画面（[[learning]] 側）へ遷移する。下書きや未登録資格の教材は検索結果に表示されない。
-- **コーチ（coach）**: 自分の担当資格（[[certification-management]] の `certification_coach_assignments`）に対して Part / Chapter / Section / Question / QuestionOption / SectionImage を CRUD する。Markdown 本文に教材内画像を埋め込み、Section 紐づき問題と mock-exam 専用問題（`section_id = NULL`）の両方を作成・編集する。`draft → published` の公開制御を行い、順序入替で表示順を整える。
-- **管理者（admin）**: 全資格の Part / Chapter / Section / Question / QuestionOption / SectionImage に対してコーチと同等の操作を行える（運用補助・代行）。
+- **コーチ（coach）**: 自分の担当資格（[[certification-management]] の `certification_coach_assignments`）に対して Part / Chapter / Section / Question / QuestionOption / QuestionCategory / SectionImage を CRUD する。Markdown 本文に教材内画像を埋め込み、Section 紐づき問題と mock-exam 専用問題（`section_id = NULL`）の両方を作成・編集する。問題作成時は担当資格内の `QuestionCategory` から出題分野を選択する。`draft → published` の公開制御を行い、順序入替で表示順を整える。
+- **管理者（admin）**: 全資格の Part / Chapter / Section / Question / QuestionOption / QuestionCategory / SectionImage に対してコーチと同等の操作を行える（運用補助・代行）。
 
 ## 受け入れ基準（EARS形式）
 
@@ -21,7 +21,7 @@
 - **REQ-content-management-005**: The system shall `question_options.question_id` を `questions.id` への外部キーとして持ち、各 Question に 1 対多で選択肢を紐付ける。`is_correct` boolean カラムで正答フラグを保持する。
 - **REQ-content-management-006**: The system shall `section_images.section_id` を `sections.id` への外部キーとして持ち、各 Section に 1 対多で画像メタデータを紐付ける。
 - **REQ-content-management-007**: The system shall `Part.status` / `Chapter.status` / `Section.status` / `Question.status` に共通 Enum `ContentStatus`（`Draft` / `Published`）を提供し、`label()` メソッドで日本語ラベル（`下書き` / `公開中`）を返す。
-- **REQ-content-management-008**: The system shall `Question.difficulty` に Enum `QuestionDifficulty`（`Easy` / `Medium` / `Hard`）を提供し、`Question.category` は文字列カラム（出題分野タグ、自由記述、最大 50 文字）として保持する。
+- **REQ-content-management-008**: The system shall `Question.difficulty` に Enum `QuestionDifficulty`（`Easy` / `Medium` / `Hard`）を提供し、`Question.category_id` を `question_categories.id` への外部キー（必須）として保持する。**業界標準寄せで自由記述カテゴリは廃止**、後述の `QuestionCategory` マスタから select で選択する方式（REQ-content-management-042 以降参照）。
 - **REQ-content-management-009**: The system shall `parts` / `chapters` / `sections` / `questions` に `order`（unsigned integer）カラムを持たせ、`(parent_id, order)` で並び順を一意に決定する。
 
 ### 機能要件 — B. 教材階層管理（Part / Chapter / Section CRUD）
@@ -39,16 +39,27 @@
 
 ### 機能要件 — C. 問題管理（Question / QuestionOption）
 
-- **REQ-content-management-030**: When 認可された coach または admin が `/admin/certifications/{certification}/questions` にアクセスした際, the system shall 当該資格配下の Question 一覧を `category` / `difficulty` / `status` / `section_id IS NULL`（mock-exam 専用問題のみ）でフィルタ可能な状態で表示する。
-- **REQ-content-management-031**: When 認可された coach または admin が Question を新規作成した際, the system shall `body` / `explanation` / `category` / `difficulty` / `certification_id` / `section_id`（nullable）を受け取り、`status=Draft` 固定で INSERT する。
+- **REQ-content-management-030**: When 認可された coach または admin が `/admin/certifications/{certification}/questions` にアクセスした際, the system shall 当該資格配下の Question 一覧を `category_id` / `difficulty` / `status` / `section_id IS NULL`（mock-exam 専用問題のみ）でフィルタ可能な状態で表示する。
+- **REQ-content-management-031**: When 認可された coach または admin が Question を新規作成した際, the system shall `body` / `explanation` / `category_id` / `difficulty` / `certification_id` / `section_id`（nullable）を受け取り、`status=Draft` 固定で INSERT する。**`category_id` は対象 Certification 配下の `question_categories` から選ばれる必要があり**、不整合時は `QuestionCategoryMismatchException`（HTTP 422）を throw する。
 - **REQ-content-management-032**: The system shall Question 新規作成時に 2 〜 6 個の `question_options[]`（`body` + `is_correct`）を同時受信し、Question INSERT と同一トランザクションで QuestionOption を一括 INSERT する。
 - **REQ-content-management-033**: The system shall Question 作成・更新時に `question_options` の `is_correct=true` がちょうど 1 件であることを検証し、違反時は `QuestionInvalidOptionsException`（HTTP 422）を throw する。
-- **REQ-content-management-034**: When 認可された coach または admin が Question を更新した際, the system shall `body` / `explanation` / `category` / `difficulty` / `section_id` を更新可能とし、`certification_id` は変更不可とする。
+- **REQ-content-management-034**: When 認可された coach または admin が Question を更新した際, the system shall `body` / `explanation` / `category_id` / `difficulty` / `section_id` を更新可能とし、`certification_id` は変更不可とする。`category_id` 変更時は対象 Certification 配下の `question_categories` から選ばれる必要がある。
 - **REQ-content-management-035**: When Question 更新ペイロードに `question_options` が含まれる場合, the system shall 既存 QuestionOption を全削除（物理削除）→ 新規 QuestionOption を一括 INSERT する **delete-and-insert** 方式で同期する。QuestionOption は SoftDelete を採用しない（Question の SoftDelete によって履歴的関連付けは保持される）。
 - **REQ-content-management-036**: When 認可された coach または admin が Question の `status` を `Published` に遷移させた際, the system shall **`question_options` が 2 件以上 AND `is_correct=true` の選択肢が 1 件存在する**ことを確認し、違反時は `QuestionNotPublishableException`（HTTP 409）を throw する。
 - **REQ-content-management-037**: When 認可された coach または admin が Question を SoftDelete した際, the system shall **当該 Question が `mock_exam_questions` 中間テーブル（[[mock-exam]]）から参照されていない** ことを確認し、参照中であれば `QuestionInUseException`（HTTP 409）を throw する。Section 紐づき問題（`section_id IS NOT NULL`）は [[quiz-answering]] からも参照されるが、`answers` / `question_attempts` は SoftDelete 状態の Question を引き続き参照できるため削除を阻害しない。
 - **REQ-content-management-040**: The system shall mock-exam 専用問題（`section_id IS NULL`）を Question 一覧の専用フィルタタブ「mock-exam 専用」で抽出可能とする。
 - **REQ-content-management-041**: When Question が Section 紐づき問題として作成・更新される場合, the system shall `section_id` が指定された Section の親 Chapter が属する Part の `certification_id` と Question の `certification_id` が一致することを検証し、違反時は `QuestionCertificationMismatchException`（HTTP 422）を throw する。
+
+### 機能要件 — C2. 問題カテゴリマスタ管理（QuestionCategory CRUD、業界標準寄せ）
+
+- **REQ-content-management-042**: The system shall ULID 主キー、`certification_id` を `certifications.id` への外部キー（必須）、`name`（required, max 50）、`slug`（required, max 60）、`sort_order`（unsigned integer, default 0）、`description`（nullable, text, max 500）、`SoftDeletes`、`timestamps` を備えた `question_categories` テーブルを提供する。`(certification_id, slug)` で **資格内 UNIQUE** 制約とする（資格をまたいだ同 slug は別カテゴリとして許容、業界標準: IPA の「テクノロジー」と Oracle の「テクノロジー」は別カテゴリ）。
+- **REQ-content-management-043**: When 認可された coach または admin が `/admin/certifications/{certification}/question-categories` にアクセスした際, the system shall 当該資格配下の `QuestionCategory` 一覧を `sort_order ASC, created_at DESC` 順に表示する。
+- **REQ-content-management-044**: When 認可された coach または admin が QuestionCategory を新規作成した際, the system shall `name` / `slug` / `sort_order` / `description` を受け取り、`certification_id` は URL パラメータ由来で固定し INSERT する。`(certification_id, slug)` UNIQUE 違反時は FormRequest バリデーションエラー（422）を返す。
+- **REQ-content-management-045**: When 認可された coach または admin が QuestionCategory を更新した際, the system shall `name` / `slug` / `sort_order` / `description` を更新可能とし、`certification_id` は変更不可とする。
+- **REQ-content-management-046**: When 認可された coach または admin が QuestionCategory を削除しようとした際, the system shall **当該カテゴリに紐付く Question が 1 件でも存在する場合**は `QuestionCategoryInUseException`（HTTP 409）を throw して削除を拒否し、ゼロ件のみ SoftDelete を実施する。
+- **REQ-content-management-047**: The system shall coach に対しては自分の担当資格（`certification_coach_assignments`）配下の `QuestionCategory` のみ CRUD 操作を許可し、admin には全資格配下の操作を許可する。違反は HTTP 403 を返す。
+- **REQ-content-management-048**: When 認可された coach または admin が Question 作成・更新画面で出題分野を選択する際, the system shall **select ボックスで当該 Certification 配下の `QuestionCategory` のみ** を選択肢として提示する（自由入力なし、業界標準寄せで表記ゆれを完全排除）。
+- **REQ-content-management-049**: The system shall `QuestionCategory` の SoftDelete 後、論理削除済カテゴリを紐付ける Question が新たに作成・更新されないように、Question 作成・更新時の `category_id` バリデーションで `question_categories.deleted_at IS NULL` を条件に含める。
 
 ### 機能要件 — D. 教材内画像管理（SectionImage）
 
@@ -91,7 +102,7 @@
 - **NFR-content-management-001**: The system shall 状態変更を伴う Action（Store / Update / Destroy / Publish / Unpublish / Reorder / SectionImage 操作 / Question 操作）を `DB::transaction()` で囲む。
 - **NFR-content-management-002**: The system shall Part / Chapter / Section / Question の管理画面において、N+1 を避けるため `with()` Eager Loading（Part 一覧 → `chapters.sections`、Question 一覧 → `options`）を適用する。
 - **NFR-content-management-003**: The system shall 以下のインデックスを `migration` 内で定義する: `parts.(certification_id, order)` / `chapters.(part_id, order)` / `sections.(chapter_id, order)` / `questions.(certification_id, status)` / `questions.section_id` / `questions.category` / `question_options.question_id` / `section_images.section_id` / `sections.title` の前方一致用 INDEX。
-- **NFR-content-management-004**: The system shall ドメイン例外を `app/Exceptions/Content/` 配下に具象クラスとして実装する（`ContentNotDeletableException` / `ContentInvalidTransitionException` / `ContentReorderInvalidException` / `QuestionInvalidOptionsException` / `QuestionNotPublishableException` / `QuestionInUseException` / `QuestionCertificationMismatchException` / `SectionImageStorageException`）。
+- **NFR-content-management-004**: The system shall ドメイン例外を `app/Exceptions/Content/` 配下に具象クラスとして実装する（`ContentNotDeletableException` / `ContentInvalidTransitionException` / `ContentReorderInvalidException` / `QuestionInvalidOptionsException` / `QuestionNotPublishableException` / `QuestionInUseException` / `QuestionCertificationMismatchException` / `QuestionCategoryMismatchException` / `QuestionCategoryInUseException` / `SectionImageStorageException`）。
 - **NFR-content-management-005**: The system shall SectionImage の Storage 操作（`putFileAs` / `delete`）と DB 操作（INSERT / SoftDelete）が同一トランザクション内で実行され、片方失敗時にロールバックされること。Storage は DB rollback で自動巻き戻しできないため、`DB::afterCommit()` を使って **DB 成功後にファイル削除を実行**する／**新規ファイルアップロード時はトランザクション失敗時に手動で削除を試みる** パターンを採用する。
 - **NFR-content-management-006**: The system shall `views/admin/contents/*` を Wave 0b で整備済みの共通 Blade コンポーネント（`<x-button>` / `<x-form.input>` / `<x-form.textarea>` / `<x-modal>` / `<x-alert>` / `<x-card>` / `<x-paginator>`）に準拠して構築する。
 - **NFR-content-management-007**: The system shall Markdown 編集 UI（Section 編集画面）でクライアントサイド JavaScript（`resources/js/content-management/section-editor.js`）により、ローカルプレビュー（編集中 Markdown を `/admin/sections/{section}/preview` API へ POST → サーバ側 `MarkdownRenderingService::toHtml` → HTML 返却 → プレビューペイン更新）を提供する。

@@ -482,7 +482,7 @@ stateDiagram-v2
 | 1 | **auth** | 全 | `User`, `Invitation` | 招待URL発行（**有効期限 7日**、`signed:7d` 署名付きトークン、Schedule Command で期限切れ自動失効）→ 招待メール送信 → トークン検証 → オンボーディング（初回パスワード設定 + プロフィール）→ Fortify ログイン / ログアウト / パスワードリセット。Role(`admin`/`coach`/`student`) + `EnsureUserRole` Middleware | 既存実装 | — |
 | 2 | **user-management** | admin | `User`, `UserStatusLog` | コーチ・受講生の招待発行・再招待、ユーザー一覧（フィルタ・検索 + 招待動線）→ **詳細画面でプロフィール編集 / ロール変更 / 退会処理**。**受講状態管理**（`invited`/`active`/`withdrawn` 遷移と履歴ログ）| 既存実装 | — |
 | 3 | **certification-management** | admin / student | `Certification`, `CertificationCategory`, `CertificationCoachAssignment`, `Certificate`（`user_id` / `enrollment_id` / `certification_id` / `issued_at` / `pdf_path` / `serial_no`）| 資格マスタCRUD（資格コード / 名称 / 分類 / 難易度 / **合格点** / **試験時間** / **総問題数**）+ 公開状態（draft/published/archived）+ 担当コーチ割当 + **受講生向け資格カタログ閲覧**（カタログ一覧・詳細画面、公開ステータスでフィルタ、受講中の資格は別タブで区別表示）+ **修了証発行**（Certificate ログ + Blade 達成画面 + **PDF出力**（`barryvdh/laravel-dompdf` で同期生成、`storage/app/private/certificates/{ulid}.pdf` に保存、受講生がダウンロード可能、テンプレートは Blade で定義）） | 既存実装 | — |
-| 4 | **content-management** | coach | `Part`, `Chapter`, `Section`, `Question`, `QuestionOption`, `SectionImage` | 担当資格の Part / Chapter / Section / 問題 CRUD。Section は Markdown 本文（`league/commonmark` で HTML 変換、`<img>` `<a>` `<code>` 等を許容）、問題は選択肢・正答・解説 + **タグ（出題分野・難易度）**。**`Question.section_id` は nullable**（Section紐づき問題 or mock-exam専用問題のどちらも作成可）。公開制御 + 順序入替 + **教材内画像アップロード**（コーチが教材作成時に画像をアップロード → Storage public driver に保存 → Markdown 内に `![alt](/storage/section-images/{ulid}.{ext})` 形式で参照、許容拡張子 `.png` / `.jpg` / `.webp`、最大 2MB/枚、`SectionImage` で管理）+ **教材全文検索**（受講生向け、`Section.title` / `Section.body` の部分一致検索）| 既存実装 | — |
+| 4 | **content-management** | coach | `Part`, `Chapter`, `Section`, `Question`, `QuestionOption`, `QuestionCategory`, `SectionImage` | 担当資格の Part / Chapter / Section / 問題 CRUD。Section は Markdown 本文（`league/commonmark` で HTML 変換、`<img>` `<a>` `<code>` 等を許容）、問題は選択肢・正答・解説 + **出題分野（`QuestionCategory` マスタから選択、資格ごとに独立、業界標準寄せ）+ 難易度**。**`Question.section_id` は nullable**（Section紐づき問題 or mock-exam専用問題のどちらも作成可）。公開制御 + 順序入替 + **教材内画像アップロード**（コーチが教材作成時に画像をアップロード → Storage public driver に保存 → Markdown 内に `![alt](/storage/section-images/{ulid}.{ext})` 形式で参照、許容拡張子 `.png` / `.jpg` / `.webp`、最大 2MB/枚、`SectionImage` で管理）+ **教材全文検索**（受講生向け、`Section.title` / `Section.body` の部分一致検索）+ **問題カテゴリマスタ管理**（`QuestionCategory`、admin / 担当 coach が資格ごとに CRUD、表記ゆれ防止）| 既存実装 | — |
 | 5 | **enrollment** | student / admin / coach | `Enrollment`, `EnrollmentGoal`, `EnrollmentStatusLog`, `EnrollmentNote` | 受講生 × 資格 多対多（**1受講生が複数資格を同時受講可** — Certify LMS 独自の優位性）。**`exam_date`（目標受験日 / LMS外）** + **`passed_at`（修了達成日 / LMS内）** + **受講状態**（`learning`/`paused`/`passed`/`failed`、`EnrollmentStatusLog` で履歴管理）+ **`current_term`（`basic_learning`/`mock_practice`、初回mock-exam開始で自動切替）** + 担当コーチ紐付け + **個人目標**（受講生が資格ごとに自由入力する自己設定ゴール、`EnrollmentGoal`、コーチ/Admin閲覧のみ）+ **コーチ用受講生メモ**（`EnrollmentNote`、コーチが担当受講生×資格について書く自由ノート、面談以外の日々の観察記録、coach と admin のみ閲覧/編集可、受講生は閲覧不可）+ **修了申請・認定承認フロー**（受講生が公開模試すべて合格達成で `completion_requested_at` 設定 → admin 承認で `passed_at` セット + Certificate INSERT、各遷移を EnrollmentStatusLog に記録。**admin 未承認の間は受講生が `completion_requested_at = NULL` で取消可能**）。受講生の自己登録、管理者の一括割当・解除 | 既存実装 | — |
 | 6 | **learning** | student | `SectionProgress`, `LearningSession`, `LearningHourTarget` | Section 読了マーク + 教材閲覧 + **進捗自動集計**（Section→Chapter→Part→資格 完了率%）+ **学習時間トラッキング**（セッション開始/終了の自動記録、教材別集計）+ **学習時間目標**（資格単位、`target_total_hours` のみ保存 / 期間は `Enrollment.created_at` 〜 `Enrollment.exam_date` で代用 / 残り時間・残り日数・日次推奨ペースを自動逆算）+ **学習ストリーク**（連続学習日数の集計）+ **滞留検知ロジック**（`StagnationDetectionService`、最終活動日時から **7日経過** で判定（`config('app.stagnation_days', 7)` で env 設定可）、`status=learning` の Enrollment のみ対象、notification と dashboard が利用）+ 継続学習導線 | 既存実装 | — |
 | 7 | **quiz-answering** | student | `Answer`, `QuestionAttempt` | Section 紐づき問題の演習・解答送信・**自動採点**・解答履歴・解説表示・正答率記録 + **苦手分野ドリル**（カテゴリ別フィルタによる集中演習、mock-exam の `WeaknessAnalysisService` で抽出した苦手 Question を出題）| 既存実装+Basic拡張（API化）| **Advance SPA** で連携 |
@@ -568,9 +568,18 @@ Question（問題マスタ、独立リソース）
 - id
 - certification_id (FK)
 - section_id (FK, NULLABLE)  ← Section紐づき問題 or mock-exam専用問題
-- category（出題分野タグ）
+- category_id (FK to question_categories)  ← 業界標準寄せ、表記ゆれ防止
 - difficulty
 - 本文 / 選択肢 / 正答 / 解説
+
+QuestionCategory（問題カテゴリマスタ、資格ごとに独立）
+- id
+- certification_id (FK)
+- name / slug / sort_order
+- (certification_id, slug) UNIQUE
+
+QuestionCategory ↔ Question: 1対多
+  QuestionCategory が複数 Question を持つ。問題は必ず 1 カテゴリに属する（資格内のマスタから選択）。
 
 Section ↔ Question: 1対多
   Section が複数 Question を持つ。Question は section_id を1つだけ持つ（または NULL）

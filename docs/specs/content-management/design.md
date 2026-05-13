@@ -211,7 +211,8 @@ sequenceDiagram
 - **`Part`** — 教材階層トップ。`HasUlids` + `HasFactory` + `SoftDeletes`。`belongsTo(Certification::class)`（[[certification-management]] 既存）/ `hasMany(Chapter::class)`。スコープ: `scopePublished()` / `scopeOrdered()`（`order ASC`）。
 - **`Chapter`** — 中区分。`HasUlids` + `HasFactory` + `SoftDeletes`。`belongsTo(Part::class)` / `hasMany(Section::class)`。スコープ: `scopePublished()` / `scopeOrdered()`。
 - **`Section`** — 小区分（Markdown 本文）。`HasUlids` + `HasFactory` + `SoftDeletes`。`belongsTo(Chapter::class)` / `hasMany(Question::class)` / `hasMany(SectionImage::class)` / `hasOne(SectionProgress::class)`（[[learning]] が定義）。スコープ: `scopePublished()` / `scopeOrdered()` / `scopeKeyword(?string $keyword)`（`title LIKE` または `body LIKE`）。
-- **`Question`** — 問題。`HasUlids` + `HasFactory` + `SoftDeletes`。`belongsTo(Certification::class)` / `belongsTo(Section::class)`（nullable、`section_id IS NULL` は mock-exam 専用）/ `hasMany(QuestionOption::class)` / `belongsToMany(MockExam::class, 'mock_exam_questions')`（[[mock-exam]] が中間テーブルを所有、本 Model からはリレーション宣言）/ `hasMany(Answer::class)`（[[quiz-answering]] が定義）/ `hasMany(MockExamAnswer::class)`（[[mock-exam]] が定義）。スコープ: `scopePublished()` / `scopeBySection(?string $sectionId)` / `scopeStandalone()`（`section_id IS NULL`）/ `scopeCategory(?string $category)` / `scopeDifficulty(?QuestionDifficulty $difficulty)`。
+- **`Question`** — 問題。`HasUlids` + `HasFactory` + `SoftDeletes`。`belongsTo(Certification::class)` / `belongsTo(Section::class)`（nullable、`section_id IS NULL` は mock-exam 専用）/ `belongsTo(QuestionCategory::class)` / `hasMany(QuestionOption::class)` / `belongsToMany(MockExam::class, 'mock_exam_questions')`（[[mock-exam]] が中間テーブルを所有、本 Model からはリレーション宣言）/ `hasMany(Answer::class)`（[[quiz-answering]] が定義）/ `hasMany(MockExamAnswer::class)`（[[mock-exam]] が定義）。スコープ: `scopePublished()` / `scopeBySection(?string $sectionId)` / `scopeStandalone()`（`section_id IS NULL`）/ `scopeByCategory(?string $categoryId)` / `scopeDifficulty(?QuestionDifficulty $difficulty)`。
+- **`QuestionCategory`** — 問題カテゴリマスタ（業界標準寄せ、資格ごとに独立）。`HasUlids` + `HasFactory` + `SoftDeletes`。`belongsTo(Certification::class)` / `hasMany(Question::class)`。スコープ: `scopeOrdered()`（`sort_order ASC, created_at DESC`）。
 - **`QuestionOption`** — 選択肢。`HasUlids` + `HasFactory`（SoftDeletes は採用しない、delete-and-insert 方式）。`belongsTo(Question::class)`。スコープ: `scopeOrdered()`（`order ASC`）。
 - **`SectionImage`** — 教材内画像メタ。`HasUlids` + `HasFactory` + `SoftDeletes`。`belongsTo(Section::class)`。
 
@@ -225,6 +226,8 @@ erDiagram
     SECTIONS ||--o{ SECTION_IMAGES : "section_id"
     SECTIONS ||--o{ QUESTIONS : "section_id (nullable)"
     CERTIFICATIONS ||--o{ QUESTIONS : "certification_id"
+    CERTIFICATIONS ||--o{ QUESTION_CATEGORIES : "certification_id"
+    QUESTION_CATEGORIES ||--o{ QUESTIONS : "category_id"
     QUESTIONS ||--o{ QUESTION_OPTIONS : "question_id"
 
     PARTS {
@@ -279,13 +282,24 @@ erDiagram
         ulid id PK
         ulid certification_id FK
         ulid section_id FK "nullable"
+        ulid category_id FK
         text body
         text explanation "nullable"
-        string category "max 50"
         string difficulty "easy medium hard"
         int order "unsigned default 0"
         string status "draft published"
         timestamp published_at "nullable"
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at "nullable"
+    }
+    QUESTION_CATEGORIES {
+        ulid id PK
+        ulid certification_id FK
+        string name "max 50"
+        string slug "max 60 unique per certification"
+        int sort_order "unsigned default 0"
+        text description "nullable max 500"
         timestamp created_at
         timestamp updated_at
         timestamp deleted_at "nullable"
@@ -308,7 +322,7 @@ erDiagram
 | `Part.status` / `Chapter.status` / `Section.status` / `Question.status` | `ContentStatus` | `Draft` / `Published` | `下書き` / `公開中` |
 | `Question.difficulty` | `QuestionDifficulty` | `Easy` / `Medium` / `Hard` | `易` / `中` / `難` |
 
-`Question.category` は文字列カラム（max 50、自由記述、出題分野タグ）。Enum 化しない（マスタ化はスコープ外、`product.md` の方針）。
+`Question.category_id` は `question_categories.id` への外部キー（必須）。**業界標準寄せでマスタ化採用**（IPA / Moodle / Canvas の慣行）、表記ゆれを防ぐため自由記述カテゴリは廃止。資格ごとに独立した `QuestionCategory` から選択する（`product.md` 更新済）。
 
 ### インデックス・制約
 
@@ -340,10 +354,17 @@ erDiagram
 `questions`:
 - `(certification_id, status)`: 複合 INDEX
 - `section_id`: 単体 INDEX（NULL 含む、Section 紐づき問題の高速引き）
-- `category`: 単体 INDEX（出題分野フィルタ）
+- `category_id`: 単体 INDEX（出題分野フィルタ、mock-exam の弱点ヒートマップ用 `GROUP BY` の高速化）
 - `(certification_id, difficulty)`: 複合 INDEX（弱点ドリル時の difficulty フィルタ最適化、[[quiz-answering]] が利用）
 - `certification_id`: 外部キー（`->constrained('certifications')->restrictOnDelete()`）
 - `section_id`: 外部キー（`->nullable()->constrained('sections')->nullOnDelete()`、Section SoftDelete 時は手動で Question 側を再評価する想定で物理削除では cascade null とする保険）
+- `category_id`: 外部キー（`->constrained('question_categories')->restrictOnDelete()` — カテゴリ削除時に紐付き Question があれば例外を出すため restrict）
+- `deleted_at`: 単体 INDEX
+
+`question_categories`:
+- `(certification_id, slug)`: UNIQUE INDEX（資格内のスラッグ一意、資格をまたいだ重複は許容）
+- `(certification_id, sort_order)`: 複合 INDEX（資格内のカテゴリ並び順取得）
+- `certification_id`: 外部キー（`->constrained('certifications')->restrictOnDelete()`）
 - `deleted_at`: 単体 INDEX
 
 `question_options`:
@@ -406,12 +427,18 @@ stateDiagram-v2
 
 - **`QuestionController`**
   - `index(Certification $certification, IndexRequest, IndexAction)` — 一覧 + フィルタ + ページネーション
-  - `create(Certification $certification)` — 新規作成フォーム表示
-  - `store(Certification $certification, StoreRequest, StoreAction)` — 新規作成（QuestionOption 同時）
+  - `create(Certification $certification)` — 新規作成フォーム表示（カテゴリ select オプションは Certification 配下から取得）
+  - `store(Certification $certification, StoreRequest, StoreAction)` — 新規作成（QuestionOption 同時、`category_id` 整合検証）
   - `show(Question $question, ShowAction)` — 詳細 + 編集フォーム同居
-  - `update(Question $question, UpdateRequest, UpdateAction)` — 更新（QuestionOption delete-and-insert）
+  - `update(Question $question, UpdateRequest, UpdateAction)` — 更新（QuestionOption delete-and-insert、`category_id` 変更時の整合検証）
   - `destroy(Question $question, DestroyAction)` — SoftDelete（mock-exam 未参照のみ）
   - `publish(Question $question, PublishAction)` / `unpublish(Question $question, UnpublishAction)`
+
+- **`QuestionCategoryController`** — 問題カテゴリマスタ管理（業界標準寄せ、admin / 担当 coach が CRUD）
+  - `index(Certification $certification, IndexAction)` — 一覧 + 表示順並び替えハンドル
+  - `store(Certification $certification, StoreRequest, StoreAction)` — 新規作成（`certification_id` URL 由来固定）
+  - `update(QuestionCategory $category, UpdateRequest, UpdateAction)` — 更新（`certification_id` 変更不可）
+  - `destroy(QuestionCategory $category, DestroyAction)` — SoftDelete（紐付き Question ゼロ件のみ可）
 
 - **`ContentSearchController`** — 受講生向け Section 全文検索
   - `search(SearchRequest, SearchAction)` — `/contents/search` でカスタム業務操作（Controller method = `search` / Action = `SearchAction`、`backend-usecases.md` 規約）
@@ -643,15 +670,15 @@ class IndexAction
 {
     public function __invoke(
         Certification $certification,
-        ?string $category,
+        ?string $categoryId,
         ?QuestionDifficulty $difficulty,
         ?ContentStatus $status,
         bool $standaloneOnly,
         int $perPage = 20,
     ): LengthAwarePaginator {
         return $certification->questions()
-            ->with(['section.chapter.part', 'options' => fn ($q) => $q->ordered()])
-            ->when($category, fn ($q) => $q->category($category))
+            ->with(['section.chapter.part', 'category', 'options' => fn ($q) => $q->ordered()])
+            ->when($categoryId, fn ($q) => $q->byCategory($categoryId))
             ->when($difficulty, fn ($q) => $q->difficulty($difficulty))
             ->when($status, fn ($q) => $q->where('status', $status))
             ->when($standaloneOnly, fn ($q) => $q->standalone())
@@ -678,6 +705,12 @@ class StoreAction
             }
         }
 
+        // category_id の certification 整合検証（業界標準寄せ、表記ゆれ防止）
+        $category = QuestionCategory::find($validated['category_id']);
+        if (! $category || $category->certification_id !== $certification->id) {
+            throw new QuestionCategoryMismatchException();
+        }
+
         $options = $validated['options'] ?? [];
         $correctCount = collect($options)->where('is_correct', true)->count();
         if ($correctCount !== 1) {
@@ -686,7 +719,7 @@ class StoreAction
 
         return DB::transaction(function () use ($certification, $validated, $options) {
             $question = $certification->questions()->create([
-                ...Arr::only($validated, ['body', 'explanation', 'category', 'difficulty', 'section_id']),
+                ...Arr::only($validated, ['body', 'explanation', 'category_id', 'difficulty', 'section_id']),
                 'status' => ContentStatus::Draft,
                 'order' => 0, // Question には Section 内順序を持たせない設計（必要なら将来拡張）
             ]);
@@ -699,13 +732,13 @@ class StoreAction
                 ]);
             }
 
-            return $question->fresh(['options']);
+            return $question->fresh(['options', 'category']);
         });
     }
 }
 ```
 
-責務: (1) `section_id` 指定時の certification 一致検証、(2) `is_correct` 件数検証、(3) Question INSERT + QuestionOption 一括 INSERT。
+責務: (1) `section_id` 指定時の certification 一致検証、(2) `category_id` の certification 一致検証（マスタ化前提）、(3) `is_correct` 件数検証、(4) Question INSERT + QuestionOption 一括 INSERT。
 
 #### `App\UseCases\Question\UpdateAction`
 
@@ -722,6 +755,14 @@ class UpdateAction
             }
         }
 
+        // category_id 変更時の certification 整合検証
+        if (array_key_exists('category_id', $validated) && $validated['category_id'] !== $question->category_id) {
+            $category = QuestionCategory::find($validated['category_id']);
+            if (! $category || $category->certification_id !== $question->certification_id) {
+                throw new QuestionCategoryMismatchException();
+            }
+        }
+
         if (array_key_exists('options', $validated)) {
             $correctCount = collect($validated['options'])->where('is_correct', true)->count();
             if ($correctCount !== 1) {
@@ -732,7 +773,7 @@ class UpdateAction
         return DB::transaction(function () use ($question, $validated) {
             $question->update(Arr::only(
                 $validated,
-                ['body', 'explanation', 'category', 'difficulty', 'section_id'],
+                ['body', 'explanation', 'category_id', 'difficulty', 'section_id'],
             ));
 
             if (array_key_exists('options', $validated)) {
@@ -746,13 +787,13 @@ class UpdateAction
                 }
             }
 
-            return $question->fresh(['options']);
+            return $question->fresh(['options', 'category']);
         });
     }
 }
 ```
 
-責務: (1) `section_id` 変更時の certification 整合性チェック、(2) options 同期は delete-and-insert、(3) `certification_id` は変更不可。
+責務: (1) `section_id` 変更時の certification 整合性チェック、(2) `category_id` 変更時の certification 一致検証、(3) options 同期は delete-and-insert、(4) `certification_id` は変更不可。
 
 #### `App\UseCases\Question\DestroyAction`
 
@@ -799,6 +840,78 @@ class PublishAction
 ```
 
 責務: (1) draft 状態チェック、(2) **options >= 2 件 AND is_correct=true が 1 件** の二重検証（store/update でも検証するが publish 時にもガード）、(3) 公開遷移。
+
+#### `App\UseCases\QuestionCategory\IndexAction`
+
+```php
+namespace App\UseCases\QuestionCategory;
+
+class IndexAction
+{
+    public function __invoke(Certification $certification): Collection
+    {
+        return $certification->questionCategories()
+            ->ordered()
+            ->withCount('questions')
+            ->get();
+    }
+}
+```
+
+責務: 資格内カテゴリを `sort_order` 順で取得、`withCount('questions')` で「このカテゴリに何問紐付いているか」を Blade に渡す。
+
+#### `App\UseCases\QuestionCategory\StoreAction`
+
+```php
+class StoreAction
+{
+    public function __invoke(Certification $certification, User $actor, array $validated): QuestionCategory
+    {
+        return DB::transaction(fn () => $certification->questionCategories()->create([
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'sort_order' => $validated['sort_order'] ?? 0,
+            'description' => $validated['description'] ?? null,
+        ]));
+    }
+}
+```
+
+責務: `certification_id` URL 由来固定で INSERT。`(certification_id, slug)` UNIQUE 違反は FormRequest 側で 422 を返す。
+
+#### `App\UseCases\QuestionCategory\UpdateAction`
+
+```php
+class UpdateAction
+{
+    public function __invoke(QuestionCategory $category, User $actor, array $validated): QuestionCategory
+    {
+        return DB::transaction(function () use ($category, $validated) {
+            $category->update(Arr::only($validated, ['name', 'slug', 'sort_order', 'description']));
+            return $category->fresh();
+        });
+    }
+}
+```
+
+責務: `name` / `slug` / `sort_order` / `description` を更新。`certification_id` は変更不可（FormRequest 側で不受領）。
+
+#### `App\UseCases\QuestionCategory\DestroyAction`
+
+```php
+class DestroyAction
+{
+    public function __invoke(QuestionCategory $category): void
+    {
+        if ($category->questions()->exists()) {
+            throw new QuestionCategoryInUseException();
+        }
+        DB::transaction(fn () => $category->delete());
+    }
+}
+```
+
+責務: 紐付き Question が 1 件でもあれば `QuestionCategoryInUseException`（HTTP 409）、ゼロ件なら SoftDelete。
 
 #### `App\UseCases\ContentSearch\SearchAction`
 
@@ -1047,6 +1160,29 @@ class SectionImagePolicy
 }
 ```
 
+#### `QuestionCategoryPolicy`
+
+```php
+class QuestionCategoryPolicy
+{
+    public function viewAny(User $auth, Certification $certification): bool { return $this->scoped($auth, $certification->id); }
+    public function create(User $auth, Certification $certification): bool { return $this->scoped($auth, $certification->id); }
+    public function update(User $auth, QuestionCategory $category): bool { return $this->scoped($auth, $category->certification_id); }
+    public function delete(User $auth, QuestionCategory $category): bool { return $this->scoped($auth, $category->certification_id); }
+
+    private function scoped(User $auth, string $certificationId): bool
+    {
+        return match ($auth->role) {
+            UserRole::Admin => true,
+            UserRole::Coach => $auth->assignedCertifications()->whereKey($certificationId)->exists(),
+            default => false,
+        };
+    }
+}
+```
+
+> coach は担当資格のみ、admin は全資格、student は触れない（カテゴリマスタは student に見せない）。
+
 > Policy は「ロール × 担当資格 × 登録資格」観点のみで判定。状態整合性チェック（`Draft` のみ削除可、状態遷移制限）は **Action 内ドメイン例外** で表現する（[[certification-management]] と同じ流儀、`backend-policies.md` の役割分担に整合）。
 
 ### FormRequest
@@ -1066,9 +1202,11 @@ class SectionImagePolicy
 | `Section\ReorderRequest` | 同 Part 構造 | `can('reorder', [Section::class, $this->route('chapter')])` |
 | `Section\PreviewRequest` | `body: required string max:50000` | `can('update', $this->route('section'))` |
 | `SectionImage\StoreRequest` | `file: required file mimes:png,jpg,jpeg,webp max:2048` (2048 KB = 2 MB) | `can('create', [SectionImage::class, $this->route('section')])` |
-| `Question\IndexRequest` | `category: nullable string max:50` / `difficulty: nullable in:easy,medium,hard` / `status: nullable in:draft,published` / `standalone_only: nullable boolean` / `page: nullable integer min:1` | `can('viewAny', [Question::class, $this->route('certification')])` |
-| `Question\StoreRequest` | `body: required string max:5000` / `explanation: nullable string max:5000` / `category: required string max:50` / `difficulty: required in:easy,medium,hard` / `section_id: nullable ulid exists:sections,id` / `options: required array min:2 max:6` / `options.*.body: required string max:1000` / `options.*.is_correct: required boolean` | `can('create', [Question::class, $this->route('certification')])` |
+| `Question\IndexRequest` | `category_id: nullable ulid exists:question_categories,id` / `difficulty: nullable in:easy,medium,hard` / `status: nullable in:draft,published` / `standalone_only: nullable boolean` / `page: nullable integer min:1` | `can('viewAny', [Question::class, $this->route('certification')])` |
+| `Question\StoreRequest` | `body: required string max:5000` / `explanation: nullable string max:5000` / `category_id: required ulid exists:question_categories,id,deleted_at,NULL` / `difficulty: required in:easy,medium,hard` / `section_id: nullable ulid exists:sections,id` / `options: required array min:2 max:6` / `options.*.body: required string max:1000` / `options.*.is_correct: required boolean` | `can('create', [Question::class, $this->route('certification')])` |
 | `Question\UpdateRequest` | StoreRequest 構造（`options` は `sometimes`）。`certification_id` フィールドは無し | `can('update', $this->route('question'))` |
+| `QuestionCategory\StoreRequest` | `name: required string max:50` / `slug: required string max:60` / `sort_order: nullable integer min:0` / `description: nullable string max:500` / `(certification_id, slug)` UNIQUE は migration + Rule::unique() with closure で資格内ユニーク検証 | `can('create', [QuestionCategory::class, $this->route('certification')])` |
+| `QuestionCategory\UpdateRequest` | StoreRequest 同等。`(certification_id, slug)` UNIQUE はルート Model 自身を ignoreId で除外 | `can('update', $this->route('category'))` |
 | `ContentSearch\SearchRequest` | `certification_id: required ulid exists:certifications,id` / `keyword: nullable string max:200` / `page: nullable integer min:1` | always true（`auth` middleware で十分、student 制限は Action 内で扱う）|
 
 ### Route
@@ -1120,6 +1258,12 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::delete('questions/{question}', [QuestionController::class, 'destroy'])->name('admin.questions.destroy');
     Route::post('questions/{question}/publish', [QuestionController::class, 'publish'])->name('admin.questions.publish');
     Route::post('questions/{question}/unpublish', [QuestionController::class, 'unpublish'])->name('admin.questions.unpublish');
+
+    // QuestionCategory（業界標準寄せ、資格ごとに独立したカテゴリマスタ）
+    Route::get('certifications/{certification}/question-categories', [QuestionCategoryController::class, 'index'])->name('admin.question-categories.index');
+    Route::post('certifications/{certification}/question-categories', [QuestionCategoryController::class, 'store'])->name('admin.question-categories.store');
+    Route::patch('question-categories/{category}', [QuestionCategoryController::class, 'update'])->name('admin.question-categories.update');
+    Route::delete('question-categories/{category}', [QuestionCategoryController::class, 'destroy'])->name('admin.question-categories.destroy');
 });
 
 // student
@@ -1143,10 +1287,13 @@ Route::middleware('auth')->group(function () {
 | `admin/contents/sections/_partials/markdown-editor.blade.php` | 編集テキストエリア + プレビュー領域（JS で `/admin/sections/{section}/preview` を POST → HTML 描画）|
 | `admin/contents/sections/_partials/image-uploader.blade.php` | 画像アップロード UI（`<input type="file">` → fetch で `/admin/sections/{section}/images` POST → 成功時に Markdown editor に `![](url)` 自動挿入）|
 | `admin/contents/sections/_partials/image-list.blade.php` | アップロード済 SectionImage 一覧 + 削除ボタン |
-| `admin/contents/questions/index.blade.php` | Question 一覧 + フィルタ（category / difficulty / status / 専用 mock-exam のみ）+ ページネーション |
-| `admin/contents/questions/create.blade.php` | Question 新規作成フォーム（body / explanation / category / difficulty / section_id / options[]）|
+| `admin/contents/questions/index.blade.php` | Question 一覧 + フィルタ（category_id select / difficulty / status / 専用 mock-exam のみ）+ ページネーション |
+| `admin/contents/questions/create.blade.php` | Question 新規作成フォーム（body / explanation / **category_id (資格内カテゴリの select)** / difficulty / section_id / options[]）|
 | `admin/contents/questions/show.blade.php` | Question 詳細 + 編集フォーム + 公開ボタン |
 | `admin/contents/questions/_partials/option-fieldset.blade.php` | 選択肢入力フィールドセット（2-6 個、追加/削除ボタン、`is_correct` ラジオで唯一性担保）|
+| `admin/contents/question-categories/index.blade.php` | 問題カテゴリマスタ一覧 + 「+新規」ボタン + sort_order 並び替えハンドル + 編集 / 削除モーダル起点 |
+| `admin/contents/question-categories/_modals/form.blade.php` | カテゴリ追加・編集モーダル（name / slug / sort_order / description）|
+| `admin/contents/question-categories/_modals/delete-confirm.blade.php` | カテゴリ削除確認モーダル（紐付き Question 数を表示、ゼロ件のみ削除可）|
 | `admin/contents/_partials/status-pill.blade.php` | `draft` / `published` のステータスバッジ表示 |
 | `admin/contents/_modals/delete-confirm.blade.php` | 削除確認モーダル |
 | `admin/contents/_modals/publish-confirm.blade.php` | 公開確認モーダル |
@@ -1197,6 +1344,12 @@ Wave 0b で整備済の `resources/js/utils/fetch-json.js` を経由して CSRF 
 - **`QuestionCertificationMismatchException`** — `UnprocessableEntityHttpException` 継承（HTTP 422）
   - メッセージ: 「問題と指定セクションの資格が一致しません。」
   - 発生: `Question\StoreAction` / `UpdateAction` で `section_id` の親 Part が Question の `certification_id` と不一致
+- **`QuestionCategoryMismatchException`** — `UnprocessableEntityHttpException` 継承（HTTP 422）
+  - メッセージ: 「指定したカテゴリは対象資格のカテゴリマスタに存在しません。」
+  - 発生: `Question\StoreAction` / `UpdateAction` で `category_id` の `certification_id` が問題の `certification_id` と不一致（業界標準寄せでマスタ整合を担保）
+- **`QuestionCategoryInUseException`** — `ConflictHttpException` 継承（HTTP 409）
+  - メッセージ: 「このカテゴリは問題に紐付いているため削除できません。先に問題のカテゴリを変更してください。」
+  - 発生: `QuestionCategory\DestroyAction` で紐付き Question が 1 件以上
 - **`SectionImageStorageException`** — `HttpException(500)` 継承
   - メッセージ: 「画像のアップロードに失敗しました。時間をおいて再試行してください。」
   - 発生: `SectionImage\StoreAction` の DB 失敗（Storage 巻き戻し後）
@@ -1223,7 +1376,7 @@ Wave 0b で整備済の `resources/js/utils/fetch-json.js` を経由して CSRF 
 | REQ-content-management-005 | `question_options.question_id` FK + `is_correct boolean` + `QuestionOption::question()` belongsTo |
 | REQ-content-management-006 | `section_images.section_id` FK + `SectionImage::section()` belongsTo |
 | REQ-content-management-007 | `App\Enums\ContentStatus`（`label()` 含む）+ `Part::$casts` / `Chapter::$casts` / `Section::$casts` / `Question::$casts` |
-| REQ-content-management-008 | `App\Enums\QuestionDifficulty`（`label()` 含む）+ `questions.category` 文字列カラム + `Question::$casts['difficulty']` |
+| REQ-content-management-008 | `App\Enums\QuestionDifficulty`（`label()` 含む）+ `questions.category_id` FK to `question_categories` + `Question::$casts['difficulty']` + `Question::category()` belongsTo |
 | REQ-content-management-009 | 各 migration の `$table->unsignedInteger('order')` + `(parent_id, order)` 複合 INDEX |
 | REQ-content-management-010 | `routes/web.php`（`admin.parts.index`）/ `PartController::index` / `UseCases\Part\IndexAction` / `views/admin/contents/parts/index.blade.php` |
 | REQ-content-management-011 | `UseCases\Part\StoreAction` / `Chapter\StoreAction` / `Section\StoreAction`（`lockForUpdate` + `MAX(order)+1`、`status=Draft` 固定）|
@@ -1236,7 +1389,7 @@ Wave 0b で整備済の `resources/js/utils/fetch-json.js` を経由して CSRF 
 | REQ-content-management-023 | `Part\ReorderAction` / `Chapter\ReorderAction` / `Section\ReorderAction`（`(parent_id, order)` 一斉 UPDATE）|
 | REQ-content-management-024 | 各 `ReorderAction` 冒頭の ID 検証 + `ContentReorderInvalidException` throw + `ReorderRequest::rules()` の `distinct` |
 | REQ-content-management-030 | `QuestionController::index` / `UseCases\Question\IndexAction` / `Http\Requests\Question\IndexRequest` / `views/admin/contents/questions/index.blade.php` |
-| REQ-content-management-031 | `Question\StoreAction`（`status=Draft` 固定、`section_id` nullable 受領）|
+| REQ-content-management-031 | `Question\StoreAction`（`status=Draft` 固定、`section_id` nullable 受領、`category_id` certification 整合検証 + `QuestionCategoryMismatchException`）|
 | REQ-content-management-032 | `Question\StoreAction` のトランザクション内 `options()->create()` 一括 |
 | REQ-content-management-033 | `Question\StoreAction` / `UpdateAction` 内の `is_correct=true` 件数検証 + `QuestionInvalidOptionsException` |
 | REQ-content-management-034 | `Question\UpdateAction`（`Arr::only` で `certification_id` を弾く）+ `UpdateRequest::rules()` に `certification_id` 不在 |
@@ -1245,6 +1398,14 @@ Wave 0b で整備済の `resources/js/utils/fetch-json.js` を経由して CSRF 
 | REQ-content-management-037 | `Question\DestroyAction` 内 `mock_exam_questions` 参照チェック + `QuestionInUseException` |
 | REQ-content-management-040 | `Question::scopeStandalone()`（`section_id IS NULL`）+ `IndexRequest::rules` の `standalone_only` |
 | REQ-content-management-041 | `Question\StoreAction` / `UpdateAction` 内の `section.chapter.part.certification_id` 一致検証 + `QuestionCertificationMismatchException` |
+| REQ-content-management-042 | `database/migrations/{date}_create_question_categories_table.php`（ULID + `certification_id` FK + name + slug + sort_order + description + SoftDeletes、`(certification_id, slug)` UNIQUE）/ `App\Models\QuestionCategory`（`belongsTo(Certification)` / `hasMany(Question)` / `scopeOrdered`）|
+| REQ-content-management-043 | `QuestionCategoryController::index` / `UseCases\QuestionCategory\IndexAction`（`ordered()` + `withCount('questions')`）/ `views/admin/contents/question-categories/index.blade.php` |
+| REQ-content-management-044 | `QuestionCategoryController::store` / `Http\Requests\QuestionCategory\StoreRequest` / `UseCases\QuestionCategory\StoreAction`（`certification_id` URL 由来固定）|
+| REQ-content-management-045 | `QuestionCategoryController::update` / `Http\Requests\QuestionCategory\UpdateRequest` / `UseCases\QuestionCategory\UpdateAction` |
+| REQ-content-management-046 | `QuestionCategoryController::destroy` / `UseCases\QuestionCategory\DestroyAction`（`questions()->exists()` ガード + `QuestionCategoryInUseException`）|
+| REQ-content-management-047 | `App\Policies\QuestionCategoryPolicy`（coach は `assignedCertifications` 内のみ、admin は全資格）|
+| REQ-content-management-048 | `views/admin/contents/questions/create.blade.php` の category_id select（`$certification->questionCategories->ordered()` を渡す）+ `Question\StoreRequest` の `category_id: exists` ルール |
+| REQ-content-management-049 | `Question\StoreRequest` / `UpdateRequest` の `category_id: exists:question_categories,id,deleted_at,NULL` で SoftDelete 済を弾く |
 | REQ-content-management-050 | `SectionImageController::store` / `UseCases\SectionImage\StoreAction` / `Storage::disk('public')->putFileAs(...)` |
 | REQ-content-management-051 | `Http\Requests\SectionImage\StoreRequest::rules` の `mimes:png,jpg,jpeg,webp` |
 | REQ-content-management-052 | `StoreRequest::rules` の `max:2048`（KB 単位）|
@@ -1271,8 +1432,8 @@ Wave 0b で整備済の `resources/js/utils/fetch-json.js` を経由して CSRF 
 | REQ-content-management-085 | `Question\UpdateAction` 内の `section_id` 変更時の `certification_id` 整合チェック + Policy の `update` で coach の担当範囲を確認 |
 | NFR-content-management-001 | 各 Action 内 `DB::transaction()` |
 | NFR-content-management-002 | `Part\IndexAction` / `Question\IndexAction` 等の `with()` Eager Loading |
-| NFR-content-management-003 | 各 migration の `$table->index(...)` 群（`(certification_id, order)` / `(part_id, order)` / `(chapter_id, order)` / `questions.section_id` / `questions.category` / `(certification_id, difficulty)` / `question_options.question_id` / `section_images.section_id` / `sections.title`）|
-| NFR-content-management-004 | `app/Exceptions/Content/*.php`（8 ファイル）|
+| NFR-content-management-003 | 各 migration の `$table->index(...)` 群（`(certification_id, order)` / `(part_id, order)` / `(chapter_id, order)` / `questions.section_id` / `questions.category_id` / `(certification_id, difficulty)` / `question_options.question_id` / `section_images.section_id` / `sections.title` / `question_categories.(certification_id, slug)` UNIQUE / `question_categories.(certification_id, sort_order)`）|
+| NFR-content-management-004 | `app/Exceptions/Content/*.php`（10 ファイル、`QuestionCategoryMismatchException` / `QuestionCategoryInUseException` 追加）|
 | NFR-content-management-005 | `SectionImage\StoreAction` の try-catch で DB 失敗時 Storage 巻き戻し + `DestroyAction` の `DB::afterCommit` で順序保証 |
 | NFR-content-management-006 | `views/admin/contents/*` で Wave 0b 共通コンポーネント参照 |
 | NFR-content-management-007 | `SectionController::preview` / `Section\PreviewAction` + `resources/js/content-management/section-editor.js` |

@@ -9,7 +9,8 @@
 - [ ] migration: `create_parts_table`（ULID, `certification_id` FK, `title`, `description nullable`, `order unsigned`, `status enum draft/published`, `published_at nullable`, `timestamps`, `softDeletes`、`(certification_id, order)` / `(certification_id, status)` 複合 INDEX, `deleted_at` INDEX）（REQ-content-management-001, REQ-content-management-002, REQ-content-management-007, REQ-content-management-009, NFR-content-management-003）
 - [ ] migration: `create_chapters_table`（ULID, `part_id` FK, `title`, `description nullable`, `order`, `status`, `published_at`, `timestamps`, `softDeletes`、`(part_id, order)` / `(part_id, status)` INDEX）（REQ-content-management-001, REQ-content-management-003, REQ-content-management-009, NFR-content-management-003）
 - [ ] migration: `create_sections_table`（ULID, `chapter_id` FK, `title`, `description nullable`, `body longtext`, `order`, `status`, `published_at`, `timestamps`, `softDeletes`、`(chapter_id, order)` / `(chapter_id, status)` / `sections.title` INDEX）（REQ-content-management-001, REQ-content-management-003, REQ-content-management-009, NFR-content-management-003）
-- [ ] migration: `create_questions_table`（ULID, `certification_id` FK NOT NULL, `section_id` FK NULLABLE, `body text`, `explanation text nullable`, `category string 50`, `difficulty enum easy/medium/hard`, `order`, `status`, `published_at`, `timestamps`, `softDeletes`、`(certification_id, status)` / `section_id` / `category` / `(certification_id, difficulty)` INDEX）（REQ-content-management-001, REQ-content-management-004, REQ-content-management-007, REQ-content-management-008, NFR-content-management-003）
+- [ ] migration: `create_question_categories_table`（ULID, `certification_id` FK NOT NULL, `name string 50`, `slug string 60`, `sort_order unsigned int default 0`, `description text nullable max 500`, `timestamps`, `softDeletes`、`(certification_id, slug)` UNIQUE / `(certification_id, sort_order)` INDEX、業界標準寄せ）（REQ-content-management-042, NFR-content-management-003）
+- [ ] migration: `create_questions_table`（ULID, `certification_id` FK NOT NULL, `section_id` FK NULLABLE, `category_id` FK NOT NULL to question_categories restrict, `body text`, `explanation text nullable`, `difficulty enum easy/medium/hard`, `order`, `status`, `published_at`, `timestamps`, `softDeletes`、`(certification_id, status)` / `section_id` / `category_id` / `(certification_id, difficulty)` INDEX）（REQ-content-management-001, REQ-content-management-004, REQ-content-management-007, REQ-content-management-008, NFR-content-management-003）
 - [ ] migration: `create_question_options_table`（ULID, `question_id` FK cascadeOnDelete, `body text`, `is_correct boolean default false`, `order`, `timestamps`、`(question_id, order)` INDEX、SoftDeletes は採用しない）（REQ-content-management-001, REQ-content-management-005, NFR-content-management-003）
 - [ ] migration: `create_section_images_table`（ULID, `section_id` FK, `path string UNIQUE`, `original_filename string`, `mime_type string`, `size_bytes unsigned int`, `timestamps`, `softDeletes`、`(section_id, deleted_at)` INDEX）（REQ-content-management-001, REQ-content-management-006, NFR-content-management-003）
 - [ ] Enum: `ContentStatus`（`Draft` / `Published` + `label()`）（REQ-content-management-007）
@@ -17,13 +18,16 @@
 - [ ] Model: `Part`（`fillable`, `$casts['status' => ContentStatus::class, 'published_at' => 'datetime']`, `certification()` belongsTo, `chapters()` hasMany, `scopePublished()`, `scopeOrdered()`）（REQ-content-management-002, REQ-content-management-007）
 - [ ] Model: `Chapter`（`fillable`, `$casts`, `part()` belongsTo, `sections()` hasMany, `scopePublished()`（親 Part を whereHas）, `scopeOrdered()`）（REQ-content-management-003, REQ-content-management-007, REQ-content-management-022）
 - [ ] Model: `Section`（`fillable`, `$casts`, `chapter()` belongsTo, `questions()` hasMany, `images()` hasMany, `scopePublished()`（親 Chapter / Part を連鎖 whereHas）, `scopeOrdered()`, `scopeKeyword(?string)`）（REQ-content-management-003, REQ-content-management-007, REQ-content-management-022, REQ-content-management-070）
-- [ ] Model: `Question`（`fillable`, `$casts['status', 'difficulty']`, `certification()` belongsTo, `section()` belongsTo nullable, `options()` hasMany, `mockExams()` belongsToMany, `scopePublished()`, `scopeBySection()`, `scopeStandalone()`, `scopeCategory()`, `scopeDifficulty()`）（REQ-content-management-004, REQ-content-management-007, REQ-content-management-040）
+- [ ] Model: `Question`（`fillable`（`category_id` 含む）, `$casts['status', 'difficulty']`, `certification()` belongsTo, `section()` belongsTo nullable, `category()` belongsTo QuestionCategory, `options()` hasMany, `mockExams()` belongsToMany, `scopePublished()`, `scopeBySection()`, `scopeStandalone()`, `scopeByCategory(?string $categoryId)`, `scopeDifficulty()`）（REQ-content-management-004, REQ-content-management-007, REQ-content-management-008, REQ-content-management-040）
+- [ ] Model: `QuestionCategory`（`HasUlids`, `HasFactory`, `SoftDeletes`, `fillable`, `belongsTo(Certification)`, `hasMany(Question)`, `scopeOrdered()`、業界標準寄せのカテゴリマスタ）（REQ-content-management-042, REQ-content-management-043）
 - [ ] Model: `QuestionOption`（`fillable`, `$casts['is_correct' => 'boolean']`, `question()` belongsTo, `scopeOrdered()`）（REQ-content-management-005）
 - [ ] Model: `SectionImage`（`fillable`, `section()` belongsTo, SoftDeletes）（REQ-content-management-006, REQ-content-management-055）
+- [ ] [[certification-management]] Certification Model 拡張: `questionCategories()` hasMany リレーション追加（REQ-content-management-042）
 - [ ] Factory: `PartFactory`（`draft()` / `published()` state、`forCertification($cert)` state）
 - [ ] Factory: `ChapterFactory`（`draft()` / `published()` state、`forPart($part)` state）
 - [ ] Factory: `SectionFactory`（`draft()` / `published()` state、`forChapter($chapter)` state、`withBody($markdown)` state）
-- [ ] Factory: `QuestionFactory`（`draft()` / `published()` state、`forCertification` state、`forSection($section)` state、`standalone()` state、`withOptions(int $count, int $correctIndex)` state）
+- [ ] Factory: `QuestionFactory`（`draft()` / `published()` state、`forCertification` state、`forSection($section)` state、`standalone()` state、`forCategory($category)` state、`withOptions(int $count, int $correctIndex)` state）
+- [ ] Factory: `QuestionCategoryFactory`（`forCertification($cert)` state、テクノロジー系 / マネジメント系等のサンプル name 生成）
 - [ ] Factory: `QuestionOptionFactory`（`correct()` / `wrong()` state）
 - [ ] Factory: `SectionImageFactory`（`forSection($section)` state）
 - [ ] [[certification-management]] への追加: `User::assignedCertifications()` BelongsToMany リレーション（`certification_coach_assignments` 経由、coach の担当判定で使用）（REQ-content-management-081）
@@ -35,6 +39,7 @@
 - [ ] Policy: `SectionPolicy`（同上、ただし親が Chapter、`view` で `Draft` を admin / 担当 coach のみ true、それ以外は false → Handler 側で 404 化）（REQ-content-management-081, REQ-content-management-084）
 - [ ] Policy: `QuestionPolicy`（`viewAny(User, Certification)` / `view` / `create(User, Certification)` / `update` / `delete` / `publish` / `unpublish`、ロール × 担当資格 × 登録資格判定）（REQ-content-management-081, REQ-content-management-082, REQ-content-management-085）
 - [ ] Policy: `SectionImagePolicy`（`create(User, Section)` / `delete(User, SectionImage)`、内部で `SectionPolicy::update` を委譲呼出）（REQ-content-management-081）
+- [ ] Policy: `QuestionCategoryPolicy`（`viewAny(User, Certification)` / `create(User, Certification)` / `update(User, QuestionCategory)` / `delete(User, QuestionCategory)`、admin は全資格 / coach は担当資格のみ）（REQ-content-management-047）
 - [ ] `AuthServiceProvider::$policies` への登録または自動検出確認
 
 ## Step 3: HTTP 層
@@ -43,15 +48,17 @@
 - [ ] Controller: `ChapterController`（同上）
 - [ ] Controller: `SectionController`（`preview` メソッドは AJAX JSON 応答）（REQ-content-management-011, REQ-content-management-012, NFR-content-management-007）
 - [ ] Controller: `SectionImageController`（`store` / `destroy`、JSON 応答）（REQ-content-management-050, REQ-content-management-053）
-- [ ] Controller: `QuestionController`（CRUD + publish / unpublish）（REQ-content-management-030, REQ-content-management-031, REQ-content-management-034, REQ-content-management-036, REQ-content-management-037）
+- [ ] Controller: `QuestionController`（CRUD + publish / unpublish、`create` メソッドで `$certification->questionCategories->ordered()` を Blade に渡す）（REQ-content-management-030, REQ-content-management-031, REQ-content-management-034, REQ-content-management-036, REQ-content-management-037, REQ-content-management-048）
+- [ ] Controller: `QuestionCategoryController`（`index` / `store` / `update` / `destroy`、業界標準寄せのカテゴリマスタ管理）（REQ-content-management-043, REQ-content-management-044, REQ-content-management-045, REQ-content-management-046）
 - [ ] Controller: `ContentSearchController::search`（受講生向け、`/contents/search` ルート）（REQ-content-management-070, REQ-content-management-072）
 - [ ] FormRequest: `Part\StoreRequest` / `UpdateRequest` / `ReorderRequest`（authorize で Policy 呼出、rules で max 値）（REQ-content-management-012, REQ-content-management-024）
 - [ ] FormRequest: `Chapter\StoreRequest` / `UpdateRequest` / `ReorderRequest`
 - [ ] FormRequest: `Section\StoreRequest` / `UpdateRequest` / `ReorderRequest` / `PreviewRequest`（body max 50000）（REQ-content-management-012）
 - [ ] FormRequest: `SectionImage\StoreRequest`（`file: required file mimes:png,jpg,jpeg,webp max:2048`）（REQ-content-management-051, REQ-content-management-052）
-- [ ] FormRequest: `Question\IndexRequest` / `StoreRequest` / `UpdateRequest`（`options` array, `is_correct` boolean, `section_id` nullable ulid）（REQ-content-management-030, REQ-content-management-031, REQ-content-management-032, REQ-content-management-034）
+- [ ] FormRequest: `Question\IndexRequest` / `StoreRequest` / `UpdateRequest`（`options` array, `is_correct` boolean, `section_id` nullable ulid、`category_id` required ulid exists:question_categories,id,deleted_at,NULL）（REQ-content-management-030, REQ-content-management-031, REQ-content-management-032, REQ-content-management-034, REQ-content-management-048, REQ-content-management-049）
+- [ ] FormRequest: `QuestionCategory\StoreRequest` / `UpdateRequest`（`name` / `slug` / `sort_order` / `description`、`(certification_id, slug)` 資格内 UNIQUE 検証）（REQ-content-management-042, REQ-content-management-044, REQ-content-management-045）
 - [ ] FormRequest: `ContentSearch\SearchRequest`（`certification_id` required ulid, `keyword` nullable string max 200）（REQ-content-management-070）
-- [ ] routes/web.php: `admin/...` ルートを `auth + role:admin,coach` group で定義（Part / Chapter / Section / SectionImage / Question / Preview / Reorder の各エンドポイント）（REQ-content-management-080）
+- [ ] routes/web.php: `admin/...` ルートを `auth + role:admin,coach` group で定義（Part / Chapter / Section / SectionImage / Question / QuestionCategory / Preview / Reorder の各エンドポイント）（REQ-content-management-080）
 - [ ] routes/web.php: `/contents/search` を `auth` group で定義（REQ-content-management-070, REQ-content-management-080）
 
 ## Step 4: Action / Service / Exception
@@ -75,6 +82,12 @@
 - [ ] Action: `App\UseCases\Question\DestroyAction`（`mock_exam_questions` 参照チェック + SoftDelete）（REQ-content-management-037, NFR-content-management-001）
 - [ ] Action: `App\UseCases\Question\PublishAction`（options >=2 + is_correct=1 二重ガード + 遷移）（REQ-content-management-036, NFR-content-management-001）
 - [ ] Action: `App\UseCases\Question\UnpublishAction`（遷移ガード）（REQ-content-management-021）
+- [ ] Action: `App\UseCases\QuestionCategory\IndexAction`（`ordered()` + `withCount('questions')`）（REQ-content-management-043）
+- [ ] Action: `App\UseCases\QuestionCategory\StoreAction`（`certification_id` URL 由来固定）（REQ-content-management-044, NFR-content-management-001）
+- [ ] Action: `App\UseCases\QuestionCategory\UpdateAction`（`certification_id` 変更不可）（REQ-content-management-045, NFR-content-management-001）
+- [ ] Action: `App\UseCases\QuestionCategory\DestroyAction`（`questions()->exists()` ガード + `QuestionCategoryInUseException`）（REQ-content-management-046, NFR-content-management-001）
+- [ ] Exception: `app/Exceptions/Content/QuestionCategoryMismatchException`（UnprocessableEntityHttpException 422、業界標準寄せの category 整合チェック失敗時）（REQ-content-management-031, NFR-content-management-004）
+- [ ] Exception: `app/Exceptions/Content/QuestionCategoryInUseException`（ConflictHttpException 409、紐付き Question があるカテゴリの削除拒否）（REQ-content-management-046, NFR-content-management-004）
 - [ ] Action: `App\UseCases\ContentSearch\SearchAction`（keyword 空 / 未登録時の空 paginator、`paginate(20)`、`extractSnippet` 呼出）（REQ-content-management-070, REQ-content-management-071, REQ-content-management-072, REQ-content-management-073, REQ-content-management-074, REQ-content-management-075, REQ-content-management-083）
 - [ ] Service: `App\Services\MarkdownRenderingService`（`toHtml` + `extractSnippet`、`league/commonmark` の `html_input=strip` + `allow_unsafe_links=false` 設定）（REQ-content-management-060, REQ-content-management-061, REQ-content-management-062, REQ-content-management-063, REQ-content-management-064, REQ-content-management-065, REQ-content-management-073）
 - [ ] Exception: `app/Exceptions/Content/ContentNotDeletableException`（ConflictHttpException 409）（REQ-content-management-014, NFR-content-management-004）
@@ -100,6 +113,10 @@
 - [ ] Blade: `resources/views/admin/contents/questions/create.blade.php`（新規作成フォーム + options 入力）
 - [ ] Blade: `resources/views/admin/contents/questions/show.blade.php`（詳細 + 編集 + 公開ボタン）
 - [ ] Blade: `resources/views/admin/contents/questions/_partials/option-fieldset.blade.php`（options 2-6 個、`is_correct` ラジオで唯一性担保）
+- [ ] Blade: `resources/views/admin/contents/questions/_partials/category-select.blade.php`（資格内カテゴリの select、`$certification->questionCategories->ordered()` を `<x-form.select>` で表示）（REQ-content-management-048）
+- [ ] Blade: `resources/views/admin/contents/question-categories/index.blade.php`（カテゴリマスタ一覧 + 「+新規」ボタン + sort_order 並び替え + 編集・削除モーダル）（REQ-content-management-043）
+- [ ] Blade: `resources/views/admin/contents/question-categories/_modals/form.blade.php`（追加・編集モーダル: name / slug / sort_order / description）（REQ-content-management-044, REQ-content-management-045）
+- [ ] Blade: `resources/views/admin/contents/question-categories/_modals/delete-confirm.blade.php`（削除確認、紐付き Question 数表示 + ゼロ件のみ削除可）（REQ-content-management-046）
 - [ ] Blade: `resources/views/admin/contents/_partials/status-pill.blade.php`（status バッジ）
 - [ ] Blade: `resources/views/admin/contents/_modals/delete-confirm.blade.php`
 - [ ] Blade: `resources/views/admin/contents/_modals/publish-confirm.blade.php`
@@ -126,6 +143,12 @@
 - [ ] tests/Feature/Http/Question/UpdateTest.php（正常系 + options delete-and-insert 確認 + `certification_id` 不変 + `section_id` 整合）
 - [ ] tests/Feature/Http/Question/DestroyTest.php（未使用 SoftDelete OK + mock-exam 参照中で 409）
 - [ ] tests/Feature/Http/Question/PublishTest.php（options >=2 + is_correct=1 で OK + 違反で 409 + draft 以外で 409）
+- [ ] tests/Feature/Http/QuestionCategory/IndexTest.php（admin / coach 担当 / coach 非担当 / student 各ロールの可否、sort_order 順、withCount('questions')）
+- [ ] tests/Feature/Http/QuestionCategory/StoreTest.php（正常系 + 資格内 slug UNIQUE 違反 422 + 認可漏れ）
+- [ ] tests/Feature/Http/QuestionCategory/UpdateTest.php（正常系 + certification_id 不変 + 認可漏れ）
+- [ ] tests/Feature/Http/QuestionCategory/DestroyTest.php（紐付き Question ゼロ件で SoftDelete + 1 件以上で `QuestionCategoryInUseException` 409）
+- [ ] tests/Feature/UseCases/Question/StoreActionTest.php（既存）に `category_id` certification 不一致で `QuestionCategoryMismatchException` 422 を追加
+- [ ] tests/Unit/Policies/QuestionCategoryPolicyTest.php（admin × coach 担当 × coach 非担当 × student の網羅）
 - [ ] tests/Feature/Http/ContentSearch/SearchTest.php（受講生 + 登録資格内 + 公開 Section ヒット、未登録資格で空、未公開 Section 除外、keyword 空で空、`title` ヒット / `body` ヒット 両方、スニペット含む、`paginate(20)`）
 - [ ] tests/Feature/UseCases/Section/ReorderActionTest.php（同一親内のみ受付、Cross-parent 拒否、ID 重複拒否）
 - [ ] tests/Feature/UseCases/Question/StoreActionTest.php（certification 整合検証 + is_correct 検証の境界）
@@ -145,7 +168,9 @@
   - 画像アップロード UI で `.png` をアップロード → Markdown editor に自動挿入 → プレビューで画像表示
   - Section の reorder（drag & drop で順序入替）→ 一覧の order が更新される
   - Section delete（draft のみ） → SoftDelete + 一覧から消える
-  - Question 一覧 → 「+新規」で options 4 件入力（うち 1 件正答）→ Draft 保存 → publish 遷移
+  - 問題カテゴリマスタ画面で「テクノロジー系」「マネジメント系」「ストラテジ系」を新規作成 → 一覧で sort_order 順に表示
+  - Question 一覧 → 「+新規」で options 4 件入力（うち 1 件正答）+ category を select から選ぶ → Draft 保存 → publish 遷移
+  - 問題カテゴリ削除を試みて、紐付き Question があるカテゴリは 409 エラー、ゼロ件のカテゴリは SoftDelete 可能であることを確認
   - Question 編集で options を 3 件に変更 → 保存 → DB で options 物理 delete-and-insert を確認
   - Question delete を試み、mock-exam で使用中なら 409 で阻害される（[[mock-exam]] 実装後に確認）
 - [ ] ブラウザでの受講生動作確認:
