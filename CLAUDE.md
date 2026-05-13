@@ -160,7 +160,8 @@
 
 | ツール | 用途 | タイミング |
 |---|---|---|
-| [frontend-design プラグイン](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) | Blade UI品質向上（AIスロップ回避）| Step 3（模範解答PJ実装中の Blade 作成）|
+| **Claude Design + ハンドオフ機能** | Design System + Hero Screens 4-6枚 のデザイン → Claude Code への自動ハンドオフ。COACHTECH LMS 流の高品質 UI 起点 | **Step 3 Wave 0a**（User が別環境で実施）|
+| [frontend-design プラグイン](https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md) | Blade UI品質向上（AIスロップ回避）。Wave 0b 以降で Design System に倣って残りの画面を生成する補助 | Step 3 Wave 0b 以降 |
 | Laravel Pint hook (PostToolUse) | PHP自動整形 | Step 3以降（`.claude/settings.json` で設定済み）|
 | Blade ロック hook (PreToolUse) | `.blade.php` 編集をブロック。提供PJ への変換後 / 受講生作業中の誤改修ガード | Step 4以降（変換完了後の提供PJ にロック適用）|
 | **Skill `spec-generate`** | 1 Feature の spec 3点セット生成（自己完結・直列）| Step 2 |
