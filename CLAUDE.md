@@ -181,8 +181,8 @@
 
 | フェーズ | 内容 | 担当 |
 |---|---|---|
-| **Wave 0a** Claude Design（共通UI設計） | Design System（カラー / フォント / スペーシング / Button / Form / Card / Modal / Alert / Nav）+ Hero Screens 4-6枚（受講生Dash / mock-exam受験 / 弱点ヒートマップ / qa-board / コーチDash / 管理者Dash） | **User**（Claude Design Web UI、別環境）|
-| **Wave 0b** ハンドオフ → Laravel/共通UI 実装 | Wave 0a のハンドオフコードを受け取り、Laravel 初期セットアップ + Sanctum/Fortify + 共通 Model (User/UserStatusLog) + `resources/views/layouts/` + `resources/views/components/` (Button/Form/Card/Modal/Alert/Nav) を Design System 準拠で実装 + tailwind.config.js / Vite 設定 | Claude Code（主セッション、直列） |
+| **Wave 0a** Claude Design（共通UI設計） | Design System（カラー / フォント / スペーシング / Button / Form / Card / Modal / Alert / Nav）+ Hero Screens 4-6枚（受講生Dash / mock-exam受験 / 弱点ヒートマップ / qa-board / コーチDash / 管理者Dash）。**指示書は `.claude/rules/frontend-ui-foundation.md`「Wave 0a への指示書サマリ」** | **User**（Claude Design Web UI、別環境）|
+| **Wave 0b** ハンドオフ → Laravel/共通UI 実装 | Wave 0a のハンドオフコードを受け取り、Laravel 初期セットアップ + Sanctum/Fortify + 共通 Model (User/UserStatusLog) + `resources/views/layouts/` + `resources/views/components/` (Button/Form/Card/Modal/Alert/Nav) を Design System 準拠で実装 + tailwind.config.js / Vite 設定。**完成判定は `.claude/rules/frontend-ui-foundation.md`「Wave 0b の完成判定基準」** | Claude Code（主セッション、直列） |
 | **Feature 実装フェーズ** | 16 Feature を Wave 0b の共通基盤を利用しつつ実装。**進行順・並列度は進めつつ決定**。原則として `auth` / `user-management` を最初に直列で実装（後続 Feature が依存）、それ以降は独立 Feature を `worktree-spawn` で並列、依存ある Feature は順次 | Claude Code（主セッション + worktree並列）|
 
 ### Feature 一覧（16個）
@@ -283,7 +283,7 @@ ExampleAnswer-mockcase-CertifyLMS/
 │   └── rules/                           # Laravel 実装ルール（paths frontmatter で auto-load）
 │       ├── README.md
 │       ├── backend-*.md                 #   models / http / usecases / services / repositories / policies / tests / exceptions
-│       └── frontend-*.md                #   blade / javascript / tailwind
+│       └── frontend-*.md                #   blade（API契約）/ ui-foundation（サイドバー・Wave 0a/0b 指示書）/ javascript / tailwind
 ├── docs/                                # ★ メタ階層: 構築側のみ参照する完成形仕様（受講生には渡さない）
 │   ├── steering/                        #   LMSプロダクト永続コンテキスト（Kiro流）
 │   │   ├── product.md                   #     プロダクト定義（16 Feature 完成形）

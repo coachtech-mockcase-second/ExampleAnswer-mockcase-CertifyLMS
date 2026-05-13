@@ -284,7 +284,7 @@ class WithdrawAction
 {
     public function __construct(private UserStatusChangeService $statusChanger) {}
 
-    public function __invoke(User $user, User $admin, ?string $reason): void
+    public function __invoke(User $user, User $admin, string $reason): void
     {
         if ($user->is($admin)) {
             throw new SelfWithdrawForbiddenException();
@@ -446,7 +446,7 @@ class UserPolicy
 | `User\IndexRequest` | `keyword: nullable string max:100` / `role: nullable in:admin,coach,student` / `status: nullable in:invited,active,withdrawn` / `page: nullable integer min:1` | `$this->user()->can('viewAny', User::class)` |
 | `User\UpdateRequest` | `name: required string max:50` / `email: required email max:255 unique:users,email,{user}` / `bio: nullable string max:1000` / `avatar_url: nullable url max:500` | `$this->user()->can('update', $this->route('user'))` |
 | `User\UpdateRoleRequest` | `role: required in:admin,coach,student` | `$this->user()->can('updateRole', $this->route('user'))` |
-| `User\WithdrawRequest` | `reason: nullable string max:200` | `$this->user()->can('withdraw', $this->route('user'))` |
+| `User\WithdrawRequest` | `reason: required string max:200` | `$this->user()->can('withdraw', $this->route('user'))` |
 | `Invitation\StoreRequest` | `email: required email max:255` / `role: required in:coach,student` | `$this->user()->can('create', Invitation::class)` |
 | `Invitation\ResendRequest` | — | `$this->user()->can('create', Invitation::class)` |
 

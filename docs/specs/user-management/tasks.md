@@ -28,7 +28,7 @@
 - [ ] `app/Http/Requests/User/IndexRequest.php` — `keyword: nullable string max:100` / `role: nullable in:admin,coach,student` / `status: nullable in:invited,active,withdrawn` / `page: nullable integer min:1`、`authorize` で `viewAny User::class`（REQ-user-management-002, 003, 004）
 - [ ] `app/Http/Requests/User/UpdateRequest.php` — `name: required string max:50` / `email: required email max:255 unique:users,email,{user}` / `bio: nullable string max:1000` / `avatar_url: nullable url max:500`、`authorize` で `update User`（REQ-user-management-030, 031）
 - [ ] `app/Http/Requests/User/UpdateRoleRequest.php` — `role: required in:admin,coach,student`、`authorize` で `updateRole User`（REQ-user-management-040）
-- [ ] `app/Http/Requests/User/WithdrawRequest.php` — `reason: nullable string max:200`、`authorize` で `withdraw User`（REQ-user-management-054）
+- [ ] `app/Http/Requests/User/WithdrawRequest.php` — `reason: required string max:200`、`authorize` で `withdraw User`（REQ-user-management-054、必須化で誤操作防止 + 監査）
 - [ ] `app/Http/Requests/Invitation/StoreRequest.php` — `email: required email max:255` / `role: required in:coach,student`、`authorize` で `create Invitation`（REQ-user-management-010）
 - [ ] `app/Http/Requests/Invitation/ResendRequest.php` — body なし、`authorize` で `create Invitation`
 - [ ] `routes/web.php` に `Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(...)` で 8 ルートを追加（`admin.users.{index, show, update, updateRole, withdraw}` + `admin.invitations.{store, resend, destroy}`）。`admin.users.show` は `->withTrashed()` 付与（REQ-user-management-006, 024, 080）

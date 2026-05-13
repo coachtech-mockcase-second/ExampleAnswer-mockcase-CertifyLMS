@@ -56,7 +56,7 @@
 - **REQ-certification-management-050**: When 受講生が `/certifications` にアクセスした際, the system shall `status=published` の Certification のみを一覧表示する（`draft` / `archived` / `deleted_at != null` を除外）。
 - **REQ-certification-management-051**: While 受講生が一覧画面で「受講中タブ」を選択している間, the system shall 当該受講生の `Enrollment.status IN ('learning','paused','passed','failed')` に紐付く Certification のみをカテゴリ別に表示する。
 - **REQ-certification-management-052**: While 受講生が一覧画面で「カタログタブ」を選択している間, the system shall `status=published` のすべての Certification（受講中含む）を表示し、受講中の資格にはバッジを付ける。
-- **REQ-certification-management-053**: The system shall カタログ一覧でカテゴリ別フィルタ・難易度フィルタ・キーワード検索（`code` / `name` 部分一致）を提供する。
+- **REQ-certification-management-053**: The system shall カタログ一覧でカテゴリ別フィルタ・難易度フィルタを提供する。**キーワード検索は採用しない**（Certify LMS の資格マスタは数十件規模を想定、フィルタで十分に絞れる）。
 - **REQ-certification-management-054**: When 受講生または admin が `/certifications/{certification}` にアクセスした際, the system shall 当該 Certification の詳細（名称 / 分類 / 難易度 / 合格点 / 試験時間 / 総問題数 / 担当コーチ一覧）を表示する。
 - **REQ-certification-management-055**: If 公開済でない（`status != published`）または SoftDelete 済の Certification を受講生が直接 URL で指定した場合, then the system shall HTTP 404 Not Found で `CertificationNotFoundException` を返す（admin は閲覧可、受講生のみ 404）。
 
@@ -70,6 +70,7 @@
 - **REQ-certification-management-065**: When 受講生または admin が `/certificates/{certificate}` にアクセスした際, the system shall Blade テンプレート `certificates/show.blade.php` で達成画面（受講生名 / 資格名 / 合格点 / 発行日 / `serial_no` / PDF ダウンロードボタン）を表示する。
 - **REQ-certification-management-066**: When 受講生または admin が `/certificates/{certificate}/download` を要求した際, the system shall `CertificatePolicy::download` で当事者（`certificate.user_id === auth()->user()->id`）または admin であることを検証し、Storage private driver から `pdf_path` のファイルを `application/pdf` で配信する。
 - **REQ-certification-management-067**: If 当事者でも admin でもないユーザーが他者の修了証 PDF にアクセスした場合, then the system shall HTTP 403 Forbidden を返す（Policy 違反、enumeration を避けるため URL 自体は valid に見える）。
+- **REQ-certification-management-068**: The system shall 修了証 PDF（`certificates/pdf.blade.php`）に以下の **8 要素** を含む。**固定文言**: (1) タイトル「修了証」(2) 証書定型文「上記の者は、本資格の所定の課程を修了したことを証する」(3) 発行元「Certify LMS」。**変数**: (4) 受講生氏名（`$certificate->user->name`）(5) 資格名（`$certificate->certification->name`）(6) 資格コード（`$certificate->certification->code`、小書き）(7) 発行日（`$certificate->issued_at`、西暦表記）(8) 証書番号（`$certificate->serial_no`）。+α 要素（QR コード / 担当コーチ名 / 試験日 / 和暦 / 印章 / 装飾デザイン）は **採用しない**（教育PJスコープに合致する最小構成）。
 
 ### 非機能要件
 

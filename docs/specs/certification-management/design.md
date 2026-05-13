@@ -513,7 +513,6 @@ class IndexAction
         $base = Certification::query()
             ->published()
             ->with('category', 'coaches')
-            ->keyword($filter['keyword'] ?? null)
             ->when($filter['category_id'] ?? null, fn ($q, $id) => $q->where('category_id', $id))
             ->when($filter['difficulty'] ?? null, fn ($q, $d) => $q->where('difficulty', $d));
 
@@ -772,7 +771,7 @@ class CertificatePolicy
 | `CertificationCategory\StoreRequest` | `name: required string max:50` / `slug: required string max:60 unique:certification_categories,slug` / `sort_order: nullable integer min:0` | `can('create', CertificationCategory::class)` |
 | `CertificationCategory\UpdateRequest` | StoreRequest 同等 + ルート除外 | `can('update', $this->route('category'))` |
 | `CertificationCoachAssignment\StoreRequest` | `coach_user_id: required ulid exists:users,id` | `can('create', CertificationCoachAssignment::class)` |
-| `CertificationCatalog\IndexRequest` | `keyword: nullable string max:100` / `category_id: nullable ulid exists:certification_categories,id` / `difficulty: nullable in:beginner,intermediate,advanced,expert` / `tab: nullable in:catalog,enrolled` | always true（公開済を見るだけは `auth` で十分） |
+| `CertificationCatalog\IndexRequest` | `category_id: nullable ulid exists:certification_categories,id` / `difficulty: nullable in:beginner,intermediate,advanced,expert` / `tab: nullable in:catalog,enrolled` | always true（公開済を見るだけは `auth` で十分） |
 
 `Certificate*` 系の操作（`show` / `download`）は FormRequest を作らず、Controller / Action 内で Policy + Action 完結とする（パラメータが Route Model だけのため）。
 
@@ -841,7 +840,7 @@ Route::middleware('auth')->group(function () {
 
 | ファイル | 役割 |
 |---|---|
-| `certifications/index.blade.php` | カタログ一覧（タブ: カタログ / 受講中 + フィルタ + 検索バー + 資格カードグリッド）|
+| `certifications/index.blade.php` | カタログ一覧（タブ: カタログ / 受講中 + フィルタ（カテゴリ / 難易度）+ 資格カードグリッド）。**キーワード検索バーは無し**（資格マスタは数十件規模、フィルタで十分） |
 | `certifications/show.blade.php` | カタログ詳細（資格情報 + 担当コーチ + 公開模試サマリ + 「この資格を受講する」ボタン）|
 | `certifications/_partials/certification-card.blade.php` | カードコンポーネント（受講中バッジ付与）|
 
@@ -850,7 +849,7 @@ Route::middleware('auth')->group(function () {
 | ファイル | 役割 |
 |---|---|
 | `certificates/show.blade.php` | 達成画面（受講生名 / 資格名 / 合格点 / 発行日 / serial_no / PDF ダウンロードボタン）|
-| `certificates/pdf.blade.php` | **dompdf 用 PDF テンプレート**（共通レイアウト非継承 / 外部 CSS / JS 依存なし / インライン `<style>` ブロックのみ）。日本語フォント `IPAGothic` を `font-family` で指定 |
+| `certificates/pdf.blade.php` | **dompdf 用 PDF テンプレート**（`layouts/pdf.blade.php` を継承、`app.blade.php` は非継承、外部 CSS / JS 依存なし / インライン `<style>` ブロックのみ）。日本語フォント `IPAGothic` を `font-family` で指定。**コンテンツ構成**（REQ-068）: 固定文言として (1) タイトル「修了証」(2) 証書定型文「上記の者は、本資格の所定の課程を修了したことを証する」(3) 発行元「Certify LMS」、変数として (4) `$certificate->user->name` (5) `$certificate->certification->name` (6) `$certificate->certification->code` (7) `$certificate->issued_at`（西暦） (8) `$certificate->serial_no` |
 
 ### 主要コンポーネント（Wave 0b 整備済を前提）
 
@@ -942,6 +941,7 @@ Route::middleware('auth')->group(function () {
 | REQ-certification-management-065 | `CertificateController::show` / `UseCases\Certificate\ShowAction` / `views/certificates/show.blade.php` |
 | REQ-certification-management-066 | `CertificateController::download` / `UseCases\Certificate\DownloadAction` / `CertificatePolicy::download` / `config/filesystems.php` の `private` disk 設定 |
 | REQ-certification-management-067 | `CertificatePolicy::download` の当事者チェック / `routes/web.php` の `auth` middleware |
+| REQ-certification-management-068 | `views/certificates/pdf.blade.php`（固定文言 3 要素 + 変数 5 要素の 8 要素構成）/ `CertificatePdfGenerator::generate` が `Pdf::loadView('certificates.pdf', ['certificate' => $certificate])` で render |
 | NFR-certification-management-001 | 各 Action 内 `DB::transaction()` |
 | NFR-certification-management-002 | migration `create_certifications_table` の `$table->index(['status', 'category_id'])` + `$table->index('deleted_at')` |
 | NFR-certification-management-003 | migration `create_certificates_table` の `unique` / `index` 群 |

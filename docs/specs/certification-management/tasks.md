@@ -108,13 +108,13 @@
 - [ ] `resources/views/admin/certification-categories/_modals/form.blade.php`
 
 ### student / カタログ用
-- [ ] `resources/views/certifications/index.blade.php`（タブ: カタログ / 受講中 + 検索バー + フィルタ + 資格カードグリッド）
+- [ ] `resources/views/certifications/index.blade.php`（タブ: カタログ / 受講中 + フィルタ（カテゴリ / 難易度）+ 資格カードグリッド、**キーワード検索バーは無し**）
 - [ ] `resources/views/certifications/show.blade.php`（資格詳細 + 担当コーチ + 公開模試サマリ + 受講開始導線）
 - [ ] `resources/views/certifications/_partials/certification-card.blade.php`（受講中バッジ対応）
 
 ### 修了証
 - [ ] `resources/views/certificates/show.blade.php`（達成画面、Wave 0b 共通レイアウト継承）
-- [ ] `resources/views/certificates/pdf.blade.php`（**dompdf 用、共通レイアウト非継承、インライン `<style>` のみ、日本語フォント指定**）（NFR-certification-management-006）
+- [ ] `resources/views/certificates/pdf.blade.php`（**dompdf 用、`layouts/pdf.blade.php` 継承（`app.blade.php` は非継承）、インライン `<style>` のみ、日本語フォント `IPAGothic`**）。コンテンツ 8 要素: 固定文言（タイトル「修了証」/ 証書定型文「上記の者は、本資格の所定の課程を修了したことを証する」/ 発行元「Certify LMS」）+ 変数（`$certificate->user->name` / `certification->name` / `certification->code` / `issued_at` / `serial_no`）（NFR-certification-management-006, REQ-certification-management-068）
 
 ## Step 6: テスト
 
