@@ -1,6 +1,6 @@
 ---
 name: feature-implement
-description: 1 Feature の Laravel 実装を docs/specs/{name}/tasks.md の Step 1 から末尾まで連続で進める。Claude Design ハンドオフ (api.anthropic.com/v1/design/h/...) があれば取り込んで「視覚の正」として参照（データ・スコープは spec / コードベースが正）。**Blade を書く Step では、実装前に該当 design ref ファイル（preview/*.html や ui_kits/{role}/*.html）を必ず Read してから書き始める** — 事後 Phase 3 で乖離を直すのではなく、事前に design ref を写すのが正しい順序。書いた後は Playwright で視覚検証して残った乖離を修正するサイクルを回す。$ARGUMENTS に Feature 名を渡す。並列で複数 Feature を実装したい場合は worktree-spawn Skill で別 Claude セッションを立ち上げて各セッションでこの Skill を使う
+description: 1 Feature の Laravel 実装を docs/specs/{name}/tasks.md の Step 1 から末尾まで連続で進める。Claude Design ハンドオフ (api.anthropic.com/v1/design/h/...) があれば取り込んで「視覚の正」として参照（データ・スコープは spec / コードベースが正）。**Blade を書く Step では、実装前に該当 design ref ファイル（preview/*.html や ui_kits/{role}/*.html）を必ず Read してから書き始める** — 事後 Phase 3 で乖離を直すのではなく、事前に design ref を写すのが正しい順序。書いた後は Playwright で視覚検証して残った乖離を修正するサイクルを回す。**完了報告では必ずブラウザ動作確認チェックリスト（URL / ロール / 操作 / 期待 / DB・Mailpit 確認場所）を Markdown で出力**し、ユーザーが実機で通しシナリオを検証 + PR 動作確認の素材撮影に使えるようにする。$ARGUMENTS に Feature 名を渡す。並列で複数 Feature を実装したい場合は worktree-spawn Skill で別 Claude セッションを立ち上げて各セッションでこの Skill を使う
 ---
 
 # feature-implement
@@ -299,7 +299,77 @@ Feature の全 Step が `[x]` になったら最終チェック:
 - 変更ファイル一覧（パス + 行数）
 - テスト結果サマリ（X tests / Y assertions / 全 PASS）
 - Phase 3 視覚検証で fix した主な乖離（あれば）
+- **ブラウザ動作確認チェックリスト**（次節、ユーザーが実機で確認するため必ず出力）
 - 次の推奨アクション（次の Feature / 残課題）
+
+### ブラウザ動作確認チェックリスト（必須出力）
+
+> **目的**: 自動テストでは検証できない実機の挙動（モーダル開閉 / Flash 表示 / 動的 UI / Mail 送信 / soft delete 後の見え方等）を、ユーザーがブラウザで確認するためのチェックリスト。PR 動作確認の動画・スクショ撮影のシナリオにもそのまま使える。
+
+#### 何を出力するか
+
+以下のフォーマットで Markdown チェックリストとして出力する。`tasks.md` 末尾の Step（例: `Step 8: 動作確認`）に「ブラウザでの通しシナリオ確認」セクションがあれば **それをベースに拡張**、無ければ実装した routes / requirements.md の Acceptance Criteria から自分で組み立てる。
+
+```markdown
+## 🧪 ブラウザ動作確認チェックリスト — {feature-name}
+
+### 前提
+- `./vendor/bin/sail up -d` でコンテナ起動
+- アプリ: http://localhost:8000
+- Mailpit: http://localhost:8025
+- phpMyAdmin: http://localhost:8081
+- ログイン用 admin: `admin@certify-lms.test` / `password`
+  - seeder 必要なら: `./vendor/bin/sail artisan migrate:fresh --seed`
+
+### ハッピーパス
+- [ ] **シナリオ 1**: {1 行サマリ}
+  - **URL**: `/admin/users`
+  - **ロール**: admin でログイン
+  - **操作**:
+    1. {手順}
+    2. {手順}
+  - **期待**: {成功 Flash 表示 / DB 反映 / 画面遷移 等、具体的な成功条件}
+  - **確認場所**: 画面 / Mailpit / phpMyAdmin の `users` テーブル
+
+- [ ] **シナリオ 2**: ...
+
+### エラー / 例外パス
+- [ ] **シナリオ N**: 自己ロール変更を試行 → HTTP 403 + 適切なエラーメッセージ
+- [ ] **シナリオ N+1**: 招待中ユーザーに退会処理を試行 → HTTP 422 + 「招待を取消」案内
+- ...
+
+### 認可（ロール別アクセス制御）
+- [ ] coach で `/admin/users` にアクセス → HTTP 403
+- [ ] student で `/admin/users` にアクセス → HTTP 403
+- [ ] 未ログインで `/admin/users` にアクセス → `/login` へリダイレクト
+
+### 外部連携（該当する場合）
+- [ ] Mailpit で {Mail} 受信確認（件名 / 本文 / リンク URL）
+- [ ] phpMyAdmin で {table} の {column} が想定値か確認
+- [ ] Schedule Command 手動実行: `sail artisan {command}` で {期待動作}
+
+### 視覚 / Tailwind 反映確認（Blade 含む Feature のみ）
+- [ ] `./vendor/bin/sail npm run build` 済み（新規 Blade の prefix クラス反映）
+- [ ] モバイル幅（< 1024px）でサイドバーが drawer 化する
+- [ ] デスクトップ幅（≥ 1024px）でサイドバーが固定表示される
+
+### PR 動作確認用素材（`tech.md` PR 規約参照）
+- [ ] 動的機能（モーダル / 確認フロー / 非同期更新）→ **動画必須**
+- [ ] 静的画面遷移 → スクリーンショット
+```
+
+#### 組み立てのコツ
+
+- **シナリオは spec の「ロールごとのストーリー」または「sequence diagram」から抽出**: 1 業務操作 = 1 チェック項目
+- **DB 確認は必ず付ける**: 「Flash で成功表示」だけだと裏で何も起きていない実装も pass してしまう。`phpMyAdmin で users.deleted_at が NULL でなくなる` 等の具体的なカラム値確認を入れる
+- **soft delete を伴う操作**: 削除後にデータが残るか / リネーム済み email が表示されるか 等の「事後の見え方」を必ず入れる
+- **メール送信を伴う操作**: Mailpit URL を案内し、件名 + リンクが正しいか確認させる
+- **ロール別認可**: spec の `REQ-*-083` 系（admin only ルートに coach/student がアクセス → 403）を必ず網羅
+- **既存破壊チェック**: 該当 Feature と隣接する既存機能（[[auth]] 等）が壊れていないかを 1〜2 項目入れる
+
+#### 取り扱い
+
+このチェックリストは **会話の最後に Markdown ブロックとして出力する**（コードブロックではなくプレーンな Markdown でもよい）。ユーザーがそのまま GitHub PR description / Notion / Slack に貼り付けて使える形にする。
 
 ---
 
