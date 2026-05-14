@@ -1,6 +1,11 @@
 <?php
 
 use App\Http\Controllers\Auth\OnboardingController;
+use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\CertificationCatalogController;
+use App\Http\Controllers\CertificationCategoryController;
+use App\Http\Controllers\CertificationCoachAssignmentController;
+use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +46,18 @@ Route::middleware('auth')->group(function () {
     // [[notification]] が実装される
     Route::view('/notifications', 'placeholders.coming-soon', ['feature' => 'notification'])
         ->name('notifications.index');
+
+    // [[certification-management]] 受講生カタログ
+    Route::get('certifications', [CertificationCatalogController::class, 'index'])
+        ->name('certifications.index');
+    Route::get('certifications/{certification}', [CertificationCatalogController::class, 'show'])
+        ->name('certifications.show');
+
+    // [[certification-management]] 修了証配信
+    Route::get('certificates/{certificate}', [CertificateController::class, 'show'])
+        ->name('certificates.show');
+    Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
+        ->name('certificates.download');
 });
 
 // [[user-management]] admin 専用
@@ -56,6 +73,29 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('invitations', [InvitationController::class, 'store'])->name('admin.invitations.store');
     Route::post('users/{user}/resend-invitation', [InvitationController::class, 'resend'])->name('admin.invitations.resend');
     Route::delete('invitations/{invitation}', [InvitationController::class, 'destroy'])->name('admin.invitations.destroy');
+
+    // [[certification-management]] admin 資格マスタ CRUD + 状態遷移
+    Route::resource('certifications', CertificationController::class)
+        ->parameters(['certifications' => 'certification'])
+        ->names('admin.certifications');
+    Route::post('certifications/{certification}/publish', [CertificationController::class, 'publish'])
+        ->name('admin.certifications.publish');
+    Route::post('certifications/{certification}/archive', [CertificationController::class, 'archive'])
+        ->name('admin.certifications.archive');
+    Route::post('certifications/{certification}/unarchive', [CertificationController::class, 'unarchive'])
+        ->name('admin.certifications.unarchive');
+
+    // [[certification-management]] 担当コーチ割当
+    Route::post('certifications/{certification}/coaches', [CertificationCoachAssignmentController::class, 'store'])
+        ->name('admin.certifications.coaches.store');
+    Route::delete('certifications/{certification}/coaches/{user}', [CertificationCoachAssignmentController::class, 'destroy'])
+        ->name('admin.certifications.coaches.destroy');
+
+    // [[certification-management]] 資格分類マスタ
+    Route::resource('certification-categories', CertificationCategoryController::class)
+        ->parameters(['certification-categories' => 'category'])
+        ->except(['show', 'create', 'edit'])
+        ->names('admin.certification-categories');
 });
 
 // 開発専用: コンポーネントショーケース (APP_ENV=local のみ表示)

@@ -7,6 +7,7 @@ use App\Enums\UserStatus;
 use App\Notifications\Auth\ResetPasswordNotification;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -62,6 +63,29 @@ class User extends Authenticatable
     public function issuedInvitations(): HasMany
     {
         return $this->hasMany(Invitation::class, 'invited_by_user_id');
+    }
+
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
+    public function assignedCertifications(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Certification::class,
+            'certification_coach_assignments',
+            'coach_user_id',
+            'certification_id',
+        )
+            ->using(CertificationCoachAssignment::class)
+            ->withPivot(['id', 'assigned_by_user_id', 'assigned_at'])
+            ->withTimestamps();
     }
 
     /**

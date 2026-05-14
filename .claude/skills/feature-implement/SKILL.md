@@ -304,72 +304,54 @@ Feature の全 Step が `[x]` になったら最終チェック:
 
 ### ブラウザ動作確認チェックリスト（必須出力）
 
-> **目的**: 自動テストでは検証できない実機の挙動（モーダル開閉 / Flash 表示 / 動的 UI / Mail 送信 / soft delete 後の見え方等）を、ユーザーがブラウザで確認するためのチェックリスト。PR 動作確認の動画・スクショ撮影のシナリオにもそのまま使える。
+> **目的**: 自動テストでは検証できない実機の挙動（モーダル / Flash / 動的 UI / Mail / soft delete 後の見え方）をユーザーがブラウザで確認するためのチェックリスト。PR 動作確認の動画・スクショ撮影シナリオにもそのまま使える。
+>
+> **書き方の鉄則**: **1 項目 = 1 行**。URL・操作・期待・確認場所を `→` で一行にまとめる。手順の番号付きリストや複数行の詳細は書かない（読まれない）。`tasks.md` 末尾の Step に通しシナリオがあればそれをベースに圧縮、無ければ routes / requirements.md から抽出。
 
-#### 何を出力するか
-
-以下のフォーマットで Markdown チェックリストとして出力する。`tasks.md` 末尾の Step（例: `Step 8: 動作確認`）に「ブラウザでの通しシナリオ確認」セクションがあれば **それをベースに拡張**、無ければ実装した routes / requirements.md の Acceptance Criteria から自分で組み立てる。
+#### 出力フォーマット
 
 ```markdown
-## 🧪 ブラウザ動作確認チェックリスト — {feature-name}
+## 🧪 動作確認 — {feature-name}
 
-### 前提
-- `./vendor/bin/sail up -d` でコンテナ起動
-- アプリ: http://localhost:8000
-- Mailpit: http://localhost:8025
-- phpMyAdmin: http://localhost:8081
-- ログイン用 admin: `admin@certify-lms.test` / `password`
-  - seeder 必要なら: `./vendor/bin/sail artisan migrate:fresh --seed`
+**前提**: `sail up -d` / http://localhost:8000 / Mailpit :8025 / phpMyAdmin :8081 / admin: `admin@certify-lms.test`/password / seeder: `sail artisan migrate:fresh --seed`
 
-### ハッピーパス
-- [ ] **シナリオ 1**: {1 行サマリ}
-  - **URL**: `/admin/users`
-  - **ロール**: admin でログイン
-  - **操作**:
-    1. {手順}
-    2. {手順}
-  - **期待**: {成功 Flash 表示 / DB 反映 / 画面遷移 等、具体的な成功条件}
-  - **確認場所**: 画面 / Mailpit / phpMyAdmin の `users` テーブル
+### 基本フロー
+- [ ] `/admin/foo` (admin) → 一覧 + フィルタ + ページネーション
+- [ ] 新規作成 → `foos.status=draft` で INSERT + Flash + 詳細遷移
+- [ ] 編集 → 値更新 / status 不変
+- [ ] {状態遷移ボタン} → `foos.status` 更新 + カタログ反映
 
-- [ ] **シナリオ 2**: ...
+### エラー / 認可
+- [ ] {不正状態で操作} → 409 + DB 不変
+- [ ] coach / student で `/admin/foo` → 403
+- [ ] 未ログインで `/foo` → /login リダイレクト
 
-### エラー / 例外パス
-- [ ] **シナリオ N**: 自己ロール変更を試行 → HTTP 403 + 適切なエラーメッセージ
-- [ ] **シナリオ N+1**: 招待中ユーザーに退会処理を試行 → HTTP 422 + 「招待を取消」案内
-- ...
+### 外部連携（該当時）
+- [ ] Mailpit で {Mail} 受信（件名 + 本文リンク）
+- [ ] phpMyAdmin で `{table}.{column}` 値確認
+- [ ] `sail artisan {command}` 手動実行 → {期待}
 
-### 認可（ロール別アクセス制御）
-- [ ] coach で `/admin/users` にアクセス → HTTP 403
-- [ ] student で `/admin/users` にアクセス → HTTP 403
-- [ ] 未ログインで `/admin/users` にアクセス → `/login` へリダイレクト
+### 視覚（Blade 含む時）
+- [ ] `sail npm run build` 済 / モバイル幅で drawer / デスクトップ幅でサイドバー固定
 
-### 外部連携（該当する場合）
-- [ ] Mailpit で {Mail} 受信確認（件名 / 本文 / リンク URL）
-- [ ] phpMyAdmin で {table} の {column} が想定値か確認
-- [ ] Schedule Command 手動実行: `sail artisan {command}` で {期待動作}
+### 既存破壊チェック
+- [ ] 隣接 Feature（例 [[auth]] ログイン、[[user-management]] 一覧）が従来通り動く
 
-### 視覚 / Tailwind 反映確認（Blade 含む Feature のみ）
-- [ ] `./vendor/bin/sail npm run build` 済み（新規 Blade の prefix クラス反映）
-- [ ] モバイル幅（< 1024px）でサイドバーが drawer 化する
-- [ ] デスクトップ幅（≥ 1024px）でサイドバーが固定表示される
-
-### PR 動作確認用素材（`tech.md` PR 規約参照）
-- [ ] 動的機能（モーダル / 確認フロー / 非同期更新）→ **動画必須**
-- [ ] 静的画面遷移 → スクリーンショット
+> 動的機能は動画、静的は静止画で PR 用素材を撮影（`tech.md` PR 規約）。
 ```
 
 #### 組み立てのコツ
 
-- **シナリオは spec の「ロールごとのストーリー」または「sequence diagram」から抽出**: 1 業務操作 = 1 チェック項目
-- **DB 確認は必ず付ける**: 「Flash で成功表示」だけだと裏で何も起きていない実装も pass してしまう。`phpMyAdmin で users.deleted_at が NULL でなくなる` 等の具体的なカラム値確認を入れる
-- **soft delete を伴う操作**: 削除後にデータが残るか / リネーム済み email が表示されるか 等の「事後の見え方」を必ず入れる
-- **メール送信を伴う操作**: Mailpit URL を案内し、件名 + リンクが正しいか確認させる
-- **ロール別認可**: spec の `REQ-*-083` 系（admin only ルートに coach/student がアクセス → 403）を必ず網羅
-- **既存破壊チェック**: 該当 Feature と隣接する既存機能（[[auth]] 等）が壊れていないかを 1〜2 項目入れる
+- **1 項目 = 1 行に圧縮**: 「URL (ロール) → 操作 → 期待 + 確認場所」を `→` 区切りで横並びに。手順の番号付きリストや複数行のネストは禁止（チェック項目として読み飛ばされる）
+- **1 業務操作 = 1 チェック項目**: spec の「ロールごとのストーリー」「sequence diagram」から抽出。10 項目 ±α が目安、20 を超えたら粒度が細かすぎる
+- **DB 確認を必ず織り込む**: 「Flash 表示」だけでは裏で何も起きていない実装も pass する → 「`foos.deleted_at != NULL`」のような具体的なカラム値を期待に書く
+- **soft delete / リネームは事後の見え方も**: 削除後にデータが残るか / リネーム済み値が表示されるかを 1 行追加
+- **認可は admin only への coach/student アクセスを必ず網羅**: spec の `REQ-*-083` 系を 1 行に集約
+- **既存破壊チェックは 1〜2 行**: 隣接 Feature が壊れていないかを確認する最低限のシナリオを 1〜2 行入れる
 
 #### 取り扱い
 
-このチェックリストは **会話の最後に Markdown ブロックとして出力する**（コードブロックではなくプレーンな Markdown でもよい）。ユーザーがそのまま GitHub PR description / Notion / Slack に貼り付けて使える形にする。
+会話の最後にプレーンな Markdown として出力する（GitHub PR description / Notion / Slack にそのまま貼れる形）。コードフェンスで囲まなくてよい。
 
 ---
 
