@@ -76,9 +76,7 @@
 
 ## Step 5: Schedule Command
 
-- [ ] `app/Console/Commands/Mentoring/RemindUpcomingMeetingsCommand.php` — signature `meetings:remind`、`Meeting::where('status', Approved)->whereBetween('scheduled_at', [now(), now()->addHour()])` を [[notification]] `NotifyMeetingReminderAction($meeting, '1-hour-before')` に流す（REQ-mentoring-071）
-- [ ] `app/Console/Commands/Mentoring/RemindEveMeetingsCommand.php` — signature `meetings:remind-eve`、明日の Approved を翌日 18:00 タイミングで通知発火（REQ-mentoring-072）
-- [ ] `app/Console/Kernel.php::schedule()` に `->command('meetings:remind')->cron('*/15 * * * *')` および `->command('meetings:remind-eve')->dailyAt('18:00')` を追加（REQ-mentoring-071, 072）
+> 本 Feature では Reminder 系の Schedule Command を **所有しない**。`SendMeetingRemindersCommand` / `NotifyMeetingReminderAction(Meeting, MeetingReminderWindow)` / `MeetingReminderWindow` Enum は [[notification]] が所有する（[[notification]] tasks.md Step 9 で実装）。本 Feature は Meeting 抽出条件と window 引数の契約共有のみを担う（REQ-mentoring-071, 072）。
 
 ## Step 6: Blade ビュー & JS & Email テンプレ
 
@@ -185,12 +183,7 @@
 
 ### Schedule Command テスト
 
-- [ ] `tests/Feature/Console/RemindUpcomingMeetingsCommandTest.php`
-  - `test_dispatches_reminders_for_approved_meetings_within_1_hour`（REQ-mentoring-071）
-  - `test_does_not_dispatch_for_outside_window`
-  - `test_does_not_double_send_when_run_twice`（重複排除確認、[[notification]] 側の責務との結合テスト）
-- [ ] `tests/Feature/Console/RemindEveMeetingsCommandTest.php`
-  - `test_dispatches_reminders_for_tomorrow_approved_meetings`（REQ-mentoring-072）
+> Schedule Command は [[notification]] が所有するため、本 Feature では Reminder Command 単体テストを書かない。`SendMeetingRemindersCommandTest`（前日範囲 / 1h 前範囲の Meeting 抽出 + window 別の通知発火 + 重複排除）は [[notification]] tasks.md Step 12 で実装される。
 
 ## Step 8: 動作確認 & 整形
 

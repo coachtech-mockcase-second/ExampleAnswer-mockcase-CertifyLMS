@@ -83,37 +83,40 @@ sequenceDiagram
     MC-->>Coach: redirect /coach/meetings + flash
 ```
 
-### 3. リマインド Schedule（15 分間隔 + 前日 18:00）
+### 3. リマインド Schedule（前日 18 時 + 1h 前、Command は [[notification]] 所有）
 
 ```mermaid
 sequenceDiagram
-    participant Cron15 as Schedule (*/15 * * * *)
+    participant Cron5min as Schedule (everyFiveMinutes)
     participant Cron18 as Schedule (dailyAt 18:00)
-    participant RC as RemindUpcomingMeetingsCommand
-    participant RE as RemindEveMeetingsCommand
-    participant NR as NotifyMeetingReminderAction (notification)
+    participant Cmd as SendMeetingRemindersCommand<br/>([[notification]] 所有)
+    participant NR as NotifyMeetingReminderAction<br/>([[notification]] 所有)
     participant DB as DB
     participant Mail as Mail Queue
-    participant Both as 当事者双方
 
-    Cron15->>RC: handle()
-    RC->>DB: SELECT meetings WHERE status=approved AND scheduled_at BETWEEN now() AND now()+1h
+    Cron18->>Cmd: notifications:send-meeting-reminders --window=eve
+    Cmd->>DB: SELECT meetings WHERE status=approved AND scheduled_at BETWEEN tomorrow 00:00 AND tomorrow 23:59
     loop 各 Meeting
-        RC->>NR: __invoke($meeting, '1-hour-before')
-        NR->>NR: 既存 notification (data.meeting_id + data.window=1-hour-before) を検査
+        Cmd->>NR: __invoke($meeting, MeetingReminderWindow::Eve)
+        NR->>NR: (meeting_id, window=eve) で既存検査
         alt 未送信
-            NR->>DB: INSERT notifications (database, student + coach 宛)
-            NR->>Mail: dispatch MeetingReminderMail
+            NR->>DB: INSERT notifications (student + coach 両方)
+            NR->>Mail: dispatch MailMessage
         end
     end
 
-    Cron18->>RE: handle()
-    RE->>DB: SELECT meetings WHERE status=approved AND scheduled_at BETWEEN tomorrow 00:00 AND tomorrow 23:59
+    Cron5min->>Cmd: notifications:send-meeting-reminders --window=one_hour_before
+    Cmd->>DB: SELECT meetings WHERE status=approved AND scheduled_at BETWEEN now+55min AND now+65min
     loop 各 Meeting
-        RE->>NR: __invoke($meeting, 'eve')
-        NR->>DB: INSERT notifications + dispatch Mail (重複排除込み)
+        Cmd->>NR: __invoke($meeting, MeetingReminderWindow::OneHourBefore)
+        NR->>NR: (meeting_id, window=one_hour_before) で既存検査
+        alt 未送信
+            NR->>DB: INSERT notifications (student + coach 両方) + Mail
+        end
     end
 ```
+
+> 本 Feature では Reminder 系の独自 Command を所有しない。`SendMeetingRemindersCommand` / `NotifyMeetingReminderAction` / `MeetingReminderWindow` Enum は [[notification]] が所有し、本 Feature は呼出仕様（Meeting テーブルへの SELECT 条件 + window 引数）を共有する責務のみ。
 
 ## データモデル
 
@@ -457,12 +460,32 @@ class CoachActivityService
 {
     /**
      * admin ダッシュボード向けに、各 coach の直近期間の面談実施統計を返す。
+     * 戻り値の要素型は `CoachActivitySummaryRow` DTO で固定（[[dashboard]] が型安全に消費）。
      */
     public function summarize(?Carbon $from = null, ?Carbon $to = null): Collection;
 }
 ```
 
-責務: `from` / `to` のデフォルトは「30 日前 〜 now」。`User::where('role', 'coach')->withCount(['meetingsAsCoach as completed_count' => fn ($q) => $q->where('status', 'completed')->whereBetween('scheduled_at', [$from, $to]), 'meetingsAsCoach as canceled_count' => fn ($q) => $q->where('status', 'canceled')->whereBetween(...), 'meetingsAsCoach as rejected_count' => fn ($q) => $q->where('status', 'rejected')->whereBetween(...)])->withAvg('completedMeetingsAsCoach', 'meetingMemo.body LENGTH')->get()` のようにサブクエリで集計（実装上は raw `withCount` + 平均は別クエリで合算）（REQ-mentoring-090, 091）。
+戻り値 DTO（値オブジェクト、readonly class、`app/Services/CoachActivitySummaryRow.php`）:
+
+```php
+namespace App\Services;
+
+use App\Models\User;
+
+final readonly class CoachActivitySummaryRow
+{
+    public function __construct(
+        public User $coach,            // 担当コーチ User（with relations: なし、name + email + meeting_url のみ参照）
+        public int $completedCount,    // 期間内 completed Meeting 数
+        public int $canceledCount,     // 期間内 canceled Meeting 数
+        public int $rejectedCount,     // 期間内 rejected Meeting 数
+        public ?int $averageMemoLength, // 期間内 completed Meeting の MeetingMemo 平均長（バイト数、null = サンプル無し）
+    ) {}
+}
+```
+
+責務: `from` / `to` のデフォルトは「30 日前 〜 now」。`User::where('role', 'coach')->withCount([...])` で `completed_count` / `canceled_count` / `rejected_count` を集計し、平均メモ長は別クエリ（`MeetingMemo::join('meetings').whereBetween('scheduled_at', ...).selectRaw('coach_id, AVG(CHAR_LENGTH(body))')`）で取得、結果を `CoachActivitySummaryRow` DTO に詰めて返す（REQ-mentoring-090, 091）。
 
 > `User::meetingsAsCoach` リレーション（`hasMany(Meeting, 'coach_id')`）は [[auth]] の `User` モデルに本 Feature で追加する（migration ではなく Model の拡張）。
 
@@ -618,18 +641,17 @@ Route::middleware(['auth'])->group(function () {
 
 ### Schedule Command
 
-`app/Console/Commands/Mentoring/`:
+**本 Feature では独自の Reminder Command を所有しない**。`SendMeetingRemindersCommand`（signature: `notifications:send-meeting-reminders {--window=eve|one_hour_before}`）と `NotifyMeetingReminderAction(Meeting $meeting, MeetingReminderWindow $window)` および `MeetingReminderWindow` Enum はすべて [[notification]] が所有する。
 
-- **`RemindUpcomingMeetingsCommand`**
-  - signature: `meetings:remind`
-  - handle: `Meeting::where('status', MeetingStatus::Approved)->whereBetween('scheduled_at', [now(), now()->addHour()])->each(fn ($m) => app(NotifyMeetingReminderAction::class)($m, '1-hour-before'))`
-  - スケジュール: `app/Console/Kernel.php::schedule()` で `->command('meetings:remind')->cron('*/15 * * * *')`
-- **`RemindEveMeetingsCommand`**
-  - signature: `meetings:remind-eve`
-  - handle: `Meeting::where('status', MeetingStatus::Approved)->whereBetween('scheduled_at', [now()->addDay()->startOfDay(), now()->addDay()->endOfDay()])->each(fn ($m) => app(NotifyMeetingReminderAction::class)($m, 'eve'))`
-  - スケジュール: `->command('meetings:remind-eve')->dailyAt('18:00')`
+本 Feature が共有するのは以下の仕様契約のみ:
 
-> `NotifyMeetingReminderAction` は [[notification]] 所有。重複排除（同一 `meeting_id` + 同一 `window`）は `notifications.data` JSON カラムへの存在チェックで実現（[[notification]] 側の責務、REQ-mentoring-071）。
+- 抽出条件: `Meeting::where('status', MeetingStatus::Approved)->whereBetween('scheduled_at', [...])` の `whereBetween` 範囲を window 別に分岐
+  - `MeetingReminderWindow::Eve`: `[now()->addDay()->startOfDay(), now()->addDay()->endOfDay()]`
+  - `MeetingReminderWindow::OneHourBefore`: `[now()->addMinutes(55), now()->addMinutes(65)]`
+- 重複排除: `(meeting_id, window)` ペアで `notifications.data` JSON カラムを `whereJsonContains` で検査（[[notification]] 側責務）
+- スケジュール頻度: `dailyAt('18:00')`（eve）+ `everyFiveMinutes()`（one_hour_before）
+
+> 詳細は [[notification]] design.md の「Schedule Command」セクション参照。
 
 ## Blade ビュー
 

@@ -67,7 +67,7 @@
 - [ ] `PauseAction` / `ResumeAction`（受講生用 Action のラッパー、admin actor で呼出）（REQ-enrollment-043）
 - [ ] `FailAction`（learning / paused → failed、StatusLog 記録）（REQ-enrollment-043, 044, 045）
 - [ ] `AssignCoachAction`（`certification_coach_assignments` 検証 + coach role/status 検証 + CoachChange log）（REQ-enrollment-050, 051, 052, 053）
-- [ ] `ApproveCompletionAction`（申請中ガード + Eligibility 再判定 + passed 遷移 + Certificate IssueAction DI 呼出 + StatusLog 記録 + `DB::afterCommit` で通知 dispatch）（REQ-enrollment-097, 098, 099）
+- [ ] `ApproveCompletionAction`（DI: `CompletionEligibilityService` / `EnrollmentStatusChangeService` / `Certificate\IssueAction` / `Notification\NotifyCompletionApprovedAction`。申請中ガード + Eligibility 再判定 + passed 遷移 + Certificate IssueAction 呼出 + StatusLog 記録 + `DB::afterCommit(fn () => ($this->notifyCompletion)($enrollment, $certificate))` で通知 dispatch）（REQ-enrollment-097, 098, 099）
 - [ ] `FailExpiredAction`（Schedule Command 本体、`status=learning AND exam_date < CURRENT_DATE` 抽出 + 一括 failed 遷移）（REQ-enrollment-100, 101）
 
 ### EnrollmentGoal Action（`App\UseCases\EnrollmentGoal\`）
@@ -85,9 +85,9 @@
 
 ### Service（`App\Services\`）
 - [ ] `EnrollmentStatusChangeService`（`recordStatusChange` / `recordCoachChange`、INSERT only）（REQ-enrollment-113, NFR-enrollment-005）
-- [ ] `TermJudgementService`（`recalculate(Enrollment): TermType`、変化時のみ UPDATE）（REQ-enrollment-060, 061, 062, 063, 064, REQ-enrollment-121）
+- [ ] `TermJudgementService`（`recalculate(Enrollment): TermType` + `__invoke(Enrollment): TermType` 薄いラッパー、変化時のみ UPDATE）（REQ-enrollment-060, 061, 062, 063, 064, REQ-enrollment-121）
 - [ ] `CompletionEligibilityService`（`isEligible(Enrollment): bool`、`mock_exams.is_published=true` と DISTINCT `mock_exam_id` 比較）（REQ-enrollment-091, REQ-enrollment-120）
-- [ ] `EnrollmentStatsService`（`adminKpi` / `studentDashboard`）（REQ-enrollment-122）
+- [ ] `EnrollmentStatsService`（`adminKpi` のみ。`studentDashboard` メソッドは不採用、[[dashboard]] が各 Service を直接消費する設計）（REQ-enrollment-122）
 
 ### ドメイン例外（`app/Exceptions/Enrollment/`）
 - [ ] `EnrollmentAlreadyEnrolledException`（HTTP 409）（NFR-enrollment-004）

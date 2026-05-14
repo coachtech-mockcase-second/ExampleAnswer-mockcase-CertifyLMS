@@ -373,11 +373,13 @@ erDiagram
 
 ### 主要カラム + Enum
 
-| Model | Enum | 値 | 日本語ラベル |
+すべての Enum は backed string（case 名は PascalCase、backed value は snake_case の対応関係）で定義する。
+
+| Model | Enum | case 名 ⇔ backed value | 日本語ラベル |
 |---|---|---|---|
-| `Enrollment.status` | `EnrollmentStatus` | `Learning` / `Paused` / `Passed` / `Failed` | `学習中` / `休止中` / `修了` / `不合格` |
-| `Enrollment.current_term` | `TermType` | `BasicLearning` / `MockPractice` | `基礎ターム` / `実践ターム` |
-| `EnrollmentStatusLog.event_type` | `EnrollmentLogEventType` | `StatusChange` / `CoachChange` | `状態変更` / `コーチ変更` |
+| `Enrollment.status` | `EnrollmentStatus` | `Learning` = `'learning'` / `Paused` = `'paused'` / `Passed` = `'passed'` / `Failed` = `'failed'` | `学習中` / `休止中` / `修了` / `不合格` |
+| `Enrollment.current_term` | `TermType` | `BasicLearning` = `'basic_learning'` / `MockPractice` = `'mock_practice'` | `基礎ターム` / `実践ターム` |
+| `EnrollmentStatusLog.event_type` | `EnrollmentLogEventType` | `StatusChange` = `'status_change'` / `CoachChange` = `'coach_change'` | `状態変更` / `コーチ変更` |
 | `EnrollmentStatusLog.from_status` / `to_status` | `EnrollmentStatus`（共用） | 同上 | 同上 |
 
 ### インデックス・制約
@@ -722,6 +724,7 @@ class ApproveCompletionAction
         private CompletionEligibilityService $eligibility,
         private EnrollmentStatusChangeService $statusChanger,
         private \App\UseCases\Certificate\IssueAction $issueCertificate,
+        private \App\UseCases\Notification\NotifyCompletionApprovedAction $notifyCompletion,
     ) {}
 
     /**
@@ -733,7 +736,7 @@ class ApproveCompletionAction
 }
 ```
 
-責務: (1) `completion_requested_at !== null && status === learning` ガード、(2) `CompletionEligibilityService::isEligible($enrollment)` 再判定（申請後に資格マスタ更新等で要件破綻していないか確認）、(3) `DB::transaction()` 内で `status = passed` / `passed_at = now()` UPDATE、(4) `EnrollmentStatusChangeService::recordStatusChange(from: Learning, to: Passed, changedBy: admin, reason: '修了認定承認')`、(5) [[certification-management]] の `Certificate\IssueAction` を DI して呼ぶ（Feature 横断ラッパー方式、`backend-usecases.md`「Feature 間連携のラッパー Action」参照）、(6) トランザクション後に [[notification]] 経由で修了通知を dispatch（dispatch は transaction commit 後に行うため、`DB::afterCommit()` 内で実行）。
+責務: (1) `completion_requested_at !== null && status === learning` ガード、(2) `CompletionEligibilityService::isEligible($enrollment)` 再判定（申請後に資格マスタ更新等で要件破綻していないか確認）、(3) `DB::transaction()` 内で `status = passed` / `passed_at = now()` UPDATE、(4) `EnrollmentStatusChangeService::recordStatusChange(from: Learning, to: Passed, changedBy: admin, reason: '修了認定承認')`、(5) [[certification-management]] の `Certificate\IssueAction` を DI して呼ぶ（Feature 横断ラッパー方式、`backend-usecases.md`「Feature 間連携のラッパー Action」参照）、(6) `DB::afterCommit(fn () => ($this->notifyCompletion)($enrollment, $certificate))` でトランザクション commit 後に [[notification]] へ通知 dispatch（admin 宛通知は発火しない、受講生のみ）。
 
 #### `App\UseCases\Admin\Enrollment\PauseAction` / `ResumeAction`
 
@@ -905,10 +908,19 @@ class TermJudgementService
 
         return $newTerm;
     }
+
+    /**
+     * invocable ラッパー。`($termJudgement)($enrollment)` で `recalculate` を呼ぶための糖衣。
+     * [[mock-exam]] の Start / Submit / Cancel Action で `($this->termJudgement)($session->enrollment)` 形式を許容する。
+     */
+    public function __invoke(Enrollment $enrollment): TermType
+    {
+        return $this->recalculate($enrollment);
+    }
 }
 ```
 
-責務: [[mock-exam]] の StartAction / SubmitAction / CancelAction の各 transaction 内で呼ばれる。`EnrollmentStatusLog` には記録しない（高頻度操作、REQ-enrollment-064）。
+責務: [[mock-exam]] の StartAction / SubmitAction / CancelAction の各 transaction 内で呼ばれる。`EnrollmentStatusLog` には記録しない（高頻度操作、REQ-enrollment-064）。`__invoke` は `recalculate` の薄いラッパーで、呼出側の構文選択（メソッド呼出 vs invocable）を柔軟にする。
 
 #### `CompletionEligibilityService`
 
@@ -964,14 +976,11 @@ class EnrollmentStatsService
         ];
     }
 
-    public function studentDashboard(User $student): array
-    {
-        // 試験日カウントダウン日数、進捗率、最近の状態遷移などを集約
-    }
+    // studentDashboard メソッドは削除（dashboard 側で各 Service を直接消費する設計に統一）
 }
 ```
 
-責務: [[dashboard]] が消費する集計のみ公開。本 Feature では Controller から直接利用しない。
+責務: admin 用 KPI のみ公開する。本 Feature の Controller からは直接利用しない（[[dashboard]] が消費）。受講生 dashboard 用集計は [[dashboard]] の `FetchStudentDashboardAction` が各 Service（ProgressService / StreakService / LearningHourTargetService / WeaknessAnalysisService / CompletionEligibilityService）を直接 DI して構築する。
 
 ### Policy
 
@@ -1188,15 +1197,17 @@ Route::middleware('auth')->group(function () {
         Route::post('enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
         Route::post('enrollments/{enrollment}/pause', [EnrollmentController::class, 'pause'])->name('enrollments.pause');
         Route::post('enrollments/{enrollment}/resume', [EnrollmentController::class, 'resume'])->name('enrollments.resume');
-        Route::post('enrollments/{enrollment}/request-completion', [EnrollmentController::class, 'requestCompletion'])->name('enrollments.requestCompletion');
-        Route::delete('enrollments/{enrollment}/completion-request', [EnrollmentController::class, 'cancelCompletionRequest'])->name('enrollments.cancelCompletionRequest');
+        Route::post('enrollments/{enrollment}/completion-request', [EnrollmentController::class, 'requestCompletion'])->name('enrollments.completion-request.store');
+        Route::delete('enrollments/{enrollment}/completion-request', [EnrollmentController::class, 'cancelCompletionRequest'])->name('enrollments.completion-request.destroy');
 
-        // 個人目標
-        Route::post('enrollments/{enrollment}/goals', [EnrollmentGoalController::class, 'store'])->name('goals.store');
-        Route::patch('goals/{goal}', [EnrollmentGoalController::class, 'update'])->name('goals.update');
-        Route::delete('goals/{goal}', [EnrollmentGoalController::class, 'destroy'])->name('goals.destroy');
-        Route::post('goals/{goal}/achieve', [EnrollmentGoalController::class, 'achieve'])->name('goals.achieve');
-        Route::delete('goals/{goal}/achieve', [EnrollmentGoalController::class, 'unachieve'])->name('goals.unachieve');
+        // 個人目標（dashboard 等の他 Feature と整合させるため `enrollments.goals.*` 名前空間で統一）
+        Route::get('enrollments/{enrollment}/goals/create', [EnrollmentGoalController::class, 'create'])->name('enrollments.goals.create');
+        Route::post('enrollments/{enrollment}/goals', [EnrollmentGoalController::class, 'store'])->name('enrollments.goals.store');
+        Route::get('enrollments/{enrollment}/goals/{goal}/edit', [EnrollmentGoalController::class, 'edit'])->name('enrollments.goals.edit');
+        Route::patch('enrollments/{enrollment}/goals/{goal}', [EnrollmentGoalController::class, 'update'])->name('enrollments.goals.update');
+        Route::delete('enrollments/{enrollment}/goals/{goal}', [EnrollmentGoalController::class, 'destroy'])->name('enrollments.goals.destroy');
+        Route::post('enrollments/{enrollment}/goals/{goal}/achieve', [EnrollmentGoalController::class, 'achieve'])->name('enrollments.goals.achieve');
+        Route::delete('enrollments/{enrollment}/goals/{goal}/achieve', [EnrollmentGoalController::class, 'unachieve'])->name('enrollments.goals.unachieve');
     });
 
     // コーチ / admin 用 EnrollmentNote

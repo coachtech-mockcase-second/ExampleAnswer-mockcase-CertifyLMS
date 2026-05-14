@@ -65,8 +65,8 @@
 - **REQ-dashboard-302**: The system shall 担当受講生一覧を **最終活動日時降順** にソートする（null は末尾）。
 - **REQ-dashboard-310**: The system shall ログインコーチの `Meeting::where('coach_id', $coach->id)->whereIn('status', [Approved, InProgress])->whereBetween('scheduled_at', [今日 0:00, 明日 23:59])` を「今日 / 明日の面談予定」として時系列昇順で表示する。
 - **REQ-dashboard-320**: The system shall `App\Services\ChatUnreadCountService::roomCountForUser($coach)` の戻り値（自分が宛先で未読のある ChatRoom 件数）を未対応 chat 件数として表示する。
-- **REQ-dashboard-321**: The system shall コーチ宛て直近の未対応 / 対応中 ChatRoom 最大 5 件（`ChatRoom::where('enrollment.assigned_coach_id', $coach->id)->whereIn('status', [Unattended, InProgress])->orderByLastMessage()->limit(5)`）をリスト表示し、各行から `/coach/chat/{room}` 詳細画面への遷移リンクを提供する。
-- **REQ-dashboard-330**: The system shall 担当資格スコープの未回答 `QaThread`（`certification_id IN ($coach 担当資格 ids) AND status = QaThreadStatus::Open`）の件数と直近 5 件を表示し、各行から `/coach/qa-board/{thread}` への遷移リンクを提供する。
+- **REQ-dashboard-321**: The system shall コーチ宛て直近の未対応 / 対応中 ChatRoom 最大 5 件（`ChatRoom::where('enrollment.assigned_coach_id', $coach->id)->whereIn('status', [Unattended, InProgress])->orderByLastMessage()->limit(5)`）をリスト表示し、各行から `route('chat.show', $room)` 詳細画面への遷移リンクを提供する（chat 詳細は admin / coach / student 共通 URL `/chat-rooms/{room}`）。
+- **REQ-dashboard-330**: The system shall 担当資格スコープの未回答 `QaThread`（`certification_id IN ($coach 担当資格 ids) AND status = QaThreadStatus::Open`）の件数と直近 5 件を表示し、各行から `route('qa-board.show', $thread)` への遷移リンクを提供する（qa-board 詳細は coach / student 共通 URL `/qa-board/{thread}`）。
 - **REQ-dashboard-340**: The system shall 担当受講生の Enrollment 集合に対して `WeaknessAnalysisService::getWeakCategories` を集約し（QuestionCategory ごとの出現回数で降順ソート、上位 5 件）、「担当受講生の頻出弱点カテゴリ」として表示する。
 - **REQ-dashboard-350**: The system shall `StagnationDetectionService::detectStagnant()` の戻り値を `assigned_coach_id = $coach->id` でフィルタした Collection を「滞留検知（自分の担当）」として表示し、各行から該当 enrollment 詳細への遷移リンクを提供する。
 - **REQ-dashboard-360**: The system shall `EnrollmentNote::whereHas('enrollment', fn ($q) => $q->where('assigned_coach_id', $coach->id))->latest('updated_at')->limit(5)` を「最近更新した受講生メモ」として表示し、各行から enrollment 詳細画面（`/enrollments/{enrollment}/edit` の memo セクション）への遷移リンクを提供する（dashboard 内に inline 編集 UI は持たない）。
@@ -83,7 +83,7 @@
 - **REQ-dashboard-520**: The system shall `StagnationDetectionService::detectStagnant()` の戻り値（全受講生）の最新 10 件を「滞留検知リスト」として表示し、各行から `/admin/users/{user}` への遷移リンクを提供する。
 - **REQ-dashboard-530**: The system shall `App\Services\CoachActivityService::summarize()` の戻り値（直近 30 日の coach × 面談実施 / キャンセル / 拒否件数 / 平均メモ長）を「コーチ稼働状況」として表示し、件数降順上位 10 件まで表示する。
 - **REQ-dashboard-540**: The system shall admin 宛て直近通知 5 件と未読件数を表示し、「すべて見る」で `/notifications` へ遷移する。
-- **REQ-dashboard-550**: If 全体 KPI のすべてが 0（プラットフォーム初期状態）, then the system shall 「まずは受講生を招待してください」CTA と `/admin/users/invite` への遷移リンクを目立つ位置に表示する。
+- **REQ-dashboard-550**: If 全体 KPI のすべてが 0（プラットフォーム初期状態）, then the system shall 「まずは受講生を招待してください」CTA と `route('admin.users.index')`（招待モーダル動線を含む一覧画面）への遷移リンクを目立つ位置に表示する。
 
 ### 非機能要件
 

@@ -175,7 +175,6 @@ paths:
 | ダッシュボード | `/dashboard` | [[dashboard]] | ロール別 Blade に分岐（admin / coach / student） |
 | プロフィール表示・編集 | `/settings/profile` | [[settings-profile]] | 自分のプロフィール |
 | パスワード変更 | `/settings/password` | [[settings-profile]] | Fortify Password Update |
-| 通知設定 | `/settings/notifications` | [[settings-profile]] | 通知種別 × channel ON/OFF |
 | 自己退会 | `/settings/withdraw` | [[settings-profile]] | active → withdrawn 自己遷移 |
 | 面談可能時間枠（coach のみ） | `/settings/availability` | [[settings-profile]] | CoachAvailability、[[mentoring]] と共有 |
 | 通知一覧 | `/notifications` | [[notification]] | Database channel の通知を時系列表示 |

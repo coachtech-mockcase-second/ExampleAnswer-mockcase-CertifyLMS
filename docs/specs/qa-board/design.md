@@ -458,7 +458,7 @@ class QaReplyPolicy
 }
 ```
 
-> `User->coachingCertificationIds()` は [[user-management]] / [[certification-management]] 側で `User` モデルに公開済のヘルパを想定（`certification_coach_assignments` から `coach_id = $user->id` の `certification_id` 配列を返す）。本 spec では契約として参照のみ。
+> `User->coachingCertificationIds()` は [[user-management]] / [[certification-management]] 側で `User` モデルに公開済のヘルパを想定（`certification_coach_assignments` から `coach_user_id = $user->id` の `certification_id` 配列を返す。authoritative なカラム名は [[certification-management]] tasks.md の migration 定義で `coach_user_id`）。本 spec では契約として参照のみ。
 
 ### FormRequest
 

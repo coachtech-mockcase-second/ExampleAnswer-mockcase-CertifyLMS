@@ -79,10 +79,10 @@
 
 ### 機能要件 — 通知連動
 
-- **REQ-chat-070**: When 受講生がメッセージを送信した場合, the chat Module shall [[notification]] Feature の `NotifyNewChatMessageAction` を同一トランザクション内で呼び、担当コーチに **Database channel のみ**（Mail channel なし、Phase 0 合意）で通知を INSERT する。
-- **REQ-chat-071**: When コーチがメッセージを送信した場合, the chat Module shall [[notification]] Feature の `NotifyNewChatMessageAction` を呼び、受講生に Database channel のみで通知を INSERT する。
-- **REQ-chat-072**: The chat Module shall 通知データに `chat_room_id` / `chat_message_id` / `sender_user_id` / `sender_name` / `body_preview`（先頭 60 文字）を含め、通知一覧クリック時にルーム詳細へ遷移可能とする。
-- **REQ-chat-073**: If メッセージ送信トランザクションが失敗した場合, then the chat Module shall 通知 INSERT も一緒にロールバックする（不整合通知の防止、NFR-chat-001）。
+- **REQ-chat-070**: When 受講生がメッセージを送信した場合, the chat Module shall [[notification]] Feature の `NotifyChatMessageReceivedAction` を同一トランザクション内で呼び、担当コーチへ **Database + Mail channel の両方**（[[notification]] の固定 via 設計、A-1 合意で双方向通知）で通知を発火する。
+- **REQ-chat-071**: When コーチがメッセージを送信した場合, the chat Module shall [[notification]] Feature の `NotifyChatMessageReceivedAction` を呼び、受講生へ Database + Mail channel の両方で通知を発火する。送信者 role の判定 + 相手方解決は `NotifyChatMessageReceivedAction` 内で完結するため、本 Feature 側は `$message` のみを引数として渡す。
+- **REQ-chat-072**: The chat Module shall `NotifyChatMessageReceivedAction` に `$message` を渡し、通知データに `chat_room_id` / `chat_message_id` / `sender_user_id` / `sender_name` / `body_preview`（先頭 100 文字、[[notification]] 側の data 構造規定）を含め、通知一覧クリック時にルーム詳細へ遷移可能とする。
+- **REQ-chat-073**: If メッセージ送信トランザクションが失敗した場合, then the chat Module shall 通知 dispatch も一緒にロールバックする（`DB::afterCommit` ではなく `DB::transaction()` 内同期呼出、不整合通知の防止、NFR-chat-001）。
 
 ### 非機能要件
 
@@ -106,7 +106,6 @@
 - **コーチ → 受講生の chat 開始**（コーチ主導の新規ルーム作成） — 初回送信は受講生のみが起こせる、コーチからは `resolved` ルームへの再送信で再オープンする動線（[[dashboard]] 滞留検知から声かけ）
 - **メッセージの既読を相手に通知**（既読マーク / 「既読」表示） — 未読バッジは自分側のみ集計、相手の既読状態は表示しない
 - **音声 / ビデオ通話** — [[mentoring]] でも面談実施手段はスコープ外、chat も同様
-- **通知の Mail channel** — Phase 0 合意により Database channel のみ（短期相談用途）
 
 ## 関連 Feature
 
@@ -115,6 +114,6 @@
   - [[enrollment]] — `Enrollment.user_id` / `Enrollment.assigned_coach_id` / `Enrollment.certification_id` の参照、ルーム 1 対 1 の親
   - [[user-management]] — admin のコーチ変更操作（`assigned_coach_id` 変更後の Policy 自動切り替えで本 Feature が追従）
 - **依存元**（本 Feature を利用する）:
-  - [[notification]] — `NotifyNewChatMessageAction` の被呼び出し元、Database channel での通知 INSERT を提供。Advance Broadcasting 時は notification 側で全通知種別を TopBar 通知ベルへ push（chat はそのうちの 1 種別、chat 画面の即時更新ではない点に注意）
+  - [[notification]] — `NotifyChatMessageReceivedAction` の被呼び出し元、Database + Mail channel 両方の通知発火を提供。送信者 role 判定 + 相手方解決は notification 側責務。Advance Broadcasting 時は notification 側で全通知種別を TopBar 通知ベルへ push（chat はそのうちの 1 種別、chat 画面の即時更新ではない点に注意）
   - [[dashboard]] — coach Dashboard の「未対応 chat 件数」「未読 chat 件数」表示、`SidebarBadgeComposer` 経由で `chat-rooms` メニュー項目のバッジ
   - [[settings-profile]] — 通知設定 UI は採用しないため依存なし（[[notification]] が DB+Mail 固定送信、`UserNotificationSetting` 参照は不要）

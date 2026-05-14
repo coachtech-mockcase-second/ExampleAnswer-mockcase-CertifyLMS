@@ -15,7 +15,7 @@ sequenceDiagram
     participant Pol as ChatRoomPolicy
     participant SMA as StoreMessageAction
     participant CRS as ChatRoomStateService
-    participant Notif as NotifyNewChatMessageAction (notification)
+    participant Notif as NotifyChatMessageReceivedAction (notification)
     participant DB as DB
     participant FS as Storage private driver
 
@@ -44,8 +44,9 @@ sequenceDiagram
         SMA->>FS: Storage::disk('private')->putFileAs(<br/>"chat-attachments/{room}/{message}", file, ulid+ext)
         SMA->>DB: INSERT chat_attachments
     end
-    SMA->>Notif: __invoke(message, recipient=coach, type=ChatNewMessage)
-    Notif->>DB: INSERT notifications (database channel only)
+    SMA->>Notif: __invoke(message)
+    Note over Notif: sender=student → 相手方=coach を解決<br/>recipient.status 検査
+    Notif->>DB: INSERT notifications (database + mail)
     SMA->>DB: COMMIT
     SMA-->>CRC: ChatMessage
     CRC-->>Student: redirect /chat-rooms/{room} + flash
@@ -60,7 +61,7 @@ sequenceDiagram
     participant Pol as ChatRoomPolicy
     participant SMA as StoreMessageAction
     participant CRS as ChatRoomStateService
-    participant Notif as NotifyNewChatMessageAction (notification)
+    participant Notif as NotifyChatMessageReceivedAction (notification)
     participant DB as DB
 
     Coach->>CRC: POST /chat-rooms/{room}/messages body + attachments (multipart)
@@ -72,8 +73,9 @@ sequenceDiagram
     SMA->>DB: BEGIN
     SMA->>DB: UPDATE chat_rooms SET status=in_progress
     SMA->>DB: INSERT chat_messages
-    SMA->>Notif: __invoke(message, recipient=student, type=ChatNewMessage)
-    Notif->>DB: INSERT notifications
+    SMA->>Notif: __invoke(message)
+    Note over Notif: sender=coach → 相手方=student を解決<br/>recipient.status 検査
+    Notif->>DB: INSERT notifications (database + mail)
     SMA->>DB: COMMIT
     CRC-->>Coach: redirect /coach/chat-rooms/{room} + flash
 ```
@@ -335,7 +337,7 @@ class StoreMessageAction
 {
     public function __construct(
         private ChatRoomStateService $stateService,
-        private NotifyNewChatMessageAction $notify,
+        private NotifyChatMessageReceivedAction $notify,
     ) {}
 
     /**
@@ -359,7 +361,7 @@ class StoreMessageAction
 - (3) `SELECT ... FOR UPDATE` でルームを取り、`ChatRoomStateService::nextStateOnSend($room->status, $sender->role)` で新状態決定。変化時のみ UPDATE
 - (4) `ChatMessage` INSERT、`ChatMessage::booted()` の `created` フックが `chat_rooms.last_message_at` を自動 UPDATE
 - (5) 各 attachment を Storage private driver に保存し `ChatAttachment` INSERT
-- (6) `NotifyNewChatMessageAction(message, recipient)` を呼んで Database channel のみで通知 INSERT。recipient は sender が student なら coach、sender が coach なら student
+- (6) `NotifyChatMessageReceivedAction($message)` を呼んで Database + Mail 両方の通知を発火（sender role 判定 + 相手方解決は notification 側責務、本 Feature 側は `$message` のみを渡す、A-1 合意で双方向通知）
 - (7) すべて `DB::transaction()` 内（NFR-chat-001）
 
 #### `ResolveAction`
@@ -690,9 +692,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 | REQ-chat-053 | `App\Policies\ChatAttachmentPolicy::download`（`ChatRoomPolicy::view` 委譲）|
 | REQ-chat-054 | Route Model Binding（404）+ Policy（403）の二段 |
 | REQ-chat-060 / REQ-chat-061 / REQ-chat-062 | `App\Policies\ChatRoomPolicy::view` が `$room->enrollment->assigned_coach_id` を都度参照（追加 migration / 処理不要、自動追従）/ `tests/Feature/Http/Chat/CoachReassignmentTest.php` で挙動を担保 |
-| REQ-chat-070 / REQ-chat-071 | `App\UseCases\Chat\StoreMessageAction`（`NotifyNewChatMessageAction` 呼出）/ [[notification]] 側の `App\UseCases\Notification\NotifyNewChatMessageAction` |
-| REQ-chat-072 | [[notification]] 側の Database channel データ構造に `chat_room_id` / `chat_message_id` / `sender_user_id` / `sender_name` / `body_preview` を含める設計（chat 側からは引数で渡す）|
-| REQ-chat-073 | `App\UseCases\Chat\StoreMessageAction` の `DB::transaction()` で `NotifyNewChatMessageAction` 呼出も内包 |
+| REQ-chat-070 / REQ-chat-071 | `App\UseCases\Chat\StoreMessageAction`（`NotifyChatMessageReceivedAction($message)` 呼出、引数は `$message` のみ）/ [[notification]] 側の `App\UseCases\Notification\NotifyChatMessageReceivedAction`（sender role 判定 + 相手方解決を内部で実施、双方向通知）|
+| REQ-chat-072 | [[notification]] 側の `ChatMessageReceivedNotification::toDatabase` の data 構造に `chat_room_id` / `chat_message_id` / `sender_user_id` / `sender_name` / `body_preview`（先頭 100 文字）を含める設計（chat 側からは `$message` 経由で必要情報を渡す）|
+| REQ-chat-073 | `App\UseCases\Chat\StoreMessageAction` の `DB::transaction()` で `NotifyChatMessageReceivedAction` 呼出も内包（`DB::afterCommit` ではなく同期呼出で、失敗時に全体ロールバック）|
 | NFR-chat-001 | 各 Action 内 `DB::transaction()` |
 | NFR-chat-002 | `IndexAction` / `IndexAsCoachAction` / `Admin\Chat\IndexAction` / `ShowAction` の `with(...)` Eager Loading / `ChatUnreadCountService::roomCountForUser` の SQL 集計 |
 | NFR-chat-003 | `App\Models\ChatMessage::booted` `created` フックの `chat_rooms.last_message_at` UPDATE |

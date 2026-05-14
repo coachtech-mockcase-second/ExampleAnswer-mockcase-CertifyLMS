@@ -411,6 +411,33 @@ public function handle(Request $request, Closure $next, string ...$roles): Respo
 - `Fortify::authenticateUsing(function (Request $request) { ... })` — email + password 検証後に `status === active` をチェック
 - `Fortify::rateLimit('login')` の閾値（5回/分）をそのまま採用
 
+### Route
+
+`routes/web.php`（Fortify が `boot` 時に自動登録するルート + 本 Feature 固有の招待動線ルート）:
+
+```php
+// Fortify 自動登録（FortifyServiceProvider 経由、明示は不要）
+// - GET  /login                          name: login
+// - POST /login                          （Fortify::authenticateUsing）
+// - POST /logout                         name: logout
+// - GET  /forgot-password                name: password.request
+// - POST /forgot-password                name: password.email
+// - GET  /reset-password/{token}         name: password.reset
+// - POST /reset-password                 name: password.update
+
+// 本 Feature 固有: 招待 URL からのオンボーディング
+Route::middleware('signed')->group(function () {
+    Route::get('/onboarding/{invitation}', [OnboardingController::class, 'show'])
+        ->name('onboarding.show');
+    Route::post('/onboarding/{invitation}', [OnboardingController::class, 'store'])
+        ->name('onboarding.store');
+});
+```
+
+- `onboarding.show` / `onboarding.store` は `signed` middleware で URL 署名検証（招待 URL は `URL::temporarySignedRoute(...)` で 7 日有効、`Invitation::status === Pending` も Action 内で再検査）
+- ログアウト後のリダイレクト先は `FortifyServiceProvider::redirectsTo` で `/login` 固定
+- Fortify がパスワードリセットメール送信時に通知する `ResetPassword` 通知は本 Feature が `via` を override せず Laravel 標準（Mail）のまま使用
+
 ## Blade ビュー
 
 `resources/views/auth/`:

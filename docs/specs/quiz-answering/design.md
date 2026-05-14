@@ -929,6 +929,44 @@ final readonly class AnswerResult
 - **`AnswerGradingResource`**（解答 POST レスポンス用）: `answer` / `attempt` / `correct_option_id` / `correct_option_body` / `explanation`
 - **`CategoryDrillResource`**: `id` / `name` / `slug` / `question_count` / `is_weak` / `stats`（`CategoryStats` の整形版）
 
+### Route
+
+`routes/web.php`（structure.md 規約「単一 web.php」準拠、`auth` middleware 共通）+ `routes/api.php`（Advance SPA 用、Sanctum SPA 認証）:
+
+```php
+// routes/web.php（受講生 quiz / drill 画面）
+Route::middleware(['auth', 'role:student'])->prefix('quiz')->name('quiz.')->group(function () {
+    // Section 紐づき問題演習エントリ
+    Route::get('sections/{section}', [QuizSectionController::class, 'show'])->name('sections.show');
+    Route::get('sections/{section}/questions/{question}', [QuizQuestionController::class, 'show'])->name('questions.show');
+
+    // 解答送信（Blade 版 POST、Advance では fetch + AnswerApiController に置換）
+    Route::post('questions/{question}/answer', [QuizAnswerController::class, 'store'])->name('questions.answer.store');
+
+    // Section 単位サマリ
+    Route::get('sections/{section}/summary', [QuizSectionController::class, 'summary'])->name('sections.summary');
+
+    // 解答履歴
+    Route::get('history', [QuizAnswerController::class, 'history'])->name('answers.history');
+
+    // 苦手分野ドリル（mock-exam の WeaknessAnalysisService::getWeakCategories から抽出した問題）
+    Route::get('drills/{enrollment}', [QuizDrillController::class, 'index'])->name('drills.index');
+    Route::get('drills/{enrollment}/categories/{questionCategory}', [QuizDrillController::class, 'show'])->name('drills.show');
+});
+
+// routes/api.php（Advance SPA 用、Sanctum SPA 認証）
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1/quiz')->name('api.v1.quiz.')->group(function () {
+    Route::get('sections/{section}/questions/{question}', [Api\V1\QuizQuestionController::class, 'show'])->name('questions.show');
+    Route::post('questions/{question}/answer', [Api\V1\QuizAnswerController::class, 'store'])->name('questions.answer.store');
+    Route::get('sections/{section}/summary', [Api\V1\QuizSectionController::class, 'summary'])->name('sections.summary');
+});
+```
+
+- 受講生限定（`role:student`、admin / coach は本 Feature の演習画面を持たない）
+- 苦手ドリルのルート名は `quiz.drills.show` で、dashboard 等から `route('quiz.drills.show', ['enrollment' => ..., 'questionCategory' => ...])` で参照
+- API v1 は Advance SPA 化時に有効化、Basic では web.php のルートのみ動作する設計（Sanctum SPA 認証は [[auth]] の Wave 0b 整備済を前提）
+- `throttle:60,1` は API のレート制限（NFR-quiz-answering-007 / REQ-quiz-answering-173）
+
 ## Blade ビュー
 
 ```

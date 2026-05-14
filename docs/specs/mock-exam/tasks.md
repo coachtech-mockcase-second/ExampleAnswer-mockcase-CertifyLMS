@@ -97,7 +97,7 @@
 - [ ] `ShowAction`（状態に応じて各種データ準備: `NotStarted` → mockExam の概要 / `InProgress` → questions + answersByQid を eager load / `Graded` → heatmap + pass_probability_band / `Canceled` → 戻り導線のみ）（REQ-mock-exam-151, REQ-mock-exam-152, REQ-mock-exam-250, NFR-mock-exam-002）
 - [ ] `StoreAction`（Enrollment 取得 + 重複進行中ガード + 問題 ID snapshot + スナップショット値固定で INSERT、`DB::transaction` + `lockForUpdate`）（REQ-mock-exam-103, REQ-mock-exam-104, NFR-mock-exam-001, NFR-mock-exam-009）
 - [ ] `StartAction`（`TermJudgementService` を constructor 注入、NotStarted ガード + 公開ガード → `status=InProgress` / `started_at=now` / `time_limit_ends_at` 計算で UPDATE + `recalculate($enrollment)` 同一 transaction）（REQ-mock-exam-150, NFR-mock-exam-001, NFR-mock-exam-009）
-- [ ] `SubmitAction`（`GradeAction` / `TermJudgementService` を constructor 注入、InProgress ガード → `status=Submitted` + `submitted_at` UPDATE → `GradeAction` 呼出 → `recalculate` → `DB::afterCommit` で notification 起点 dispatch）（REQ-mock-exam-200, REQ-mock-exam-204, REQ-mock-exam-205, NFR-mock-exam-001, NFR-mock-exam-009）
+- [ ] `SubmitAction`（DI: `GradeAction` / `TermJudgementService` / `Notification\NotifyMockExamGradedAction`、InProgress ガード → `status=Submitted` + `submitted_at` UPDATE → `GradeAction` 呼出 → `recalculate` → `DB::afterCommit(fn () => ($this->notifyGraded)($result))` で Action 直呼出（Event/Listener 経由ではなく Action 直呼出に統一））（REQ-mock-exam-200, REQ-mock-exam-204, REQ-mock-exam-205, NFR-mock-exam-001, NFR-mock-exam-009）
 - [ ] `GradeAction`（internal、SubmitAction 内呼出専用、Controller から直接呼ばない）: `mock_exam_answers` の `is_correct` を raw UPDATE で確定 + `total_correct` 集計 + `score_percentage` ROUND + `pass` 判定 → `status=Graded` + 関連カラム UPDATE。Question / Option SoftDelete を `withTrashed` で扱う（REQ-mock-exam-220, REQ-mock-exam-221, REQ-mock-exam-222, REQ-mock-exam-223, REQ-mock-exam-224）
 - [ ] `DestroyAction`（キャンセル、`TermJudgementService` 注入、NotStarted ガード → `status=Canceled` + `canceled_at` UPDATE + `recalculate`）（REQ-mock-exam-105, NFR-mock-exam-001）
 
@@ -112,7 +112,7 @@
 
 ### Service（`App\Services\`）
 
-- [ ] `WeaknessAnalysisService`（`WeaknessAnalysisServiceContract` を implements、`getWeakCategories(Enrollment): Collection<QuestionCategory>` + `getHeatmap(MockExamSession): Collection<CategoryHeatmapCell>` + `getPassProbabilityBand(Enrollment): PassProbabilityBand`、ステートレス、トランザクション非保有）（REQ-mock-exam-350, REQ-mock-exam-351, REQ-mock-exam-352, REQ-mock-exam-353, REQ-mock-exam-354, REQ-mock-exam-356, NFR-mock-exam-005）
+- [ ] `WeaknessAnalysisService`（`WeaknessAnalysisServiceContract` を implements、`getWeakCategories(Enrollment): Collection<QuestionCategory>` + `getHeatmap(MockExamSession): Collection<CategoryHeatmapCell>` + `getPassProbabilityBand(Enrollment): PassProbabilityBand` + `batchHeatmap(Collection<MockExamSession>): Collection<string, Collection<CategoryHeatmapCell>>`（[[analytics-export]] 用、key=session_id、1 クエリで集計）、ステートレス、トランザクション非保有）（REQ-mock-exam-350, REQ-mock-exam-351, REQ-mock-exam-352, REQ-mock-exam-353, REQ-mock-exam-354, REQ-mock-exam-356, NFR-mock-exam-005）
 - [ ] `CategoryHeatmapCell` DTO（readonly class、`app/Services/CategoryHeatmapCell.php`）（REQ-mock-exam-352）
 
 ### ドメイン例外（`app/Exceptions/MockExam/`）

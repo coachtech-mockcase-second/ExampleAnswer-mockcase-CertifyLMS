@@ -770,6 +770,7 @@ class SubmitAction
     public function __construct(
         private GradeAction $grade,
         private TermJudgementService $termJudgement,
+        private \App\UseCases\Notification\NotifyMockExamGradedAction $notifyGraded,
     ) {}
 
     public function __invoke(MockExamSession $session): MockExamSession
@@ -788,17 +789,14 @@ class SubmitAction
             return $session->fresh();
         });
 
-        DB::afterCommit(function () use ($result) {
-            // [[notification]] の MockExamGradedNotification dispatch（本 Feature では起点のみ提供、通知本体は [[notification]] Feature が所有）
-            // event(new MockExamGraded($result)) を Listener が拾って通知化する流れ
-        });
+        DB::afterCommit(fn () => ($this->notifyGraded)($result));
 
         return $result;
     }
 }
 ```
 
-責務: (1) lockForUpdate + InProgress ガード、(2) `status=Submitted` 中間更新、(3) `GradeAction` 同一 transaction 内呼出、(4) `TermJudgementService::recalculate`、(5) commit 後に notification dispatch（Feature 横断、本 Feature は起点）。
+責務: (1) lockForUpdate + InProgress ガード、(2) `status=Submitted` 中間更新、(3) `GradeAction` 同一 transaction 内呼出、(4) `TermJudgementService::recalculate`、(5) `DB::afterCommit` で `NotifyMockExamGradedAction` を直接呼出（Event / Listener 経由ではなく Action 直呼出、Feature 横断ラッパー Action 方式、`backend-usecases.md` 準拠）。
 
 #### `App\UseCases\MockExamSession\GradeAction` （internal）
 
@@ -979,6 +977,38 @@ class WeaknessAnalysisService implements WeaknessAnalysisServiceContract
             default => PassProbabilityBand::Danger,
         };
     }
+
+    /**
+     * 複数 MockExamSession のヒートマップを一括取得（[[analytics-export]] が利用）。
+     * 戻り値: Collection<string, Collection<CategoryHeatmapCell>>（key=mock_exam_session_id）
+     */
+    public function batchHeatmap(Collection $sessions): Collection
+    {
+        $sessionIds = $sessions->pluck('id');
+        if ($sessionIds->isEmpty()) {
+            return collect();
+        }
+
+        $rows = DB::table('mock_exam_answers AS a')
+            ->join('questions AS q', 'a.question_id', '=', 'q.id')
+            ->leftJoin('question_categories AS qc', 'q.category_id', '=', 'qc.id')
+            ->whereIn('a.mock_exam_session_id', $sessionIds)
+            ->groupBy('a.mock_exam_session_id', 'q.category_id', 'qc.name')
+            ->selectRaw('a.mock_exam_session_id AS session_id, q.category_id AS category_id, qc.name AS category_name, COUNT(*) AS total, SUM(a.is_correct) AS correct')
+            ->get();
+
+        return $sessions->keyBy('id')->map(function ($session) use ($rows) {
+            $threshold = $session->passing_score_snapshot * self::WEAK_THRESHOLD_RATIO;
+            return $rows->where('session_id', $session->id)->map(fn ($r) => new CategoryHeatmapCell(
+                categoryId: $r->category_id,
+                categoryName: $r->category_name,
+                totalQuestions: (int) $r->total,
+                correctCount: (int) $r->correct,
+                accuracyRate: $r->total > 0 ? (float) $r->correct / $r->total : 0.0,
+                isWeak: ($r->total > 0 ? ($r->correct / $r->total * 100) : 0) < $threshold,
+            ))->values();
+        });
+    }
 }
 ```
 
@@ -1150,6 +1180,51 @@ class MockExamSessionPolicy
 - **`MockExamSessionResultResource`**: 結果画面用、`session` + `heatmap` + `pass_probability_band` をまとめて返す
 - **`MockExamAnswerResource`**: `question_id` / `selected_option_id` / `selected_option_body` / `is_correct` / `answered_at`
 - **`QuestionForMockExamResource`**: `id` / `body` / `category` / `difficulty` / `options`（`is_correct` 除外）— [[quiz-answering]] の `QuestionResource`（正答非表示版）と同流儀
+
+### Route
+
+`routes/web.php`（structure.md 規約「単一 web.php」準拠、`auth` middleware 共通）:
+
+```php
+Route::middleware('auth')->group(function () {
+    // 受講生 公開模試 一覧 / 詳細
+    Route::middleware('role:student')->group(function () {
+        Route::get('mock-exams', [MockExamController::class, 'index'])->name('mock-exams.index');
+        Route::get('mock-exams/{mockExam}', [MockExamController::class, 'show'])->name('mock-exams.show');
+
+        // セッション作成 / 受験操作
+        Route::post('mock-exams/{mockExam}/sessions', [MockExamSessionController::class, 'store'])->name('mock-exam-sessions.store');
+        Route::get('mock-exam-sessions/history', [MockExamSessionController::class, 'index'])->name('mock-exam-sessions.index');
+        Route::get('mock-exam-sessions/{session}', [MockExamSessionController::class, 'show'])->name('mock-exam-sessions.show');
+        Route::post('mock-exam-sessions/{session}/start', [MockExamSessionController::class, 'start'])->name('mock-exam-sessions.start');
+        Route::post('mock-exam-sessions/{session}/submit', [MockExamSessionController::class, 'submit'])->name('mock-exam-sessions.submit');
+        Route::delete('mock-exam-sessions/{session}', [MockExamSessionController::class, 'destroy'])->name('mock-exam-sessions.destroy');
+
+        // 受験中の逐次解答保存（PATCH）
+        Route::patch('mock-exam-sessions/{session}/answers/{question}', [MockExamAnswerController::class, 'update'])->name('mock-exam-sessions.answers.update');
+    });
+
+    // admin / coach 模試マスタ管理 + セッション閲覧
+    Route::middleware('role:admin,coach')->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('mock-exams', Admin\MockExamController::class)
+            ->parameters(['mock-exams' => 'mockExam'])
+            ->names('mock-exams');
+        Route::post('mock-exams/{mockExam}/publish', [Admin\MockExamController::class, 'publish'])->name('mock-exams.publish');
+        Route::post('mock-exams/{mockExam}/unpublish', [Admin\MockExamController::class, 'unpublish'])->name('mock-exams.unpublish');
+
+        Route::post('mock-exams/{mockExam}/questions', [Admin\MockExamQuestionController::class, 'store'])->name('mock-exams.questions.store');
+        Route::delete('mock-exams/{mockExam}/questions/{question}', [Admin\MockExamQuestionController::class, 'destroy'])->name('mock-exams.questions.destroy');
+
+        Route::get('mock-exam-sessions', [Admin\MockExamSessionController::class, 'index'])->name('mock-exam-sessions.index');
+        Route::get('mock-exam-sessions/{session}', [Admin\MockExamSessionController::class, 'show'])->name('mock-exam-sessions.show');
+    });
+});
+```
+
+- 受講生向けルートは `mock-exams.*` / `mock-exam-sessions.*` の 2 グループ、admin / coach 向けは `admin.mock-exams.*` / `admin.mock-exam-sessions.*` でプレフィックス分離
+- `mock-exam-sessions.submit` は POST（Action が `__invoke(session)` で `DB::transaction` + 採点完了 + notification dispatch）
+- `mock-exam-sessions.answers.update` は PATCH で受験中の逐次保存（`fetch` + `X-CSRF-TOKEN`、frontend-javascript.md 規約）
+- 自動採点（時間切れ）の Schedule Command（`mock-exams:auto-submit-expired`）は `app/Console/Kernel.php` で別途登録（Route ではない）
 
 ## Blade ビュー
 

@@ -543,7 +543,7 @@ dashboard 固有のドメイン例外は **作らない**。読み取り専用 +
 | REQ-dashboard-500 | `EnrollmentStatsService::adminKpi()` 呼出 + `AdminDashboardKpi` DTO 変換 |
 | REQ-dashboard-501 | `AdminDashboardKpi.byCertification` を上位 10 件に限定 + `_partials/admin/by-certification-breakdown.blade.php` |
 | REQ-dashboard-510 | `Enrollment::pending()->with(['user','certification'])->latest('completion_requested_at')->limit(10)->get()` |
-| REQ-dashboard-511 | `_partials/admin/pending-completion-list.blade.php` の表示 + `route('admin.enrollments.edit', ...)` |
+| REQ-dashboard-511 | `_partials/admin/pending-completion-list.blade.php` の表示 + `route('admin.enrollments.show', $enrollment)`（show 画面に修了承認操作が集約されているため edit は使わない、enrollment spec L124 準拠）|
 | REQ-dashboard-512 | `Enrollment::pending()` スコープを `SidebarBadgeComposer` と本 Feature で共用、テストで件数一致を確認（`DashboardSidebarConsistencyTest::test_admin_pending_count_matches_sidebar_badge`） |
 | REQ-dashboard-520 | `StagnationDetectionService::detectStagnant()->take(10)` |
 | REQ-dashboard-530 | `CoachActivityService::summarize()->sortByDesc('completed_count')->take(10)` |

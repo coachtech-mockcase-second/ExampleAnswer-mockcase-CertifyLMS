@@ -8,25 +8,29 @@
 
 - [ ] migration: `change_notifications_id_to_ulid`（Laravel 標準 `notifications` テーブルの `id` を ULID 型に変更、`(notifiable_type, notifiable_id, read_at)` 複合 INDEX 追加 + `created_at` 単体 INDEX 追加）（REQ-notification-001, REQ-notification-002）
 - [ ] migration: `create_admin_announcements_table`（ULID 主キー / `created_by_user_id` ulid FK / `title` string 200 / `body` text / `target_type` string / `target_certification_id` ulid nullable FK / `target_user_id` ulid nullable FK / `dispatched_count` unsignedInteger default 0 / `dispatched_at` datetime nullable / SoftDeletes / `(target_type, dispatched_at)` 複合 INDEX + `dispatched_at` / `deleted_at` 単体 INDEX）（REQ-notification-010）
-- [ ] Enum: `App\Enums\AdminAnnouncementTargetType`（`AllStudents` / `Certification` / `User` + `label()`）（REQ-notification-011）
+- [ ] Enum: `App\Enums\AdminAnnouncementTargetType`（case 名 ⇔ backed value: `AllStudents` = `'all_students'` / `Certification` = `'certification'` / `User` = `'user'`、`label()` 含む）（REQ-notification-011）
+- [ ] Enum: `App\Enums\MeetingReminderWindow`（case 名 ⇔ backed value: `Eve` = `'eve'` / `OneHourBefore` = `'one_hour_before'`、`label()` 含む）（REQ-notification-075）
 - [ ] Model: `App\Models\AdminAnnouncement`（`HasUlids` + `HasFactory` + `SoftDeletes` / fillable / casts: `target_type` Enum + `dispatched_at` datetime / `belongsTo(User, 'created_by_user_id', 'createdBy')` / `belongsTo(Certification, 'target_certification_id', 'targetCertification')` / `belongsTo(User, 'target_user_id', 'targetUser')` / `scopeOrderByDispatchedAt`）（REQ-notification-010）
 - [ ] Factory: `AdminAnnouncementFactory`（`allStudents()` / `forCertification(Certification)` / `forUser(User)` / `dispatched()` state）
 
 ## Step 2: Notification 共通基盤
 
-- [ ] abstract class: `App\Notifications\BaseNotification`（`Illuminate\Notifications\Notification` 継承 + `implements ShouldQueue`、`__construct` 内で `$this->id = (string) Str::ulid()` 設定 + `via($notifiable)` で `['database', 'mail']` を返却、`config('broadcasting.default') !== 'null'` なら `'broadcast'` 追加。子 Notification は `parent::__construct()` 必須。本固定動作で qa-board / mock-exam / mentoring 系の `via` 規定もすべて担保）（REQ-notification-020, REQ-notification-021, REQ-notification-002, REQ-notification-124, REQ-notification-042, REQ-notification-051, REQ-notification-073）
+- [ ] abstract class: `App\Notifications\BaseNotification`（`Illuminate\Notifications\Notification` 継承 + `implements ShouldQueue`、`__construct` 内で `$this->id = (string) Str::ulid()` 設定 + `via($notifiable)` で `['database', 'mail']` を返却、`config('broadcasting.default') !== 'null'` なら `'broadcast'` 追加。子 Notification は `parent::__construct()` 必須。本固定動作で qa-board / mock-exam / mentoring 系の `via` 規定もすべて担保）（REQ-notification-020, REQ-notification-021, REQ-notification-002, REQ-notification-124, REQ-notification-042, REQ-notification-051, REQ-notification-077, REQ-notification-085）
 
-## Step 3: Notification クラス（7 種類）
+## Step 3: Notification クラス（10 種類）
 
 各クラスは `extends BaseNotification` + `use Queueable`、`toDatabase()`（共通キー + 種別固有キーを併存、REQ-notification-003, REQ-notification-004）/ `toMail()`（`MailMessage` で構成、`subject` は `【Certify LMS】...` 統一、独立 Mailable 不要、REQ-notification-025, NFR-notification-006）/ `broadcastOn()` / `broadcastWith()` を実装。
 
-- [ ] `App\Notifications\ChatMessageReceivedNotification`（コンストラクタ `ChatMessage $message`）（REQ-notification-030, REQ-notification-033）
-- [ ] `App\Notifications\QaReplyReceivedNotification`（コンストラクタ `QaReply $reply`）（REQ-notification-040, REQ-notification-043）
-- [ ] `App\Notifications\MockExamGradedNotification`（コンストラクタ `MockExamSession $session`）（REQ-notification-050, REQ-notification-052, REQ-notification-053）
-- [ ] `App\Notifications\CompletionApprovedNotification`（コンストラクタ `Enrollment $enrollment, Certificate $certificate`、Mail 本文に `route('certificates.download', $certificate)` 含める）（REQ-notification-060, REQ-notification-061, REQ-notification-062）
-- [ ] `App\Notifications\MeetingApprovedNotification`（コンストラクタ `Meeting $meeting`、Mail 本文に `meeting_url_snapshot` + `scheduled_at`）（REQ-notification-070, REQ-notification-074）
-- [ ] `App\Notifications\MeetingReminderNotification`（コンストラクタ `Meeting $meeting`、data に `meeting_id`）（REQ-notification-071, REQ-notification-074）
-- [ ] `App\Notifications\AdminAnnouncementNotification`（コンストラクタ `AdminAnnouncement $announcement`）（REQ-notification-085, REQ-notification-086）
+- [ ] `App\Notifications\ChatMessageReceivedNotification`（コンストラクタ `ChatMessage $message`、`data.notification_type='chat_message_received'`）（REQ-notification-030, REQ-notification-033）
+- [ ] `App\Notifications\QaReplyReceivedNotification`（コンストラクタ `QaReply $reply`、`data.notification_type='qa_reply_received'`）（REQ-notification-040, REQ-notification-043）
+- [ ] `App\Notifications\MockExamGradedNotification`（コンストラクタ `MockExamSession $session`、`data.notification_type='mock_exam_graded'`）（REQ-notification-050, REQ-notification-052, REQ-notification-053）
+- [ ] `App\Notifications\CompletionApprovedNotification`（コンストラクタ `Enrollment $enrollment, Certificate $certificate`、Mail 本文に `route('certificates.download', $certificate)` 含める、`data.notification_type='completion_approved'`）（REQ-notification-060, REQ-notification-061, REQ-notification-062）
+- [ ] `App\Notifications\MeetingRequestedNotification`（コンストラクタ `Meeting $meeting`、`data.notification_type='meeting_requested'`、コーチ宛）（REQ-notification-071, REQ-notification-078）
+- [ ] `App\Notifications\MeetingApprovedNotification`（コンストラクタ `Meeting $meeting`、Mail 本文に `meeting_url_snapshot` + `scheduled_at`、`data.notification_type='meeting_approved'`）（REQ-notification-070, REQ-notification-078）
+- [ ] `App\Notifications\MeetingRejectedNotification`（コンストラクタ `Meeting $meeting`、Mail 本文に `rejected_reason`、`data.notification_type='meeting_rejected'`）（REQ-notification-072, REQ-notification-078）
+- [ ] `App\Notifications\MeetingCanceledNotification`（コンストラクタ `Meeting $meeting, User $actor`、`actor` で文面分岐、`data.notification_type='meeting_canceled'` + `data.canceled_by`）（REQ-notification-073, REQ-notification-078）
+- [ ] `App\Notifications\MeetingReminderNotification`（コンストラクタ `Meeting $meeting, MeetingReminderWindow $window`、`data` に `meeting_id` + `window`、`data.notification_type='meeting_reminder'`）（REQ-notification-074, REQ-notification-078）
+- [ ] `App\Notifications\AdminAnnouncementNotification`（コンストラクタ `AdminAnnouncement $announcement`、`data.notification_type='admin_announcement'`）（REQ-notification-085, REQ-notification-086）
 
 ## Step 4: Policy & FormRequest
 
@@ -46,14 +50,17 @@
 
 ## Step 6: Action（UseCase）
 
-### 通知発火ラッパー Action 群（`app/UseCases/Notification/`）
+### 通知発火ラッパー Action 群（`app/UseCases/Notification/`、10 種類）
 
-- [ ] `NotifyChatMessageReceivedAction`（送信者 role 検査 → コーチ送信時のみ受講生通知発火、受講生送信時はスキップ）（REQ-notification-022, REQ-notification-023, REQ-notification-024, REQ-notification-026, REQ-notification-030, REQ-notification-031, REQ-notification-032）
-- [ ] `NotifyQaReplyReceivedAction`（自己回答ガード + 受信者通知）（REQ-notification-022, REQ-notification-040, REQ-notification-041）
+- [ ] `NotifyChatMessageReceivedAction`（sender role で相手方解決 → 双方向通知、コーチ未割当時は skip）（REQ-notification-022, REQ-notification-023, REQ-notification-024, REQ-notification-026, REQ-notification-030, REQ-notification-031, REQ-notification-032）
+- [ ] `NotifyQaReplyReceivedAction`（自己回答ガード + スレッド投稿者通知）（REQ-notification-022, REQ-notification-040, REQ-notification-041）
 - [ ] `NotifyMockExamGradedAction`（受験者通知）（REQ-notification-022, REQ-notification-050）
 - [ ] `NotifyCompletionApprovedAction`（受講生通知 + Certificate 引数）（REQ-notification-022, REQ-notification-060, REQ-notification-061）
+- [ ] `NotifyMeetingRequestedAction`（担当コーチ通知）（REQ-notification-022, REQ-notification-071）
 - [ ] `NotifyMeetingApprovedAction`（受講生通知）（REQ-notification-022, REQ-notification-070）
-- [ ] `NotifyMeetingReminderAction`（重複排除検査 + 受講生通知）（REQ-notification-022, REQ-notification-071, REQ-notification-072, NFR-notification-007）
+- [ ] `NotifyMeetingRejectedAction`（受講生通知 + rejected_reason）（REQ-notification-022, REQ-notification-072）
+- [ ] `NotifyMeetingCanceledAction`（actor で相手方解決 → 相手方通知）（REQ-notification-022, REQ-notification-073）
+- [ ] `NotifyMeetingReminderAction`（`(meeting_id, window)` 重複排除検査 + 受講生 + コーチ両方通知）（REQ-notification-022, REQ-notification-074, REQ-notification-076, NFR-notification-007）
 - [ ] `NotifyAdminAnnouncementAction`（受信者 status 検査 + 通知）（REQ-notification-022, REQ-notification-081, REQ-notification-085）
 
 ### 通知一覧操作 Action 群（`app/UseCases/Notification/`）
@@ -91,28 +98,32 @@
 
 ## Step 9: Schedule Command
 
-- [ ] `app/Console/Commands/Notification/SendMeetingRemindersCommand`（signature: `notifications:send-meeting-reminders`、`Meeting::where('status', Approved)->whereBetween('scheduled_at', [tomorrow 00:00, tomorrow 23:59])` 抽出 + `NotifyMeetingReminderAction` 配信、前日 18 時のみ）（REQ-notification-071, REQ-notification-072, NFR-notification-007）
-- [ ] `app/Console/Kernel.php::schedule()` に追記: `->command('notifications:send-meeting-reminders')->dailyAt('18:00')`
+- [ ] `app/Console/Commands/Notification/SendMeetingRemindersCommand`（signature: `notifications:send-meeting-reminders {--window=eve}`、`--window=eve` なら `Meeting::where('status', Approved)->whereBetween('scheduled_at', [tomorrow 00:00, tomorrow 23:59])`、`--window=one_hour_before` なら `whereBetween('scheduled_at', [now+55min, now+65min])` 抽出 + `NotifyMeetingReminderAction($meeting, MeetingReminderWindow::from($window))` 呼出）（REQ-notification-074, REQ-notification-075, REQ-notification-076, NFR-notification-007）
+- [ ] `app/Console/Kernel.php::schedule()` に追記:
+  - `->command('notifications:send-meeting-reminders --window=eve')->dailyAt('18:00')`
+  - `->command('notifications:send-meeting-reminders --window=one_hour_before')->everyFiveMinutes()`
 
-> 学習途絶リマインド Command / 1 時間前リマインド Command は **採用しない**。
+> 学習途絶リマインド Command は **採用しない**（`StagnationDetectionService` は dashboard 側でのみ利用）。
 
 ## Step 10: 各 Feature の起点呼出（協調修正、各 Feature の PR で扱う）
 
-> 本 Feature の実装と並行して、依存元 Feature の Action から `Notify*Action` 呼出を組み込む / 不要な通知発火コードを除去する。各 Feature の spec / 実装をどう変えるかは協調 PR として明示する。
+> 本 Feature の実装と並行して、依存元 Feature の Action から `Notify*Action` 呼出を組み込む。各 Feature の spec / 実装をどう変えるかは協調 PR として明示する。
 
-### 追加する通知発火（7 種類分の起点呼出）
+### 追加する通知発火（10 種類分の起点呼出）
 
-- [ ] [[chat]] `App\UseCases\Chat\StoreMessageAction` の DB::transaction 内に `app(NotifyChatMessageReceivedAction::class)($message)` を組み込む（送信者 role 検査は Notify*Action 側で実施、Chat 側は無条件で呼ぶ）
+- [ ] [[chat]] `App\UseCases\Chat\StoreMessageAction` の DB::transaction 内に `app(NotifyChatMessageReceivedAction::class)($message)` を組み込む（sender role 判定は Notify*Action 側で実施、Chat 側は無条件で呼ぶ、双方向通知）
 - [ ] [[qa-board]] `App\UseCases\QaReply\StoreAction` 内に `app(NotifyQaReplyReceivedAction::class)($reply)` を組み込む（qa-board spec の Notification dispatch 部分を本方式に揃える協調修正）
-- [ ] [[mock-exam]] `App\UseCases\MockExamSession\SubmitAction` の `DB::afterCommit` 内に `app(NotifyMockExamGradedAction::class)($result)` を組み込む（mock-exam spec の TODO コメント箇所を実装に置換）
-- [ ] [[enrollment]] `App\UseCases\Admin\Enrollment\ApproveCompletionAction` の `DB::afterCommit` 内に `app(NotifyCompletionApprovedAction::class)($enrollment, $certificate)` を組み込む
-- [ ] [[mentoring]] `App\UseCases\Meeting\ApproveAction` 内に `app(NotifyMeetingApprovedAction::class)($meeting)` を組み込む（mentoring spec の `NotifyMeetingApprovedAction` DI 部分を本 Feature の Action に揃える）
+- [ ] [[mock-exam]] `App\UseCases\MockExamSession\SubmitAction` の `DB::afterCommit` 内に `app(NotifyMockExamGradedAction::class)($result)` を組み込む（mock-exam spec の Event 経由匂わせコメントを Action 直呼出に置換）
+- [ ] [[enrollment]] `App\UseCases\Admin\Enrollment\ApproveCompletionAction` のコンストラクタに `NotifyCompletionApprovedAction` を DI し、`DB::afterCommit` 内で `($this->notifyCompletion)($enrollment, $certificate)` を呼出
+- [ ] [[mentoring]] `App\UseCases\Meeting\StoreAction` 内に `app(NotifyMeetingRequestedAction::class)($meeting)` を組み込む
+- [ ] [[mentoring]] `App\UseCases\Meeting\ApproveAction` 内に `app(NotifyMeetingApprovedAction::class)($meeting)` を組み込む
+- [ ] [[mentoring]] `App\UseCases\Meeting\RejectAction` 内に `app(NotifyMeetingRejectedAction::class)($meeting)` を組み込む
+- [ ] [[mentoring]] `App\UseCases\Meeting\CancelAction` 内に `app(NotifyMeetingCanceledAction::class)($meeting, $actor)` を組み込む（actor で文面分岐）
 
 ### 削除する通知発火（不採用方針の徹底）
 
 - [ ] [[enrollment]] `App\UseCases\Enrollment\RequestCompletionAction` に通知発火コードを **追加しない**（admin 宛通知不採用方針、admin は [[dashboard]] の「修了申請待ち一覧」で確認）（REQ-notification-063）
-- [ ] [[mentoring]] `App\UseCases\Meeting\StoreAction` / `RejectAction` / `CancelAction` に通知発火コードを **追加しない**（受講生宛のみ採用方針、コーチへの面談予約申請通知 / 受講生への面談拒否・キャンセル通知は不採用）。mentoring spec の sequence diagram から `NotifyMeetingRequested` / `NotifyMeetingRejected` / `NotifyMeetingCanceled` の記述を削除する協調修正（REQ-notification-075）
-- [ ] [[mentoring]] の `RemindUpcomingMeetingsCommand`（1 時間前）を **削除**、`RemindEveMeetingsCommand`（前日 18 時）を本 Feature の `SendMeetingRemindersCommand` に統合（mentoring spec から該当 Command 記述を削除し、本 Feature を参照する形に修正）（REQ-notification-071, REQ-notification-075）
+- [ ] [[mentoring]] の `RemindEveMeetingsCommand` / `RemindOneHourBeforeMeetingsCommand` 等の独自 Reminder Command を **削除**、本 Feature の `SendMeetingRemindersCommand` に統合（mentoring spec から該当 Command 記述を削除し、本 Feature を参照する形に修正）
 
 ### [[settings-profile]] 協調修正
 
@@ -132,7 +143,7 @@
 - [ ] `.env.example` に `BROADCAST_DRIVER=pusher` / `PUSHER_APP_KEY=` / `PUSHER_APP_SECRET=` / `PUSHER_APP_ID=` / `PUSHER_APP_CLUSTER=` 追記（NFR-notification-008）
 - [ ] `.env` の `BROADCAST_DRIVER` を Basic では `null`、Advance では `pusher` に切替可能と明記
 - [ ] `config/broadcasting.php` の `pusher` connection 設定確認（Wave 0b で公開済前提）
-- [ ] 全 7 個の Notification クラスに `broadcastOn(): PrivateChannel` / `broadcastWith(): array` を実装（REQ-notification-120, REQ-notification-121）
+- [ ] 全 10 個の Notification クラスに `broadcastOn(): PrivateChannel` / `broadcastWith(): array` を実装（REQ-notification-120, REQ-notification-121）
 - [ ] `resources/js/notification/realtime.js`（Echo subscribe + バッジ +1 / ドロップダウン先頭追加ロジック、素の JS）（REQ-notification-122）
 - [ ] `resources/js/app.js` から `realtime.js` を import + `<meta name="auth-user-id" content="{{ auth()->id() }}">` を `views/layouts/app.blade.php` に追加
 - [ ] `routes/channels.php` の認可確認（Step 5 で実施済）
@@ -144,16 +155,19 @@
 > 各テストは `Notification::fake()` + `Notification::assertSentTo(...)` を基本パターンとして実装する（NFR-notification-009）。
 
 - [ ] `BaseNotificationTest`（via が `['database', 'mail']` を返す + Advance 時 `'broadcast'` 含む、`__construct` で id が ULID 化）（REQ-notification-020, REQ-notification-021, REQ-notification-002）
-- [ ] 各 7 Notification クラスに対する toDatabase / toMail / broadcastOn / broadcastWith 単体テスト（NFR-notification-009）
+- [ ] 各 10 Notification クラスに対する toDatabase / toMail / broadcastOn / broadcastWith 単体テスト（NFR-notification-009）
 
 ### ラッパー Action（`tests/Feature/UseCases/Notification/`）
 
-- [ ] `NotifyChatMessageReceivedActionTest`（コーチ送信時のみ通知発火 / 受講生送信時スキップ / withdrawn skip）（REQ-notification-024, REQ-notification-026, REQ-notification-031, REQ-notification-032）
+- [ ] `NotifyChatMessageReceivedActionTest`（コーチ送信時は受講生通知 / 受講生送信時はコーチ通知 / コーチ未割当 skip / withdrawn skip）（REQ-notification-024, REQ-notification-026, REQ-notification-031, REQ-notification-032）
 - [ ] `NotifyQaReplyReceivedActionTest`（自己回答 skip / 通常通知 dispatch）（REQ-notification-041）
 - [ ] `NotifyMockExamGradedActionTest`（受験者通知 dispatch）（REQ-notification-050）
 - [ ] `NotifyCompletionApprovedActionTest`（受講生通知 dispatch + Mail 内 URL 含有）（REQ-notification-060, REQ-notification-061）
+- [ ] `NotifyMeetingRequestedActionTest`（コーチ通知 dispatch）（REQ-notification-071）
 - [ ] `NotifyMeetingApprovedActionTest`（受講生通知 dispatch + Mail 内 meeting_url_snapshot 含有）（REQ-notification-070）
-- [ ] `NotifyMeetingReminderActionTest`（同一 meeting_id で 2 回目 skip）（REQ-notification-072, NFR-notification-007）
+- [ ] `NotifyMeetingRejectedActionTest`（受講生通知 dispatch + Mail 内 rejected_reason 含有）（REQ-notification-072）
+- [ ] `NotifyMeetingCanceledActionTest`（受講生キャンセル → コーチ通知 / コーチキャンセル → 受講生通知）（REQ-notification-073）
+- [ ] `NotifyMeetingReminderActionTest`（(meeting_id, window) ペアで 2 回目 skip、受講生 + コーチ両方に dispatch）（REQ-notification-074, REQ-notification-076, NFR-notification-007）
 - [ ] `NotifyAdminAnnouncementActionTest`（受信者 status active のみ dispatch）（REQ-notification-024, REQ-notification-081）
 
 ### 通知一覧操作（`tests/Feature/Http/Notification/`）
@@ -168,12 +182,12 @@
 - [ ] `IndexTest`（admin のみアクセス可 / coach / student は 403）（REQ-notification-087, REQ-notification-113, REQ-notification-114）
 - [ ] `StoreTest`（target_type ごとの対象解決 + Notification::fake で assertSentTo の件数アサート + dispatched_count / dispatched_at 反映）（REQ-notification-081, REQ-notification-082, REQ-notification-083, REQ-notification-084）
 - [ ] `StoreInvalidTargetTest`（target_type と target_* の不整合で 422）（REQ-notification-012, REQ-notification-013, NFR-notification-003）
-- [ ] `StoreTargetNotFoundTest`（指定 certification / user が SoftDelete 済 / withdrawn で 422 or 空配信）（NFR-notification-003）
+- [ ] `StoreTargetNotFoundTest`(指定 certification / user が SoftDelete 済 / withdrawn で 422 or 空配信）（NFR-notification-003）
 - [ ] `ShowTest`（admin のみ閲覧可）（REQ-notification-088）
 
 ### Schedule Command（`tests/Feature/Console/Notification/`）
 
-- [ ] `SendMeetingRemindersCommandTest`（前日範囲 Meeting 抽出 + `NotifyMeetingReminderAction` 呼出 + 重複起動で 2 回目 skip）（REQ-notification-071, REQ-notification-072）
+- [ ] `SendMeetingRemindersCommandTest`（`--window=eve` で前日範囲 Meeting 抽出 + 通知 dispatch / `--window=one_hour_before` で +55..65min 範囲抽出 + 通知 dispatch / 重複起動で 2 回目 skip）（REQ-notification-074, REQ-notification-076）
 
 ### Policy（`tests/Unit/Policies/`）
 
@@ -191,18 +205,25 @@
 - [ ] `sail artisan test --filter=AdminAnnouncement` 通過
 - [ ] `sail artisan migrate:fresh --seed` 後、開発用シーダーで以下を再現確認:
   - 受講生でログイン → TopBar 通知ベルバッジ表示
-  - コーチから受講生に chat 送信 → 受講生 `/notifications` に 1 件追加（受講生からコーチへ送信時は通知発生しないことも確認）
+  - コーチから受講生に chat 送信 → 受講生 `/notifications` に 1 件追加
+  - 受講生からコーチに chat 送信 → コーチ `/notifications` に 1 件追加（双方向）
   - admin が「全 active 受講生」宛にお知らせ配信 → 各受講生 `/notifications` に 1 件追加 + Mailpit（http://localhost:8025）でメール確認
   - 各通知行クリック → 既読化 + 関連画面遷移
   - 「全件既読」ボタン → 一括既読化
   - サイドバー「通知」のバッジ件数が連動更新
   - 受講生で修了申請 → admin 通知 **0 件** であること（admin は dashboard 確認）
+  - 受講生が面談予約申請 → コーチ `/notifications` に「面談予約申請」通知 1 件
   - コーチ承認 → 受講生 `/notifications` に「面談承認」通知 1 件
+  - コーチ拒否 → 受講生 `/notifications` に「面談拒否」通知 1 件（rejected_reason 含む）
+  - 受講生キャンセル → コーチ `/notifications` に「面談キャンセル」通知 1 件
+  - コーチキャンセル → 受講生 `/notifications` に「面談キャンセル」通知 1 件
   - 模擬試験提出 → 採点完了後に受験者 `/notifications` に 1 件
 - [ ] Schedule Command 手動実行:
-  - `sail artisan notifications:send-meeting-reminders` を翌日 approved の Meeting がある状態で実行
-  - 1 回目: 当事者の通知一覧に「面談リマインド」が 1 件追加されること
-  - 2 回目（重複起動シミュレーション）: 同 Meeting の重複通知が **追加されない**ことを確認
+  - `sail artisan notifications:send-meeting-reminders --window=eve` を翌日 approved の Meeting がある状態で実行
+  - 1 回目: 受講生 + コーチ両方の通知一覧に「面談リマインド（前日）」が 1 件追加されること
+  - 2 回目（重複起動シミュレーション）: 同 `(meeting_id, window)` の重複通知が **追加されない**ことを確認
+  - `sail artisan notifications:send-meeting-reminders --window=one_hour_before` を 1h 後 approved の Meeting がある状態で実行 → 受講生 + コーチ両方に「面談リマインド（1h 前）」が追加されること
+  - 同 Meeting に対して `eve` と `one_hour_before` の両方が独立して配信されること（window 単位の独立性）
 - [ ] Queue Worker 起動確認: `sail artisan queue:work --queue=default,notifications --tries=3 --backoff=10` で Mail 配信が非同期化されること（REQ-notification-124, REQ-notification-125）
 - [ ] **Advance Broadcasting 動作確認**（Pusher 環境設定後）:
   - `BROADCAST_DRIVER=pusher` 設定 + `sail npm run dev` でフロント起動

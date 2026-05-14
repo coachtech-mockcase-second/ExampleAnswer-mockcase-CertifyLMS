@@ -911,10 +911,19 @@ class ProgressService
     {
         return $denom === 0 ? 0.0 : round($num / $denom, 4);
     }
+
+    /**
+     * 複数 Enrollment の進捗集計を 1 リクエストで束ねる（[[analytics-export]] が利用）。
+     * 戻り値: Collection<string, ProgressSummary>（key=enrollment_id）
+     */
+    public function batchSummarize(Collection $enrollments): Collection
+    {
+        return $enrollments->keyBy('id')->map(fn ($e) => $this->summarize($e));
+    }
 }
 ```
 
-責務: 単一の `JOIN` クエリで Section / Chapter / Part 階層を一気に取得し、Eloquent Collection で集計。1 Enrollment あたり 1 クエリ。
+責務: 単一の `JOIN` クエリで Section / Chapter / Part 階層を一気に取得し、Eloquent Collection で集計。1 Enrollment あたり 1 クエリ。`batchSummarize` は naïve N 回呼出のラッパーで、analytics-export 等のバッチ処理が「Service の単発呼出を for ループで叩く」のではなく Service の責務として束ねるための表示用インターフェース（最適化が必要になれば実装側でクエリ統合）。
 
 #### `App\Services\StreakService`
 
@@ -1120,6 +1129,29 @@ class StagnationDetectionService
                 ->whereNull('deleted_at'))
             ->with(['user', 'certification', 'assignedCoach'])
             ->get();
+    }
+
+    /**
+     * 複数 Enrollment の最終活動日時を 1 クエリで取得（[[analytics-export]] が利用）。
+     * 戻り値: Collection<string, ?Carbon>（key=enrollment_id、未活動は null）
+     */
+    public function batchLastActivityAt(Collection $enrollments): Collection
+    {
+        $enrollmentIds = $enrollments->pluck('id');
+        if ($enrollmentIds->isEmpty()) {
+            return collect();
+        }
+
+        $rows = LearningSession::query()
+            ->whereIn('enrollment_id', $enrollmentIds)
+            ->whereNull('deleted_at')
+            ->selectRaw('enrollment_id, MAX(started_at) AS last_started_at')
+            ->groupBy('enrollment_id')
+            ->get();
+
+        $map = $rows->keyBy('enrollment_id')->map(fn ($r) => Carbon::parse($r->last_started_at));
+
+        return $enrollments->keyBy('id')->map(fn ($e) => $map->get($e->id));
     }
 
     private function threshold(): Carbon
