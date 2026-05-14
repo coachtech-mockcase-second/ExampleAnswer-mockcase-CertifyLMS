@@ -57,10 +57,10 @@
 - [ ] ドメイン例外: `app/Exceptions/QaBoard/QaThreadAlreadyResolvedException` extends `ConflictHttpException`（NFR-qa-board-003）
 - [ ] ドメイン例外: `app/Exceptions/QaBoard/QaThreadNotResolvedException` extends `ConflictHttpException`（NFR-qa-board-003）
 
-## Step 5: Notification
+## Step 5: Notification（[[notification]] 所有、本 Feature では起点呼出のみ）
 
-- [ ] `app/Notifications/QaReplyCreatedNotification`（`ShouldQueue` 実装、`via()` で `User->enabledChannelsFor('qa_reply_created')` 参照、`toMail()` で件名・本文・抜粋・action リンク、`toDatabase()` で `qa_thread_id` / `qa_reply_id` / `replier_user_id` / `replier_name` / `thread_title` 保存）（REQ-qa-board-110, REQ-qa-board-111, REQ-qa-board-112, REQ-qa-board-113）
-- [ ] `resources/views/notifications/_qa_reply_created.blade.php` partial 追加（[[notification]] 一覧画面でのレンダリング、`replier_name さんから「{thread_title}」に回答が届きました` 形式）（REQ-qa-board-112）
+- [ ] `App\UseCases\QaReply\StoreAction` 内で `app(NotifyQaReplyReceivedAction::class)($reply)` を呼び出し（自己回答ガード + 受信者解決 + Notification dispatch は [[notification]] 所有のラッパー側で処理）（REQ-qa-board-110, REQ-qa-board-111）
+- [ ] Notification クラス本体（`App\Notifications\QaReplyReceivedNotification`）/ Mail テンプレ / `toDatabase` ペイロード設計は **[[notification]] spec で確定**（REQ-notification-040, REQ-notification-042, REQ-notification-043 を参照）。本 Feature では Notification クラスを新設しない
 
 ## Step 6: Blade ビュー
 
@@ -98,7 +98,7 @@
 - [ ] `tests/Feature/UseCases/QaThread/DestroyActionTest`（回答 0 件で削除 / 回答ありで `QaThreadHasRepliesException` / SoftDelete 済回答のみでも例外）（REQ-qa-board-050, REQ-qa-board-051）
 - [ ] `tests/Feature/UseCases/QaThread/ResolveActionTest` / `UnresolveActionTest`（状態遷移 + 重複時の例外）（REQ-qa-board-093, REQ-qa-board-094）
 - [ ] `tests/Feature/UseCases/QaReply/StoreActionTest`（通知 dispatch 条件分岐 / 自己回答時に Notification::fake で 0 件確認）（REQ-qa-board-065, REQ-qa-board-110）
-- [ ] `tests/Unit/Notifications/QaReplyCreatedNotificationTest`（`via()` が `UserNotificationSetting` の ON / OFF を反映 / `toMail()` 件名・本文 / `toDatabase()` ペイロード）（REQ-qa-board-110〜113）
+- [ ] `tests/Unit/Notifications/QaReplyReceivedNotificationTest`（[[notification]] 側で実装する Notification クラス本体のテスト。本 Feature では `tests/Feature/UseCases/QaReply/StoreActionTest` で `Notification::fake` + `assertSentTo` を使った dispatch 検証のみ実装）（REQ-qa-board-110〜113）
 - [ ] `tests/Feature/SidebarBadgeComposerTest`（coach 担当資格未回答件数の集計確認 / student バッジ非表示 / 既に回答ありスレッドが集計から除外されること）（REQ-qa-board-120〜122）
 
 ## Step 9: 動作確認 & 整形

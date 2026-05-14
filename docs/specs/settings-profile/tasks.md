@@ -2,16 +2,11 @@
 
 > 1タスク = 1コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
 > 関連要件 ID は `requirements.md` の `REQ-settings-profile-NNN` / `NFR-settings-profile-NNN` を参照。
-> 本 Feature は新規モデル `UserNotificationSetting` のみ追加。`User` / `CoachAvailability` は他 Feature 所有のものを Read / Write。
+> 本 Feature は **新規モデルを追加しない**。`User` / `CoachAvailability` は他 Feature 所有のものを Read / Write。通知設定 UI は採用しない（[[notification]] が全通知 DB+Mail 固定送信、Phase 0 合意）。
 
 ## Step 1: Migration & Model & Enum
 
-- [ ] migration: `create_user_notification_settings_table`（ULID 主キー / `user_id` foreignUlid / `notification_type` string / `channel` string / `enabled` boolean / timestamps / 複合 UNIQUE `(user_id, notification_type, channel)`、SoftDeletes は採用しない）（REQ-settings-profile-040）
-- [ ] Enum: `NotificationType`（7 cases: `StagnationReminder` / `MockExamGraded` / `CompletionApproved` / `MeetingApproved` / `ChatMessageReceived` / `QaReplyReceived` / `AdminAnnouncement` + `label()`）（REQ-settings-profile-041）
-- [ ] Enum: `NotificationChannel`（2 cases: `Database` / `Mail` + `label()`）（REQ-settings-profile-042）
-- [ ] Model: `UserNotificationSetting`（fillable / casts / `belongsTo(User::class)` / 静的ヘルパ `isEnabled(User, NotificationType, NotificationChannel): bool` でデフォルト true）（REQ-settings-profile-040, REQ-settings-profile-045, NFR-settings-profile-005）
-- [ ] Model 拡張: `User` に `notificationSettings(): HasMany` リレーションを追加
-- [ ] Factory: `UserNotificationSettingFactory`（state `enabled()` / `disabled()`）
+> 通知設定マトリクス基盤（`UserNotificationSetting` / `NotificationType` Enum / `NotificationChannel` Enum / Factory）は採用しないため、本 Step のタスクなし。新規モデル・Migration は不要。
 
 ## Step 2: Policy
 
@@ -30,7 +25,6 @@
   - `POST /settings/avatar` → `AvatarController::store` (`settings.avatar.store`)
   - `DELETE /settings/avatar` → `AvatarController::destroy` (`settings.avatar.destroy`)
   - `PUT /settings/password` → `PasswordController::update` (`settings.password.update`)
-  - `PUT /settings/notifications` → `NotificationSettingController::update` (`settings.notifications.update`)
   - `POST /settings/withdraw` → `SelfWithdrawController` (`settings.withdraw`)
   - `role:coach` group 内に `Route::resource('availability', AvailabilityController::class)->only(['index', 'store', 'update', 'destroy'])`（REQ-settings-profile-006, REQ-settings-profile-080）
 - [ ] `app/Providers/FortifyServiceProvider` で `Fortify::routes(false)` 化または本 Feature ルートが Fortify 標準 `/user/password` を上書きする設定（REQ-settings-profile-030）
@@ -40,7 +34,6 @@
 - [ ] `ProfileController` — `edit` / `update`（薄く保つ、Action を DI）（REQ-settings-profile-010, REQ-settings-profile-011, REQ-settings-profile-014）
 - [ ] `AvatarController` — `store` / `destroy`（REQ-settings-profile-021, REQ-settings-profile-023）
 - [ ] `PasswordController` — `update`（REQ-settings-profile-031, REQ-settings-profile-034）
-- [ ] `NotificationSettingController` — `update`（REQ-settings-profile-044, REQ-settings-profile-046）
 - [ ] `SelfWithdrawController` — `__invoke`（single-action、`Auth::logout` + session 破棄を Controller 層で実施）（REQ-settings-profile-050）
 - [ ] `AvailabilityController` — `index` / `store` / `update` / `destroy`（REQ-settings-profile-060, REQ-settings-profile-061, REQ-settings-profile-062, REQ-settings-profile-063）
 
@@ -49,7 +42,6 @@
 - [ ] `app/Http/Requests/Profile/UpdateRequest`（`name` required min:1 max:50 / `bio` nullable max:1000 / `meeting_url` nullable max:500 url、`authorize` で `updateSelf`）（REQ-settings-profile-011, REQ-settings-profile-012）
 - [ ] `app/Http/Requests/Avatar/StoreRequest`（`avatar` required file mimes:png,jpg,jpeg,webp max:2048）（REQ-settings-profile-020）
 - [ ] `app/Http/Requests/Password/UpdateRequest`（`current_password` required current_password / `password` required min:8 confirmed）（REQ-settings-profile-031, REQ-settings-profile-032, REQ-settings-profile-033）
-- [ ] `app/Http/Requests/NotificationSetting/UpdateRequest`（`settings` required array / `settings.*.*` boolean、keys ホワイトリストを動的構築）（REQ-settings-profile-044）
 - [ ] `app/Http/Requests/User/SelfWithdrawRequest`（`reason` nullable max:200、`authorize` で `withdrawSelf`）（REQ-settings-profile-050, REQ-settings-profile-051）
 - [ ] `app/Http/Requests/Availability/StoreRequest`（`day_of_week` required int between:1,7 / `start_time` H:i / `end_time` H:i after:start_time / `is_active` boolean）（REQ-settings-profile-061, REQ-settings-profile-064）
 - [ ] `app/Http/Requests/Availability/UpdateRequest`（StoreRequest 同等ルール、`authorize` のみ `update` Policy 呼出）（REQ-settings-profile-062）
@@ -62,12 +54,11 @@
 
 ### Action（UseCase）
 
-- [ ] `app/UseCases/Profile/EditAction`（ViewModel 構築: user + notificationSettings 14 マス + coach の availabilities）（REQ-settings-profile-010, REQ-settings-profile-043）
+- [ ] `app/UseCases/Profile/EditAction`（ViewModel 構築: user + coach の availabilities）（REQ-settings-profile-010）
 - [ ] `app/UseCases/Profile/UpdateAction`（DB::transaction + meeting_url の coach 限定処理 + `unset($validated['meeting_url'])` for non-coach）（REQ-settings-profile-011, REQ-settings-profile-012, REQ-settings-profile-013, NFR-settings-profile-001）
 - [ ] `app/UseCases/Avatar/StoreAction`（(1) Storage::disk('public')->putFileAs 新ファイル保存 → (2) DB::transaction で `users.avatar_url` UPDATE（失敗時は新ファイル削除でロールバック）→ (3) 旧ファイルを best-effort 削除、の3段階。新ファイル保存失敗時は `AvatarStorageFailedException`）（REQ-settings-profile-021, REQ-settings-profile-022, NFR-settings-profile-004）
 - [ ] `app/UseCases/Avatar/DestroyAction`（DB::transaction + Storage 削除 + `users.avatar_url = NULL`、ファイル不在は冪等）（REQ-settings-profile-023）
 - [ ] `app/UseCases/Password/UpdateAction`（DB::transaction + `Hash::make` で UPDATE）（REQ-settings-profile-031）
-- [ ] `app/UseCases/NotificationSetting/UpdateAction`（DB::transaction + 14 行 `upsert(uniqueBy: [user_id, notification_type, channel], update: [enabled, updated_at])`）（REQ-settings-profile-044, NFR-settings-profile-001）
 - [ ] `app/UseCases/User/SelfWithdrawAction`（status 競合 + admin 拒否チェック → DB::transaction + `User::withdraw()` + `UserStatusChangeService::record($user, UserStatus::Withdrawn, $user, $reason ?? '自己退会')`、`UserStatusChangeService` は [[user-management]] 所有）（REQ-settings-profile-050, REQ-settings-profile-051, REQ-settings-profile-052, REQ-settings-profile-053）
 - [ ] `app/UseCases/Availability/IndexAction`（自分の `CoachAvailability` を day_of_week / start_time 昇順で取得）（REQ-settings-profile-060）
 - [ ] `app/UseCases/Availability/StoreAction`（DB::transaction + `CoachAvailability::create(['coach_id' => auth ID, ...])`）（REQ-settings-profile-061）
@@ -84,9 +75,8 @@
 ### タブハブとパーシャル
 
 - [ ] `resources/views/settings/profile.blade.php`（`@extends('layouts.app')` + `<x-tabs>` でロール別タブ配列を構築 + `?tab=` パラメータで該当パーシャル include）（REQ-settings-profile-001, REQ-settings-profile-003, NFR-settings-profile-003）
-- [ ] `resources/views/settings/_partials/tab-profile.blade.php`（プロフィールフォーム + アバター アップロード / 削除ボタン + coach 限定 `meeting_url` フィールド + 学習時間目標への link 誘導 [[learning]]）（REQ-settings-profile-010, REQ-settings-profile-011, REQ-settings-profile-012, REQ-settings-profile-021, REQ-settings-profile-023）
+- [ ] `resources/views/settings/_partials/tab-profile.blade.php`（プロフィールフォーム + アバター アップロード / 削除ボタン + coach 限定 `meeting_url` フィールド + 学習時間目標への link 誘導 [[learning]]、すべてのフォームに `@csrf` 必須）（REQ-settings-profile-004, REQ-settings-profile-010, REQ-settings-profile-011, REQ-settings-profile-012, REQ-settings-profile-021, REQ-settings-profile-023, NFR-settings-profile-008）
 - [ ] `resources/views/settings/_partials/tab-password.blade.php`（パスワード変更フォーム、`current_password` / `password` / `password_confirmation` の3フィールド）（REQ-settings-profile-031）
-- [ ] `resources/views/settings/_partials/tab-notifications.blade.php`（14 マスのチェックボックステーブル、`<x-table>` + `<x-form.checkbox name="settings[{type}][{channel}]">`）（REQ-settings-profile-043, REQ-settings-profile-044）
 - [ ] `resources/views/settings/_partials/tab-withdraw.blade.php`（`<x-modal>` で確認 + `<x-form.textarea name="reason">` 任意、`@if(role !== Admin)` 全体ラップ）（REQ-settings-profile-050）
 
 ### 面談可能時間枠ページ
@@ -116,9 +106,9 @@
 - [ ] `tests/Feature/Http/Profile/EditTest.php`
   - `test_authenticated_user_can_view_profile_page`
   - `test_unauthenticated_user_is_redirected_to_login`
-  - `test_admin_sees_3_tabs_without_withdraw`
-  - `test_coach_sees_4_tabs_including_withdraw`
-  - `test_student_sees_4_tabs_including_withdraw`
+  - `test_admin_sees_2_tabs_without_withdraw`
+  - `test_coach_sees_3_tabs_including_withdraw`
+  - `test_student_sees_3_tabs_including_withdraw`
   - `test_coach_sees_meeting_url_field`
   - `test_student_does_not_see_meeting_url_field`
 - [ ] `tests/Feature/Http/Profile/UpdateTest.php`
@@ -145,10 +135,6 @@
   - `test_password_change_fails_when_current_password_is_wrong`
   - `test_password_change_fails_when_new_password_is_less_than_8_chars`
   - `test_password_change_fails_when_confirmation_does_not_match`
-- [ ] `tests/Feature/Http/NotificationSetting/UpdateTest.php`
-  - `test_user_can_toggle_each_of_14_cells`
-  - `test_default_isEnabled_is_true_when_no_row_exists`
-  - `test_partial_submission_does_not_delete_existing_unrelated_rows`
 - [ ] `tests/Feature/Http/User/SelfWithdrawTest.php`（entity = User、`SelfWithdrawController::__invoke` に対応）
   - `test_student_can_self_withdraw`
   - `test_coach_can_self_withdraw`
@@ -184,14 +170,11 @@
   - `test_db_update_failure_rolls_back_new_file`（新ファイル保存後 DB UPDATE 失敗時に新ファイルが削除されることを assert）
   - `test_old_file_is_removed_after_successful_db_update`（best-effort 削除の成功時挙動）
   - `test_old_file_deletion_failure_does_not_break_user_flow`（best-effort 削除が失敗してもユーザーフロー継続）
-- [ ] `tests/Unit/Models/UserNotificationSettingTest.php`
-  - `test_isEnabled_returns_true_when_no_row_exists`
-  - `test_isEnabled_returns_stored_value_when_row_exists`
 
 ## Step 7: 動作確認 & 整形
 
 - [ ] `sail artisan test --filter=Settings` が全 PASS（NFR-settings-profile-007 + 上記テスト）
-- [ ] `sail artisan migrate:fresh --seed` で migration が正常実行され、`user_notification_settings` テーブル + UNIQUE 制約が反映されること
+- [ ] `sail artisan migrate:fresh --seed` で migration が正常実行されること（本 Feature では新規 migration なし、依存 Feature のみ）
 - [ ] `sail artisan storage:link` が完了し、`public/storage/avatars/` が writable であること（NFR-settings-profile-004）
 - [ ] `sail bin pint --dirty` で整形（NFR は `tech.md` 既定の Pint 規約に従う）
 - [ ] ブラウザ動作確認（admin / coach / student の 3 ロールで通し検証）:
@@ -199,10 +182,8 @@
   2. プロフィールタブで氏名 / 自己紹介を編集して保存 → flash success 表示 + 値が反映
   3. アバター画像（PNG/JPG/WebP）をアップロード → `<x-avatar>` に新画像が表示 / 削除ボタンで NULL に戻る
   4. パスワードタブで現在のパスワード + 新パスワード（8文字以上）で変更 → 再ログイン可能
-  5. 通知設定タブで 14 マスのチェックを変更 → 保存後にチェック状態が保持
-  6. （coach のみ）プロフィール画面に固定面談 URL フィールドが表示・保存できる
-  7. （coach のみ）`/settings/availability` で枠を追加・編集・削除できる
-  8. （coach 以外）`/settings/availability` にアクセスすると 403 ページ表示
-  9. （coach / student のみ）退会タブから理由を入力して退会 → `/login` にリダイレクト + flash + 再ログイン不可
-  10. （admin）退会タブが非表示 + `/settings/withdraw` 直 POST で 403
-- [ ] `sail artisan tinker` で `UserNotificationSetting::isEnabled($user, NotificationType::StagnationReminder, NotificationChannel::Mail)` を呼んでデフォルト true / 行追加後の値が正しく返ることを確認（[[notification]] 連携の前提）
+  5. （coach のみ）プロフィール画面に固定面談 URL フィールドが表示・保存できる
+  6. （coach のみ）`/settings/availability` で枠を追加・編集・削除できる
+  7. （coach 以外）`/settings/availability` にアクセスすると 403 ページ表示
+  8. （coach / student のみ）退会タブから理由を入力して退会 → `/login` にリダイレクト + flash + 再ログイン不可
+  9. （admin）退会タブが非表示 + `/settings/withdraw` 直 POST で 403

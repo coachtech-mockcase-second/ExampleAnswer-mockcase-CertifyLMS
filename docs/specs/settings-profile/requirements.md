@@ -2,25 +2,25 @@
 
 ## 概要
 
-Certify LMS の全ロール（admin / coach / student）が **自分自身のアカウント情報を管理する画面**。`/settings` 配下に、プロフィール表示・編集 / パスワード変更 / 通知設定 / 自己退会 を集約し、`/settings/availability` で coach のみ面談可能時間枠（`CoachAvailability`）を CRUD する。固定面談 URL（`users.meeting_url`）はプロフィール画面内で coach のみ編集可能。
+Certify LMS の全ロール（admin / coach / student）が **自分自身のアカウント情報を管理する画面**。`/settings` 配下に、プロフィール表示・編集 / パスワード変更 / 自己退会 を集約し、`/settings/availability` で coach のみ面談可能時間枠（`CoachAvailability`）を CRUD する。固定面談 URL（`users.meeting_url`）はプロフィール画面内で coach のみ編集可能。
 
 [[user-management]] が「**admin が他者を管理する画面**」を所有するのに対し、本 Feature は「**本人が自分自身をいじる画面**」を所有する責務分離（`product.md` Feature 一覧表 16 行目 + `frontend-ui-foundation.md`「ロール共通画面の責務分担」準拠）。
 
-本 Feature は **新規追加**として `UserNotificationSetting` モデル（通知種別 × channel × enabled の単一テーブル）を所有し、[[notification]] feature が `via()` 解決時に参照する。状態遷移（`active → withdrawn`）を伴う自己退会 Action は [[user-management]] の `UserStatusChangeService::record` を経由してログを記録する（actor は本人）。`CoachAvailability` モデル / `CoachAvailabilityPolicy` は [[mentoring]] が所有し、本 Feature はその上に **編集 UI（Controller / FormRequest / Blade）** を構築する。
+**通知設定 UI は提供しない**（[[notification]] が全通知 Database + Mail 両方を固定送信する設計、種別 × channel ごとの ON/OFF は不採用、Phase 0 の議論で受講生メリットと実装複雑度のバランス点として確定）。`UserNotificationSetting` モデル / `NotificationType` Enum / `NotificationChannel` Enum も新設しない。状態遷移（`active → withdrawn`）を伴う自己退会 Action は [[user-management]] の `UserStatusChangeService::record` を経由してログを記録する（actor は本人）。`CoachAvailability` モデル / `CoachAvailabilityPolicy` は [[mentoring]] が所有し、本 Feature はその上に **編集 UI（Controller / FormRequest / Blade）** を構築する。
 
 ## ロールごとのストーリー
 
-- **受講生（student）**: サイドバー「設定」から `/settings/profile` に遷移し、タブで「プロフィール」「パスワード」「通知設定」「退会」を切り替える。自分の氏名 / 自己紹介 / アイコン画像を更新する。パスワードは現在のパスワード照合の上で 8 文字以上に変更する。通知設定では学習途絶リマインドや模試採点完了などの 7 種別 × 2 channel について個別 ON/OFF できる。試験諦め等で退会したい場合は退会タブから理由を任意入力して自己退会する（即時ログアウト）。
+- **受講生（student）**: サイドバー「設定」から `/settings/profile` に遷移し、タブで「プロフィール」「パスワード」「退会」を切り替える。自分の氏名 / 自己紹介 / アイコン画像を更新する。パスワードは現在のパスワード照合の上で 8 文字以上に変更する。試験諦め等で退会したい場合は退会タブから理由を任意入力して自己退会する（即時ログアウト）。
 - **コーチ（coach）**: 上記に加え、プロフィール画面で **固定面談 URL** を編集できる。`/settings/availability` で面談可能時間枠（曜日 × 開始 / 終了時刻 × 有効フラグ）を CRUD する。
-- **管理者（admin）**: プロフィール / パスワード / 通知設定タブは利用可能。**自己退会タブと自己退会 Action は admin に対しては存在しない / 拒否される**（最後の admin 消失リスク防止 + [[user-management]] `SelfWithdrawForbiddenException` と整合）。`/settings/availability` は 403。
+- **管理者（admin）**: プロフィール / パスワードタブは利用可能。**自己退会タブと自己退会 Action は admin に対しては存在しない / 拒否される**（最後の admin 消失リスク防止 + [[user-management]] `SelfWithdrawForbiddenException` と整合）。`/settings/availability` は 403。
 
 ## 受け入れ基準（EARS形式）
 
 ### 機能要件 — ルーティング・タブ構造
 
-- **REQ-settings-profile-001**: The system shall `/settings/profile` を **既定ページ** とする `/settings` 配下に、ロール共通画面として `/settings/profile` / `/settings/password` / `/settings/notifications` / `/settings/withdraw` の 4 サブページと、coach 限定の `/settings/availability` を提供する。ナビゲーションは「設定」サイドバーアイテム → `settings.profile.edit` 起点で、画面内タブで `?tab=profile` / `?tab=password` / `?tab=notifications` / `?tab=withdraw` 切替を可能とする。`/settings/availability` のみ別ページ（タブ内ではない）。
+- **REQ-settings-profile-001**: The system shall `/settings/profile` を **既定ページ** とする `/settings` 配下に、ロール共通画面として `/settings/profile` / `/settings/password` / `/settings/withdraw` の 3 サブページと、coach 限定の `/settings/availability` を提供する。ナビゲーションは「設定」サイドバーアイテム → `settings.profile.edit` 起点で、画面内タブで `?tab=profile` / `?tab=password` / `?tab=withdraw` 切替を可能とする。`/settings/availability` のみ別ページ（タブ内ではない）。
 - **REQ-settings-profile-002**: The system shall すべての `/settings/*` ルートを `auth` middleware で保護し、未認証アクセスはログイン画面へリダイレクトする。
-- **REQ-settings-profile-003**: While ユーザーが `/settings/profile` を閲覧している間, the system shall そのユーザーのロールに応じてタブ可視性を制御する: admin は「プロフィール / パスワード / 通知設定」の 3 タブ、coach / student は「プロフィール / パスワード / 通知設定 / 退会」の 4 タブを表示する。
+- **REQ-settings-profile-003**: While ユーザーが `/settings/profile` を閲覧している間, the system shall そのユーザーのロールに応じてタブ可視性を制御する: admin は「プロフィール / パスワード」の 2 タブ、coach / student は「プロフィール / パスワード / 退会」の 3 タブを表示する。
 - **REQ-settings-profile-004**: While coach がログインしている間, the system shall `/settings/profile` のプロフィール編集フォームに **固定面談 URL（`users.meeting_url`）** 入力欄を表示する。admin / student に対しては表示しない（フォーム送信側でも `role !== coach` の場合は当該フィールドを無視する）。
 - **REQ-settings-profile-005**: If admin が `/settings/withdraw` または `/settings/availability` に直接アクセスした場合, then the system shall HTTP 403（`AccessDeniedHttpException`、`errors/403.blade.php` 描画）で拒否する。
 - **REQ-settings-profile-006**: If coach 以外（student / admin）が `/settings/availability` に直接アクセスした場合, then the system shall HTTP 403 で拒否する。
@@ -48,23 +48,6 @@ Certify LMS の全ロール（admin / coach / student）が **自分自身のア
 - **REQ-settings-profile-033**: If `password` が 8 文字未満の場合, then the system shall FormRequest バリデーションエラー（日本語メッセージ）で拒否する。
 - **REQ-settings-profile-034**: When パスワード変更が成功した際, the system shall `/settings/profile?tab=password` にリダイレクトし、`session('status')` に Fortify 標準の `password-updated` ステータスメッセージを入れて `<x-flash>` 経由で表示する。
 
-### 機能要件 — 通知設定（UserNotificationSetting）
-
-- **REQ-settings-profile-040**: The system shall ULID 主キー / `user_id`（`users.id` FK、cascadeOnDelete なし）/ `notification_type` enum（後述 REQ-041）/ `channel` enum（`database` / `mail`）/ `enabled` boolean / timestamps を備えた `user_notification_settings` テーブルを提供する。soft delete は採用しない（履歴ではなく現在値のみ保持）。`(user_id, notification_type, channel)` の **複合 UNIQUE 制約** を持つ。
-- **REQ-settings-profile-041**: The system shall `NotificationType` PHP enum を以下 7 値で公開し、`label()` メソッドで日本語表示ラベルを返す。
-  - `StagnationReminder` (`stagnation_reminder`) — 学習途絶リマインド
-  - `MockExamGraded` (`mock_exam_graded`) — 模試採点完了
-  - `CompletionApproved` (`completion_approved`) — 修了認定承認
-  - `MeetingApproved` (`meeting_approved`) — 面談予約確定
-  - `ChatMessageReceived` (`chat_message_received`) — chat 新着
-  - `QaReplyReceived` (`qa_reply_received`) — Q&A 回答
-  - `AdminAnnouncement` (`admin_announcement`) — 管理者お知らせ
-- **REQ-settings-profile-042**: The system shall `NotificationChannel` PHP enum を `Database` (`database`) / `Mail` (`mail`) の 2 値で公開し、`label()` で「アプリ内通知」/「メール」を返す。
-- **REQ-settings-profile-043**: The system shall `GET /settings/notifications` で 7 種別 × 2 channel のチェックボックスマトリクス（14 マス）を表示する。各マスは当該ユーザーの `user_notification_settings.enabled` を反映し、対応行が未登録なら **デフォルト ON** とみなす。
-- **REQ-settings-profile-044**: When ユーザーが `PUT /settings/notifications` で通知設定フォームを送信した際, the system shall 送信された 14 マス分の値を単一トランザクション内で `upsert()` し、`(user_id, notification_type, channel)` をキーに `enabled` を更新する。送信フォームに存在しない通知種別 × channel 組合せ（将来追加された種別の後方互換等）はそのまま保持する。
-- **REQ-settings-profile-045**: The system shall `UserNotificationSetting::isEnabled(User $user, NotificationType $type, NotificationChannel $channel): bool` 静的ヘルパを提供し、対応行が存在しない場合は **デフォルト true** を返す。[[notification]] feature の `Notification::via()` 実装から本ヘルパを参照する設計とする（本 Feature は **マスタ + 設定 UI を提供**、参照は [[notification]] 側責務）。
-- **REQ-settings-profile-046**: When 通知設定の保存が成功した際, the system shall `/settings/profile?tab=notifications` にリダイレクトし、`session('success')` に「通知設定を更新しました。」を入れて表示する。
-
 ### 機能要件 — 自己退会（SelfWithdrawAction）
 
 - **REQ-settings-profile-050**: When coach / student のユーザーが `POST /settings/withdraw` を退会確認フォームから送信した際, the system shall `reason`（任意 / 最大 200 文字）を受け取り、単一トランザクション内で (1) [[auth]] の `User::withdraw()` ヘルパ呼出（`users.email` を `{ulid}@deleted.invalid` 形式へリネーム + `users.status = withdrawn` + `users.deleted_at = now()`）、(2) [[user-management]] の `UserStatusChangeService::record($user, UserStatus::Withdrawn, $user, $reason ?? '自己退会')` を呼ぶ（`$changedBy = $user` 本人）、(3) `Auth::logout()` + `session()->invalidate()` + `session()->regenerateToken()` でセッションを破棄、(4) `/login` へリダイレクト + `session('status')` に「退会が完了しました。」を入れる。
@@ -83,17 +66,16 @@ Certify LMS の全ロール（admin / coach / student）が **自分自身のア
 
 ### 機能要件 — 認可（Policy）
 
-- **REQ-settings-profile-080**: The system shall ロール存在確認用の middleware を本 Feature では新設せず、`/settings/availability` のみ `role:coach` middleware で保護する。`/settings/profile` / `/settings/password` / `/settings/notifications` / `/settings/withdraw` は `auth` のみで保護し、ロール別タブ可視・admin 自己退会拒否は Controller / Action 内の Policy ＆ ドメイン例外で表現する。
+- **REQ-settings-profile-080**: The system shall ロール存在確認用の middleware を本 Feature では新設せず、`/settings/availability` のみ `role:coach` middleware で保護する。`/settings/profile` / `/settings/password` / `/settings/withdraw` は `auth` のみで保護し、ロール別タブ可視・admin 自己退会拒否は Controller / Action 内の Policy ＆ ドメイン例外で表現する。
 - **REQ-settings-profile-081**: The system shall `UserPolicy::updateSelf` / `UserPolicy::withdrawSelf` を本 Feature で **新設** し、`updateSelf(User $auth, User $target)` は `$auth->id === $target->id` の場合のみ true、`withdrawSelf` は `$auth->id === $target->id && $auth->role !== UserRole::Admin` の場合のみ true を返す（admin 自己退会の二重防衛、業務制約は `AdminSelfWithdrawForbiddenException` で表現済みだが Policy 側にもガードを置く）。[[user-management]] が所有する `UserPolicy::update` / `withdraw` とは別メソッドとして共存させる（admin 経由 vs 本人経由を Policy 層で分ける）。
 - **REQ-settings-profile-082**: The system shall `CoachAvailabilityPolicy`（[[mentoring]] 所有）の `viewAny` / `create` / `update` / `delete` を `/settings/availability/*` ルートでも利用する。本 Feature では新設しない。
 
 ### 非機能要件
 
-- **NFR-settings-profile-001**: The system shall 状態変更を伴うすべての Action（`UpdateProfileAction` / `UpdateAvatarAction` / `DestroyAvatarAction` / `UpdateNotificationSettingsAction` / `SelfWithdrawAction` / `StoreAvailabilityAction` / `UpdateAvailabilityAction` / `DestroyAvailabilityAction`）を `DB::transaction()` で囲む。
+- **NFR-settings-profile-001**: The system shall 状態変更を伴うすべての Action（`UpdateProfileAction` / `UpdateAvatarAction` / `DestroyAvatarAction` / `SelfWithdrawAction` / `StoreAvailabilityAction` / `UpdateAvailabilityAction` / `DestroyAvailabilityAction`）を `DB::transaction()` で囲む。
 - **NFR-settings-profile-002**: The system shall ドメイン例外を `app/Exceptions/SettingsProfile/` 配下に配置する（`backend-exceptions.md` 準拠）: `AdminSelfWithdrawForbiddenException`（403）/ `AvatarStorageFailedException`（500）。`UserAlreadyWithdrawnException`（409）は [[user-management]] 所有のものをそのまま伝播する。
 - **NFR-settings-profile-003**: The system shall すべての画面を `layouts.app` 上で描画し、Wave 0b の Design System コンポーネント（`<x-button>` / `<x-form.*>` / `<x-modal>` / `<x-alert>` / `<x-card>` / `<x-tabs>` / `<x-flash>`）を再利用する（`frontend-blade.md` 共通コンポーネント API 準拠）。
 - **NFR-settings-profile-004**: The system shall アバター画像を `Storage::disk('public')` 配下に保存し、`public/storage` シンボリックリンク（`sail artisan storage:link`）経由で `/storage/avatars/{ulid}.{ext}` として配信する。**chat 添付や修了証 PDF が使う private driver は採用しない**（プロフィール画像は公開前提、`tech.md`「ファイル保存」方針準拠）。
-- **NFR-settings-profile-005**: The system shall `UserNotificationSetting::isEnabled` を [[notification]] feature の `Notification::via()` から **1 通知 = 1 クエリ** で参照可能にする（Eager Loading 不要のシンプル PK 検索）。本 Feature 側でキャッシュ層は持たない。
 - **NFR-settings-profile-006**: The system shall すべての日本語エラーメッセージを `lang/ja/validation.php` / `lang/ja/auth.php` およびドメイン例外コンストラクタで定義し、ビュー / FormRequest 内のマジック文字列は禁止する。
 - **NFR-settings-profile-007**: The system shall アバター画像のクライアント側検証（MIME / サイズ）は素の JS（`resources/js/settings-profile/avatar.js`）で実装し、サーバ側 MIME 検証と二重化する。`frontend-javascript.md` 規約準拠。
 - **NFR-settings-profile-008**: The system shall すべてのフォーム送信を CSRF トークン（`@csrf` + Laravel 標準 `VerifyCsrfToken` middleware）で保護する。`frontend-blade.md`「必須事項」準拠。
@@ -108,18 +90,17 @@ Certify LMS の全ロール（admin / coach / student）が **自分自身のア
 - **API トークン（Sanctum PAT）の発行 / 失効 UI** — **採用しない**。[[analytics-export]] は `.env` の共通 API キー方式（個人トークン不要）、[[quiz-answering]] の Advance SPA は Sanctum SPA 認証（Cookie ベース、Personal Access Token 不要）を採用するため、Personal Access Token の管理画面 / Action / Migration は LMS 全体で **不要**
 - **学習時間目標（`LearningHourTarget`）の編集 UI** — [[learning]] が `/learning/enrollments/{enrollment}/hour-target` で所有、`/settings/profile` からは link 誘導のみ
 - **`CoachAvailability` モデル / Migration / Policy 定義** — [[mentoring]] が所有、本 Feature は **編集 UI（Controller / FormRequest / Blade）のみ**
-- **`Notification::via()` チャンネル分岐ロジック** — [[notification]] が所有、本 Feature は `UserNotificationSetting::isEnabled` ヘルパのみ提供
+- **通知設定 UI（種別 × channel ON/OFF）** — **採用しない**。[[notification]] が全通知 Database + Mail 両方を固定送信する設計（product.md「## スコープ外」記載、Phase 0 議論で確定）。`UserNotificationSetting` モデル / `NotificationType` Enum / `NotificationChannel` Enum / `NotificationSettingController` / `tab-notifications.blade.php` は本 Feature では一切作らない
 - **退会時の `Enrollment` 削除 / cascade** — 採用しない（履歴として残す、[[enrollment]] が責務担保）
 - **`withdrawn → active` 復活フロー** — state diagram の終端、再招待は別 Invitation として新規発行（[[auth]] / [[user-management]]）
-- **通知設定のロール別表示制御**（例: student に admin_announcement を表示しない等）— **採用しない**。全ロールに 14 マスを共通表示（管理コスト低 + 受講生が「自分は管理者からの一斉通知を見ない」と決めるのは UX として違和感あり）。配信側（[[notification]] feature の `via()`）でロール × 通知種別の妥当性を判定する責務とする
 - **アバター画像の自動リサイズ / 圧縮** — Canvas API 等は採用しない（教育PJスコープ）。2MB 上限のみで運用
 
 ## 関連 Feature
 
 - **依存元**（本 Feature を利用する）:
-  - [[notification]]: `UserNotificationSetting::isEnabled($user, $type, $channel)` を `Notification::via()` から参照
   - [[mentoring]]: 本 Feature の `/settings/availability` 画面が `CoachAvailability` を CRUD して coach の空き枠を整備（mentoring 側の予約フローの前提条件）
   - [[dashboard]]: サイドバー「設定 [cog]」アイテムから `settings.profile.edit` ルートへ遷移
+  - [[notification]]: 通知設定 UI は不要（[[notification]] が全通知 DB+Mail 固定送信、`UserNotificationSetting` 等は本 Feature で新設しない）
 - **依存先**（本 Feature が前提とする）:
   - [[auth]]: `User` モデル、`UserRole` / `UserStatus` Enum、`User::withdraw()` ヘルパ、`auth` middleware、Fortify Password Update 機構
   - [[user-management]]: `UserStatusChangeService::record` を自己退会フローから呼出

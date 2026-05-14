@@ -117,4 +117,4 @@
 - **依存元**（本 Feature を利用する）:
   - [[notification]] — `NotifyNewChatMessageAction` の被呼び出し元、Database channel での通知 INSERT を提供。Advance Broadcasting 時は notification 側で全通知種別を TopBar 通知ベルへ push（chat はそのうちの 1 種別、chat 画面の即時更新ではない点に注意）
   - [[dashboard]] — coach Dashboard の「未対応 chat 件数」「未読 chat 件数」表示、`SidebarBadgeComposer` 経由で `chat-rooms` メニュー項目のバッジ
-  - [[settings-profile]] — `UserNotificationSetting` の `chat_new_message` トグル参照（受講生がコーチからの新着 chat 通知を OFF にできる、ただし未読バッジ自体は OFF 不可）
+  - [[settings-profile]] — 通知設定 UI は採用しないため依存なし（[[notification]] が DB+Mail 固定送信、`UserNotificationSetting` 参照は不要）

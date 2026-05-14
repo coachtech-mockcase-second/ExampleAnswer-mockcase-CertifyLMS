@@ -287,10 +287,10 @@ class StoreAction
 
 責務:
 1. `qa_replies` に INSERT
-2. `$replier->id !== $thread->user_id` なら `$thread->user->notify(new QaReplyCreatedNotification($reply))` を発行
+2. `app(NotifyQaReplyReceivedAction::class)($reply)` を発火（自己回答ガード + 受信者解決 + Notification dispatch は [[notification]] 所有のラッパー側で処理）
 3. `DB::transaction` でラップ
 
-> 通知の channel 選択（`via()`）は `QaReplyCreatedNotification` 側で `UserNotificationSetting` を参照して判定。本 Action は dispatch のみで条件分岐を持たない。
+> 通知の Notification クラス本体（`QaReplyReceivedNotification`）と `via()` ロジック（`['database', 'mail']` 固定送信、ユーザー設定 UI 不採用方針、Phase 0 確定）は [[notification]] が所有。本 Action は dispatch 起点のみ提供し、条件分岐 / channel 選択を持たない。
 
 #### `QaReply\UpdateAction`
 
@@ -540,47 +540,7 @@ public function rules(): array {
 
 ### Notification
 
-`app/Notifications/QaReplyCreatedNotification.php`:
-
-```php
-class QaReplyCreatedNotification extends Notification implements ShouldQueue
-{
-    use Queueable;
-
-    public function __construct(public readonly QaReply $reply) {}
-
-    public function via(User $notifiable): array
-    {
-        return $notifiable->enabledChannelsFor('qa_reply_created');
-    }
-
-    public function toMail(User $notifiable): MailMessage
-    {
-        $thread = $this->reply->thread;
-        $excerpt = mb_substr($this->reply->body, 0, 200);
-        return (new MailMessage)
-            ->subject('【Certify LMS】質問への回答が届きました')
-            ->greeting("{$notifiable->name} さん")
-            ->line("{$this->reply->user->name} さんから回答が届きました。")
-            ->line("【質問】{$thread->title}")
-            ->line("【回答抜粋】{$excerpt}")
-            ->action('回答を見る', route('qa-board.show', $thread));
-    }
-
-    public function toDatabase(User $notifiable): array
-    {
-        return [
-            'qa_thread_id' => $this->reply->qa_thread_id,
-            'qa_reply_id' => $this->reply->id,
-            'replier_user_id' => $this->reply->user_id,
-            'replier_name' => $this->reply->user->name,
-            'thread_title' => $this->reply->thread->title,
-        ];
-    }
-}
-```
-
-> `User->enabledChannelsFor('qa_reply_created')` は [[settings-profile]] が公開する `UserNotificationSetting` 参照ヘルパ。本 spec では契約として参照のみ。両 channel OFF なら空配列が返り通知自体が送られない。
+`App\Notifications\QaReplyReceivedNotification` クラス本体は **[[notification]] が所有**（`extends BaseNotification` で `via()` は `['database', 'mail']` 固定送信、ユーザー設定 UI は不採用方針、Phase 0 確定）。本 Feature は `App\UseCases\QaReply\StoreAction` から `app(NotifyQaReplyReceivedAction::class)($reply)` を呼ぶ起点のみ提供する。Notification クラスのシグネチャ・toDatabase / toMail / broadcastOn / broadcastWith の実装は [[notification]] design.md 参照。
 
 ## Blade ビュー
 

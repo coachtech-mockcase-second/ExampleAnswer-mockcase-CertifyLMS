@@ -114,10 +114,10 @@
 
 ### 機能要件 — 通知連携
 
-- **REQ-qa-board-110**: The system shall `App\Notifications\QaReplyCreatedNotification` を `database` + `mail` channel で実装する。
-- **REQ-qa-board-111**: The system shall `QaReplyCreatedNotification::toMail()` の件名を「【Certify LMS】質問への回答が届きました」とし、本文に回答者名 / スレッドタイトル / 回答本文の冒頭 200 文字 / スレッド詳細 URL を含める。
-- **REQ-qa-board-112**: The system shall `QaReplyCreatedNotification::toDatabase()` で `qa_thread_id` / `qa_reply_id` / `replier_user_id` / `replier_name` / `thread_title` を保存し、[[notification]] 一覧画面で適切にレンダリングできるペイロードとする。
-- **REQ-qa-board-113**: The system shall 受講生の通知設定（[[settings-profile]] の `UserNotificationSetting`）で `qa_reply_created` × `mail` を OFF にした場合、`mail` channel は送らず `database` channel のみ送る。両方 OFF なら通知自体を送らない。
+- **REQ-qa-board-110**: The system shall `App\Notifications\QaReplyReceivedNotification`（[[notification]] が所有）を `App\UseCases\QaReply\StoreAction` から `app(NotifyQaReplyReceivedAction::class)($reply)` で発火する。Notification クラス本体・Mail テンプレ・data 構造の定義は本 Feature では持たず [[notification]] spec に委ねる。
+- **REQ-qa-board-111**: The system shall 自己回答時（`$reply->user_id === $reply->thread->user_id`）の通知発火を `NotifyQaReplyReceivedAction` 側でスキップする（本 Feature 側のガードは不要、ラッパー Action 内で処理）。
+- **REQ-qa-board-112**: The system shall 通知の Database channel ペイロード設計（`qa_thread_id` / `qa_reply_id` / `replier_user_id` / `replier_name` / `thread_title` / `body_preview`）を [[notification]] spec REQ-notification-043 で確定とし、本 Feature は dispatch 起点のみ提供する。
+- **REQ-qa-board-113**: The system shall 通知配信の channel 選択ロジックを持たない（[[notification]] が `Database` + `Mail` 両方を **固定送信**、ユーザー設定 UI は不採用方針、Phase 0 議論で確定）。
 
 ### 機能要件 — サイドバーバッジ
 
@@ -162,8 +162,7 @@
 - **依存先**（本 Feature が前提とする）
   - [[auth]] — `User` モデル + `UserRole` Enum + `User.status = active` 前提
   - [[certification-management]] — `Certification` モデル + `Certification.status` Enum（`published` フィルタ）+ `CertificationCoachAssignment`（コーチ担当資格の検証）
-  - [[notification]] — `database` + `mail` channel の通知配信基盤
-  - [[settings-profile]] — `UserNotificationSetting` の `qa_reply_created` × channel 設定の参照
+  - [[notification]] — `database` + `mail` channel 固定送信の通知配信基盤（`NotifyQaReplyReceivedAction` ラッパー + `QaReplyReceivedNotification` クラス本体を所有）
 
 - **依存元**（本 Feature を利用する）
   - [[dashboard]] — coach ダッシュボードの「未対応 Q&A」カウント / リンク（本 Feature の `SidebarBadgeComposer` 集計を共有）
