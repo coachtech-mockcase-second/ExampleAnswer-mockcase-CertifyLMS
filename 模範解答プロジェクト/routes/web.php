@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\OnboardingController;
+use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,6 +41,21 @@ Route::middleware('auth')->group(function () {
     // [[notification]] が実装される
     Route::view('/notifications', 'placeholders.coming-soon', ['feature' => 'notification'])
         ->name('notifications.index');
+});
+
+// [[user-management]] admin 専用
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('users', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('users/{user}', [UserController::class, 'show'])
+        ->withTrashed()
+        ->name('admin.users.show');
+    Route::patch('users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::patch('users/{user}/role', [UserController::class, 'updateRole'])->name('admin.users.updateRole');
+    Route::post('users/{user}/withdraw', [UserController::class, 'withdraw'])->name('admin.users.withdraw');
+
+    Route::post('invitations', [InvitationController::class, 'store'])->name('admin.invitations.store');
+    Route::post('users/{user}/resend-invitation', [InvitationController::class, 'resend'])->name('admin.invitations.resend');
+    Route::delete('invitations/{invitation}', [InvitationController::class, 'destroy'])->name('admin.invitations.destroy');
 });
 
 // 開発専用: コンポーネントショーケース (APP_ENV=local のみ表示)

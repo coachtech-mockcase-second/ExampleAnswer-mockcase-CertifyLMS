@@ -13,3 +13,4 @@ memo/
 # macOS のノイズ
 .DS_Store
 **/.DS_Store
+.tmp-design-compare/
