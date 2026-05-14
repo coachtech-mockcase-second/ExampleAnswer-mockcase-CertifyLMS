@@ -6,3 +6,10 @@ memo/
 
 # Worktree（並列実装用、各セッションで一時的に作成、リポには含めない）
 .claude/worktrees/
+
+# 一時的な design 比較スクリーンショット（Playwright で取得、Git には含めない）
+/.tmp-design-compare/
+
+# macOS のノイズ
+.DS_Store
+**/.DS_Store

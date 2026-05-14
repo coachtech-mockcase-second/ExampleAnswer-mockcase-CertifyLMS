@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" width="280" height="64">
+  <defs>
+    <linearGradient id="gw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FBBF24"></stop>
+      <stop offset="55%" stop-color="#34D399"></stop>
+      <stop offset="100%" stop-color="#0D9488"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#gw)"></rect>
+  <ellipse cx="22" cy="18" rx="10" ry="5" fill="#FFFFFF" opacity="0.30"></ellipse>
+  <path d="M46 22.5 a16 16 0 1 0 0 19" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none"></path>
+  <circle cx="46" cy="32" r="3.2" fill="#FFFFFF"></circle>
+  <text x="78" y="40" font-family="Bricolage Grotesque, Inter, sans-serif" font-size="26" font-weight="800" fill="#0F2E2A" letter-spacing="-0.5">Certify</text>
+  <text x="190" y="40" font-family="Bricolage Grotesque, Inter, sans-serif" font-size="26" font-weight="500" fill="#0D9488" letter-spacing="-0.5">LMS</text>
+</svg>

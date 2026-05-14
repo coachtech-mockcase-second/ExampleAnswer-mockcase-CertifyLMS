@@ -6,15 +6,15 @@
 
 ## Step 1: Migration & Model
 
-- [ ] `database/migrations/{date}_create_user_status_logs_table.php` — ULID 主キー / `user_id` FK to users / `changed_by_user_id` FK to users nullable / `status` string / `changed_at` datetime / `changed_reason` string nullable max 200 / timestamps + INDEX (`user_id`, `changed_by_user_id`, `changed_at`)。softDelete は無し（REQ-user-management-060, 061）
-- [ ] `app/Models/UserStatusLog.php` — `HasUlids`、`$fillable` / `$casts`（`status` を `UserStatus` Enum cast、`changed_at` を datetime）、`belongsTo(User::class, 'user_id')` + `belongsTo(User::class, 'changed_by_user_id', 'changedBy')` の 2 リレーション、`changedBy` は `withTrashed()` を含めて解決可能にするアクセサもしくはリレーション定義（REQ-user-management-062）
-- [ ] `database/factories/UserStatusLogFactory.php` — `forUser(User $user)` / `bySystem()` / `byAdmin(User $admin)` の state を提供
-- [ ] `app/Models/User.php` への追記（[[auth]] 既存ファイルへの拡張）— `hasMany(UserStatusLog::class, 'user_id')` を `statusLogs()` として、`hasMany(UserStatusLog::class, 'changed_by_user_id')` を `statusChanges()` として追加（REQ-user-management-062）
+- [x] `database/migrations/{date}_create_user_status_logs_table.php` — ULID 主キー / `user_id` FK to users / `changed_by_user_id` FK to users nullable / `status` string / `changed_at` datetime / `changed_reason` string nullable max 200 / timestamps + INDEX (`user_id`, `changed_by_user_id`, `changed_at`)。softDelete は無し（REQ-user-management-060, 061）
+- [x] `app/Models/UserStatusLog.php` — `HasUlids`、`$fillable` / `$casts`（`status` を `UserStatus` Enum cast、`changed_at` を datetime）、`belongsTo(User::class, 'user_id')` + `belongsTo(User::class, 'changed_by_user_id', 'changedBy')` の 2 リレーション、`changedBy` は `withTrashed()` を含めて解決可能にするアクセサもしくはリレーション定義（REQ-user-management-062）
+- [x] `database/factories/UserStatusLogFactory.php` — `forUser(User $user)` / `bySystem()` / `byAdmin(User $admin)` の state を提供
+- [x] `app/Models/User.php` への追記（[[auth]] 既存ファイルへの拡張）— `hasMany(UserStatusLog::class, 'user_id')` を `statusLogs()` として、`hasMany(UserStatusLog::class, 'changed_by_user_id')` を `statusChanges()` として追加（REQ-user-management-062）
 
 ## Step 2: Service
 
-- [ ] `app/Services/UserStatusChangeService.php` — `record(User $user, UserStatus $newStatus, ?User $changedBy, ?string $reason = null): UserStatusLog`（REQ-user-management-070, 072, 073、NFR-user-management-005）
-- [ ] [[auth]] Action 側への組込み確認（auth 実装時の追従、本 Feature では未実装でも spec として明示）—  `IssueInvitationAction` / `OnboardAction` / `ExpireInvitationsAction` / `RevokeInvitationAction` の各々で `UserStatusChangeService` を constructor injection し、status 更新後に `record()` を呼ぶ。本 Feature の実装時点で [[auth]] が先行実装済みの場合は **このタスクで auth 側へ追記する**（REQ-user-management-071）
+- [x] `app/Services/UserStatusChangeService.php` — `record(User $user, UserStatus $newStatus, ?User $changedBy, ?string $reason = null): UserStatusLog`（REQ-user-management-070, 072, 073、NFR-user-management-005）
+- [x] [[auth]] Action 側への組込み確認（auth 実装時の追従、本 Feature では未実装でも spec として明示）—  `IssueInvitationAction` / `OnboardAction` / `ExpireInvitationsAction` / `RevokeInvitationAction` の各々で `UserStatusChangeService` を constructor injection し、status 更新後に `record()` を呼ぶ。本 Feature の実装時点で [[auth]] が先行実装済みの場合は **このタスクで auth 側へ追記する**（REQ-user-management-071）— **[[auth]] Feature 実装の Step 4 で対応**
 
 ## Step 3: Policy
 
