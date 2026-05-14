@@ -438,6 +438,7 @@ stateDiagram-v2
     [*] --> requested: 受講生が予約申請
     requested --> approved: コーチが承認
     requested --> rejected: コーチが拒否
+    requested --> canceled: 受講生が取り下げ
     rejected --> [*]
     approved --> canceled: 受講生またはコーチがキャンセル
     approved --> in_progress: 当日に面談開始
@@ -445,6 +446,8 @@ stateDiagram-v2
     canceled --> [*]
     completed --> [*]
 ```
+
+> `requested → canceled`（受講生取り下げ）パスは `mentoring` Feature 設計時に追記。コーチが承認 / 拒否する前に受講生が予定変更したケースで、自ら取り下げる手段を提供する。`approved → canceled` とは別動線（承認後キャンセルは双方向、申請取り下げは受講生のみ）。
 
 ### F. ChatRoom（受講生×担当コーチ のメッセージルーム）
 
@@ -488,10 +491,10 @@ stateDiagram-v2
 | 7 | **quiz-answering** | student | `Answer`, `QuestionAttempt` | Section 紐づき問題の演習・解答送信・**自動採点**・解答履歴・解説表示・正答率記録 + **苦手分野ドリル**（カテゴリ別フィルタによる集中演習、mock-exam の `WeaknessAnalysisService` で抽出した苦手 Question を出題）| 既存実装+Basic拡張（API化）| **Advance SPA** で連携 |
 | 8 | **mock-exam** | student / coach / admin | `MockExam`, `MockExamQuestion`, `MockExamSession`, `MockExamAnswer` | **本番形式の模擬試験**（資格LMS中核）: コーチが資格ごとに **MockExam マスタを複数作成** + **`MockExamQuestion` 中間テーブルで問題セットを事前固定** + `order` / `is_published` 設定。受講生は公開模試をいつでも・何度でも受験 → 時間制限 + 一括採点 + 採点後の **分野別正答率ヒートマップ** + **合格可能性スコア**（直近 3 回の平均得点率を `passing_score` の 90%以上 / 70-90% / 70%未満 で3バンド分け、3回未満は受験回数全体で算出）。実践ターム中の主役。**中断・再開対応**: `MockExamSession.status = in_progress` の間、各問題への解答は `MockExamAnswer` に **逐次保存**（送信ボタン不要、選択時に自動 PATCH）。ブラウザを閉じても再アクセス時に「進行中セッションあり」のバナーから **残り時間カウントダウン継続のまま再開可能**（サーバ時刻基準で残り時間を計算、クライアントタイマー改ざん不可）。**修了判定**: 公開模試すべてに合格点超え達成で修了申請可 → admin 承認。コーチは担当受講生の結果閲覧可 | 未実装(Bladeのみ) | — |
 | 9 | **mentoring** | student / coach | `Meeting`, `MeetingMemo`, `CoachAvailability` | コーチ面談予約申請 → コーチ確定/拒否 → 当日通知 → 実施（メモ記録）→ 履歴。Basic は時間枠手動指定の Blade UI | 既存実装（Basic Blade版） | **Advance FE**（Google Calendar OAuth で空き枠取得・予約反映）|
-| 10 | **chat** | student / coach | `ChatRoom`, `ChatMessage`, `ChatAttachment` | 受講生 ↔ 担当コーチ の **1on1 プライベートメッセージング**。Basic は **非同期**（DB保存 + 画面遷移時取得、未読バッジ）。資格スコープ（1 Enrollment = 1 ChatRoom、受講生が複数資格受講中は資格ごとに別ルーム）。コーチは未対応ルーム一覧から応答 + **添付ファイル**（メッセージごとに画像 / PDF を最大 3ファイル × 5MB、**Storage private driver** に保存、`AttachmentController` 経由で配信し Policy で当事者のみ閲覧可、URL は `signed URL` 短期有効、`ChatAttachment` で管理）| 未実装(Bladeのみ) | **Advance Broadcasting**（Pusher + WebSocket でリアルタイム化）|
+| 10 | **chat** | student / coach | `ChatRoom`, `ChatMessage`, `ChatAttachment` | 受講生 ↔ 担当コーチ の **1on1 プライベートメッセージング**。**非同期方式**（DB 保存 + 画面遷移時取得、未読バッジ、`last_read_at` をルーム × ロール単位で保持）。資格スコープ（1 Enrollment = 1 ChatRoom、受講生が複数資格受講中は資格ごとに別ルーム）。状態遷移は `unattended` / `in_progress` / `resolved` の 3 値、受講生も `resolved` 化可。メッセージの編集 / 削除は不可（学習相談の改竄防止 + admin 監査の信頼性）。最大長 2000 文字。コーチは未対応ルーム一覧から応答 + **添付ファイル**（メッセージごとに画像 PNG/JPG/WebP / PDF を最大 3 ファイル × 5MB、**Storage private driver** に保存、`AttachmentController` 経由で配信し Policy で当事者のみ閲覧可、URL は `signed URL` 短期有効、`ChatAttachment` で管理）。メッセージ作成時に [[notification]] へ Database channel の通知発火 | 未実装(Bladeのみ) | — ([[notification]] 側で Broadcasting 化、chat 画面自体は Basic/Advance とも非同期のまま) |
 | 11 | **qa-board** | student / coach | `QaThread`, `QaReply` | **公開Q&A掲示板**: 受講生による技術質問投稿 → コーチ/他受講生による回答 → 解決マーク。資格別フィルタ / 解決済み・未解決の絞り込み + **全文検索**（`QaThread.title` / `QaThread.body` / `QaReply.body` の部分一致検索）。chat (1on1) と異なり **公開・集合知型**、孤独感解消と他受講生からの学習促進。**添付ファイルは扱わない**（テキストのみ、公開掲示板で画像配信は管理コスト高）| 未実装(Bladeのみ) | — |
-| 12 | **public-api** | 外部 | `PersonalAccessToken`（Sanctum）| Sanctum トークン認証付き公開API。資格・教材・進捗等の取得を外部クライアントへ提供。トークン発行・失効も含む | 既存実装+Basic拡張（Sanctum、BookShelf応用の繰り返し成功体験）| **Advance SPA**（自前FEから同APIを呼ぶSPAを構築）|
-| 13 | **notification** | 全 | `Notification`（Laravel標準）| Laravel Notification（**Database + Mail channel** 二段）: 進捗節目達成 / 面談予約確定 / mock-exam 採点完了 / 新規Q&A回答 / **修了認定承認・修了証発行** / **学習途絶リマインド**（Schedule Command で定期検知、Advance で Queue 非同期化題材）/ **管理者お知らせ配信**（admin → 全/グループ受講生 への手動一斉 INSERT、通知一覧に統合表示、独立 Feature 化はせず本 Feature 内 Action として実装）。受講生は通知一覧画面で既読化 | 既存実装+Basic拡張（教材外、繰り返し成功体験）| **Advance Broadcasting**（Pusher + WebSocket でリアルタイム push）|
+| 12 | **analytics-export** | admin / coach | （独自モデルなし、`ApiKeyMiddleware` のみ）| **管理運用向けデータエクスポート API**: `X-API-KEY` ヘッダ + `.env` の共通 API キー（`ANALYTICS_API_KEY`）で保護された読み取り専用 API。`GET /api/v1/admin/users` / `GET /api/v1/admin/enrollments` / `GET /api/v1/admin/mock-exam-sessions` の 3 本を提供。BE は **素データのみ**（軽い JSON Resource 整形 + フィルタクエリ + ページネーション + Eager Loading のみ、Action / Service / Policy / Sanctum なしのシンプル構成）。admin 視点で全件返却し、coach 別フィルタ等は GAS 側で実装。受講生は GAS（Google Apps Script）で API を叩いて Google Sheets に流し込み、Sheet 関数 / ピボット / 条件付き書式で「分析」を実装（BE = 素データ提供、加工・集計 = Sheet 側責務）。**読み取り専用**（書き込みは各 Feature 自前 API の流儀、quiz-answering の `/api/v1/quiz/...` と同じ）。PR では Sheet URL + 採点者シェア（必須）+ Sheet スクショ + GAS コード提出が動作確認必須 | 未実装 | **チケット選定時に Basic / Advance 配置を決定**（spec 自体は完成形を記述、配置は要件シート定義時に確定）|
+| 13 | **notification** | 全 | `Notification`（Laravel標準）| Laravel Notification（**Database + Mail channel** 二段、ただし通知種別ごとに channel を選択）: 進捗節目達成 / 面談予約確定 / mock-exam 採点完了 / 新規Q&A回答 / **新着 chat メッセージ**（Database のみ、Mail なし — chat は短期相談用途のため）/ **修了認定承認・修了証発行** / **学習途絶リマインド**（Schedule Command で定期検知、Advance で Queue 非同期化題材）/ **管理者お知らせ配信**（admin → 全/グループ受講生 への手動一斉 INSERT、通知一覧に統合表示、独立 Feature 化はせず本 Feature 内 Action として実装）。受講生は通知一覧画面で既読化 | 既存実装+Basic拡張（教材外、繰り返し成功体験）| **Advance Broadcasting**（Pusher + WebSocket で TopBar 通知ベルへリアルタイム push、chat / qa-board / mock-exam / mentoring / 学習途絶リマインド 等の全通知種別を含む）|
 | 14 | **dashboard** | 全 | （集計のみ、独自モデル少）| ロール別ダッシュボード:<br>・admin: 全体KPI / 統計 / 滞留検知 / **修了申請待ち一覧**<br>・coach: 担当受講生進捗 / 今日の面談 / 未対応Q&A / 未読チャット / **担当受講生の弱点ヒートマップ** / **受講生メモ閲覧・編集**（EnrollmentNote 一覧）/ **滞留検知リスト**（担当受講生のみ）<br>・student: 学習進捗ゲージ / **試験日カウントダウン** / **学習ストリーク** / **弱点分析パネル** / **学習時間目標ゲージ（残り時間・残り日数・日次推奨ペース）** / **目標タイムライン（自己設定ゴールの達成履歴、Wantedly風）** / 通知 / 面談予定 / 継続学習導線 | 既存実装 | パフォーマンス最適化（Advance: N+1 / インデックス / キャッシュ題材）|
 | 15 | **ai-chat** | student | `AiChatConversation`, `AiChatMessage` | Gemini API 連携の学習相談チャット（**問題で詰まった瞬間の補助線**）。会話履歴保存 + プロンプト管理 | 未実装(Bladeのみ) | Advance全体（受講生がBE実装・UX拡張）|
 | 16 | **settings-profile** | 全 | `User`（bio/avatar_url 拡張）, `UserNotificationSetting`, `CoachAvailability`（mentoringと共有）| **自分を管理する画面**（user-management = admin が他者を管理 と責務分離）。プロフィール表示・編集（名前 / メール / 自己紹介 / アイコン）+ パスワード変更 + **通知設定**（通知種別 × channel ごとに on/off）+ **自己退会動線**（受講生・コーチ自身が `active → withdrawn` 遷移、`UserStatusLog` に記録、論理削除）+ **コーチのみ:面談可能時間枠設定**（CoachAvailability） | 既存実装 | — |
@@ -514,6 +517,7 @@ stateDiagram-v2
 | ターム判定（basic_learning / mock_practice）| `TermJudgementService` | enrollment | enrollment（MockExamSession 状態変化時に再計算）|
 | 受講進捗 KPI（admin 用）| `EnrollmentStatsService` | enrollment | dashboard |
 | コーチ稼働状況（admin 用）| `CoachActivityService` | mentoring | dashboard |
+| 未読 chat 件数（ルーム別 / 自分宛 / `last_read_at` 比較）| `ChatUnreadCountService` | chat | chat（一覧バッジ）+ dashboard（coach: 未読 chat 件数）+ `SidebarBadgeComposer`（サイドバー `chat-rooms` メニューの badge）|
 
 > Service は構造的には `app/Services/{Feature}/{Service}.php` 配下に置いてもよいが、Certify LMS は `app/Services/{Service}.php` フラット配置を採用（`tech.md` 参照）。**所有 Feature** は責務マトリクス管理のための論理概念。
 
@@ -530,14 +534,16 @@ stateDiagram-v2
 | chat / 教材以外のファイル添付（ZIP / 動画ファイル / Office 形式等）| chat は画像 + PDF のみ、教材は画像のみ。他のメディア種別は扱わない |
 | 動画教材 | Section は Markdown 本文 + 画像のみ。動画埋め込み・ストリーミングは将来拡張領域 |
 | 自己サインアップ | 管理者からの招待制（実務LMS準拠）|
-| SNS連携 / SSO | Fortify ローカル認証 + Sanctum トークンのみ |
+| SNS連携 / SSO | Fortify ローカル認証 + Sanctum SPA（Cookie ベース）+ [[analytics-export]] の API キー方式のみ |
 | 多言語化 | UI は日本語のみ |
 | 決済機能 | 入会申込・支払いは LMS外（公式サイト等）|
 | 動画通話（mentoring）| 面談は時間枠予約と当日通知まで。実際の通話 / 録画機能はスコープ外（外部ツール想定）|
 | バッジ / リーダーボード / ランク / 称号 | 両参考LMS（COACHTECH / iField）とも実装なし。学習動機付けは試験日カウントダウン + 進捗ゲージ + ストリーク + 個人目標タイムラインで対応 |
 | 2FA / IP制限 / 詳細セッション管理 / ログイン履歴 | 教育PJスコープ外。Fortify 標準セッション + パスワードリセットのみ |
 | iCal export / カレンダー同期（標準形式）| Advance の Google Calendar OAuth 連携で代替（mentoring の空き枠取得・予約反映）|
-| 学習データの一括エクスポート / インポート（CSV / JSON）| 管理運用領域、教育PJスコープ外。個別 API 取得は public-api で代替可 |
+| 学習データの一括エクスポート / インポート（CSV / JSON）| 管理運用領域、教育PJスコープ外。素データ取得は [[analytics-export]] の API キー認証 + GAS で代替可 |
+| OAuth プロバイダ機能 / 第三者向け OAuth Authorization Code Flow / 個人 API トークン管理 UI | [[analytics-export]] は **共通 API キー 1 つ**（`.env` 管理）のみ。Sanctum Personal Access Token / OAuth / 個人トークン管理 UI は不採用。Sanctum SPA 認証（Cookie ベース）は [[quiz-answering]] Advance で別途利用 |
+| [[analytics-export]] での書き込み系 API（POST / PUT / DELETE）| [[analytics-export]] は **読み取り（GET）専用**。データ作成 / 更新 / 削除を行いたい Feature は各自 `/api/v1/{feature}/...` で API を生やす（例: [[quiz-answering]] の `POST /api/v1/quiz/.../answer`）|
 | 追加ロール（リーダー / メンター / TA / 保護者 等）| admin / coach / student の3ロールのみ。これ以上のロール階層は実務LMSとしても珍しく、スコープ外 |
 | chat メッセージ全文検索 / ピン留め / リアクション | 未対応。チャットは短期的な相談用途、長期参照は qa-board / 面談メモへ誘導 |
 | 解答時の自信度・解答時間記録 | 両参考LMSとも未実装。正答率記録 + 弱点ヒートマップで代替 |

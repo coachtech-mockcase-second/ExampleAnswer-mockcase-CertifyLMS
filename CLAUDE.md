@@ -62,13 +62,12 @@
 
 #### Basic 拡張範囲（教材外だが既存テストで経験済み → 繰り返し成功体験）
 
-- **Sanctum 公開API**（BookShelf応用で経験）
 - **メール送信**（Mail channel）
 - **通知**（Notification + Database channel + Mail channel）
 
 #### Advance 範囲（教材外、本模擬案件で初出 / 深掘り）
 
-外部API連携（Google Calendar OAuth, Gemini API）/ Sanctum SPA認証 / Broadcasting・WebSocket（Pusher）/ Queue・Job 非同期化 / DBインデックス / キャッシュ / Eager Loading最適化
+外部API連携（Google Calendar OAuth, Gemini API）/ **API キー認証 + GAS / Google Sheets 連携**（[[analytics-export]] Feature: `X-API-KEY` ヘッダ Middleware + 素データ取得 API + GAS で Sheet 出力 + Sheet 側で分析。BookShelf 経験の延長 + API キー認証 Middleware + FE/GAS 実装の複合題材。Basic/Advance 配置はチケット選定時に決定）/ Sanctum SPA認証（Cookie ベース、[[quiz-answering]] の自前 SPA で利用）/ Broadcasting・WebSocket（Pusher）/ Queue・Job 非同期化 / DBインデックス / キャッシュ / Eager Loading最適化
 
 ### チケット構成（受講生の課題）
 
@@ -187,11 +186,11 @@
 
 ### Feature 一覧（16個）
 
-1. `auth` / 2. `user-management` / 3. `certification-management` / 4. `content-management` / 5. `enrollment` / 6. `learning` / 7. `quiz-answering` / 8. `mock-exam` / 9. `mentoring` / 10. `chat` / 11. `qa-board` / 12. `public-api` / 13. `notification` / 14. `dashboard` / 15. `ai-chat` / 16. `settings-profile`
+1. `auth` / 2. `user-management` / 3. `certification-management` / 4. `content-management` / 5. `enrollment` / 6. `learning` / 7. `quiz-answering` / 8. `mock-exam` / 9. `mentoring` / 10. `chat` / 11. `qa-board` / 12. `analytics-export` / 13. `notification` / 14. `dashboard` / 15. `ai-chat` / 16. `settings-profile`
 
 依存関係の目安:
 - **後続の前提**: `auth`, `user-management`（最初に実装）
-- **独立 Feature**（並列向き）: `certification-management`, `content-management`, `enrollment`, `learning`, `quiz-answering`, `mock-exam`, `chat`, `qa-board`, `settings-profile`, `public-api`, `ai-chat`
+- **独立 Feature**（並列向き）: `certification-management`, `content-management`, `enrollment`, `learning`, `quiz-answering`, `mock-exam`, `chat`, `qa-board`, `settings-profile`, `analytics-export`, `ai-chat`
 - **集計依存 Feature**（後半 or 直列）: `notification`, `dashboard`, `mentoring`
 
 ### Wave 0b で確定する基盤資産（Feature 実装フェーズでは編集禁止）
@@ -219,13 +218,10 @@
 
 ### リポジトリ・ブランチ
 
-| リポ | 用途 | 公開 |
-|---|---|---|
-| ExampleAnswer-mockcase-CertifyLMS（本リポ）| 全成果物一元管理 | ❌ |
-| AssignedProject-mockcase-CertifyLMS | 受講生クローン用 | ✅ |
-
-- `basic`: Basic完成版（メイン）
-- `advance`: basicから分岐、Advance純粋追加
+| リポ | 用途 | 公開 | ブランチ構成 |
+|---|---|---|---|
+| ExampleAnswer-mockcase-CertifyLMS（本リポ）| 全成果物一元管理（構築側メタリポ）| ❌ | **`main` 1本**（Basic/Advance の区別は `docs/steering/product.md` の範囲定義 + 模範解答PJ のコード内で表現）|
+| AssignedProject-mockcase-CertifyLMS | 受講生クローン用 | ✅ | `basic`（メイン）/ `advance`（basic から分岐、Advance 純粋追加）|
 
 ---
 
