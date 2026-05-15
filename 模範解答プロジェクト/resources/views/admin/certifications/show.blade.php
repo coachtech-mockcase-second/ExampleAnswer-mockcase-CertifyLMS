@@ -41,6 +41,14 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
+            <x-link-button href="{{ route('admin.certifications.parts.index', $certification) }}" variant="outline" size="sm">
+                <x-icon name="book-open" class="w-4 h-4" />
+                教材階層
+            </x-link-button>
+            <x-link-button href="{{ route('admin.certifications.questions.index', $certification) }}" variant="outline" size="sm">
+                <x-icon name="question-mark-circle" class="w-4 h-4" />
+                問題管理
+            </x-link-button>
             <x-link-button href="{{ route('admin.certifications.edit', $certification) }}" variant="outline" size="sm">
                 <x-icon name="pencil" class="w-4 h-4" />
                 編集

@@ -82,6 +82,21 @@ class Certification extends Model
         return $this->hasMany(Enrollment::class);
     }
 
+    public function parts(): HasMany
+    {
+        return $this->hasMany(Part::class);
+    }
+
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class);
+    }
+
+    public function questionCategories(): HasMany
+    {
+        return $this->hasMany(QuestionCategory::class);
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', CertificationStatus::Published->value);
