@@ -195,3 +195,19 @@ class SubmitAction
 - 配置: `tests/Feature/UseCases/{Entity}/{Action}ActionTest.php`（Action と同じディレクトリ構造）
 - 正常系 + 異常系（例外発生 / 整合性不一致）必須
 - 詳細は `backend-tests.md` 参照
+
+## Fortify Action と UseCase Action の名前空間衝突（注意）
+
+Laravel Fortify は **`app/Actions/Fortify/`** 配下に `CreateNewUser` / `UpdateUserPassword` 等の **公式パターン Action** を配置する。これらは Fortify Contract（`Laravel\Fortify\Contracts\CreatesNewUsers` 等）を実装する Fortify 固有の例外領域であり、本プロジェクトの **`app/UseCases/{Entity}/{Action}Action.php`** とは別物。
+
+| 観点 | Fortify Action（`app/Actions/Fortify/`） | UseCase Action（`app/UseCases/{Entity}/`） |
+|---|---|---|
+| 由来 | Fortify 公式 scaffolding | 本プロジェクトの Clean Architecture 軽量版 |
+| 命名 | `CreateNewUser` / `UpdateUserPassword` 等（"Action" 接尾辞なし） | `{Action}Action`（必ず "Action" 接尾辞） |
+| 配置 | `app/Actions/Fortify/` 固定 | `app/UseCases/{Entity}/` |
+| Contract | `Laravel\Fortify\Contracts\*` 実装 | Contract なし、具象クラス直接 DI |
+| 呼出元 | Fortify の認証フロー（ログイン / 登録 / パスワードリセット） | 本プロジェクトの Controller |
+
+**識別ルール**: `app/Actions/Fortify/` 配下 = Fortify 領域、`app/UseCases/` 配下 = 本プロジェクトの UseCase Action。混同しないこと。受講生から「Action とは？」と聞かれた際は、`app/UseCases/` が本プロジェクトの正式 Action パターン、`app/Actions/Fortify/` は Fortify 公式の慣習に従う **例外領域** と明示する。
+
+Fortify Action のクラス DocBlock には「Fortify 公式パターンの例外領域、本プロジェクトの UseCase Action とは別物」と書く（受講生が読んで理解できるように、`P1-10` 対応）。

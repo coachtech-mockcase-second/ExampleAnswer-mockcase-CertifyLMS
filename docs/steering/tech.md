@@ -15,7 +15,7 @@
 | フレームワーク | Laravel 10 |
 | DB | MySQL 8.0 |
 | ORM | Eloquent |
-| 認証 | Laravel Fortify（Web セッション）+ Laravel Sanctum SPA 認証（同一ドメイン自前 SPA、Cookie ベース、Personal Access Token は不採用）。外部 API（[[analytics-export]]）は **共通 API キー方式**（`X-API-KEY` ヘッダ + `.env` 管理、独自 Middleware）|
+| 認証 | Laravel Fortify（Web セッション）。**Laravel Sanctum SPA 認証 / 自前 FE SPA / `HasApiTokens` Personal Access Token は LMS 全体で不採用**（2026-05-16 確定、Web Blade で完結する純 Laravel パターンを徹底）。外部 API（[[analytics-export]]）は **共通 API キー方式**（`X-API-KEY` ヘッダ + `.env` 管理、独自 `ApiKeyMiddleware`、Sanctum 不経由のシンプル構成）|
 | **FE** | **Blade + Tailwind CSS + 素のJavaScript**（Vite ビルド）。**Alpine.js / Livewire は不採用** |
 | ビルド | Vite（Laravel 10 標準）。`resources/js/` `resources/css/` を `sail npm run dev` / `sail npm run build` でバンドル |
 | **PDF生成** | `barryvdh/laravel-dompdf`（修了証 PDF 出力、Blade テンプレート + dompdf による同期生成、Basic 範囲）|
@@ -34,11 +34,15 @@
 
 | 機能 | 実装手段 |
 |---|---|
-| 通常CRUD・教材閲覧・面談予約・チャット非同期 | **Blade テンプレート + フォーム送信** |
-| mock-exam の時間制限タイマー / マークシート式選択 / 提出 | **素のJS（`resources/js/mock-exam/`）+ fetch** |
-| 動的フィルタ（一覧の絞込等） | 素のJS + fetch（必要時）|
-| **Advance**: 自前 SPA（同一ドメイン）/ リアルタイムチャット / Google Calendar OAuth | 素のJS + Sanctum SPA（Cookie ベース）+ Pusher / Echo.js |
-| **Advance**: 外部データエクスポート API（analytics-export） | 素のJS（=GAS）+ `X-API-KEY` ヘッダ Middleware + `.env` 共通キー（個人トークン不要、シンプル構成）|
+| 通常CRUD・教材閲覧・面談予約・チャット非同期 | **Blade テンプレート + フォーム送信 + Redirect**（PRG パターン、純 Laravel 標準）|
+| 学習セッション auto-start / stop / 解答送信 / 結果画面 | **Blade + Form POST + Redirect**（JS 不使用、サーバ側 auto-start + 明示停止ボタン + Schedule Command の組み合わせ、2026-05-16 確定）|
+| mock-exam の時間制限タイマー / マークシート式選択 / 提出 | **素のJS（`resources/js/mock-exam/`）+ fetch**（タイマーは JS が必須なドメイン要件のため例外採用）|
+| 動的フィルタ（一覧の絞込等） | 素のJS + fetch（必要時、ただし基本は GET パラメータでサーバ再描画を優先）|
+| リアルタイムチャット（[[chat]] Advance）| Pusher / Echo.js（Laravel Broadcasting）|
+| Google Calendar OAuth（[[mentoring]] Advance）| Laravel Socialite + Google OAuth |
+| 外部データエクスポート API（[[analytics-export]] Advance）| GAS から `X-API-KEY` ヘッダで叩く（独自 `ApiKeyMiddleware` + `.env` 共通キー、Sanctum 不経由）|
+
+> **Sanctum SPA / 自前 FE SPA は不採用**(2026-05-16 確定): 当初 [[quiz-answering]] で Sanctum SPA を Advance スコープとして検討したが、ドメイン的動機がなく Blade + Form POST + Redirect で十分実装可能なため撤回。LMS 全体で Cookie ベース Sanctum SPA / `HasApiTokens` / 自前 FE SPA を持たない。Pro 生レベルの公開 API / 認証パターン学習は [[analytics-export]] の API キー方式 / [[mentoring]] の OAuth / [[chat]] の Broadcasting で養成する。
 
 採用しないもの:
 - **Alpine.js** — 受講生に教材経験なし、Advance で純粋JSを学ぶので役割が重複
@@ -119,7 +123,7 @@ alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'
 | ロール制御 | Middleware `EnsureUserRole`（ロール存在確認のみ）+ Policy（リソース固有認可）|
 | 設定値 | `.env` で管理。コード内ハードコーディング禁止 |
 | Basic API | フロント連携対象は Blade版 + JSON API版の二本立て（認証は Fortify セッション + CSRF）|
-| 外部 API | [[analytics-export]] は共通 API キー方式（`ApiKeyMiddleware` + `.env`、Action / Service / Policy / Sanctum なしのシンプル構成、Controller + Resource + IndexRequest のみ）。[[quiz-answering]] の Advance SPA は Sanctum SPA 認証（Cookie ベース、`config/sanctum.php` の `stateful` ドメイン設定で同一オリジン SPA を許可）。Personal Access Token / 個人トークン管理 UI は LMS 全体で **不採用** |
+| 外部 API | [[analytics-export]] は共通 API キー方式（`ApiKeyMiddleware` + `.env`、Action / Service / Policy / Sanctum なしのシンプル構成、Controller + Resource + IndexRequest のみ）。**Sanctum SPA 認証 / Personal Access Token / 個人トークン管理 UI / `HasApiTokens` trait は LMS 全体で不採用**（2026-05-16 確定、[[quiz-answering]] の Advance SPA 案は撤回） |
 | 例外 | ドメイン例外は `app/Exceptions/{Domain}/` に配置（例: `app/Exceptions/Enrollment/EnrollmentNotFoundException.php`）|
 
 ## テスト方針

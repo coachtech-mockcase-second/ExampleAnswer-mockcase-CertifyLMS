@@ -186,25 +186,41 @@ cd {実装ディレクトリ} && ./vendor/bin/sail artisan test --filter={Entity
 
 `resources/views/` 配下の編集を含む Step は Phase 3 を必ず通る。Phase 3 後に本フローに戻る。
 
-#### f. tasks.md 更新
+#### f. Pint 整形 + 規約準拠確認
+
+```bash
+cd {実装ディレクトリ} && ./vendor/bin/sail bin pint --dirty
+```
+
+PostToolUse hook で都度自動整形されているはずだが、Step 完了時に明示的に実行して `pint.json` で定義された規約への準拠を確認する:
+- `declare(strict_types=1)` 付与漏れ
+- `phpdoc_align` / `phpdoc_indent` / `phpdoc_separation`
+- `ordered_imports`（import 順）
+- `return_type_declaration`
+
+差分が残った場合は内容を確認してコミット対象に含める。Pint で自動化されない規約（`private readonly` / `@param array{...}` shape / `@throws` 宣言、`backend-types-and-docblocks.md` 参照）は手で確認。
+
+#### g. tasks.md 更新
 
 完了した行を `[ ]` → `[x]`。Edit ツールで該当行を書き換える。
 
-#### g. 次の Step へ進む（承認なし）
+#### h. 次の Step へ進む（承認なし）
 
-全 Step が `[x]` になるまで a → g を繰り返す。
+全 Step が `[x]` になるまで a → h を繰り返す。
 
 ### Step → 主参照ルールのマップ
 
 | Step | 主参照 rules | 主作業 |
 |---|---|---|
-| 1 Migration & Model | `backend-models.md` | ULID, SoftDeletes, fillable, casts, Enum, Factory |
-| 2 Policy | `backend-policies.md` | viewAny/view/create/update/delete、ロール別 match |
-| 3 HTTP 層 | `backend-http.md` | Controller 薄く / FormRequest / routes/web.php に追記 |
-| 4 Action / Service | `backend-usecases.md` `backend-services.md` `backend-exceptions.md` | `{Action}Action.php`（Controller method 名と一致）、DB::transaction、ドメイン例外 |
+| 1 Migration & Model | `backend-models.md` `backend-types-and-docblocks.md` | ULID, SoftDeletes, fillable, casts, Enum, Factory |
+| 2 Policy | `backend-policies.md` `backend-types-and-docblocks.md` | viewAny/view/create/update/delete、ロール別 match |
+| 3 HTTP 層 | `backend-http.md` `backend-types-and-docblocks.md` | Controller 薄く / FormRequest / routes/web.php に追記 |
+| 4 Action / Service | `backend-usecases.md` `backend-services.md` `backend-exceptions.md` `backend-types-and-docblocks.md` | `{Action}Action.php`（Controller method 名と一致）、DB::transaction、ドメイン例外 |
 | 5 Blade | **Claude Design ハンドオフ** (`preview/*.html` / `ui_kits/{role}/*.html`) を `b. 実装前準備` で **必ず Read** + `frontend-blade.md` `frontend-tailwind.md` `frontend-ui-foundation.md` | layouts/app 継承、@csrf、@can、コンポーネント、Tailwind utility。**実装前に design ref Read 必須 → 事後 Phase 3 視覚検証で最終確認** |
-| 6 テスト | `backend-tests.md` | RefreshDatabase + actingAs、各ロール認可分岐、ファクトリ |
+| 6 テスト | `backend-tests.md` `backend-types-and-docblocks.md` | RefreshDatabase + actingAs、各ロール認可分岐、ファクトリ |
 | 7 動作確認 | — | Pint 整形 + テスト全通過 + Phase 3 視覚検証（再度）+ ブラウザ確認 |
+
+> **`backend-types-and-docblocks.md` の位置付け**: PHP ファイル編集を含む全 Step（1/2/3/4/6）で共通参照。`declare(strict_types=1)` / `private readonly` / `@param array{...}` shape / `@throws` / クラス・メソッド DocBlock / 行内コメント Why 原則 / `final class` 採用方針を規定する。paths frontmatter で auto-load されるので、各 PHP ファイル編集時に自動的に頭に入る前提。Step f の Pint 整形時に「Pint で自動化される項目 / 手で書く項目」のチェック観点も同ファイルに集約。
 
 ---
 

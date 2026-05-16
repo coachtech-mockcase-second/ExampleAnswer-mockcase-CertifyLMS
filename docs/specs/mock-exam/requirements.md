@@ -1,168 +1,149 @@
 # mock-exam 要件定義
 
+> **v3 改修反映**(2026-05-16) + **E-3 time_limit_minutes 削除**:
+> - `MockExamQuestion` を中間テーブルから **模試マスタの子リソース** に昇格(`mock_exam_id` NOT NULL)、`MockExamQuestionOption` 新設、`MockExamAnswer.question_id` → `mock_exam_question_id` rename
+> - `difficulty` カラム削除、修了判定ロジックは [[enrollment]] の `CompletionEligibilityService` に集約
+> - `passed` でも受験可(復習モード)、`EnsureActiveLearning` Middleware で `graduated` ロック
+> - **`time_limit_minutes` / `time_limit_minutes_snapshot` / `time_limit_ends_at` カラム削除**(E-3、資格マスタ側 `exam_duration_minutes` 削除の経緯と整合、時間制限なしで何度でも復習可)
+> - **タイマー JS / auto-submit / `mock-exam:auto-submit-expired` Schedule Command すべて撤回**(E-3、実装複雑度削減)
+
 ## 概要
 
-Certify LMS の中核となる **本番形式模擬試験 Feature**。コーチ／admin が資格ごとに **MockExam マスタ** を作成し、**`MockExamQuestion` 中間テーブルで問題セットを事前固定** → 受講生が公開模試を **いつでも・何度でも受験** → **時間制限 + 一括採点** → **分野別正答率ヒートマップ + 合格可能性スコア（3 バンド）+ 苦手分野ドリル導線** を提供する。受講生の **基礎ターム → 実践ターム自動切替** の唯一の起点であり、**修了判定**（公開模試すべて合格）の根拠データを供給する。中断・再開対応はサーバ時刻ベースの残り時間計算と各問の逐次保存（自動 PATCH）で実現する。
+Certify LMS の中核となる **本番形式模擬試験 Feature**。コーチ／admin が資格ごとに **MockExam マスタ** を作成し、**模試マスタの子リソースとして `MockExamQuestion` を直接 CRUD** → 受講生が公開模試を **いつでも・何度でも受験** → **一括採点** → **分野別正答率ヒートマップ + 合格可能性スコア(3 バンド) + 苦手分野ドリル導線** を提供する。受講生の **基礎ターム → 実践ターム自動切替** の唯一の起点。**修了判定** の真実源データを供給する。
 
-- mock-exam は時間制限 + 一括採点 + 修了判定関与の点で [[quiz-answering]] と異なる（`product.md` 補足「Section 紐づき問題 vs mock-exam の責務分担」参照）
-- 集計 Service `WeaknessAnalysisService` を所有し、`WeaknessAnalysisServiceContract::getWeakCategories(Enrollment): Collection<QuestionCategory>` を [[quiz-answering]] のフォールバック契約に対し正規実装として `MockExamServiceProvider::register` で bind する
-- [[enrollment]] の `TermJudgementService::recalculate(Enrollment)` を Start / Submit / Cancel の各 Action 内（同一 transaction）で呼び出し、ターム自動切替を駆動する
-- [[enrollment]] の `CompletionEligibilityService` から参照される `MockExam.is_published=true` 件数 / `MockExamSession.pass=true` 件数の真実源を提供する（本 Feature の Service は契約のみ、判定は呼出側に委ねる）
+**E-3 で時間制限機能完全撤回**(資格マスタ側 `exam_duration_minutes` 削除の経緯と整合)。模試は時間制限なしで受講生が自分のペースで解答し、いつでも明示提出して採点を受ける。中断・再開対応は各問の **逐次保存(自動 PATCH)** で実現する(タイマーなし、いつでも続きから開始可能)。
+
+集計 Service `WeaknessAnalysisService` を所有し、`WeaknessAnalysisServiceContract::getWeakCategories(Enrollment): Collection<QuestionCategory>` を [[quiz-answering]] のフォールバック契約に対し正規実装として bind する。
 
 ## ロールごとのストーリー
 
-- **受講生（student）**: 受講中資格の公開模試一覧から受験したい模試を選び、セッションを作成（`not_started`）→ 受験開始（`in_progress`）。初回受験で `Enrollment.current_term` が `mock_practice` に自動切替する。受験中はサーバ時刻基準の残り時間カウントダウンと各問の選択肢クリックでの逐次保存が動き、ブラウザを閉じても再アクセスで進行中バナーから残り時間継続のまま再開できる。提出 or 時間切れで一括採点 → 結果画面で総得点 / 合否 / 分野別ヒートマップ / 合格可能性スコアを確認し、苦手分野ドリル（[[quiz-answering]]）にカテゴリ指定で遷移する。公開模試すべて合格達成で [[enrollment]] の修了申請ボタンが解放される。
-- **コーチ（coach）**: 担当資格の模試マスタを作成・編集・削除し、`Question` プール（Section 紐づき or mock-exam 専用）から問題セットを組成して `order` / `is_published` を設定。担当受講生の受験結果一覧 / 結果詳細 / 分野別ヒートマップを `MockExamSession` 経由で閲覧し、面談・chat の話題に活用する。
-- **管理者（admin）**: 全資格・全コーチに対して coach と同等の模試マスタ CRUD と全受講生の受験結果閲覧を行う。修了申請承認時に `CompletionEligibilityService` が本 Feature のデータを参照して判定する。
+- **受講生(student)**: 受講中資格の公開模試一覧から受験したい模試を選び、セッションを作成 → 受験開始(`in_progress`)。初回受験で `Enrollment.current_term` が `mock_practice` に自動切替。受験中は各問の選択肢クリックで逐次保存が動き、ブラウザを閉じても再アクセスで進行中バナーから **続きから再開可能**(時間制限なし、E-3)。明示提出で一括採点 → 結果画面で総得点 / 合否 / 分野別ヒートマップ / 合格可能性スコアを確認し、苦手分野ドリル([[quiz-answering]])に遷移する。公開模試すべて合格達成で [[enrollment]] の「修了証を受け取る」ボタンが活性化される。
+- **コーチ(coach)**: 担当資格の模試マスタを作成・編集・削除し、**模試マスタ詳細画面で MockExamQuestion を直接 CRUD**。担当受講生の受験結果一覧 / 結果詳細 / 分野別ヒートマップを `MockExamSession` 経由で閲覧。
+- **管理者(admin)**: 全資格・全コーチに対して同等の操作を行う。
 
-## 受け入れ基準（EARS形式）
+## 受け入れ基準(EARS形式)
 
 ### 機能要件 — A. データモデル
 
-- **REQ-mock-exam-001**: The system shall ULID 主キー / `SoftDeletes` を備えた `mock_exams` テーブルを提供し、`certification_id`（NOT NULL, `certifications.id` 参照）/ `title`（string max 100, NOT NULL）/ `description`（text, NULL 可）/ `order`（unsigned int, NOT NULL, default 0）/ `time_limit_minutes`（unsigned int, NOT NULL, 5..360）/ `passing_score`（unsigned int, NOT NULL, 1..100、百分率）/ `is_published`（boolean, NOT NULL, default false）/ `published_at`（datetime, NULL 可）/ `created_by_user_id`（NOT NULL, `users.id` 参照）/ `updated_by_user_id`（NOT NULL, `users.id` 参照）/ `created_at` / `updated_at` / `deleted_at` カラムを保持する。
-- **REQ-mock-exam-002**: The system shall ULID 主キー（SoftDelete 非採用、delete-and-replace 方式）を備えた `mock_exam_questions` 中間テーブルを提供し、`mock_exam_id`（NOT NULL, `mock_exams.id` 参照、cascadeOnDelete）/ `question_id`（NOT NULL, `questions.id` 参照、restrictOnDelete）/ `order`（unsigned int, NOT NULL, default 0）/ `created_at` / `updated_at` カラムを保持し、`(mock_exam_id, question_id)` UNIQUE / `(mock_exam_id, order)` 複合 INDEX を備える。
-- **REQ-mock-exam-003**: The system shall ULID 主キー / `SoftDeletes` を備えた `mock_exam_sessions` テーブルを提供し、`mock_exam_id`（NOT NULL, `mock_exams.id` 参照、restrictOnDelete）/ `enrollment_id`（NOT NULL, `enrollments.id` 参照、restrictOnDelete）/ `user_id`（NOT NULL, `users.id` 参照、restrictOnDelete、`enrollment.user_id` の非正規化）/ `status`（enum `not_started`/`in_progress`/`submitted`/`graded`/`canceled`, NOT NULL）/ `generated_question_ids`（JSON、NOT NULL、ULID 配列スナップショット）/ `total_questions`（unsigned int, NOT NULL、`generated_question_ids` の件数）/ `passing_score_snapshot`（unsigned int, NOT NULL、`MockExam.passing_score` のスナップショット）/ `time_limit_minutes_snapshot`（unsigned int, NOT NULL、`MockExam.time_limit_minutes` のスナップショット）/ `started_at`（datetime, NULL 可、`in_progress` 遷移時にセット）/ `time_limit_ends_at`（datetime, NULL 可、`started_at + time_limit_minutes_snapshot` をサーバ時刻基準で計算してセット）/ `submitted_at`（datetime, NULL 可）/ `graded_at`（datetime, NULL 可）/ `canceled_at`（datetime, NULL 可）/ `total_correct`（unsigned int, NULL 可、採点時に算出）/ `score_percentage`（decimal 5,2、NULL 可、`total_correct / total_questions * 100` を採点時に算出）/ `pass`（boolean, NULL 可、`graded` 遷移時に `score_percentage >= passing_score_snapshot` を永続化）/ `created_at` / `updated_at` / `deleted_at` カラムを保持する。
-- **REQ-mock-exam-004**: The system shall ULID 主キー（SoftDelete 非採用）を備えた `mock_exam_answers` テーブルを提供し、`mock_exam_session_id`（NOT NULL, `mock_exam_sessions.id` 参照、cascadeOnDelete）/ `question_id`（NOT NULL, `questions.id` 参照、restrictOnDelete）/ `selected_option_id`（NULL 可, `question_options.id` 参照、nullOnDelete — QuestionOption は delete-and-insert で物理削除されるため [[quiz-answering]] の `Answer` と同じ方針）/ `selected_option_body`（string max 2000, NOT NULL、選択肢本文のスナップショット）/ `is_correct`（boolean, NOT NULL, default false、採点時に確定）/ `answered_at`（datetime, NOT NULL、逐次 PATCH 時の保存時刻）/ `created_at` / `updated_at` カラムを保持し、`(mock_exam_session_id, question_id)` UNIQUE 制約で 1 セッション × 1 Question の最大 1 行を担保する。
-- **REQ-mock-exam-005**: The system shall `App\Enums\MockExamSessionStatus` enum（`NotStarted = 'not_started'` / `InProgress = 'in_progress'` / `Submitted = 'submitted'` / `Graded = 'graded'` / `Canceled = 'canceled'`）を提供し、`label()` メソッドで日本語ラベル（`未開始` / `受験中` / `提出済` / `採点完了` / `キャンセル`）を返す。`product.md` の State diagram と完全に値・遷移が一致する。
-- **REQ-mock-exam-006**: The system shall `App\Enums\PassProbabilityBand` enum（`Safe = 'safe'`（合格圏）/ `Warning = 'warning'`（注意）/ `Danger = 'danger'`（危険）/ `Unknown = 'unknown'`（採点済セッションなし））を提供し、`label()` メソッドで日本語ラベル（`合格圏` / `注意` / `危険` / `判定不可`）と `color()` メソッドで Blade 用カラートークン（`success` / `warning` / `danger` / `gray`）を返す。
-- **REQ-mock-exam-007**: The system shall `MockExam::$casts` で `is_published` を `boolean`、`published_at` を `datetime` にキャストする。`MockExamSession::$casts` で `status` を `MockExamSessionStatus::class`、`generated_question_ids` を `array`、`started_at` / `time_limit_ends_at` / `submitted_at` / `graded_at` / `canceled_at` を `datetime`、`total_correct` / `total_questions` / `passing_score_snapshot` / `time_limit_minutes_snapshot` を `integer`、`score_percentage` を `decimal:2`、`pass` を `boolean` にキャストする。`MockExamAnswer::$casts` で `is_correct` を `boolean`、`answered_at` を `datetime` にキャストする。
-- **REQ-mock-exam-008**: The system shall `MockExamSession.user_id` / `MockExamSession.enrollment_id` の **両方を非正規化** で保持し、`user_id` は `enrollment.user_id` と同期する不変値とする。これにより [[quiz-answering]] の `Answer.user_id` と同様、Enrollment が削除されても受講生視点での履歴クエリ（`WHERE mock_exam_sessions.user_id = $student->id`）が成立する。Enrollment の SoftDelete 時にもセッション履歴は閲覧可能とする（restrict による物理削除阻止）。
-- **REQ-mock-exam-009**: The system shall [[content-management]] が定義する `Question` Model に `belongsToMany(MockExam::class, 'mock_exam_questions')->withPivot('order')->orderByPivot('order')` を、`hasMany(MockExamAnswer::class)` を本 Feature 実装時に追加し、[[enrollment]] が定義する `Enrollment` Model にすでに予告されている `hasMany(MockExamSession::class)` を本 Feature の Model 命名と整合させる。[[auth]] が定義する `User` Model に `hasMany(MockExamSession::class, 'user_id')` を追加する。
-- **REQ-mock-exam-010**: The system shall [[certification-management]] が定義する `Certification` Model にすでに予告されている `hasMany(MockExam::class)` を本 Feature の Model 命名と整合させる。
+- **REQ-mock-exam-001**: The system shall ULID 主キー / `SoftDeletes` を備えた `mock_exams` テーブルを提供し、`certification_id`(NOT NULL)/ `title`(max 100)/ `description`(NULL 可)/ `order`(NOT NULL, default 0)/ `passing_score`(NOT NULL, 1..100、百分率)/ `is_published`(NOT NULL, default false)/ `published_at`(NULL 可)/ `created_by_user_id` / `updated_by_user_id` / timestamps / `deleted_at` を保持する。**`time_limit_minutes` カラムは持たない**(E-3 撤回)。
+- **REQ-mock-exam-002**: The system shall ULID 主キー / `SoftDeletes` を備えた **`mock_exam_questions` テーブル**(模試マスタの子リソースとして独立)を提供し、`mock_exam_id`(FK, NOT NULL, cascadeOnDelete)/ `category_id`(FK to `question_categories`, NOT NULL)/ `body`(text, NOT NULL)/ `explanation`(text, NULL 可)/ `order`(NOT NULL, default 0)/ timestamps / `deleted_at` を保持する。`difficulty` カラムは持たない。
+- **REQ-mock-exam-003**: The system shall ULID 主キー / `SoftDeletes` を備えた **`mock_exam_question_options` テーブル**(新設)を提供し、`mock_exam_question_id`(FK, NOT NULL, cascadeOnDelete)/ `body`(text, NOT NULL)/ `is_correct`(boolean, NOT NULL)/ `order`(NOT NULL)/ timestamps / `deleted_at` を保持する。
+- **REQ-mock-exam-004**: The system shall ULID 主キー / `SoftDeletes` を備えた `mock_exam_sessions` テーブルを提供し、`mock_exam_id`(FK, restrictOnDelete)/ `enrollment_id`(FK, restrictOnDelete)/ `user_id`(FK, 非正規化)/ `status` enum(`not_started`/`in_progress`/`submitted`/`graded`/`canceled`)/ `generated_question_ids`(JSON、MockExamQuestion.id 配列スナップショット)/ `total_questions` / `passing_score_snapshot` / `started_at` / `submitted_at` / `graded_at` / `canceled_at` / `total_correct` / `score_percentage` / `pass` カラムを保持する。**`time_limit_minutes_snapshot` / `time_limit_ends_at` カラムは持たない**(E-3 撤回)。
+- **REQ-mock-exam-005**: The system shall ULID 主キー(SoftDelete 非採用)を備えた `mock_exam_answers` テーブルを提供し、`mock_exam_session_id`(FK, cascadeOnDelete)/ `mock_exam_question_id`(FK, restrictOnDelete)/ `selected_option_id`(FK to `mock_exam_question_options`, nullOnDelete)/ `selected_option_body`(max 2000、スナップショット)/ `is_correct`(boolean, NOT NULL, default false、採点時に確定)/ `answered_at`(datetime, NOT NULL)/ timestamps を保持する。`(mock_exam_session_id, mock_exam_question_id)` UNIQUE。
+- **REQ-mock-exam-006**: The system shall `App\Enums\MockExamSessionStatus` enum(`NotStarted` / `InProgress` / `Submitted` / `Graded` / `Canceled`)を提供する。
+- **REQ-mock-exam-007**: The system shall `App\Enums\PassProbabilityBand` enum(`Safe` / `Warning` / `Danger` / `Unknown`)を提供する。
+- **REQ-mock-exam-008**: The system shall `MockExam`、`MockExamQuestion`、`MockExamQuestionOption`、`MockExamSession`、`MockExamAnswer` の Eloquent モデルにそれぞれ親子リレーションを実装する。
 
-### 機能要件 — B. MockExam マスタ管理（admin / coach）
+### 機能要件 — B. MockExam マスタ管理(admin / coach)
 
-- **REQ-mock-exam-040**: When admin または担当 coach が `GET /admin/mock-exams` にアクセスした際, the system shall `MockExamPolicy::viewAny` を通過したロールに対して、admin は全資格、coach は `certification_coach_assignments` で割当済資格の MockExam 一覧を `with('certification', 'createdBy', 'updatedBy')->withCount('questions')->orderBy('certifications.code')->orderBy('mock_exams.order')->orderByDesc('mock_exams.created_at')->paginate(20)` で取得し、`views/admin/mock-exams/index.blade.php` を描画する。
-- **REQ-mock-exam-041**: The system shall 一覧画面でフィルタを提供する: (a) `certification_id`（admin は任意 / coach は割当資格のみ選択肢に出す）、(b) `is_published`（公開・非公開）、(c) `keyword`（`title` の部分一致）。フィルタは query string で受け、組み合わせ可能とする。
-- **REQ-mock-exam-042**: When admin / 担当 coach が `GET /admin/mock-exams/create?certification_id={id}` にアクセスした際, the system shall 当該資格に対する create 認可（`MockExamPolicy::create($certification)`）を検証し、満たさなければ HTTP 403 を返す。フォーム表示は薄い Controller method で済ませる。
-- **REQ-mock-exam-043**: When admin / 担当 coach が `POST /admin/mock-exams` を呼んだ際, the system shall `StoreMockExamRequest` で `certification_id` / `title` / `description` / `order` / `time_limit_minutes` / `passing_score` を検証し、`StoreAction::__invoke($certification, $user, $validated): MockExam` を実行して `is_published = false` / `created_by_user_id` / `updated_by_user_id` を $user で固定して INSERT する。
-- **REQ-mock-exam-044**: When admin / 担当 coach が `GET /admin/mock-exams/{mockExam}` にアクセスした際, the system shall `MockExamPolicy::view($mockExam)` を検証し、認可済の場合は `with('certification', 'questions' => fn ($q) => $q->withPivot('order')->orderByPivot('order'))->loadCount('sessions')` で eager load して詳細画面（問題セット組成 UI 同居）を描画する。
-- **REQ-mock-exam-045**: When admin / 担当 coach が `PUT /admin/mock-exams/{mockExam}` を呼んだ際, the system shall `UpdateMockExamRequest` で同セットのカラム + `certification_id` 不可変を検証し、`UpdateAction::__invoke($mockExam, $user, $validated): MockExam` を実行する。`is_published=true` の MockExam については `time_limit_minutes` / `passing_score` を更新するが、進行中の `MockExamSession` には影響しない（セッションは値スナップショットを保持済）。
-- **REQ-mock-exam-046**: When admin / 担当 coach が `DELETE /admin/mock-exams/{mockExam}` を呼んだ際, the system shall (1) `is_published=false` であること、(2) 当該 MockExam に紐づく `MockExamSession` がすべて `canceled` 状態であること（採点済 / 進行中セッションが残っていれば履歴保護のため拒否）の 2 段ガードを `DestroyAction` 内で検証し、違反は `MockExamInUseException`（HTTP 409）を throw、両方クリアなら SoftDelete する。
-- **REQ-mock-exam-047**: When admin / 担当 coach が `POST /admin/mock-exams/{mockExam}/publish` を呼んだ際, the system shall (1) `is_published === false`、(2) 問題セットが 1 件以上組成済（`mockExam->questions()->exists()`）、(3) 紐づく全 Question が `status=Published` かつ `deleted_at IS NULL`、を `PublishAction` 内で検証し、違反は `MockExamPublishNotAllowedException`（HTTP 409）を throw、合格なら `is_published=true` / `published_at=now()` で UPDATE する。
-- **REQ-mock-exam-048**: When admin / 担当 coach が `POST /admin/mock-exams/{mockExam}/unpublish` を呼んだ際, the system shall (1) `is_published === true` を `UnpublishAction` 内で検証、(2) 既存の `in_progress` / `submitted` セッションは継続可能だが、新規セッション作成は本切替後に拒否される旨を返却フラッシュで通知する。`is_published=false` / `published_at=null` で UPDATE する。
-- **REQ-mock-exam-049**: When admin / 担当 coach が `PUT /admin/mock-exams/order` を呼んだ際（ペイロード: `[{ id, order }, ...]`）, the system shall `ReorderAction` 内で同一 `certification_id` 内の MockExam に対する一括 `order` UPDATE を `DB::transaction` でラップして実行する。順序衝突時の整合性は呼出側の責務とし、本 Action は受け取った順序を上書きする（業界標準 drag-and-drop パターン）。
+- **REQ-mock-exam-040**: When admin または担当 coach が `GET /admin/mock-exams` にアクセスした際, the system shall `MockExamPolicy::viewAny` を通過したロールに対して、admin は全資格、coach は割当済資格の MockExam 一覧を `with('certification', 'createdBy', 'updatedBy')->withCount('mockExamQuestions')` で取得し `paginate(20)` する。
+- **REQ-mock-exam-041**: The system shall 一覧画面でフィルタを提供する: `certification_id` / `is_published` / `keyword`。
+- **REQ-mock-exam-043**: When admin / 担当 coach が `POST /admin/mock-exams` を呼んだ際, the system shall `StoreMockExamRequest` で `certification_id` / `title` / `description` / `order` / `passing_score` を検証し、`is_published = false` / `created_by_user_id` / `updated_by_user_id` を $user で固定して INSERT する(E-3 で `time_limit_minutes` バリデーションなし)。
+- **REQ-mock-exam-045**: When admin / 担当 coach が `PUT /admin/mock-exams/{mockExam}` を呼んだ際, the system shall 同セットのカラムを更新可能とし、`certification_id` は変更不可とする。
+- **REQ-mock-exam-046**: When admin / 担当 coach が `DELETE /admin/mock-exams/{mockExam}` を呼んだ際, the system shall (1) `is_published=false` であること、(2) 当該 MockExam に紐づく `MockExamSession` がすべて `canceled` 状態であること、を `DestroyAction` で検証し、違反は `MockExamInUseException`(HTTP 409)、合格なら SoftDelete する。
+- **REQ-mock-exam-047**: When admin / 担当 coach が `POST /admin/mock-exams/{mockExam}/publish` を呼んだ際, the system shall (1) `is_published === false`、(2) MockExamQuestion が 1 件以上組成済、を検証し、合格なら `is_published=true` / `published_at=now()` で UPDATE する。
 
-### 機能要件 — C. MockExamQuestion 組成
+### 機能要件 — C. MockExamQuestion 管理(模試マスタの子リソース、独立 CRUD)
 
-- **REQ-mock-exam-070**: When admin / 担当 coach が `POST /admin/mock-exams/{mockExam}/questions` を呼んだ際（ペイロード: `question_id`）, the system shall `AttachQuestionAction::__invoke($mockExam, $questionId): MockExamQuestion` を実行する。Action は (1) `Question.certification_id === MockExam.certification_id`、(2) `Question.status = Published` かつ `deleted_at IS NULL`、(3) `(mock_exam_id, question_id)` UNIQUE 違反でないこと、を検証する。違反は `MockExamQuestionIneligibleException`（HTTP 409）を throw、合格なら新規 `MockExamQuestion` を `order = COALESCE(MAX(order), -1) + 1` で末尾に INSERT する。
-- **REQ-mock-exam-071**: When admin / 担当 coach が `DELETE /admin/mock-exams/{mockExam}/questions/{question}` を呼んだ際, the system shall `DetachQuestionAction` で (1) `mockExam.is_published = false` ガード、または (2) `is_published=true` でも残存 `mock_exam_questions` が 1 件以上残る場合のみ削除を許容し、(3) 当該 MockExam を参照する `in_progress` / `submitted` / `graded` セッションの `generated_question_ids` スナップショットには影響しない（不変）。
-- **REQ-mock-exam-072**: When admin / 担当 coach が `PUT /admin/mock-exams/{mockExam}/questions/order` を呼んだ際（ペイロード: `[{ question_id, order }, ...]`）, the system shall `ReorderQuestionAction` で同 MockExam 内の `mock_exam_questions.order` を一括 UPDATE する。ペイロード外の Question を含めないと整合性が崩れるため、Action は (a) ペイロード全件が MockExam に紐づくこと、(b) ペイロードが MockExam 紐づき Question を網羅していること、を検証する。違反は HTTP 422。
-- **REQ-mock-exam-073**: The system shall `AttachQuestionAction` / `DetachQuestionAction` / `ReorderQuestionAction` の認可を `MockExamPolicy::manageQuestions($mockExam)` で統一し、admin は全資格、coach は担当資格のみ、student は常に false とする。
+- **REQ-mock-exam-060**: When admin / 担当 coach が `GET /admin/mock-exams/{mockExam}/questions` にアクセスした際, the system shall 当該 MockExam 配下の MockExamQuestion 一覧を `order ASC` で表示する。
+- **REQ-mock-exam-061**: When admin / 担当 coach が `POST /admin/mock-exams/{mockExam}/questions` で MockExamQuestion を新規作成した際, the system shall `body` / `explanation` / `category_id` / 2〜6 個の `mock_exam_question_options[]` を受け取り、`order = COALESCE(MAX(order), -1) + 1` で末尾に挿入する。`category_id` 不整合時は `QuestionCategoryMismatchException`(HTTP 422)。
+- **REQ-mock-exam-062**: The system shall MockExamQuestion 作成・更新時に `is_correct=true` の選択肢がちょうど 1 件であることを検証し、違反時は `QuestionInvalidOptionsException`(HTTP 422)。
+- **REQ-mock-exam-063**: When admin / 担当 coach が `PUT /admin/mock-exam-questions/{question}` で更新した際, the system shall `body` / `explanation` / `category_id` を更新可能とし、`mock_exam_id` は変更不可。
+- **REQ-mock-exam-064**: When admin / 担当 coach が `DELETE /admin/mock-exam-questions/{question}` で削除した際, the system shall (1) 親 MockExam が `is_published = false` であること、または (2) 削除後も MockExamQuestion が 1 件以上残ること、を検証し SoftDelete する。
+- **REQ-mock-exam-065**: When admin / 担当 coach が `PUT /admin/mock-exams/{mockExam}/questions/reorder` を呼んだ際, the system shall 同 MockExam 内の `mock_exam_questions.order` を一括 UPDATE する。
+- **REQ-mock-exam-066**: The system shall MockExamQuestion CRUD の認可を `MockExamQuestionPolicy::manage($mockExam)` で統一する。
 
 ### 機能要件 — D. 受講生 模試一覧・セッション作成
 
-- **REQ-mock-exam-100**: When 受講生が `GET /mock-exams` にアクセスした際, the system shall (1) 受講生の `enrollments WHERE status IN (learning, paused) AND deleted_at IS NULL` を取得、(2) それぞれの `certification_id` 配下の `MockExam WHERE is_published = true AND deleted_at IS NULL` を `with('certification')->withCount('questions')` で eager load し、(3) 各 MockExam について受講生の **最新セッション**（`MockExamSession::query()->where('enrollment_id', $enrollment->id)->where('mock_exam_id', $mockExam->id)->latest('updated_at')->first()`）と **進行中セッション**（`status = in_progress`）を別途併せ取得して `views/mock-exams/index.blade.php` に渡す。
-- **REQ-mock-exam-101**: The system shall 一覧画面で各 MockExam について以下をバッジ表示する: (a) 進行中セッションがあれば `<x-badge variant="warning">受験中</x-badge>` + 残り時間、(b) 採点済セッションがあれば直近の `pass` に応じて `<x-badge variant="success">合格</x-badge>` / `<x-badge variant="danger">不合格</x-badge>`、(c) いずれもなければ `<x-badge variant="gray">未受験</x-badge>`。
-- **REQ-mock-exam-102**: When 受講生が `GET /mock-exams/{mockExam}` にアクセスした際, the system shall (1) `MockExamPolicy::take` で「受講生が `mockExam->certification_id` を `learning` / `paused` で受講中」を検証、(2) `mockExam.is_published = true` を検証、違反のいずれも HTTP 404 を返す。通過時は `with('certification')->withCount('questions')` で詳細を描画し、最新セッション・進行中セッションを併記する。
-- **REQ-mock-exam-103**: When 受講生が `POST /mock-exams/{mockExam}/sessions` を呼んだ際, the system shall (1) D-102 と同じ認可・公開チェック、(2) 当該受講生 × 当該 MockExam の `in_progress` / `submitted` セッションが 0 件であること（同一模試の重複進行禁止）、を `CreateSessionAction` 内で検証する。違反は `MockExamSessionAlreadyInProgressException`（HTTP 409）を throw。合格時は新規 `MockExamSession` を以下で INSERT する: `status = not_started` / `generated_question_ids = mockExam.questions()->orderByPivot('order')->pluck('id')->all()` / `total_questions = count` / `passing_score_snapshot = mockExam.passing_score` / `time_limit_minutes_snapshot = mockExam.time_limit_minutes` / `enrollment_id` / `user_id` 紐付け。
-- **REQ-mock-exam-104**: If 当該 MockExam に紐づく `mock_exam_questions` が 0 件の場合, then the system shall `CreateSessionAction` 内で `MockExamHasNoQuestionsException`（HTTP 409）を throw する（B-047 で公開済 MockExam は 1 件以上の Question を担保しているが、二重防御）。
-- **REQ-mock-exam-105**: When 受講生が `DELETE /mock-exam-sessions/{session}` を呼んだ際, the system shall `CancelSessionAction` 内で (1) `session.status === NotStarted` を検証、違反は `MockExamSessionNotCancelableException`（HTTP 409）を throw、(2) `status = Canceled` / `canceled_at = now()` で UPDATE、(3) `TermJudgementService::recalculate($session->enrollment)` を呼ぶ。すべて `DB::transaction()` でラップする。
+- **REQ-mock-exam-100**: When 受講生が `GET /mock-exams` にアクセスした際, the system shall 受講生の `enrollments WHERE status IN (learning, passed)` を取得、各 `certification_id` 配下の `MockExam WHERE is_published = true` を eager load して `mockExamQuestions` カウント + 最新セッション / 進行中セッションを併記して表示する。
+- **REQ-mock-exam-101**: The system shall `User.status != UserStatus::InProgress` の場合、`EnsureActiveLearning` Middleware で 403。
+- **REQ-mock-exam-102**: When 受講生が `GET /mock-exams/{mockExam}` にアクセスした際, the system shall `MockExamPolicy::take` で「受講中(learning + passed)」を検証、`is_published = true` を検証、違反で HTTP 404。
+- **REQ-mock-exam-103**: When 受講生が `POST /mock-exams/{mockExam}/sessions` を呼んだ際, the system shall (1) 認可・公開チェック、(2) 重複進行中ガード、を `MockExamSession\StoreAction`(`MockExamSessionController::store` と一致) で検証し、合格時は新規 `MockExamSession` を以下で INSERT: `status = not_started` / `generated_question_ids = mockExamQuestions->orderBy('order')->pluck('id')->all()` / `total_questions` / `passing_score_snapshot = mockExam.passing_score`(**`time_limit_minutes_snapshot` フィールドなし**、E-3)。
+- **REQ-mock-exam-104**: If MockExam に紐づく `mock_exam_questions` が 0 件の場合, then the system shall `MockExamHasNoQuestionsException`(HTTP 409)を throw。
+- **REQ-mock-exam-105**: When 受講生が `DELETE /mock-exam-sessions/{session}` を呼んだ際, the system shall `MockExamSession\DestroyAction`(`MockExamSessionController::destroy` と一致) で `not_started` のみキャンセル許容、`status = Canceled` / `canceled_at = now()` を UPDATE、`TermJudgementService::recalculate` を呼ぶ。
 
-### 機能要件 — E. 受験開始・受験中・逐次保存
+### 機能要件 — E. 受験開始・受験中・逐次保存(E-3 で時間制限なし)
 
-- **REQ-mock-exam-150**: When 受講生が `POST /mock-exam-sessions/{session}/start` を呼んだ際, the system shall `StartSessionAction` 内で (1) `MockExamSessionPolicy::start($session)` で受講生本人性検証、(2) `session.status === NotStarted` を検証、違反は `MockExamSessionAlreadyStartedException`（HTTP 409）を throw、(3) 紐づく `MockExam.is_published === true` を検証、違反は `MockExamUnavailableException`（HTTP 409）を throw、(4) `DB::transaction()` 内で `status = InProgress` / `started_at = now()` / `time_limit_ends_at = now()->addMinutes($session->time_limit_minutes_snapshot)` を UPDATE、(5) `TermJudgementService::recalculate($session->enrollment)` を呼ぶ。
-- **REQ-mock-exam-151**: When 受講生が `GET /mock-exam-sessions/{session}` にアクセスした際, the system shall (1) `MockExamSessionPolicy::view($session)` で本人性検証、(2) `session.status` に応じて分岐: `NotStarted` → `views/mock-exam-sessions/lobby.blade.php`（開始ボタン + キャンセルボタン）/ `InProgress` → `views/mock-exam-sessions/take.blade.php`（受験 UI）/ `Submitted` → 採点中表示で `take.blade.php` の中で待機（実装上は即時採点なので通過点）/ `Graded` → `views/mock-exam-sessions/result.blade.php`（結果画面）/ `Canceled` → `views/mock-exam-sessions/canceled.blade.php`（キャンセル済画面、`/mock-exams` への戻り導線のみ）。
-- **REQ-mock-exam-152**: When `session.status === InProgress` で `views/mock-exam-sessions/take.blade.php` を描画する際, the system shall (a) `generated_question_ids` の順に Question + Options を `with(['options' => fn ($q) => $q->orderBy('order'), 'category'])` で eager load、(b) 既存の `MockExamAnswer` を `whereIn('question_id', $generated_question_ids)` で取得し `keyBy('question_id')`、(c) `time_limit_ends_at` をブラウザに渡しサーバ時刻ベースの残り時間 JS（`resources/js/mock-exam/timer.js`）で表示する。
-- **REQ-mock-exam-153**: While `session.status === InProgress` かつ `time_limit_ends_at > now()` の間, the system shall 受講生が他画面に遷移しても進行中状態を維持し、ダッシュボード / 模試一覧画面 / サイドバーバッジ で「進行中セッションあり」表示と再開リンクを供給する。
-- **REQ-mock-exam-154**: When 受講生が `PATCH /mock-exam-sessions/{session}/answers` を呼んだ際（ペイロード: `question_id` / `selected_option_id`）, the system shall `SaveAnswerAction` 内で (1) `MockExamSessionPolicy::saveAnswer($session)`、(2) `session.status === InProgress` を検証、違反は `MockExamSessionNotInProgressException`（HTTP 409）を throw、(3) サーバ時刻 `now() <= session.time_limit_ends_at` を検証、違反は `MockExamSessionTimeExceededException`（HTTP 409）+ メッセージ「制限時間が経過しました。自動採点が走ります」を throw、(4) `question_id` が `session.generated_question_ids` に含まれていることを検証、違反は `MockExamQuestionNotInSessionException`（HTTP 422）、(5) `selected_option_id` が `Question.options` に該当することを検証、違反は `MockExamOptionMismatchException`（HTTP 422）、(6) `(session_id, question_id)` UPSERT で `selected_option_id` / `selected_option_body = Option.body` / `answered_at = now()` を INSERT or UPDATE。`is_correct` は本時点で計算しない（採点時に確定）。
-- **REQ-mock-exam-155**: The system shall 残り時間計算を **サーバ時刻 `time_limit_ends_at` 基準** で行い、クライアントから受領した `client_timer_value` 等のフィールドは一切信用しない。受験画面の `resources/js/mock-exam/timer.js` は表示用カウントダウンのみを行い、終了判定はサーバ側 `SubmitAction` で再度実行する。
-- **REQ-mock-exam-156**: When `views/mock-exam-sessions/take.blade.php` のクライアント JS が 0 秒を検知した際, the system shall `POST /mock-exam-sessions/{session}/submit` を自動発火し、ユーザー操作なしで提出 → 採点フローを走らせる（NFR-mock-exam-007 の改ざん不可方針と整合：JS が遅らせても、サーバ採点時に `now() > time_limit_ends_at` で時間外と判定される）。
+- **REQ-mock-exam-150**: When 受講生が `POST /mock-exam-sessions/{session}/start` を呼んだ際, the system shall `MockExamSession\StartAction`(`MockExamSessionController::start` と一致) で (1) Policy 検証、(2) `status = NotStarted` を検証、(3) `MockExam.is_published === true` を検証、(4) `DB::transaction()` 内で `status = InProgress` / `started_at = now()` を UPDATE(**`time_limit_ends_at` セットなし**、E-3)、(5) `TermJudgementService::recalculate` を呼ぶ。
+- **REQ-mock-exam-151**: When 受講生が `GET /mock-exam-sessions/{session}` にアクセスした際, the system shall `status` に応じて分岐: `NotStarted` → lobby / `InProgress` → take / `Submitted/Graded` → result / `Canceled` → canceled view。
+- **REQ-mock-exam-152**: When `take` Blade を描画する際, the system shall `generated_question_ids` の順に MockExamQuestion + MockExamQuestionOption を eager load、既存の `MockExamAnswer` を取得し `keyBy`(**`time_limit_ends_at` JS 渡しなし**、E-3)。
+- **REQ-mock-exam-154**: When 受講生が `PATCH /mock-exam-sessions/{session}/answers` を呼んだ際(ペイロード: `mock_exam_question_id` / `selected_option_id`), the system shall `MockExamAnswer\UpdateAction`(`MockExamAnswerController::update` と一致) で (1) Policy、(2) `status === InProgress`、(3) `mock_exam_question_id IN session.generated_question_ids`、(4) `selected_option_id IN mockExamQuestion.options`、を検証(**時間制限超過検査なし**、E-3)、UPSERT で保存。`is_correct` は採点時確定。
 
-### 機能要件 — F. 提出・自動採点
+### 機能要件 — F. 提出・採点
 
-- **REQ-mock-exam-200**: When 受講生が `POST /mock-exam-sessions/{session}/submit` を呼んだ際（手動 or タイマー自動）, the system shall `SubmitAction::__invoke($session): MockExamSession` を実行する。Action は (1) `MockExamSessionPolicy::submit($session)`、(2) `session.status === InProgress` を検証、違反は `MockExamSessionNotInProgressException`（HTTP 409）を throw、(3) `DB::transaction()` 内で `status = Submitted` / `submitted_at = now()` を UPDATE、(4) 採点ロジック（G-220）を即時実行して `status = Graded` / `graded_at = now()` / `total_correct` / `score_percentage` / `pass` を UPDATE、(5) `TermJudgementService::recalculate($session->enrollment)` を呼ぶ。
-- **REQ-mock-exam-201**: When `now() > session.time_limit_ends_at` の状態で `SubmitAction` が走った際, the system shall それまでに `mock_exam_answers` に保存済の選択肢のみを採点対象とし、未解答の Question は `is_correct=false` 扱いとする（解答行を作らない）。時間外でも採点を完遂し、`pass` を確定させる（時間切れも 1 セッションの結果として正式履歴になる）。
-- **REQ-mock-exam-202**: When 受講生が時間切れまでに **一度も解答していない** 場合, the system shall `total_correct = 0` / `score_percentage = 0.00` / `pass = false` で採点完了させる（ゼロ除算は `total_questions > 0` が REQ-103 で担保済）。
-- **REQ-mock-exam-203**: If admin / 担当 coach が `is_published=false` に切り替えた後の `in_progress` セッションが提出された場合, then the system shall `SubmitAction` 内で当該 `MockExam.is_published` を再検査せず、セッション完遂を許容する（受験中の体験を破壊しないため）。ただし採点結果は履歴として残るが、F-203 の修了判定（`CompletionEligibilityService`）からは現時点で `is_published=false` の MockExam が `publishedCount` に含まれないため自動的に除外される。
-- **REQ-mock-exam-204**: When `SubmitAction` が完了する際, the system shall レスポンスとして HTTP 302 で `GET /mock-exam-sessions/{session}` にリダイレクトし、受講生は結果画面（H-250）を見ることになる。API 経由（Advance）の場合は JSON で `MockExamSessionResultResource` を返す。
-- **REQ-mock-exam-205**: The system shall `SubmitAction` 内で `lockForUpdate()` を `MockExamSession` 行に当て、二重提出（並列リクエスト）が `MockExamSessionNotInProgressException` で適切に拒否されるようにする（クライアントの「提出」ボタン二重押し対策、NFR-mock-exam-009 と整合）。
+- **REQ-mock-exam-200**: When 受講生が `POST /mock-exam-sessions/{session}/submit` を呼んだ際, the system shall `SubmitAction` で (1) Policy、(2) `status === InProgress` を検証、(3) `DB::transaction()` 内で `status = Submitted` / `submitted_at = now()` を UPDATE、(4) 採点ロジックを即時実行して `status = Graded` / `graded_at = now()` / `total_correct` / `score_percentage` / `pass` を UPDATE、(5) `TermJudgementService::recalculate` を呼ぶ、(6) `DB::afterCommit()` で `NotifyMockExamGradedAction` 発火。
+- **REQ-mock-exam-201**: **削除(E-3 撤回)**: 旧「時間外で `SubmitAction` が走った際 ... 未解答は `is_correct=false` 扱い」。時間制限なしのため、未解答問題は提出時点で `MockExamAnswer` が存在しなければ `is_correct=false` 扱いとする(同等動作だが「時間切れ」概念はない)。
+- **REQ-mock-exam-205**: The system shall `SubmitAction` 内で `lockForUpdate()` を session 行に当て、二重提出を防ぐ。
 
-### 機能要件 — G. 採点ロジック（GradeAction）
+### 機能要件 — G. 採点ロジック(GradeAction、内部)
 
-- **REQ-mock-exam-220**: The system shall 採点を `GradeAction::__invoke(MockExamSession $session): void` という内部 Action として実装し、`SubmitAction` の transaction 内で呼ばれる構成とする（公開 Action ではない、Controller から直接呼ばない）。
-- **REQ-mock-exam-221**: When `GradeAction` が走る際, the system shall 単一 SQL で各 `MockExamAnswer` の `is_correct` を確定する: `UPDATE mock_exam_answers SET is_correct = (selected_option_id IS NOT NULL AND EXISTS (SELECT 1 FROM question_options WHERE question_options.id = mock_exam_answers.selected_option_id AND question_options.is_correct = true)) WHERE mock_exam_session_id = ?`（Eloquent では `whereExists` + `update` で表現、または `chunk` で逐次更新でも可、ただし 1 セッション 80 問程度なので一括 UPDATE で十分）。
-- **REQ-mock-exam-222**: When `GradeAction` が走る際, the system shall `total_correct = COUNT(MockExamAnswer WHERE session_id = ? AND is_correct = true)` を SQL で算出し、`score_percentage = ROUND(total_correct / session.total_questions * 100, 2)` を計算、`pass = (score_percentage >= session.passing_score_snapshot)` を boolean として確定する。
-- **REQ-mock-exam-223**: When `Question.section_id` が NOT NULL かつ親 Section / Chapter / Part のいずれかが採点時点で `Draft` / `SoftDeleted` 化されていた場合, the system shall 採点ロジックでは **cascade visibility を考慮しない**。`Answer.selected_option_id` が指し示す `QuestionOption.is_correct` の真偽値のみで判定する（採点済セッションは凍結履歴、教材階層の変動の影響を受けない）。
-- **REQ-mock-exam-224**: When `Question` が採点時点で `SoftDeleted` だった場合, the system shall `Question::query()->withTrashed()` で正答取得を試み、`QuestionOption` も同様に `withTrashed()` で取得する。物理削除 / cascade null されていた場合は `is_correct = false` で確定する（不利益解釈を採用）。
+- **REQ-mock-exam-220**: The system shall 採点を `GradeAction::__invoke(MockExamSession $session): void` で実装し、`SubmitAction` の transaction 内で呼ぶ。
+- **REQ-mock-exam-221**: When `GradeAction` が走る際, the system shall 各 `MockExamAnswer.is_correct` を以下で確定する: `selected_option_id IS NOT NULL AND MockExamQuestionOption.is_correct = true`。
+- **REQ-mock-exam-222**: When `GradeAction` が走る際, the system shall `total_correct` / `score_percentage = ROUND(total_correct / total_questions * 100, 2)` / `pass = (score_percentage >= passing_score_snapshot)` を確定する。
+- **REQ-mock-exam-223**: When MockExamQuestion / MockExamQuestionOption が採点時点で SoftDelete されていた場合, the system shall `withTrashed()` で正答取得を試み、cascade null されていた場合は `is_correct = false` で確定する。
 
 ### 機能要件 — H. 結果画面・履歴閲覧
 
-- **REQ-mock-exam-250**: When 受講生が `GET /mock-exam-sessions/{session}` にアクセスし `status === Graded` の場合, the system shall `views/mock-exam-sessions/result.blade.php` を描画し、以下を表示する: (a) 総得点（`total_correct` / `total_questions`）と `score_percentage` の大字、(b) `pass` 真偽による合格／不合格バッジ、(c) `WeaknessAnalysisService::getHeatmap($session)` で取得した分野別正答率ヒートマップ、(d) `WeaknessAnalysisService::getPassProbabilityBand($session->enrollment)` で取得した合格可能性スコア（3 バンド表示）、(e) 各分野の「苦手分野ドリルへ」リンク（`/quiz/drills/{enrollment}/categories/{category}`）、(f) 「もう一度受験」ボタン（新規セッション作成 → 既存進行中セッションがあれば 409 で誘導）、(g) 「結果一覧へ戻る」リンク。
-- **REQ-mock-exam-251**: When 受講生が `GET /mock-exam-sessions` にアクセスした際, the system shall 受講生本人の `mock_exam_sessions WHERE user_id = $auth->id AND status IN (graded, canceled)` を `with('mockExam.certification')->orderByDesc('graded_at')->orderByDesc('canceled_at')->paginate(20)` で取得し、`views/mock-exam-sessions/index.blade.php` を描画する。各行に資格名 / MockExam タイトル / セッション状態バッジ / 得点率 / 合否 / 採点日時を表示する。
-- **REQ-mock-exam-252**: The system shall 受講生の履歴一覧画面でフィルタを提供する: (a) `certification_id`（資格別）、(b) `mock_exam_id`（模試別）、(c) `pass`（合格 / 不合格 / キャンセル）。フィルタは query string で受け、組み合わせ可能とする。
-- **REQ-mock-exam-253**: When 受講生が他者のセッション URL でアクセスした際, the system shall `MockExamSessionPolicy::view` で HTTP 403 を返す（存在は隠さない、別資格の Enrollment は学習中受講生にとってアクセス必要なケースが業務上ないため）。
-- **REQ-mock-exam-254**: When 受講生が未受講資格の `mock_exams.{id}` URL に直接アクセスした際, the system shall `MockExamPolicy::take` で HTTP 404 を返す（資格の存在を隠す方針、REQ-102）。
+- **REQ-mock-exam-250**: When 受講生が `GET /mock-exam-sessions/{session}` で `status === Graded` の場合, the system shall `result.blade.php` を描画し、(a) 総得点 / `score_percentage`、(b) 合否バッジ、(c) ヒートマップ、(d) 合格可能性スコア、(e) 各分野の「苦手分野ドリルへ」リンク、(f) 「もう一度受験」ボタン、(g) 「結果一覧へ戻る」リンクを表示する。
+- **REQ-mock-exam-251**: When 受講生が `GET /mock-exam-sessions` にアクセスした際, the system shall 受講生本人の Session を `graded` / `canceled` のみ paginate(20)。
+- **REQ-mock-exam-252**: The system shall フィルタ提供: `certification_id` / `mock_exam_id` / `pass`。
 
 ### 機能要件 — I. コーチ / admin 結果閲覧
 
-- **REQ-mock-exam-300**: When admin / coach が `GET /admin/mock-exam-sessions` にアクセスした際, the system shall `MockExamSessionPolicy::viewAny` を通過したロールに対して、admin は全セッション、coach は `MockExamSession::query()->whereHas('enrollment', fn ($q) => $q->where('assigned_coach_id', $auth->id))` で担当受講生のみ、を `with('user', 'mockExam.certification', 'enrollment')->latest('graded_at')->paginate(20)` で取得し、`views/admin/mock-exam-sessions/index.blade.php` を描画する。
-- **REQ-mock-exam-301**: The system shall コーチ / admin 用一覧画面でフィルタを提供する: (a) `certification_id`、(b) `user_id`（受講生名 / email 部分一致のセレクトボックス、coach は担当受講生のみ）、(c) `status`（未開始 / 受験中 / 採点済 / キャンセル）、(d) `pass`（合格 / 不合格、`status=graded` の場合のみ）。
-- **REQ-mock-exam-302**: When admin / coach が `GET /admin/mock-exam-sessions/{session}` にアクセスした際, the system shall `MockExamSessionPolicy::view($session)` で認可検証（admin 全、coach は `$session->enrollment->assigned_coach_id === $auth->id`）し、認可済なら受講生視点と同じ `result.blade.php`（採点済セッション）または `take.blade.php` の **閲覧専用版**（受験中セッション、選択肢は disable）を描画する。受験中セッションを閲覧する場合でも答えの送信や採点介入は不可。
-- **REQ-mock-exam-303**: While coach / admin が結果詳細画面を閲覧する間, the system shall WeaknessAnalysisService の Heatmap / PassProbabilityBand を担当受講生視点で算出して同一 Blade に渡し、面談・chat 介入時の話題として使えるようにする。
+- **REQ-mock-exam-300**: When admin / coach が `GET /admin/mock-exam-sessions` にアクセスした際, the system shall admin は全セッション、coach は **担当資格に登録した受講生** のセッション(`enrollment.certification.coaches` 経由)を paginate(20)。
+- **REQ-mock-exam-302**: When admin / coach が `GET /admin/mock-exam-sessions/{session}` にアクセスした際, the system shall 認可検証し、認可済なら結果ビューを表示。
 
-### 機能要件 — J. 集計 Service（WeaknessAnalysisService）
+### 機能要件 — J. 集計 Service(WeaknessAnalysisService)
 
-- **REQ-mock-exam-350**: The system shall `App\Services\WeaknessAnalysisService` を `app/Services/` にフラット配置し、`App\Services\Contracts\WeaknessAnalysisServiceContract`（[[quiz-answering]] が事前定義）を `implements` する。`getWeakCategories(Enrollment $enrollment): Collection<QuestionCategory>` を契約として実装する。
-- **REQ-mock-exam-351**: The system shall `getWeakCategories(Enrollment $enrollment): Collection<QuestionCategory>` を以下のロジックで実装する: (1) 当該 Enrollment の直近 3 件の `MockExamSession WHERE status = Graded` を `orderByDesc('graded_at')->limit(3)` で取得（採点済セッションが 0 件なら空 Collection を返す）、(2) それらのセッション配下の `MockExamAnswer` を `JOIN questions JOIN question_categories` し、`GROUP BY questions.category_id` で `AVG(CASE WHEN is_correct THEN 1 ELSE 0 END) AS rate` を算出、(3) `rate * 100 < (session.passing_score_snapshot * 0.70)` を満たすカテゴリを「弱点」と判定（合格点の 70% 未満、相対閾値、未解答 Question も `is_correct=false` のため分母に含む）、(4) 該当カテゴリの `QuestionCategory` Eloquent モデルを Collection で返す。
-- **REQ-mock-exam-352**: The system shall **mock-exam 内部のみ使用** する別メソッド `getHeatmap(MockExamSession $session): Collection<CategoryHeatmapCell>` を提供し、当該セッション 1 件分の `MockExamAnswer` を `JOIN questions JOIN question_categories` し、`GROUP BY category_id` で `total = COUNT(*) / correct = SUM(is_correct) / rate = correct / total` を算出、`App\Services\CategoryHeatmapCell` 値オブジェクト（`category_id` / `category_name` / `total_questions` / `correct_count` / `accuracy_rate`（0..1）/ `is_weak`（合格点 70% 未満））を返す。
-- **REQ-mock-exam-353**: The system shall **mock-exam 内部のみ使用** する別メソッド `getPassProbabilityBand(Enrollment $enrollment): PassProbabilityBand` を提供し、(1) 直近 3 件の採点済セッションを取得（採点済 0 件 → `Unknown`）、(2) その `score_percentage` の単純平均を算出、(3) 同一資格の `MockExam` の代表 `passing_score`（複数模試あるため最大値を採用、もしくは全模試の平均、ここでは「直近 3 セッションのうち最新セッションの passing_score_snapshot」を採用）を基準に: avg >= snapshot * 0.90 → `Safe` / snapshot * 0.70 ≤ avg < snapshot * 0.90 → `Warning` / avg < snapshot * 0.70 → `Danger` で 3 バンド分けする。受験回数が 3 未満（1 or 2 件）の場合はその件数で算出する。
-- **REQ-mock-exam-354**: The system shall `WeaknessAnalysisService` を **ステートレス Service** として実装し、`DB::transaction()` を内部に持たない（NFR-mock-exam-005 と整合、[[quiz-answering]] の `QuestionAttemptStatsService` 流儀）。
-- **REQ-mock-exam-355**: The system shall `App\Providers\MockExamServiceProvider` の `register()` で `WeaknessAnalysisServiceContract::class` を `WeaknessAnalysisService::class` に `bind`（`bindIf` ではなく `bind` で **上書き優先**）する。これにより [[quiz-answering]] の `QuizAnsweringServiceProvider::bindIf` フォールバック binding を上書きし、本 Feature の実装が優先採用される。
-- **REQ-mock-exam-356**: When 当該 Enrollment 配下の Graded MockExamSession が 0 件の場合, the system shall `getWeakCategories` は空 Collection、`getPassProbabilityBand` は `PassProbabilityBand::Unknown` を返す（[[quiz-answering]] の `WeakDrillAction` ヘッダ表示で「おすすめバッジは全カテゴリ false」の挙動と整合）。
+- **REQ-mock-exam-350**: The system shall `App\Services\WeaknessAnalysisService` を提供し、`getWeakCategories(Enrollment): Collection<QuestionCategory>` を [[quiz-answering]] の Contract に対する正規実装として bind する。
+- **REQ-mock-exam-351**: The system shall `getWeakCategories` を以下で実装する: 直近 3 件の Graded `MockExamSession` の `MockExamAnswer` を `JOIN mock_exam_questions JOIN question_categories` で `GROUP BY category_id`、`AVG(is_correct) * 100 < passing_score_snapshot * 0.70` のカテゴリを「弱点」と判定。
+- **REQ-mock-exam-352**: The system shall `getHeatmap(MockExamSession): Collection<CategoryHeatmapCell>` を提供。
+- **REQ-mock-exam-353**: The system shall `getPassProbabilityBand(Enrollment): PassProbabilityBand` を提供(直近 3 件の平均得点率を `passing_score` × 0.90 / 0.70 で 3 バンド分け、採点済 0 件は `Unknown`)。
+- **REQ-mock-exam-355**: The system shall `App\Providers\MockExamServiceProvider::register()` で `WeaknessAnalysisServiceContract::class` を `WeaknessAnalysisService::class` に bind する。
 
-### 機能要件 — K. アクセス制御 / 認可
+### 機能要件 — K. 修了判定との連携([[enrollment]] が所有)
 
-- **REQ-mock-exam-400**: The system shall `routes/web.php` の `/admin/mock-exams/...` 群に `auth + role:admin|coach` Middleware を適用し、`/mock-exams/...` / `/mock-exam-sessions/...` 群に `auth + role:student` Middleware を適用する。`/admin/mock-exam-sessions/...` 群（コーチ・admin 結果閲覧）は `auth + role:admin|coach` を適用する。
-- **REQ-mock-exam-401**: The system shall `App\Policies\MockExamPolicy` を以下で実装する: `viewAny(User)` — admin/coach は true、student は false。`view(User, MockExam)` — admin true / coach は `$mockExam->certification->coaches->contains($user->id)` / student は本 Policy では false（受講生は `take` メソッド経由）。`create(User, Certification)` — admin true / coach は割当資格のみ true / student false。`update(User, MockExam)` / `delete(User, MockExam)` / `publish(User, MockExam)` / `manageQuestions(User, MockExam)` — `view` と同基準。`take(User, MockExam)` — student が `mockExam.certification_id` を `learning` / `paused` で受講中なら true、それ以外は false。
-- **REQ-mock-exam-402**: The system shall `App\Policies\MockExamSessionPolicy` を以下で実装する: `viewAny(User)` — admin/coach は true。`view(User, MockExamSession)` — admin true / coach は `$session->enrollment->assigned_coach_id === $user->id` / student は `$session->user_id === $user->id`。`start(User, MockExamSession)` / `saveAnswer(User, MockExamSession)` / `submit(User, MockExamSession)` / `cancel(User, MockExamSession)` — `$session->user_id === $user->id` かつ `$user->role === Student`。
-- **REQ-mock-exam-403**: When 受講生が他資格の MockExam URL に直接アクセスする際, the system shall `MockExamPolicy::take` で false → HTTP 404 を返す（存在を隠す方針）。
-- **REQ-mock-exam-404**: When coach が担当外資格の MockExam URL にアクセスする際, the system shall `MockExamPolicy::view` で false → HTTP 403 を返す（コーチ間では存在の隠蔽は不要、リソース存在は admin 共有なので 403 で十分）。
-- **REQ-mock-exam-405**: When coach が他コーチ担当受講生のセッション URL に直接アクセスする際, the system shall `MockExamSessionPolicy::view` で false → HTTP 403 を返す。
+- **REQ-mock-exam-380**: The system shall 修了判定ロジック(`CompletionEligibilityService::isEligible(Enrollment)`)の **真実源データを提供する側** に徹する。
+- **REQ-mock-exam-381**: The system shall 修了申請承認フローを **提供しない**(受講生「修了証を受け取る」ボタン自己完結、v3)。
+
+### 機能要件 — L. アクセス制御 / 認可
+
+- **REQ-mock-exam-400**: The system shall `/admin/mock-exams/...` 群に `auth + role:admin|coach` を、`/mock-exams/...` 群に `auth + role:student + EnsureActiveLearning` を適用する。
+- **REQ-mock-exam-401**: The system shall `MockExamPolicy` を提供し、admin / coach 担当 / student 受講中(learning + passed)の判定を行う。
+- **REQ-mock-exam-402**: The system shall `MockExamSessionPolicy` を提供する。
+- **REQ-mock-exam-403**: When coach が他コーチ担当資格のリソースに触ろうとした際, the system shall HTTP 403 を返す。
 
 ### 非機能要件
 
-- **NFR-mock-exam-001**: The system shall 状態変更を伴う Action（`CreateSessionAction` / `StartSessionAction` / `SaveAnswerAction` / `SubmitAction`（内部で `GradeAction` を呼ぶ）/ `CancelSessionAction` / MockExam の Store/Update/Destroy/Publish/Unpublish/AttachQuestion/DetachQuestion/ReorderQuestion）を `DB::transaction()` で囲み、原子性を保つ。`TermJudgementService::recalculate` は当該 transaction 内で呼ぶ（[[enrollment]] REQ-060〜064 と整合）。
-- **NFR-mock-exam-002**: The system shall 受講生 模試一覧 / 受験中画面 / 結果画面 / コーチ結果一覧の N+1 を `with()` Eager Loading で避ける: 受講生一覧では `enrollments.with('certification.mockExams' => fn ($q) => $q->where('is_published', true)->withCount('questions'))`、受験画面では `with(['mockExam.questions' => fn ($q) => $q->withPivot('order')->orderByPivot('order')->with('options', 'category')])`、結果画面では `with('mockExam.certification', 'answers.question.category')`、コーチ一覧では `with('user', 'mockExam.certification', 'enrollment')`。
-- **NFR-mock-exam-003**: The system shall 以下 INDEX を migration で定義する: `mock_exams.(certification_id, is_published, order)` 複合 / `mock_exams.deleted_at` 単体 / `mock_exam_questions.(mock_exam_id, order)` 複合 / `mock_exam_questions.(mock_exam_id, question_id)` UNIQUE / `mock_exam_sessions.(enrollment_id, status)` 複合（[[enrollment]] の `TermJudgementService` が利用）/ `mock_exam_sessions.(mock_exam_id, pass)` 複合（[[enrollment]] の `CompletionEligibilityService` が利用）/ `mock_exam_sessions.(user_id, graded_at)` 複合（履歴一覧）/ `mock_exam_sessions.deleted_at` 単体 / `mock_exam_answers.(mock_exam_session_id, question_id)` UNIQUE / `mock_exam_answers.(mock_exam_session_id, is_correct)` 複合（採点時 SUM の高速化）。
-- **NFR-mock-exam-004**: The system shall ドメイン例外を `app/Exceptions/MockExam/` 配下に独立クラスとして実装する: `MockExamInUseException`（HTTP 409、`ConflictHttpException` 継承）/ `MockExamPublishNotAllowedException`（HTTP 409）/ `MockExamHasNoQuestionsException`（HTTP 409）/ `MockExamUnavailableException`（HTTP 409）/ `MockExamSessionAlreadyInProgressException`（HTTP 409）/ `MockExamSessionAlreadyStartedException`（HTTP 409）/ `MockExamSessionNotInProgressException`（HTTP 409）/ `MockExamSessionNotCancelableException`（HTTP 409）/ `MockExamSessionTimeExceededException`（HTTP 409）/ `MockExamQuestionIneligibleException`（HTTP 409）/ `MockExamQuestionNotInSessionException`（HTTP 422、`UnprocessableEntityHttpException` 継承）/ `MockExamOptionMismatchException`（HTTP 422）。
-- **NFR-mock-exam-005**: The system shall `WeaknessAnalysisService` を [[quiz-answering]] の `QuestionAttemptStatsService` / [[learning]] の `ProgressService` 等と同等のステートレス Service として実装し、`DB::transaction()` を内部で持たない。
-- **NFR-mock-exam-006**: The system shall 受験画面のクライアントサイド処理（残り時間カウントダウン / 解答選択時の自動 PATCH / 時間切れ時の自動 submit）を **素の JavaScript**（`resources/js/mock-exam/timer.js` / `answer-autosave.js` / `auto-submit.js`）で行い、Wave 0b 共通ユーティリティ `utils/fetch-json.js` を経由する。`Alpine.js` / `Livewire` は採用しない（`tech.md` のフロントエンド方針に整合）。
-- **NFR-mock-exam-007**: The system shall 残り時間判定をすべて **サーバ時刻基準**（`session.time_limit_ends_at` vs `now()`）で行い、クライアントから受領したタイマー値は採点 / 提出可否判定に一切使用しない。クライアント JS の改ざんは表示・自動 submit トリガにのみ影響し、サーバ側 `SaveAnswerAction` / `SubmitAction` は `time_limit_ends_at` 超過時に常に時間外として扱う。
-- **NFR-mock-exam-008**: The system shall `views/mock-exam-sessions/take.blade.php` に **正答情報（`QuestionOption.is_correct`）を一切埋め込まない**。受験中はクライアント側に「どれが正解か」を判定する情報源を持たせず、すべての採点はサーバ側 `GradeAction` で完結させる（API Resource でも同様、`MockExamQuestionResource` は `is_correct` を除外する [[quiz-answering]] の `QuestionOptionResource` と同じ流儀）。
-- **NFR-mock-exam-009**: The system shall `MockExamSession` 状態遷移を伴う Action（`StartSessionAction` / `SaveAnswerAction` / `SubmitAction` / `CancelSessionAction`）で `lockForUpdate()` を session 行に当て、並列リクエスト（二重押下 / クライアント再送）が想定外の状態遷移を起こさないようガードする。
-- **NFR-mock-exam-010**: The system shall `views/admin/mock-exams/**` および `views/mock-exam-sessions/**` を Wave 0b で整備済みの共通 Blade コンポーネント（`<x-button>` / `<x-form.input>` / `<x-form.radio>` / `<x-form.select>` / `<x-card>` / `<x-badge>` / `<x-alert>` / `<x-empty-state>` / `<x-breadcrumb>` / `<x-paginator>` / `<x-table>` / `<x-modal>` / `<x-tabs>`）に準拠して構築する。
-- **NFR-mock-exam-011**: The system shall 受験中画面（`views/mock-exam-sessions/take.blade.php`）をモバイルでも受験可能な最低限の品質で実装する（`frontend-ui-foundation.md` レスポンシブブレークポイント方針: mock-exam 受験画面はモバイル受験対応必須）。
-- **NFR-mock-exam-012**: The system shall `Question` および `QuestionOption` が SoftDelete / 物理削除されても、過去の `MockExamSession` の `MockExamAnswer.selected_option_body` および `MockExamAnswer.is_correct` が不変であることを保証する（不変履歴、[[quiz-answering]] の Answer と同方針）。
+- **NFR-mock-exam-001**: The system shall 状態変更を伴うすべての Action を `DB::transaction()` で囲み、`TermJudgementService::recalculate` を同 transaction で呼ぶ。
+- **NFR-mock-exam-002**: The system shall N+1 を Eager Loading で避ける。
+- **NFR-mock-exam-003**: The system shall 以下 INDEX を提供: `mock_exams.(certification_id, is_published, order)` / `mock_exam_questions.(mock_exam_id, order)` / `mock_exam_question_options.(mock_exam_question_id, order)` / `mock_exam_sessions.(enrollment_id, status)` / `mock_exam_sessions.(mock_exam_id, pass)` / `mock_exam_sessions.(user_id, graded_at)` / `mock_exam_answers.(mock_exam_session_id, mock_exam_question_id)` UNIQUE。
+- **NFR-mock-exam-004**: The system shall ドメイン例外を `app/Exceptions/MockExam/` 配下に実装する(**`MockExamSessionTimeExceededException` 削除**、E-3)。
+- **NFR-mock-exam-006**: The system shall 逐次保存のクライアント JS(自動 PATCH)を素の JavaScript で実装する(**タイマー JS / auto-submit JS なし**、E-3)。
+- **NFR-mock-exam-008**: The system shall 受験中画面に正答情報を埋め込まない(クライアント JS / API Resource いずれにも露出させない)。
+- **NFR-mock-exam-009**: The system shall `MockExamSession` 状態遷移を `lockForUpdate()` でガードする。
 
 ## スコープ外
 
-- **mock-exam 専用 Question の CRUD** — [[content-management]] が所有（`Question.section_id IS NULL` を扱う）。本 Feature は組成・出題・採点のみ
-- **苦手分野ドリル UI** — [[quiz-answering]] が所有。本 Feature は `WeaknessAnalysisServiceContract` の実装と「結果画面からドリルへの導線リンク」だけを供給
-- **修了申請 / 修了承認フロー** — [[enrollment]] が所有（`CompletionEligibilityService` / `RequestCompletionAction` / `ApproveCompletionAction`）。本 Feature は判定の入力データを提供するだけ
-- **ターム判定ロジック** — [[enrollment]] が所有（`TermJudgementService`）。本 Feature は Start / Submit / Cancel 時に同 Service を呼ぶ呼出側
-- **進捗率集計（資格完了率）** — [[learning]] が所有（`ProgressService`）。本 Feature は関与しない
-- **mock-exam セッション中のリアルタイム他者表示 / 共同受験** — 個人受験のみ、Advance でも扱わない（実試験リハーサル文脈で多人数同時受験は無意味）
-- **採点後の解答振り返り画面（問題ごとの正誤 + 解説表示）** — 結果画面では分野別ヒートマップのみ提示。個別問題の振り返りは [[quiz-answering]] の苦手分野ドリル経由で同じ問題を再演習する世界に閉じる（時間圧の本試験 + 教習所学科スタイル）。記述式 / 自由記述 / マルチ正答は `Question` モデル側でも非対応（[[content-management]] REQ-033 と整合）
-- **本試験合格・スコア管理（LMS 外データ取り込み）** — `Enrollment.passed_at` は修了認定の達成日であり、LMS 外の本試験合否とは独立（`product.md` 上「修了 vs 目標受験日」の混同回避方針）
-- **mock-exam 採点結果の CSV エクスポート / 一括 PDF 出力** — 教育 PJ スコープ外（`product.md` スコープ外明示）
-- **mock-exam ランキング / リーダーボード / バッジ** — `product.md` スコープ外明示（学習動機付けは試験日カウントダウン + 進捗ゲージ + ストリーク + 個人目標タイムラインで対応）
-- **問題の難易度自動調整 / 個別出題（CAT、Computerized Adaptive Testing）** — 固定問題セット運用のみ
-- **複数受講生での同時採点キュー化（Advance Queue）** — Basic 範囲では同期採点（`SubmitAction` 内で `GradeAction` を即時呼ぶ）。Advance で Queue 非同期化する余地は残すが、本要件では Basic 同期で完結する仕様
-- **Advance Broadcasting で「コーチに採点完了をリアルタイム push」** — [[notification]] / [[chat]] が所有する Advance 題材であり、本 Feature の責務外（採点通知の dispatch は本 Feature が起点とするが、通知の channel / リアルタイム化は他 Feature の責任）
+- **時間制限機能**(E-3 で撤回) — タイマー UI / サーバ時刻ベース残り時間計算 / auto-submit / Schedule Command による期限切れ自動採点はすべて持たない。模試は時間制限なし、受講生は自分のペースで解答 + 明示提出
+- **mock-exam 専用問題の content-management 管理** — v3 撤回
+- **`difficulty` 管理** — v3 撤回
+- **修了申請承認フロー** — v3 撤回、受講生自己完結
+- mock-exam セッション中のリアルタイム他者表示 / 共同受験
+- 採点後の解答振り返り画面 — 結果画面では分野別ヒートマップのみ
+- 複数受講生での同時採点キュー化(Advance Queue)
+- Advance Broadcasting で「コーチに採点完了をリアルタイム push」
 
 ## 関連 Feature
 
-- **依存先**（本 Feature が前提とする）:
-  - [[auth]] — `User` モデル / `UserRole` Enum / `auth` Middleware / `role:student|coach|admin` Middleware
-  - [[user-management]] — `User.status` 遷移管理（本 Feature の操作は status 変化を起こさない）
-  - [[certification-management]] — `Certification` モデル（`certification_id` 紐付け）+ `certification_coach_assignments` Pivot（coach の担当判定）
-  - [[content-management]] — `Question` / `QuestionOption` / `QuestionCategory` / `Section` モデル + `Question::scopePublished()` + `ContentStatus` Enum
-  - [[enrollment]] — `Enrollment` モデル / `EnrollmentStatus` Enum / `TermType` Enum / `TermJudgementService::recalculate` / `EnrollmentPolicy`（受講中判定で利用）
-  - [[quiz-answering]] — `WeaknessAnalysisServiceContract` Interface 定義 + `NullWeaknessAnalysisService` フォールバック実装（本 Feature の Service Provider で正規実装を bind し、フォールバックを上書きする）
-- **依存元**（本 Feature を利用する）:
-  - [[enrollment]] — `CompletionEligibilityService` が `MockExam.is_published=true` 件数と `MockExamSession.pass=true` 件数を SELECT して修了判定する（参照のみ、本 Feature が真実源）
-  - [[enrollment]] — `EnrollmentNote` 編集画面で coach が担当受講生の模試結果を補助参照する想定（`MockExamSessionPolicy::view` 経由）
-  - [[quiz-answering]] — `WeakDrill\IndexAction` が `WeaknessAnalysisServiceContract::getWeakCategories` を呼んでおすすめバッジを生成する。本 Feature の `WeaknessAnalysisService` 実装が DI でその契約を満たす
-  - [[dashboard]] — 受講生ダッシュボードの「弱点分析パネル」/ 「合格可能性スコア」/ 「進行中模試あり」セクションが本 Feature の Service / Model を消費。コーチダッシュボードの「担当受講生の弱点ヒートマップ」も同様
-  - [[notification]] — 模試採点完了通知は本 Feature の `SubmitAction` 内で `DB::afterCommit()` 経由で dispatch する（通知 channel / Mailable は [[notification]] が所有、本 Feature は dispatch 起点のみ）
+- **依存先**:
+  - [[auth]] — `User` / `UserRole` / `auth` / `role:student|coach|admin` / `EnsureActiveLearning` Middleware
+  - [[certification-management]] — `Certification` + `certification_coach_assignments`
+  - [[content-management]] — `QuestionCategory` 共有マスタ
+  - [[enrollment]] — `Enrollment` / `EnrollmentStatus` / `TermJudgementService::recalculate` / `CompletionEligibilityService`
+  - [[quiz-answering]] — `WeaknessAnalysisServiceContract` Interface
+- **依存元**:
+  - [[enrollment]] — `CompletionEligibilityService` が本 Feature の `MockExam` / `MockExamSession` をクエリ
+  - [[quiz-answering]] — 苦手分野ドリルが `WeaknessAnalysisServiceContract::getWeakCategories` で本 Feature の Service を消費
+  - [[dashboard]] — 受講生の弱点分析パネル / 合格可能性スコア / 進行中模試あり / coach の担当受講生弱点ヒートマップ
+  - [[notification]] — 採点完了通知の dispatch 起点

@@ -35,7 +35,7 @@
 - [ ] `app/Http/Requests/QaReply/StoreRequest`（`body` バリデーション、`authorize()` で `[QaReply::class, $thread]` Policy 呼出）（REQ-qa-board-061〜063）
 - [ ] `app/Http/Requests/QaReply/UpdateRequest`（`body` バリデーション、`authorize()` で Policy 呼出）（REQ-qa-board-070, REQ-qa-board-072）
 - [ ] `app/Http/Requests/Admin/QaThread/IndexRequest`（`with_trashed` bool 追加、admin ロール `authorize()`）（REQ-qa-board-130）
-- [ ] `routes/web.php` への登録（公開 9 ルート + replies 3 ルート + admin 4 ルート、`withTrashed()` ルートバインディングを admin show / destroy に適用）（REQ-qa-board-030, REQ-qa-board-131）
+- [ ] `routes/web.php` への登録（公開 9 ルート + replies 3 ルート + admin 4 ルート、**student/coach 用ルートには `EnsureActiveLearning` Middleware 追加**（v3、graduated 受講生をブロック）、admin ルートには適用しない、`withTrashed()` ルートバインディングを admin show / destroy に適用）（REQ-qa-board-030, REQ-qa-board-131）
 
 ## Step 4: Action / Exception
 
@@ -46,7 +46,7 @@
 - [ ] `app/UseCases/QaThread/DestroyAction`（回答 0 件チェック + SoftDelete、`QaThreadHasRepliesException` throw）（REQ-qa-board-050, REQ-qa-board-051, REQ-qa-board-054）
 - [ ] `app/UseCases/QaThread/ResolveAction`（`QaThreadAlreadyResolvedException` ガード + `status = Resolved` / `resolved_at = now()` の同時 UPDATE）（REQ-qa-board-006, REQ-qa-board-090, REQ-qa-board-093）
 - [ ] `app/UseCases/QaThread/UnresolveAction`（`QaThreadNotResolvedException` ガード + `status = Open` / `resolved_at = null` の同時 UPDATE）（REQ-qa-board-006, REQ-qa-board-091, REQ-qa-board-094）
-- [ ] `app/UseCases/QaReply/StoreAction`（`DB::transaction` 内で INSERT + 自己回答以外なら `QaReplyCreatedNotification` 通知 dispatch）（REQ-qa-board-064, REQ-qa-board-065）
+- [ ] `app/UseCases/QaReply/StoreAction`（`DB::transaction` 内で INSERT + 自己回答以外なら **`QaReplyReceivedNotification`**（v3 rename）通知 dispatch）（REQ-qa-board-064, REQ-qa-board-065）
 - [ ] `app/UseCases/QaReply/UpdateAction`（`body` のみ UPDATE）（REQ-qa-board-070, REQ-qa-board-073）
 - [ ] `app/UseCases/QaReply/DestroyAction`（SoftDelete、スレッド状態不変）（REQ-qa-board-080, REQ-qa-board-083）
 - [ ] `app/UseCases/AdminQaThread/IndexAction`（全資格・全状態・SoftDelete 含む切替で 20 件ページネーション）（REQ-qa-board-130）

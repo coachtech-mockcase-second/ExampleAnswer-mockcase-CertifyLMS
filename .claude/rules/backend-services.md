@@ -61,3 +61,64 @@ class TermJudgementService
 - `tests/Unit/Services/{Feature}ServiceTest.php`
 - 計算ロジックを純粋関数的にテスト
 - DB 依存がある場合は `RefreshDatabase` + ファクトリで前提データ構築
+
+## Interface 採用判断指針（YAGNI と DIP の境界）
+
+Service クラスに Interface（Contract）を切るかどうかは、**Feature 横断時のみ採用** を原則とする。同 Feature 内で完結する Service は具象クラス直接 DI で十分。
+
+### Interface を切る判断軸
+
+| 状況 | Interface 採用 |
+|---|---|
+| **複数 Feature から呼ばれ、正規実装が別 Feature にある** | ✅ 採用（例: `WeaknessAnalysisServiceContract` を quiz-answering が定義、mock-exam が正規実装、NullObject フォールバックを quiz-answering が登録） |
+| **テストで mock したいが、`Http::fake` / `Mail::fake` 等の Laravel 標準 fake で対応可能** | ❌ 不採用（具象クラス + fake で十分） |
+| **同 Feature 内で完結する Service**（`MarkdownRenderingService` / `CertificateSerialNumberService` 等）| ❌ 不採用（過剰抽象、YAGNI） |
+| **外部 API を叩く Service**（Gemini / Google Calendar / Pusher 等）| ✅ 採用（Repository パターンとして、`backend-repositories.md` 参照） |
+
+### 採用時の配置
+
+- Interface: `app/Services/Contracts/{Service}Contract.php`
+- 正規実装: 所有 Feature の `app/Services/{Service}.php`
+- フォールバック実装（NullObject 等）: 依存 Feature の `app/Services/Null{Service}.php`
+- `ServiceProvider::register()` で `bindIf($contract, $primaryImpl)` + `bindIf($contract, $nullImpl)` の 2 段登録
+
+### 採用しない理由（教材として）
+
+- **Interface の存在自体が複雑度コスト**。`backend-usecases.md` の「過剰抽象を避ける」原則と整合
+- 受講生が「Service を作るたびに Interface も切るのか」と誤学習するのを防ぐ
+- Pro 生レベルとして「Interface はいつ切るか」の判断軸を明確に学ぶ
+
+### `WeaknessAnalysisServiceContract` のパターン（実例）
+
+```php
+// quiz-answering が Interface を所有
+namespace App\Services\Contracts;
+interface WeaknessAnalysisServiceContract
+{
+    public function getWeakCategories(Enrollment $enrollment): Collection;
+}
+
+// quiz-answering が NullObject フォールバックを所有
+namespace App\Services;
+final class NullWeaknessAnalysisService implements WeaknessAnalysisServiceContract
+{
+    public function getWeakCategories(Enrollment $enrollment): Collection
+    {
+        return collect();
+    }
+}
+
+// quiz-answering の ServiceProvider で bindIf
+$this->app->bindIf(
+    WeaknessAnalysisServiceContract::class,
+    NullWeaknessAnalysisService::class,
+);
+
+// mock-exam が正規実装で上書き bind
+$this->app->bind(
+    WeaknessAnalysisServiceContract::class,
+    WeaknessAnalysisService::class,
+);
+```
+
+これにより mock-exam 未実装環境でも UI が破綻しない。

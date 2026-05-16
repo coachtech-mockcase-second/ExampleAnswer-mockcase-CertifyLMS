@@ -1,210 +1,183 @@
 # mentoring タスクリスト
 
-> 1タスク = 1コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
+> 1 タスク = 1 コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
 > 関連要件 ID は `requirements.md` の `REQ-mentoring-NNN` / `NFR-mentoring-NNN` を参照。
 >
+> **v3 改修反映**: 申請承認フロー撤回 → 自動コーチ割当、Meeting.status 3 値、meetings:auto-complete Schedule Command、meeting-quota との連携、コーチ宛のみ通知、`EnsureActiveLearning` Middleware ガード。
+>
 > **前提**:
-> - [[auth]] / [[user-management]] / [[enrollment]] の Step 1（migration + Model）完了済み（`User` / `Enrollment` モデルが存在）
-> - [[notification]] の `NotifyMeetingRequestedAction` / `NotifyMeetingApprovedAction` / `NotifyMeetingRejectedAction` / `NotifyMeetingCanceledAction` / `NotifyMeetingReminderAction` の **インターフェース** が先行か並行で実装されること。本 Feature の Action は constructor injection でこれらを使う
-> - [[settings-profile]] が `/settings/availability` の編集 UI（CoachAvailability CRUD）+ `/settings/profile` の `meeting_url` 編集 UI を **並行で実装** する想定。本 Feature は **Model / Policy / migration**（含む `add_meeting_url_to_users_table`）のみ所有
-> - `product.md` の Meeting state diagram に `requested → canceled: 受講生が取り下げ` 追記が Phase 0 合意済 → 本 Feature 実装と同じコミット系列で `docs/steering/product.md` も更新する
+> - [[auth]] / [[user-management]] / [[enrollment]] の Step 1（migration + Model）完了済（`User` / `Enrollment` モデルが存在 + `User.meeting_url` カラム / `EnsureActiveLearning` Middleware 既設）
+> - [[plan-management]] の Step 1 完了済（`User.max_meetings` カラム既設）
+> - [[meeting-quota]] の `MeetingQuotaService` / `ConsumeQuotaAction` / `RefundQuotaAction` / `MeetingQuotaTransaction` モデルが先行 or 並行で実装される
+> - [[notification]] の `NotifyMeetingReservedAction` / `NotifyMeetingCanceledAction` / `NotifyMeetingReminderAction` のインターフェースが先行 or 並行で実装される
+> - [[settings-profile]] が `/settings/availability`（CoachAvailability CRUD UI）と `/settings/profile`（`meeting_url` 編集 UI）を並行で実装する想定。本 Feature は **`CoachAvailability` Model / `CoachAvailabilityPolicy` / `meetings` + `meeting_memos` テーブル Migration のみ所有**（`users.meeting_url` Migration は **[[auth]] が所有**、D4 確定）
 
 ## Step 1: Migration & Model & Enum & Factory
 
-- [ ] `database/migrations/{date}_add_meeting_url_to_users_table.php` — `users.meeting_url` string nullable カラム追加（REQ-mentoring-014）
-- [ ] `app/Models/User.php` に `meeting_url` を `$fillable` 追加 / `meetingsAsCoach()` / `meetingsAsStudent()` / `coachAvailabilities()` リレーション追加（[[auth]] 既存モデル拡張、REQ-mentoring-090, 091）
-- [ ] `app/Enums/MeetingStatus.php` — backed enum `Requested` / `Approved` / `Rejected` / `Canceled` / `InProgress` / `Completed` + `label()`（REQ-mentoring-002）
-- [ ] `database/migrations/{date}_create_meetings_table.php` — ULID 主キー / `enrollment_id` / `coach_id` / `student_id` / `scheduled_at` / `status` / `topic` / `rejected_reason` / `canceled_by_user_id` / `canceled_at` / `meeting_url_snapshot` / `started_at` / `ended_at` / timestamps / softDeletes + 4 つの複合 INDEX（REQ-mentoring-001, 004）
-- [ ] `app/Models/Meeting.php` — `HasUlids` + `SoftDeletes`、`$fillable` / `$casts`（status を Enum cast、scheduled_at/canceled_at/started_at/ended_at を datetime cast）、5 リレーション（enrollment / coach / student / canceledBy / meetingMemo）、`scopeUpcoming()` / `scopePast()` / `scopeForCoach()` / `scopeForStudent()`（REQ-mentoring-003, 064）
-- [ ] `database/factories/MeetingFactory.php` — `requested()` / `approved()` / `rejected()` / `canceled()` / `inProgress()` / `completed()` state 提供。`forCoach(User)` / `forStudent(User)` / `forEnrollment(Enrollment)` ヘルパ
-- [ ] `database/migrations/{date}_create_meeting_memos_table.php` — ULID 主キー / `meeting_id` UNIQUE FK cascade / `body` text / timestamps / softDeletes（REQ-mentoring-015）
-- [ ] `app/Models/MeetingMemo.php` — `HasUlids` + `SoftDeletes`、`$fillable`、`belongsTo(Meeting)`（REQ-mentoring-016）
+- **`users.meeting_url` カラム追加 Migration は [[auth]] が所有**（D4 確定、本 Feature では作成しない、auth Step 1 完了済が前提）
+- [ ] `app/Models/User.php` に `meetingsAsCoach()` / `meetingsAsStudent()` / `coachAvailabilities()` リレーション追加（[[auth]] 既存モデル拡張、`meeting_url` の `$fillable` は [[auth]] で追加済前提）
+- [ ] `app/Enums/MeetingStatus.php` — backed enum **3 値** `Reserved` / `Canceled` / `Completed` + `label()` 日本語ラベル（REQ-mentoring-002、v3 で 6 → 3 値）
+- [ ] `database/migrations/{date}_create_meetings_table.php` — ULID 主キー / `enrollment_id` / `coach_id` / `student_id` / `scheduled_at` / `status` / `topic` / `canceled_by_user_id` / `canceled_at` / `meeting_url_snapshot` / **`completed_at`**（v3 追加） / **`meeting_quota_transaction_id`**（v3 追加） / timestamps / softDeletes + **`(coach_id, scheduled_at)` UNIQUE 制約**（v3 改修）+ 3 つの複合 INDEX（REQ-mentoring-001, 004）
+  - 旧カラム `rejected_reason` / `started_at` / `ended_at` は持たない（v3 撤回）
+- [ ] `app/Models/Meeting.php` — `HasUlids` + `SoftDeletes`、`$fillable` / `$casts`（status を `MeetingStatus::class` cast、`scheduled_at` / `canceled_at` / `completed_at` を datetime）、**6 リレーション**（enrollment / coach / student / canceledBy / meetingMemo / **quotaTransaction**）、`scopeUpcoming()`（`status = reserved AND scheduled_at >= now()`）/ `scopePast()`（`status IN (canceled, completed)`）/ `scopeForCoach()` / `scopeForStudent()`（REQ-mentoring-003, 064）
+- [ ] `database/factories/MeetingFactory.php` — `reserved()` / `canceled()` / `completed()` state 提供。`forCoach(User)` / `forStudent(User)` / `forEnrollment(Enrollment)` ヘルパ（v3 で旧 state 削除）
+- [ ] `database/migrations/{date}_create_meeting_memos_table.php` — ULID 主キー / `meeting_id` UNIQUE FK cascade / `body` text / timestamps / softDeletes（REQ-mentoring-016）
+- [ ] `app/Models/MeetingMemo.php` — `HasUlids` + `SoftDeletes`、`$fillable`、`belongsTo(Meeting)`（REQ-mentoring-017）
 - [ ] `database/factories/MeetingMemoFactory.php` — `forMeeting(Meeting)` ヘルパ
 - [ ] `database/migrations/{date}_create_coach_availabilities_table.php` — ULID 主キー / `coach_id` FK / `day_of_week` tinyint / `start_time` / `end_time` / `is_active` / timestamps / softDeletes + 2 つの複合 INDEX（REQ-mentoring-010, 011）
-- [ ] `app/Models/CoachAvailability.php` — `HasUlids` + `SoftDeletes`、`$fillable` / `$casts`（is_active を boolean、start_time/end_time を string で扱う or `datetime:H:i:s`）、`belongsTo(User, 'coach_id', 'coach')`、`scopeActive()` / `scopeForDay(int $dow)`
+- [ ] `app/Models/CoachAvailability.php` — `HasUlids` + `SoftDeletes`、`$fillable` / `$casts`（is_active を boolean）、`belongsTo(User, 'coach_id', 'coach')`、`scopeActive()` / `scopeForDay(int $dow)`
 - [ ] `database/factories/CoachAvailabilityFactory.php` — `forCoach(User)` / `active()` / `inactive()` / `monday()` / `tuesday()` ... state 提供
-- [ ] `docs/steering/product.md` の Meeting state diagram に `requested --> canceled: 受講生が取り下げ` 行を追記（Phase 0 合意、REQ-mentoring-040）
 
 ## Step 2: Policy
 
-- [ ] `app/Policies/MeetingPolicy.php` — `viewAny` / `view` / `create` / `cancel`（status 分岐）/ `approve` / `reject` / `start` / `complete` / `updateMemo`（9 メソッド、REQ-mentoring-080）
-- [ ] `app/Policies/CoachAvailabilityPolicy.php` — `viewAny` / `view` / `create` / `update` / `delete`（5 メソッド、REQ-mentoring-081）
-- [ ] `app/Providers/AuthServiceProvider::$policies` に `Meeting::class => MeetingPolicy::class` / `CoachAvailability::class => CoachAvailabilityPolicy::class` を登録（または自動検出確認）
+- [ ] `app/Policies/MeetingPolicy.php` — **5 メソッド**（v3 で簡素化）: `viewAny` / `view` / `create` / `cancel`（reserved 限定 + 当事者）/ `upsertMemo`（coach かつ reserved/completed）（REQ-mentoring-080）
+- [ ] `app/Policies/CoachAvailabilityPolicy.php` — 5 メソッド（viewAny / view / create / update / delete）（REQ-mentoring-081）
+- [ ] `app/Providers/AuthServiceProvider::$policies` に Policy 登録（または自動検出確認）
+
+> v3 で削除した Policy メソッド: `approve` / `reject` / `start` / `complete`（自動割当 + 自動完了で不要）
 
 ## Step 3: HTTP 層
 
-- [ ] `app/Http/Controllers/MeetingController.php` — 12 メソッド（`index` / `indexAsCoach` / `show` / `create` / `store` / `cancel` / `approve` / `reject` / `start` / `complete` / `updateMemo` / `fetchAvailability`）、各メソッドは同名 Action を呼ぶ薄いラッパー（`backend-usecases.md`「Controller method 名 = Action クラス名」準拠、`create` のみ Blade view を返す薄いハンドラ）
-- [ ] `app/Http/Requests/Meeting/IndexRequest.php` — `filter` nullable（REQ-mentoring-060）
-- [ ] `app/Http/Requests/Meeting/IndexAsCoachRequest.php` — `filter` / `student` / `enrollment` nullable（REQ-mentoring-061）
-- [ ] `app/Http/Requests/Meeting/StoreRequest.php` — `enrollment_id` / `scheduled_at`（`after:now` + regex `:00\|:30`）/ `topic`（REQ-mentoring-020, 023, 024）
-- [ ] `app/Http/Requests/Meeting/RejectRequest.php` — `rejected_reason` required max:500（REQ-mentoring-031）
-- [ ] `app/Http/Requests/Meeting/CompleteRequest.php` — `body` required max:5000（REQ-mentoring-052）
-- [ ] `app/Http/Requests/Meeting/UpdateMemoRequest.php` — `body` required max:5000（REQ-mentoring-053）
-- [ ] `app/Http/Requests/Meeting/AvailabilityRequest.php` — `enrollment` ulid / `date` date_format:Y-m-d（REQ-mentoring-026）
-- [ ] `routes/web.php` — student グループ（`role:student`）/ coach グループ（`role:coach`、`/coach` プレフィックス）/ 共通グループ（show / cancel）の 3 ブロック追加（REQ-mentoring-020, 030, 031, 040, 042, 050, 052, 053, 060, 061, 062）
+- [ ] `app/Http/Controllers/MeetingController.php` — **8 メソッド**（v3 で簡素化）: `index` / `indexAsCoach` / `show` / `create` / `store` / `cancel` / `upsertMemo` / `fetchAvailability`
+- [ ] `app/Http/Requests/Meeting/IndexRequest.php` — `filter` nullable in:upcoming,past,all
+- [ ] `app/Http/Requests/Meeting/IndexAsCoachRequest.php` — `filter` / `student` / `enrollment` nullable
+- [ ] `app/Http/Requests/Meeting/StoreRequest.php` — `enrollment_id` / `scheduled_at`（`after:now` + **regex `:00:00$`** 毎時 00 分のみ、v3 改修） / `topic`（REQ-mentoring-020, 023, 024）
+- [ ] `app/Http/Requests/Meeting/UpsertMemoRequest.php` — `body` required max:5000（REQ-mentoring-050）
+- [ ] `app/Http/Requests/Meeting/AvailabilityRequest.php` — `enrollment` ulid / `date` date_format:Y-m-d（REQ-mentoring-020）
+- [ ] `routes/web.php` — student グループ（`role:student + active.learning`）/ coach グループ（`role:coach`、`/coach` プレフィックス）/ 共通グループ（show / cancel）の 3 ブロック追加
+
+> v3 で削除: `RejectRequest` / `CompleteRequest`、`approve` / `reject` / `start` / `complete` ルート
 
 ## Step 4: Action / Service / Exception
 
 ### 例外（`app/Exceptions/Mentoring/`）
 
 - [ ] `MeetingOutOfAvailabilityException.php` — HttpException(422)（REQ-mentoring-022）
-- [ ] `MeetingTimeSlotTakenException.php` — ConflictHttpException(409)（REQ-mentoring-027, 033）
-- [ ] `MeetingStatusTransitionException.php` — ConflictHttpException(409)（REQ-mentoring-032, 041）
-- [ ] `MeetingNotInStartWindowException.php` — ConflictHttpException(409)（REQ-mentoring-051）
-- [ ] `MeetingAlreadyStartedException.php` — ConflictHttpException(409)（REQ-mentoring-043）
-- [ ] `EnrollmentCoachNotAssignedException.php` — ConflictHttpException(409)（REQ-mentoring-025）
-- [ ] `MeetingMemoNotFoundException.php` — NotFoundHttpException(404)（REQ-mentoring-053）
+- [ ] `MeetingNoAvailableCoachException.php` — ConflictHttpException(409)（v3 新規、候補 0 名 + race condition UNIQUE 違反）
+- [ ] `MeetingStatusTransitionException.php` — ConflictHttpException(409)
+- [ ] `MeetingAlreadyStartedException.php` — ConflictHttpException(409)（REQ-mentoring-032）
+- [ ] `InsufficientMeetingQuotaException.php` — ConflictHttpException(409)（REQ-mentoring-021、[[meeting-quota]] と共有）
 
-### Service
+> v3 で削除: `MeetingTimeSlotTakenException`（→ MeetingNoAvailableCoachException に統合） / `MeetingNotInStartWindowException`（入室手動操作撤回） / `EnrollmentCoachNotAssignedException`（資格 × N コーチ N:N で未割当エラー稀） / `MeetingMemoNotFoundException`（旧 UpdateMemoAction で必要だったが UpsertMemoAction で不要）
 
-- [ ] `app/Services/MeetingAvailabilityService.php` — `slotsForDate(User $coach, Carbon $date): Collection` / `validateSlot(User $coach, Carbon $scheduled_at): void`。CoachAvailability + 既存 Meeting の差集合で空き枠を算出（REQ-mentoring-026, 021, NFR-mentoring-007）
-- [ ] `app/Services/CoachActivityService.php` — `summarize(?Carbon $from, ?Carbon $to): Collection`。30 日デフォルト、`withCount` で completed/canceled/rejected 集計（REQ-mentoring-090）
+### Service（`app/Services/`）
 
-### Action
+- [ ] `MeetingAvailabilityService.php` — `slotsForCertification(Certification, Carbon $date): Collection`（資格コーチ集合の Union）/ `validateSlot(Certification, Carbon)`（v3 改修、coach 個別 → certification 単位）
+- [ ] `CoachMeetingLoadService.php` — `leastLoadedCoach(Collection $candidates): User`（過去 30 日 completed 数最少、同数 ULID 昇順）（v3 新規、REQ-mentoring-092, 093）
+- [ ] `CoachActivityService.php` — `summarize(?Carbon $from, ?Carbon $to): Collection<CoachActivitySummaryRow>`（`rejected_count` 撤回、v3 改修、REQ-mentoring-090, 091）
 
-- [ ] `app/UseCases/Meeting/IndexAction.php` — `__invoke(User $student, ?string $filter, int $perPage = 20): LengthAwarePaginator`（REQ-mentoring-060）
-- [ ] `app/UseCases/Meeting/IndexAsCoachAction.php` — `__invoke(User $coach, ?string $filter, ?string $studentId, ?string $enrollmentId, int $perPage = 20): LengthAwarePaginator`（REQ-mentoring-061）
-- [ ] `app/UseCases/Meeting/ShowAction.php` — `__invoke(Meeting $meeting): Meeting`、eager load `with(['coach', 'student', 'enrollment.certification', 'meetingMemo'])`（REQ-mentoring-062, 063）
-- [ ] `app/UseCases/Meeting/StoreAction.php` — `__invoke(User $student, array $validated): Meeting`。`MeetingAvailabilityService::validateSlot` + 衝突 FOR UPDATE + `NotifyMeetingRequestedAction` DI（REQ-mentoring-021, 027, NFR-mentoring-001, 003）
-- [ ] `app/UseCases/Meeting/CancelAction.php` — `__invoke(Meeting $meeting, User $actor): Meeting`。requested / approved 分岐 + `NotifyMeetingCanceledAction` DI（REQ-mentoring-040, 042, 043）
-- [ ] `app/UseCases/Meeting/ApproveAction.php` — `__invoke(Meeting $meeting, User $coach): Meeting`。`meeting_url_snapshot = $coach->meeting_url` 焼き込み + race 再検査 + `NotifyMeetingApprovedAction` DI（REQ-mentoring-030, 033）
-- [ ] `app/UseCases/Meeting/RejectAction.php` — `__invoke(Meeting $meeting, string $rejectedReason): Meeting`。`NotifyMeetingRejectedAction` DI（REQ-mentoring-031）
-- [ ] `app/UseCases/Meeting/StartAction.php` — `__invoke(Meeting $meeting): Meeting`。入室窓検証（REQ-mentoring-050, 051）
-- [ ] `app/UseCases/Meeting/CompleteAction.php` — `__invoke(Meeting $meeting, string $memoBody): Meeting`。MeetingMemo INSERT + status=Completed UPDATE を単一トランザクションで（REQ-mentoring-052）
-- [ ] `app/UseCases/Meeting/UpdateMemoAction.php` — `__invoke(Meeting $meeting, string $memoBody): MeetingMemo`（REQ-mentoring-053）
-- [ ] `app/UseCases/Meeting/FetchAvailabilityAction.php` — `__invoke(Enrollment $enrollment, Carbon $date): Collection`。`MeetingAvailabilityService::slotsForDate` を呼び `EnrollmentCoachNotAssignedException` を投げる（REQ-mentoring-026）
+### Action（`app/UseCases/Meeting/`）
+
+- [ ] `StoreAction.php`（`MeetingController::store` と一致、v3 新規、自動コーチ割当 + 面談回数消費 + 通知発火、UNIQUE 制約 race ガード）
+- [ ] `CancelAction.php`（`MeetingController::cancel` と一致、reserved → canceled、面談回数返却 + 通知）
+- [ ] `AutoCompleteMeetingAction.php`（v3 新規、Schedule Command から呼ばれる）
+- [ ] `UpsertMemoAction.php`（v3 新規、reserved/completed 両方可）
+- [ ] `IndexAction.php`（受講生用一覧）
+- [ ] `IndexAsCoachAction.php`（コーチ用一覧）
+- [ ] `ShowAction.php`
+- [ ] `FetchAvailabilityAction.php`（資格コーチ集合 Union のスロット返却）
+
+> v3 で削除: `StoreAction`（→ Meeting\StoreAction に統合） / `ApproveAction` / `RejectAction` / `StartAction` / `CompleteAction` / `UpdateMemoAction`（→ UpsertMemoAction に統合） / `CancelAction`（→ Meeting\CancelAction に名称変更）
 
 ## Step 5: Schedule Command
 
-> 本 Feature では Reminder 系の Schedule Command を **所有しない**。`SendMeetingRemindersCommand` / `NotifyMeetingReminderAction(Meeting, MeetingReminderWindow)` / `MeetingReminderWindow` Enum は [[notification]] が所有する（[[notification]] tasks.md Step 9 で実装）。本 Feature は Meeting 抽出条件と window 引数の契約共有のみを担う（REQ-mentoring-071, 072）。
+- [ ] `app/Console/Commands/Mentoring/AutoCompleteMeetingsCommand.php` — `meetings:auto-complete` signature、`AutoCompleteMeetingAction` を呼ぶ（v3 新規、REQ-mentoring-040）
+- [ ] `app/Console/Kernel.php::schedule()` に `$schedule->command('meetings:auto-complete')->cron('*/15 * * * *')` 登録
 
-## Step 6: Blade ビュー & JS & Email テンプレ
+> v3 で `meetings:remind` / `meetings:remind-eve` は [[notification]] が所有（本 Feature は抽出条件のみ提供）
 
-- [ ] `resources/views/meetings/index.blade.php` — student 一覧（tabs + table + paginator + empty-state、REQ-mentoring-060）
-- [ ] `resources/views/meetings/create.blade.php` — 予約申請フォーム（Enrollment select + date input + 空き枠 select + topic textarea）
-- [ ] `resources/views/meetings/show.blade.php` — 当事者共通詳細（status バッジ + 詳細カード + 状態別操作ボタン群 + MeetingMemo 表示部）（REQ-mentoring-062, 063, 054）
-- [ ] `resources/views/meetings/_partials/status-badge.blade.php` — `<x-badge>` ラッパ
-- [ ] `resources/views/meetings/_modals/reject-form.blade.php` — 拒否理由入力モーダル（REQ-mentoring-031）
-- [ ] `resources/views/meetings/_modals/complete-form.blade.php` — 完了+メモ入力モーダル（REQ-mentoring-052）
-- [ ] `resources/views/meetings/_modals/cancel-confirm.blade.php` — キャンセル確認モーダル
-- [ ] `resources/views/coach/meetings/index.blade.php` — coach 一覧（REQ-mentoring-061）
-- [ ] `resources/js/mentoring/availability-picker.js` — `/meetings/availability` を fetch → 60 分スロット一覧を `<select>` または `<button>` 群で動的描画。日付 input 変更時に再 fetch（REQ-mentoring-026）
-- [ ] `resources/views/emails/meeting-requested.blade.php` — Markdown Mailable（コーチ宛、REQ-mentoring-070）
-- [ ] `resources/views/emails/meeting-approved.blade.php` — Markdown Mailable（受講生宛、`meeting_url_snapshot` 埋め込み、REQ-mentoring-073）
-- [ ] `resources/views/emails/meeting-rejected.blade.php` — Markdown Mailable（受講生宛、`rejected_reason` 表示、REQ-mentoring-070）
-- [ ] `resources/views/emails/meeting-canceled.blade.php` — Markdown Mailable（相手方宛、canceler ロール表示、REQ-mentoring-070）
-- [ ] `resources/views/emails/meeting-reminder.blade.php` — Markdown Mailable（双方宛、window: 1-hour-before / eve で文面分岐、REQ-mentoring-071, 072）
-- [ ] `lang/ja/mentoring.php` — 例外メッセージ / 通知件名 / Blade ラベル / 曜日ラベル（NFR-mentoring-006）
+## Step 6: Blade
 
-## Step 7: テスト
+- [ ] `resources/views/meetings/index.blade.php` — 受講生の面談一覧（filter タブ upcoming/past、3 値ステータスバッジ）
+- [ ] `resources/views/meetings/create.blade.php` — 予約フォーム（Enrollment 選択 → 日付選択 → 空きスロット表示 → topic 入力）。「コーチは自動割当されます」案内表示
+- [ ] `resources/views/meetings/show.blade.php` — 当事者共通詳細。reserved 時にキャンセルボタン + meeting_url 表示、completed 時に MeetingMemo 表示
+- [ ] `resources/views/meetings/_partials/status-badge.blade.php` — 3 値バッジ
+- [ ] `resources/views/meetings/_modals/cancel-confirm.blade.php` — キャンセル確認（「面談回数が返却されます」案内）
+- [ ] `resources/views/coach/meetings/index.blade.php` — コーチの面談一覧
+- [ ] `resources/views/coach/meetings/_memo_form.blade.php` — メモ入力フォーム（reserved/completed どちらでも表示）
+- [ ] `resources/views/emails/meeting-reserved.blade.php` — コーチ宛: 「予約が入りました」Markdown Mailable
+- [ ] `resources/views/emails/meeting-canceled.blade.php` — 相手方宛: 「キャンセルされました」+ canceler ロール
+- [ ] `resources/views/emails/meeting-reminder.blade.php` — 双方宛: リマインド（前日 / 1 時間前）
 
-### Feature テスト（`tests/Feature/Http/Meeting/`）
+> v3 で削除した Blade: `meeting-requested.blade.php` / `meeting-approved.blade.php` / `meeting-rejected.blade.php` / reject-form / complete-form モーダル
 
-- [ ] `IndexTest.php`
-  - `test_student_sees_only_own_meetings`（REQ-mentoring-060, 080）
-  - `test_filter_upcoming_excludes_completed_canceled_rejected`
-  - `test_filter_past_includes_completed_canceled_rejected`
-- [ ] `IndexAsCoachTest.php`
-  - `test_coach_sees_only_own_meetings`（REQ-mentoring-061, 080）
-  - `test_filter_by_student_narrows_results`
-  - `test_filter_by_enrollment_narrows_results`
-- [ ] `ShowTest.php`
-  - `test_student_can_view_own_meeting`（REQ-mentoring-062, 080）
-  - `test_coach_can_view_assigned_meeting`
-  - `test_other_student_cannot_view_meeting_returns_403`
-  - `test_other_coach_cannot_view_meeting_returns_403`
-  - `test_admin_can_view_any_meeting`
-  - `test_completed_meeting_shows_memo_to_student`（REQ-mentoring-063）
-- [ ] `StoreTest.php`
-  - `test_student_can_request_meeting_in_availability`（REQ-mentoring-021）
-  - `test_request_outside_availability_returns_422_with_out_of_availability_message`（REQ-mentoring-022）
-  - `test_request_with_non_30min_aligned_scheduled_at_returns_422`（REQ-mentoring-023）
-  - `test_request_with_past_scheduled_at_returns_422`（REQ-mentoring-024）
-  - `test_request_for_enrollment_without_assigned_coach_returns_409`（REQ-mentoring-025）
-  - `test_request_for_already_taken_slot_returns_409`（REQ-mentoring-027）
-  - `test_coach_cannot_create_meeting_returns_403`（REQ-mentoring-080 create）
-  - `test_notification_dispatched_to_coach`（REQ-mentoring-070）
-- [ ] `CancelTest.php`
-  - `test_student_can_cancel_own_requested_meeting`（REQ-mentoring-040）
-  - `test_student_can_cancel_own_approved_meeting_before_scheduled_at`（REQ-mentoring-042）
-  - `test_coach_can_cancel_assigned_approved_meeting`
-  - `test_cancel_approved_meeting_after_scheduled_at_returns_409`（REQ-mentoring-043）
-  - `test_cancel_rejected_meeting_returns_409`（REQ-mentoring-041, 032）
-  - `test_other_user_cannot_cancel_meeting_returns_403`
-- [ ] `ApproveTest.php`
-  - `test_coach_can_approve_requested_meeting_and_url_is_snapshotted`（REQ-mentoring-030）
-  - `test_approve_already_approved_meeting_returns_409`（REQ-mentoring-032）
-  - `test_approve_when_other_meeting_at_same_time_exists_returns_409`（REQ-mentoring-033）
-  - `test_other_coach_cannot_approve_meeting_returns_403`
-  - `test_notification_dispatched_to_student_with_url`（REQ-mentoring-070, 073）
-- [ ] `RejectTest.php`
-  - `test_coach_can_reject_requested_meeting_with_reason`（REQ-mentoring-031）
-  - `test_reject_without_reason_returns_422`
-  - `test_reject_approved_meeting_returns_409`（REQ-mentoring-032）
-  - `test_notification_dispatched_to_student_with_reason`
-- [ ] `StartTest.php`
-  - `test_coach_can_start_meeting_in_window`（REQ-mentoring-050）
-  - `test_start_outside_window_returns_409`（REQ-mentoring-051）
-  - `test_start_requested_meeting_returns_409`
-- [ ] `CompleteTest.php`
-  - `test_coach_can_complete_in_progress_with_memo`（REQ-mentoring-052）
-  - `test_complete_without_body_returns_422`
-  - `test_complete_approved_returns_409`
-  - `test_meeting_memo_is_created`
-- [ ] `UpdateMemoTest.php`
-  - `test_coach_can_update_memo_of_completed_meeting`（REQ-mentoring-053）
-  - `test_update_memo_of_in_progress_returns_403`（REQ-mentoring-080 updateMemo）
-  - `test_other_coach_cannot_update_memo`
-- [ ] `AvailabilityTest.php`
-  - `test_returns_60min_slots_within_active_availabilities`（REQ-mentoring-026）
-  - `test_excludes_already_booked_slots`
-  - `test_inactive_availability_is_excluded`
-  - `test_enrollment_without_assigned_coach_returns_409`
+## Step 7: JS
 
-### Unit テスト
+- [ ] `resources/js/mentoring/slot-picker.js` — `/meetings/availability` を fetch して空きスロット描画（コーチ名は表示せず `available_coach_count` のみヒント表示）
 
-- [ ] `tests/Unit/Services/MeetingAvailabilityServiceTest.php`
-  - `test_slots_for_date_expands_availability_into_60min_slots`（REQ-mentoring-026）
-  - `test_slots_excludes_requested_approved_in_progress_meetings`
-  - `test_validate_slot_throws_out_of_availability_when_outside_range`
-  - `test_validate_slot_throws_time_slot_taken_when_conflict_exists`
-- [ ] `tests/Unit/Services/CoachActivityServiceTest.php`
-  - `test_summarize_returns_per_coach_completed_canceled_rejected_counts`（REQ-mentoring-090）
-  - `test_summarize_respects_from_to_date_range`
-- [ ] `tests/Unit/Policies/MeetingPolicyTest.php`
-  - 9 メソッド × ロール網羅（admin / coach 当事者 / coach 他 / student 当事者 / student 他）（REQ-mentoring-080）
-- [ ] `tests/Unit/Policies/CoachAvailabilityPolicyTest.php`
-  - 5 メソッド × ロール網羅（REQ-mentoring-081）
+## Step 8: Test
+
+### Feature テスト（`tests/Feature/`）
+
+- [ ] `tests/Feature/Http/MeetingControllerTest.php`
+  - [ ] index: 受講生は自分の Meeting のみ、filter upcoming/past 動作
+  - [ ] indexAsCoach: コーチは自分宛の Meeting のみ
+  - [ ] show: 当事者は閲覧可、第三者は 403
+  - [ ] store: 受講生のみ作成可（coach/admin は 403）
+  - [ ] cancel: 当事者のみ可、reserved 限定、scheduled_at 後は 409
+  - [ ] upsertMemo: coach のみ可
+  - [ ] fetchAvailability: 受講生のみ、JSON 返却形式
 - [ ] `tests/Feature/UseCases/Meeting/StoreActionTest.php`
-  - `test_dispatches_notify_meeting_requested_action`（REQ-mentoring-070 mock）
-- [ ] `tests/Feature/UseCases/Meeting/ApproveActionTest.php`
-  - `test_snapshots_coach_meeting_url_at_approve_time`（REQ-mentoring-030）
-  - `test_snapshot_is_null_when_coach_meeting_url_is_null`
+  - [ ] 正常系: コーチ自動割当 + Meeting INSERT + MeetingQuotaTransaction.consumed INSERT + 通知発火
+  - [ ] 残数 0 → InsufficientMeetingQuotaException (409)
+  - [ ] 枠外 → MeetingOutOfAvailabilityException (422)
+  - [ ] 候補コーチ 0 名 → MeetingNoAvailableCoachException (409)
+  - [ ] **自動割当: 過去 30 日 completed 数最少コーチが選出される**
+  - [ ] **自動割当: 同数の場合 ULID 昇順**
+  - [ ] **UNIQUE 制約 race → MeetingNoAvailableCoachException に変換**
+  - [ ] graduated ユーザー → 403（EnsureActiveLearning Middleware）
+  - [ ] meeting_url_snapshot に選出コーチの `meeting_url` がコピーされる
+  - [ ] meeting_quota_transaction_id が紐づく
+- [ ] `tests/Feature/UseCases/Meeting/CancelActionTest.php`
+  - [ ] 当事者（student/coach）キャンセル成功 + 面談回数 +1 返却 + 通知発火
+  - [ ] `scheduled_at <= now()` → MeetingAlreadyStartedException
+  - [ ] `status != reserved` → MeetingStatusTransitionException
+  - [ ] 第三者 → 403
+- [ ] `tests/Feature/UseCases/Meeting/AutoCompleteMeetingActionTest.php`
+  - [ ] `scheduled_at + 60min` 超過の reserved が completed 遷移
+  - [ ] 既に canceled/completed の Meeting はスキップ
+  - [ ] 通知は発火しない
+- [ ] `tests/Feature/UseCases/Meeting/UpsertMemoActionTest.php`
+  - [ ] reserved / completed どちらでも作成 + 更新可
+  - [ ] canceled では MeetingStatusTransitionException
+  - [ ] 他コーチからは Policy で 403
+- [ ] `tests/Feature/Commands/AutoCompleteMeetingsCommandTest.php`
+  - [ ] 該当 Meeting すべてが completed 遷移
+  - [ ] chunkById で大量データ対応
+- [ ] `tests/Feature/UseCases/Meeting/FetchAvailabilityActionTest.php`
+  - [ ] 担当コーチ集合の Union スロットが返る
+  - [ ] 既存予約は除外
+  - [ ] available_coach_count が正しい
 
-### Schedule Command テスト
+### Unit テスト（`tests/Unit/`）
 
-> Schedule Command は [[notification]] が所有するため、本 Feature では Reminder Command 単体テストを書かない。`SendMeetingRemindersCommandTest`（前日範囲 / 1h 前範囲の Meeting 抽出 + window 別の通知発火 + 重複排除）は [[notification]] tasks.md Step 12 で実装される。
+- [ ] `tests/Unit/Services/CoachMeetingLoadServiceTest.php`
+  - [ ] 過去 30 日 completed 数最少コーチを選出
+  - [ ] 同数の場合 ULID 昇順
+  - [ ] 30 日以前の Meeting は集計対象外
+  - [ ] ゼロ件コーチも考慮（LEFT JOIN or PHP 補完）
+- [ ] `tests/Unit/Services/MeetingAvailabilityServiceTest.php`
+  - [ ] 資格コーチ集合の Union 動作
+  - [ ] 既存予約除外
+  - [ ] is_active = false 枠は除外
+- [ ] `tests/Unit/Services/CoachActivityServiceTest.php`
+  - [ ] 期間内 completed/canceled 集計（v3 で rejected 撤回）
 
-## Step 8: 動作確認 & 整形
+## Step 9: Notification 連携確認
 
-- [ ] `sail artisan test --filter=Meeting` 通過
-- [ ] `sail artisan test --filter=CoachAvailability` 通過
-- [ ] `sail artisan test --filter=Mentoring` 通過
-- [ ] `sail bin pint --dirty` で整形
-- [ ] ブラウザで通しシナリオ確認（Mailpit http://localhost:8025 で通知メール、phpMyAdmin http://localhost:8080 で DB 状態を併せて確認）:
-  1. `sail artisan tinker` で coach の `users.meeting_url = 'https://meet.example.com/coach-a'` を仮設定（編集 UI は [[settings-profile]] が並行実装）
-  2. 同じく `CoachAvailability::create([...])` で月曜 09:00-12:00 の枠を仮投入
-  3. student で `/meetings/create` → Enrollment 選択 → 翌週月曜 10:00 を選択 → 申請送信 → `/meetings` 一覧に requested で表示
-  4. Mailpit で coach 宛 `MeetingRequestedMail` を受信
-  5. coach で `/coach/meetings` → 該当 Meeting → 承認 → 受講生宛 `MeetingApprovedMail` に `meeting_url_snapshot` が埋め込まれていることを Mailpit で確認 + phpMyAdmin で `meetings.meeting_url_snapshot` カラムに URL が入っていること
-  6. student で詳細閲覧 → URL 表示確認
-  7. `sail artisan meetings:remind` 手動実行 → 該当 Meeting が 1 時間以内なら通知発火、重複実行で二重送信されないことを確認
-  8. coach で「入室」ボタン押下（`scheduled_at` を手動で `now()` 近辺に書き換えて検証）→ `status=in_progress` 遷移
-  9. coach で「完了」+ メモ入力 → `status=completed` + `meeting_memos` に行挿入 + student 詳細でメモ閲覧可
-  10. 別シナリオ: requested 状態を student 自身が取り下げ → `status=canceled` / `canceled_by_user_id=student->id`
-  11. 別シナリオ: approved 状態を coach がキャンセル → 受講生宛 `MeetingCanceledMail` + 文面に「コーチがキャンセル」表示
-  12. 異常系: 枠外の `scheduled_at` で申請 → 422 + 「面談可能時間外」フラッシュ
-  13. 異常系: 同 coach × 同時刻に 2 件目を申請 → 409 + 「既に予約が入っています」フラッシュ
-  14. 異常系: rejected 状態の Meeting を承認しようとする → 409
-- [ ] PR 動作確認の動画に上記主要シナリオ + 状態遷移バッジ更新 + 通知メール表示を収録（動的機能のため動画必須）
-- [ ] `docs/steering/product.md` の Meeting state diagram 更新分（`requested --> canceled`）を同 PR の diff に含めることを確認
+- [ ] [[notification]] の `NotifyMeetingReservedAction` / `NotifyMeetingCanceledAction` / `NotifyMeetingReminderAction` のインターフェース最終確認
+- [ ] 通知発火タイミング: `DB::afterCommit()` で送信
+- [ ] コーチ宛のみ送信を `NotifyMeetingReservedAction` 内で確認（受講生宛は予約 UI で即時確認のため不要）
+- [ ] `NotifyMeetingCanceledAction` の actor ロール文面分岐確認
+
+## Step 10: meeting-quota 連携確認
+
+- [ ] [[meeting-quota]] の `MeetingQuotaService::remaining` を `Meeting\StoreAction` 冒頭で呼ぶ
+- [ ] [[meeting-quota]] の `ConsumeQuotaAction` を `Meeting\StoreAction` 内で呼ぶ
+- [ ] [[meeting-quota]] の `RefundQuotaAction` を `Meeting\CancelAction` 内で呼ぶ
+- [ ] DB::transaction 内で連携、片方失敗で全体ロールバック
+
+## Step 11: lang ファイル + 共通リソース
+
+- [ ] `lang/ja/mentoring.php` — エラーメッセージ + Blade ラベル日本語集約
+- [ ] `lang/ja/validation.php` の attribute 追加（scheduled_at / topic / body 等）

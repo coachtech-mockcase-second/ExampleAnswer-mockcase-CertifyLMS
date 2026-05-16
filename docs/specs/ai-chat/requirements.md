@@ -1,5 +1,11 @@
 # ai-chat 要件定義
 
+> **v3 改修反映**（2026-05-16）:
+> - `Enrollment.status` enum から `paused` 撤回（3 値: `learning` / `passed` / `failed`）
+> - 紐付け可能判定を `status IN (Learning, Passed)` に統一（`failed` は **拒否**、振り返り相談は未対応）
+> - `EnsureActiveLearning` Middleware を全 ai-chat ルートに適用（`graduated` ユーザーはプラン機能ロック）
+> - `UserStatus` enum 拡張（`Invited` / `InProgress` / `Graduated` / `Withdrawn`）、`active` 表記を `InProgress` に統一
+
 ## 概要
 
 受講生が問題演習・教材で詰まった瞬間に Gemini API（既定）へ即座に相談できる学習補助チャット機能。**フル画面の AI 相談画面**（会話一覧 + 詳細）と、受講生の全画面に常駐する**フローティングチャットウィジェット**の 2 入口を提供する。教材 Section 閲覧中にウィジェットを開くと該当 Section 本文がシステムプロンプトに自動注入され、教材文脈で回答が得られる。AI 応答は **Server-Sent Events によるストリーミング** で逐次表示される。会話履歴は両入口共通の DB レコードで統合管理される。
@@ -87,7 +93,7 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 
 ### REQ-ai-chat-020: アクセス制御 — ロール
 
-- The ai-chat Module shall 全 ai-chat エンドポイントに `EnsureUserRole:student` Middleware を適用し、admin / coach は HTTP 403 で拒否する。
+- The ai-chat Module shall 全 ai-chat エンドポイントに `EnsureUserRole:student` + **`EnsureActiveLearning`**（v3 新規） Middleware を適用し、admin / coach は HTTP 403 で拒否し、`graduated` 受講生も HTTP 403 で拒否する。
 - When admin / coach が `/ai-chat/*` の URL に直接アクセスした場合, the ai-chat Module shall HTTP 403 を返す。
 - The ai-chat Module shall 受講生の全画面に FAB を表示し、admin / coach 画面では FAB を一切レンダリングしない（Blade の条件分岐）。
 
@@ -104,11 +110,11 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 ### REQ-ai-chat-022: アクセス制御 — Section 紐付け検証
 
 - When 会話作成時に `section_id` が指定され、その Section の所属資格に対して受講生が Enrollment を持たない場合, the ai-chat Module shall HTTP 403 を返す。
-- The ai-chat Module shall `Enrollment.status` が `learning` / `passed` のいずれかの Enrollment のみを「紐付け可能」とみなす（`paused` / `failed` は拒否しない、過去資格の振り返り相談を許容）。
+- The ai-chat Module shall `Enrollment.status` が `learning` / `passed` のいずれかの Enrollment のみを「紐付け可能」とみなす（**`failed` は拒否**、v3 で `paused` は撤回されたため言及しない）。
 
-### REQ-ai-chat-023: withdrawn ユーザー遮断
+### REQ-ai-chat-023: withdrawn / graduated ユーザー遮断（v3 で `EnsureActiveLearning` 統合）
 
-- While `auth()->user()->status === 'withdrawn'` の場合, the ai-chat Module shall すべての ai-chat エンドポイントを HTTP 403 で拒否し、FAB を非表示にする（[[auth]] の Fortify 認証ガードで status=active を強制している前提で、本 Feature では追加チェック不要だが Policy の `viewAny` で防衛的に確認する）。
+- While `auth()->user()->status !== UserStatus::InProgress` の場合（v3、`Withdrawn` または `Graduated`）, the ai-chat Module shall すべての ai-chat エンドポイントを **`EnsureActiveLearning` Middleware**（[[auth]] 所有）で HTTP 403 で拒否し、FAB を非表示にする。`graduated` ユーザーはプラン機能ロックの一環として ai-chat も利用不可。
 
 ### REQ-ai-chat-030: 会話一覧
 

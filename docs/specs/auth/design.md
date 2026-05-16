@@ -1,507 +1,336 @@
 # auth 設計
 
+> **v3 改修反映**（2026-05-16）:
+> - `UserStatus` 4 値化（`Invited` / `InProgress` / `Graduated` / `Withdrawn`、旧 `Active` → `InProgress` rename + `Graduated` 新規）
+> - `users` テーブルに `meeting_url` カラム追加（本 Migration、D4 決定）/ `plan_id` / `plan_started_at` / `plan_expires_at` / `max_meetings` の宣言（[[plan-management]] が Migration 所有、本 Feature では Model リレーション宣言のみ）
+> - `IssueInvitationAction` に `Plan $plan` 引数追加（Plan 起点）
+> - `OnboardAction` で `status = InProgress` + coach の `meeting_url` 必須化 + `plan_started_at` / `plan_expires_at` 確定 + `MeetingQuotaTransaction(granted_initial)` 起票
+> - **`EnsureActiveLearning` Middleware 新規定義**（graduated ユーザーのプラン機能ロック、プロフィール / 修了証 DL は許可）
+
 ## アーキテクチャ概要
 
-招待制 + Fortify セッション認証の Clean Architecture（軽量版）実装。Controller は Action / Service を組み合わせ、ロール存在確認は Middleware、リソース固有認可は Policy、状態変更は Action 内 `DB::transaction()` で囲む。
+招待制 + Fortify セッション認証の Clean Architecture（軽量版）実装。Controller は Action / Service を組み合わせ、ロール存在確認は `EnsureUserRole` Middleware、**graduated ロックは `EnsureActiveLearning` Middleware**（v3 新規）、リソース固有認可は Policy、状態変更は Action 内 `DB::transaction()` で囲む。
 
-### 招待 → オンボーディング → 自動ログイン
-
-User と Invitation は **招待発行時に両方 INSERT**（product.md state diagram `[*] → invited` 準拠）。オンボーディング時は既存 invited User を UPDATE する（新規 INSERT しない）。
+### 1. 招待発行 → オンボーディング → 自動ログイン（v3 で Plan 起点）
 
 ```mermaid
 sequenceDiagram
-    participant Admin as 管理者
-    participant UM as user-management UI
-    participant IA as IssueInvitationAction
-    participant DB as DB
-    participant Svc as UserStatusChangeService
-    participant Mail as Mail Queue
-    participant Invitee as 招待者
-    participant OS as OnboardingController.show
-    participant OST as OnboardingController.store
-    participant OA as OnboardAction
+    participant Admin
+    participant UMC as UserManagementController (user-management)
+    participant IIA as IssueInvitationAction (auth、本 Feature)
+    participant UPLog as UserPlanLogService (plan-management)
+    participant Mail as InvitationMail
+    participant DB
 
-    Admin->>UM: 「招待」ボタン (email + role)
-    UM->>IA: __invoke(email, role, admin, force=false)
-    IA->>DB: BEGIN
-    IA->>DB: SELECT users WHERE email=? AND status='active'
-    alt 既存 active あり
-        IA-->>UM: EmailAlreadyRegisteredException (409)
+    Admin->>UMC: POST /admin/users/invitations { email, role, plan_id }
+    UMC->>IIA: __invoke($email, $role, $plan, $admin)
+    Note over IIA: v3: Plan $plan 引数追加
+    IIA->>DB: BEGIN
+    IIA->>DB: SELECT 同 email の in_progress/graduated User 不在検査
+    alt 存在
+        IIA-->>UMC: EmailAlreadyRegisteredException (409)
     end
-    IA->>DB: SELECT users WHERE email=? AND status='invited'
-    alt 既存 invited + pending あり AND force=false
-        IA-->>UM: PendingInvitationAlreadyExistsException (409)
-    else 既存 invited + pending あり AND force=true
-        IA->>DB: UPDATE invitations SET status='revoked' WHERE user_id=? AND status='pending'
-        Note over IA,DB: User は invited のまま継続 cascade なし UserStatusLog 挿入なし
-    else 既存 User なし
-        IA->>DB: INSERT users(status=invited, email, role, password=NULL, name=NULL)
-        IA->>Svc: record($user, UserStatus::Invited, $admin, '新規招待')
-        Svc->>DB: INSERT user_status_logs
-    end
-    IA->>DB: INSERT invitations(user_id, status=pending, expires_at=now+7d)
-    IA->>Mail: InvitationMail.dispatch
-    IA->>DB: COMMIT
-    Mail->>Invitee: 招待メール（署名付き URL 含む）
+    IIA->>DB: INSERT users(<br/>status=invited, email, role, plan_id=$plan->id,<br/>plan_started_at=NULL, plan_expires_at=NULL,<br/>max_meetings=$plan->default_meeting_quota)
+    IIA->>DB: INSERT invitations(user_id, status=pending, expires_at=now+7d)
+    IIA->>UMC: UserStatusChangeService::record($user, Invited, $admin)
+    IIA->>UPLog: record($user, $plan, event_type=assigned)
+    IIA->>Mail: dispatch InvitationMail
+    IIA->>DB: COMMIT
+    IIA-->>UMC: Invitation
+    Mail-->>Recipient: 招待メール送信
 
-    Invitee->>OS: GET /onboarding/{invitation}?expires=...&signature=...
-    OS->>OS: hasValidSignature() + Invitation.status=pending + expires_at>now + User.status=invited チェック
-    alt 検証 NG
-        OS-->>Invitee: auth/invitation-invalid ビュー
-    else 検証 OK
-        OS-->>Invitee: auth/onboarding フォーム（email + role 読み取り専用）
-    end
+    Note over Recipient: 招待URLクリック → /onboarding/{invitation}
 
-    Invitee->>OST: POST /onboarding/{invitation}
-    OST->>OA: __invoke(invitation, validated)
-    OA->>DB: BEGIN
-    OA->>DB: UPDATE users SET status='active', password=hash, name=?, bio=?, profile_setup_completed=true WHERE id=invitation.user_id
-    OA->>DB: UPDATE invitations SET status='accepted', accepted_at=now() WHERE id=?
-    OA->>Svc: record($user, UserStatus::Active, $user, 'オンボーディング完了')
-    Svc->>DB: INSERT user_status_logs
-    OA->>OA: Auth::login(invitation.user)
-    OA->>DB: COMMIT
-    OA-->>Invitee: redirect /dashboard
+    Recipient->>OnboardingController: POST /onboarding/{invitation}<br/>{name, password, [meeting_url for coach]}
+    OnboardingController->>OnboardAction: __invoke($invitation, $validated)
+    OnboardAction->>DB: BEGIN
+    OnboardAction->>DB: UPDATE users SET<br/>status=in_progress, password, name, bio,<br/>email_verified_at, profile_setup_completed,<br/>plan_started_at=now(),<br/>plan_expires_at=now()+plan.duration_days days,<br/>[meeting_url if coach]
+    Note over OnboardAction: v3: status=in_progress + Plan 期間反映 + coach の meeting_url 必須
+    OnboardAction->>DB: UPDATE invitations SET status=accepted, accepted_at=now()
+    OnboardAction->>UserStatusChangeService: record($user, InProgress, $user)
+    OnboardAction->>MeetingQuotaService: INSERT MeetingQuotaTransaction(<br/>type=granted_initial, amount=$plan->default_meeting_quota)
+    OnboardAction->>DB: COMMIT
+    OnboardAction->>Auth: login($user)
+    OnboardAction-->>OnboardingController: User
+    OnboardingController-->>Recipient: redirect /dashboard
 ```
 
-### Invitation 期限切れ / 取消 → User cascade withdrawn
-
-`product.md` の state diagram `invited → withdrawn: 招待期限切れ または 取り消し` に対応。
+### 2. EnsureActiveLearning Middleware（v3 新規）
 
 ```mermaid
 sequenceDiagram
-    participant Cron as Schedule (00:30)
-    participant EA as ExpireInvitationsAction
-    participant Admin as 管理者
-    participant UM as user-management UI
-    participant RA as RevokeInvitationAction
-    participant Svc as UserStatusChangeService
-    participant DB as DB
+    participant User as Student (graduated)
+    participant MW as EnsureActiveLearning
+    participant Controller
 
-    Cron->>EA: __invoke()
-    EA->>DB: BEGIN
-    EA->>DB: SELECT invitations WHERE status='pending' AND expires_at <= now()
-    loop 各期限切れ Invitation
-        EA->>DB: UPDATE invitations SET status='expired'
-        EA->>DB: UPDATE users SET status='withdrawn', email='{ulid}@deleted.invalid', deleted_at=now() WHERE id=user_id AND status='invited'
-        EA->>Svc: record($user, UserStatus::Withdrawn, null, '招待期限切れ')
-        Svc->>DB: INSERT user_status_logs (changed_by_user_id=NULL)
+    User->>MW: GET /learning (or /quiz / /mock-exams / etc.)
+    MW->>MW: auth()->user()->status === InProgress?
+    alt InProgress
+        MW->>Controller: $next($request)
+    else Graduated / Withdrawn / Invited
+        MW-->>User: 403 「プラン期間が満了しました。プラン機能はご利用いただけません。プロフィール / 修了証は引き続きアクセス可能です。」
     end
-    EA->>DB: COMMIT
 
-    Admin->>UM: 「招待を取消」ボタン
-    UM->>RA: __invoke(invitation, admin, cascadeWithdrawUser=true)
-    RA->>DB: BEGIN
-    RA->>DB: UPDATE invitations SET status='revoked', revoked_at=now()
-    RA->>DB: UPDATE users SET status='withdrawn', email='{ulid}@deleted.invalid', deleted_at=now() WHERE id=user_id AND status='invited'
-    RA->>Svc: record($user, UserStatus::Withdrawn, $admin, '招待取消')
-    Svc->>DB: INSERT user_status_logs
-    RA->>DB: COMMIT
-```
-
-### ログイン / ログアウト / パスワードリセット（Fortify）
-
-```mermaid
-flowchart LR
-    L[GET /login] --> LF[Fortify::loginView]
-    LF --> LP[auth/login.blade.php]
-    LP --> LS[POST /login Fortify]
-    LS --> Auth{credentials + status=active?}
-    Auth -- NG --> LP
-    Auth -- OK --> UL[UpdateLastLoginAt Listener]
-    UL --> Dash[redirect /dashboard]
-
-    Lo[POST /logout] --> Inv[Auth::logout + session invalidate]
-    Inv --> Login2[redirect /login]
-
-    F[GET /forgot-password] --> FF[auth/forgot-password.blade.php]
-    FF --> FS[POST /forgot-password Fortify]
-    FS --> Send[ResetPassword Notification 送信]
-    Send --> Same[「メールを送信しました」共通メッセージ]
-
-    R[GET /reset-password/{token}] --> RF[auth/reset-password.blade.php]
-    RF --> RS[POST /reset-password Fortify]
-    RS --> Hash[Hash::make + トークン失効]
-    Hash --> Login3[redirect /login + 成功メッセージ]
+    Note over MW: 適用しないルート(v3):<br/>/settings/profile / /settings/password / /settings/avatar<br/>/certificates/{certificate}/download<br/>/notifications / /notifications/dropdown / /notifications/markAsRead
 ```
 
 ## データモデル
 
-### Eloquent モデル一覧
+### Eloquent モデル
 
-- **`User`** — 認証主体。3ロール（`admin` / `coach` / `student`）を `role` enum で識別。3状態（`invited` / `active` / `withdrawn`）を `status` enum で識別。`HasUlids` + `SoftDeletes` + `Notifiable`。**`password` と `name` は nullable**（invited 状態では未設定）。`hasMany(Invitation::class, 'user_id')`（履歴）。
-- **`Invitation`** — 招待トークン。`status` enum で4状態を管理。`HasUlids` + `SoftDeletes`。`belongsTo(User::class, 'user_id')`（対象 User）+ `belongsTo(User::class, 'invited_by_user_id')`（発行 admin）。1 User × N Invitations（再招待の履歴を保持）。
+- **`User`** — `HasUlids` + `HasFactory` + `SoftDeletes` + `Notifiable`、`role` `UserRole` cast / `status` `UserStatus` cast / `last_login_at` / **`plan_started_at`** / **`plan_expires_at`** datetime cast、`belongsTo(Plan)`(v3) / `hasMany(Invitation)`、`scopeActive`(v3 で `whereIn('status', [InProgress, Graduated])`)
+- **`Invitation`** — `HasUlids` + `HasFactory` + `SoftDeletes`、`role` `UserRole` cast / `status` `InvitationStatus` cast / `expires_at` / `accepted_at` / `revoked_at` datetime cast、`belongsTo(User)` / `belongsTo(User, invited_by_user_id, invitedBy)`
 
 ### ER 図
 
 ```mermaid
 erDiagram
-    USERS ||--o{ INVITATIONS_AS_TARGET : "user_id"
-    USERS ||--o{ INVITATIONS_AS_ISSUER : "invited_by_user_id"
+    USERS ||--o{ INVITATIONS : "user_id"
+    USERS ||--o{ INVITATIONS : "invited_by_user_id"
+    PLANS ||--o{ USERS : "plan_id (v3)"
+
     USERS {
         ulid id PK
-        string name "nullable (invited)"
-        string email "UNIQUE (soft-deleted は rename)"
-        string password "nullable (invited)"
-        string role "admin|coach|student"
-        string status "invited|active|withdrawn"
+        string email UNIQUE
+        string password "nullable"
+        string role "admin/coach/student"
+        string status "v3: invited/in_progress/graduated/withdrawn"
+        string name "nullable"
         text bio "nullable"
         string avatar_url "nullable"
-        boolean profile_setup_completed "default false"
+        boolean profile_setup_completed
         timestamp email_verified_at "nullable"
         timestamp last_login_at "nullable"
-        string remember_token
-        timestamp created_at
-        timestamp updated_at
-        timestamp deleted_at "nullable (soft delete)"
+        ulid plan_id "v3 nullable, plan-management migration"
+        timestamp plan_started_at "v3 nullable"
+        timestamp plan_expires_at "v3 nullable"
+        unsignedSmallInteger max_meetings "v3 default 0"
+        string meeting_url "v3 nullable, this migration"
+        string remember_token "nullable"
+        timestamps
+        timestamp deleted_at "nullable"
     }
-    INVITATIONS_AS_TARGET {
+    INVITATIONS {
         ulid id PK
-        ulid user_id FK "対象 User"
-        string email "snapshot from users.email"
-        string role "admin|coach|student"
-        ulid invited_by_user_id FK "発行 admin"
+        ulid user_id FK
+        string email
+        string role
+        ulid invited_by_user_id FK
         timestamp expires_at
         timestamp accepted_at "nullable"
         timestamp revoked_at "nullable"
-        string status "pending|accepted|expired|revoked"
-        timestamp created_at
-        timestamp updated_at
+        string status "pending/accepted/expired/revoked"
+        timestamps
         timestamp deleted_at "nullable"
     }
 ```
 
-> Mermaid の制約で同じテーブルへの 2 つの FK を 1 つの ER box では描き分けにくいため、図上は `INVITATIONS_AS_TARGET` として表現。実テーブルは `invitations` 1 つで、`user_id` と `invited_by_user_id` の 2 つの FK を持つ。
+### Enum
 
-### 主要カラム + Enum
-
-| Model | Enum | 値 | 日本語ラベル |
+| Model | Enum | 値（v3） | 日本語ラベル |
 |---|---|---|---|
-| `User.role` | `UserRole` | `Admin` `Coach` `Student` | `管理者` `コーチ` `受講生` |
-| `User.status` | `UserStatus` | `Invited` `Active` `Withdrawn` | `招待中` `アクティブ` `退会済` |
-| `Invitation.status` | `InvitationStatus` | `Pending` `Accepted` `Expired` `Revoked` | `保留中` `受領済` `期限切れ` `取消済` |
-| `Invitation.role` | `UserRole`（共用） | — | — |
-
-### インデックス・制約
-
-- `users.email`: UNIQUE。MySQL 8 では部分 UNIQUE INDEX が直接書けないため、**soft delete を行う Action が email を `{ulid}@deleted.invalid` 形式へリネーム** することで実 email の重複を回避（REQ-auth-004, REQ-auth-070）。
-- `invitations.user_id`: 外部キー（`onDelete('cascade')` ではなく Action 側で明示削除 — soft delete を保持するため）+ INDEX（User → Invitations 履歴の高速引き）
-- `invitations.expires_at + status`: 複合 INDEX（`invitations:expire` Schedule Command で `WHERE status='pending' AND expires_at <= now()` を高速化）
-- `invitations.invited_by_user_id`: 外部キー（`onDelete('restrict')` — 招待発行者の退会は user-management 側でブロック）
-- `invitations.user_id + status` 部分 UNIQUE: 1 User あたり同時に存在する `pending` Invitation は最大 1 件（再招待は旧 pending を revoke してから新 pending を INSERT する設計と整合）。MySQL 8 の制約として書ききれない場合は Action 側の事前検査で担保。
+| `User.role` | `UserRole` | `Admin` / `Coach` / `Student` | `管理者` / `コーチ` / `受講生` |
+| `User.status` | `UserStatus`(v3 で 4 値化) | `Invited` / **`InProgress`** / **`Graduated`** / `Withdrawn` | `招待中` / `受講中` / `修了` / `退会済` |
+| `Invitation.status` | `InvitationStatus` | `Pending` / `Accepted` / `Expired` / `Revoked` | `招待中` / `承諾済` / `期限切れ` / `取消済` |
 
 ## 状態遷移
 
-`product.md` の state diagram に厳格に従う。User と Invitation の状態は **同一トランザクション内で連動** する（cascade）。
-
-### A. User.status（product.md 準拠）
-
 ```mermaid
 stateDiagram-v2
-    invited: invited（招待中）
-    active: active（アクティブ）
-    withdrawn: withdrawn（退会済）
-
-    [*] --> invited: IssueInvitationAction (招待発行で User INSERT)
-    invited --> active: OnboardAction (オンボーディング完了で User UPDATE)
-    invited --> withdrawn: ExpireInvitationsAction または RevokeInvitationAction (cascade)
-    active --> withdrawn: 自己退会（[[settings-profile]]）または admin 退会処理（[[user-management]]）
+    [*] --> invited: IssueInvitationAction(Plan 指定)
+    invited --> in_progress: OnboardAction(v3 で active → in_progress rename)
+    invited --> withdrawn: 招待期限切れ / 取消
+    in_progress --> graduated: plan-management の users:graduate-expired<br/>Schedule Command(v3 新規)
+    in_progress --> withdrawn: admin による退会(v3 で自己退会撤回)
+    graduated --> [*]
     withdrawn --> [*]
 ```
-
-### B. Invitation.status
-
-```mermaid
-stateDiagram-v2
-    pending: pending（保留中）
-    accepted: accepted（受領済）
-    expired: expired（期限切れ）
-    revoked: revoked（取消済）
-
-    [*] --> pending: IssueInvitationAction
-    pending --> accepted: OnboardAction（オンボーディング完了）
-    pending --> expired: ExpireInvitationsAction（日次バッチ、User も cascade withdrawn）
-    pending --> revoked: RevokeInvitationAction（admin 手動取消、User も cascade withdrawn）
-    pending --> revoked: IssueInvitationAction force=true（内部再招待、User は invited のまま継続）
-    accepted --> [*]
-    expired --> [*]
-    revoked --> [*]
-```
-
-> **cascade ルール**: Invitation が `expired` または `revoked`（admin 手動）になったとき、対応する User が `invited` 状態なら `withdrawn` + soft delete + email リネーム + [[user-management]] の `UserStatusChangeService::record(...)` 呼出（actor は呼出元から渡される。Schedule Command なら null、admin 手動取消なら admin User）を **同一トランザクション内** で行う。**例外**: `IssueInvitationAction(force=true)` 内で旧 Invitation を revoke するときは User を残す（同じ user_id に新 Invitation を紐付けるため、`UserStatusLog` への記録もなし）。
 
 ## コンポーネント
 
 ### Controller
 
-すべて `auth` ガードを前提。Onboarding 系のみ未認証アクセス可（署名付き URL が認可）。
+- `OnboardingController` — `show($invitation)` / `store($invitation, OnboardingRequest)`
+- Fortify が `/login` / `/logout` / `/forgot-password` / `/reset-password` を提供（本 Feature では Controller 持たない、Fortify Action を `App\Actions\Fortify\` に配置）
 
-- **`Auth\OnboardingController`** — オンボーディング画面の表示・送信
-  - `show(Invitation $invitation)` → `auth/onboarding` ビューまたは `auth/invitation-invalid`
-  - `store(Invitation $invitation, OnboardingRequest $request, OnboardAction $action)` → `/dashboard` リダイレクト
-- **Fortify のデフォルト Controller** — ログイン / ログアウト / パスワードリセットは Fortify が標準提供
-  - 画面は `App\Providers\FortifyServiceProvider` で Blade に紐付け
-  - ログイン成功時のフックは `FortifyServiceProvider::boot()` 内で `Fortify::authenticateUsing()` または Listener 経由
+### Action
 
-> 招待発行 / 取消 / 一覧の Controller は [[user-management]] 側に置く（本 Feature は Action だけ提供）。
-
-### Action（UseCase）
-
-`app/UseCases/Auth/`。各 Action は単一トランザクション境界。
-
-#### `IssueInvitationAction`
+`app/UseCases/Auth/`:
 
 ```php
 class IssueInvitationAction
 {
-    public function __construct(
-        private InvitationTokenService $tokenService,
-        private UserStatusChangeService $statusChanger,
-    ) {}
+    public function __construct(private UserStatusChangeService $statusService, private UserPlanLogService $planLog) {}
 
-    /**
-     * 招待を発行する。force=true なら同 email に既存 pending Invitation がある場合に
-     * 旧 Invitation を revoke（User は invited のまま継続）して新 Invitation を発行する。
-     *
-     * @throws EmailAlreadyRegisteredException 同 email の active User が存在
-     * @throws PendingInvitationAlreadyExistsException force=false で既存 pending Invitation あり
-     */
-    public function __invoke(
-        string $email,
-        UserRole $role,
-        User $invitedBy,
-        bool $force = false,
-    ): Invitation;
+    // v3: Plan $plan 引数追加
+    public function __invoke(string $email, UserRole $role, Plan $plan, User $invitedBy, bool $force = false): Invitation
+    {
+        return DB::transaction(function () use ($email, $role, $plan, $invitedBy, $force) {
+            // v3: in_progress / graduated 不在検査
+            if (User::where('email', $email)->whereIn('status', [UserStatus::InProgress, UserStatus::Graduated])->exists()) {
+                throw new EmailAlreadyRegisteredException();
+            }
+            // 既存 invited User + pending Invitation の場合は $force 分岐
+            // ...
+
+            $user = User::create([
+                'email' => $email,
+                'role' => $role,
+                'status' => UserStatus::Invited,
+                'plan_id' => $plan->id,  // v3
+                'plan_started_at' => null,
+                'plan_expires_at' => null,
+                'max_meetings' => $plan->default_meeting_quota,  // v3
+            ]);
+
+            $invitation = Invitation::create([
+                'user_id' => $user->id,
+                'email' => $email,
+                'role' => $role,
+                'invited_by_user_id' => $invitedBy->id,
+                'expires_at' => now()->addDays(config('auth.invitation_expire_days', 7)),
+                'status' => InvitationStatus::Pending,
+            ]);
+
+            $this->statusService->record($user, UserStatus::Invited, $invitedBy, '新規招待');
+            $this->planLog->record($user, $plan, UserPlanEvent::Assigned, $invitedBy);  // v3
+            InvitationMail::dispatch($invitation);
+            return $invitation;
+        });
+    }
 }
-```
 
-責務: (1) active User 重複検査、(2) invited User + pending Invitation 検査と force 分岐、(3) User INSERT or 既存 invited User の再利用、(4) 新規 User INSERT 時のみ `UserStatusChangeService::record($user, UserStatus::Invited, $invitedBy, '新規招待')` を呼ぶ（force=true で既存 invited User を再利用する場合は status 変化なしのため呼ばない）、(5) Invitation INSERT、(6) `InvitationMail` dispatch。すべて `DB::transaction()` でラップ。
-
-#### `OnboardAction`
-
-```php
 class OnboardAction
 {
-    public function __construct(private UserStatusChangeService $statusChanger) {}
+    public function __construct(
+        private UserStatusChangeService $statusService,
+        private GrantInitialQuotaAction $grantInitial,  // v3、D-1 統一シグネチャ
+    ) {}
 
-    /**
-     * 招待を受領し、既存 invited User を active に遷移させ、自動ログインする。
-     *
-     * @throws InvalidInvitationTokenException Invitation が pending でない / 期限切れ / User が invited でない
-     */
-    public function __invoke(Invitation $invitation, array $validated): User;
+    public function __invoke(Invitation $invitation, array $validated): User
+    {
+        return DB::transaction(function () use ($invitation, $validated) {
+            $user = $invitation->user;
+
+            $attrs = [
+                'status' => UserStatus::InProgress,  // v3
+                'password' => Hash::make($validated['password']),
+                'name' => $validated['name'],
+                'bio' => $validated['bio'] ?? null,
+                'email_verified_at' => now(),
+                'profile_setup_completed' => true,
+                'plan_started_at' => now(),  // v3
+                'plan_expires_at' => now()->addDays($user->plan->duration_days),  // v3
+            ];
+
+            if ($user->role === UserRole::Coach) {
+                $attrs['meeting_url'] = $validated['meeting_url'];  // v3 必須
+            }
+
+            $user->update($attrs);
+            $invitation->update(['status' => InvitationStatus::Accepted, 'accepted_at' => now()]);
+            $this->statusService->record($user, UserStatus::InProgress, $user, 'オンボーディング完了');
+            ($this->grantInitial)($user, $user->plan->default_meeting_quota, null, 'オンボーディング初期付与');  // v3、D-1 統一シグネチャ
+
+            Auth::login($user);
+            return $user;
+        });
+    }
 }
+
+class RevokeInvitationAction { /* 変更なし */ }
+class ExpireInvitationsAction { /* 変更なし */ }
 ```
-
-責務: (1) Invitation + User の状態整合性チェック、(2) User UPDATE（`status=active` / `password` / `name` / `bio` / `email_verified_at` / `profile_setup_completed=true`）、(3) Invitation UPDATE（`status=accepted` / `accepted_at=now()`）、(4) `UserStatusChangeService::record($user, UserStatus::Active, $user, 'オンボーディング完了')` を呼ぶ（actor は本人）、(5) `Auth::login($invitation->user)`。すべて `DB::transaction()` でラップ。
-
-#### `RevokeInvitationAction`
-
-```php
-class RevokeInvitationAction
-{
-    public function __construct(private UserStatusChangeService $statusChanger) {}
-
-    /**
-     * pending Invitation を revoke する。cascadeWithdrawUser=true なら User も withdrawn + soft delete + email リネーム + UserStatusLog 記録。
-     *
-     * @param ?User $admin 取消操作の actor。null ならシステム自動相当として UserStatusLog に記録される
-     * @throws InvitationNotPendingException Invitation.status が pending でない
-     */
-    public function __invoke(
-        Invitation $invitation,
-        ?User $admin = null,
-        bool $cascadeWithdrawUser = true,
-    ): void;
-}
-```
-
-責務: (1) Invitation を `revoked` に UPDATE、(2) `cascadeWithdrawUser=true` なら紐付く invited User を `withdrawn` + `deleted_at=now()` + `email='{ulid}@deleted.invalid'` に UPDATE + `UserStatusChangeService::record($user, UserStatus::Withdrawn, $admin, '招待取消')` を呼ぶ。`$admin = null` のときはシステム自動相当（`changed_by_user_id = NULL`）として記録される。admin 手動取消では `true`（デフォルト）+ `$admin` に呼出元 admin を渡す、`IssueInvitationAction(force=true)` 内部呼び出しでは `false`（UserStatusLog 記録なし、`$admin` 引数は無視される）。`DB::transaction()` でラップ。
-
-#### `ExpireInvitationsAction`
-
-```php
-class ExpireInvitationsAction
-{
-    public function __construct(private UserStatusChangeService $statusChanger) {}
-
-    /**
-     * 期限切れの pending Invitation をすべて expired にし、対応する invited User を cascade withdrawn する。
-     *
-     * @return int 処理された Invitation の件数
-     */
-    public function __invoke(): int;
-}
-```
-
-責務: (1) `pending AND expires_at <= now()` の Invitation を抽出、(2) 各 Invitation を `expired` に UPDATE、(3) 紐付く invited User を cascade withdraw（`status=withdrawn` + soft delete + email リネーム）+ `UserStatusChangeService::record($user, UserStatus::Withdrawn, null, '招待期限切れ')` を呼ぶ（Schedule Command からの呼出のため actor=null でシステム自動として記録）。すべて `DB::transaction()` 内。
-
-#### Fortify 標準採用（独自 Action を作らない）
-
-Login / Logout / ForgotPassword / ResetPassword は **Fortify 標準実装を採用** し独自 Action は作らない（Fortify の Actions / Pipelines をカスタマイズ用フックがあるため）。例外として「`status === active` でないと認証通さない」だけ `FortifyServiceProvider::boot()` 内の `Fortify::authenticateUsing(...)` クロージャでガード。
-
-### Service
-
-`app/Services/`:
-
-- **`InvitationTokenService`** — 署名付きオンボーディング URL の生成と検証ヘルパ
-  - `generateUrl(Invitation $invitation): string` — `URL::signedRoute('onboarding.show', ['invitation' => $invitation->id, 'expires' => $invitation->expires_at->timestamp])`
-  - `verify(Request $request, Invitation $invitation): bool` — `hasValidSignature()` + status / expires_at チェックを 1 メソッドに集約
-
-### Policy
-
-`app/Policies/InvitationPolicy.php`:
-
-- `viewAny(User $user): bool` — admin のみ
-- `create(User $user): bool` — admin のみ
-- `revoke(User $user, Invitation $invitation): bool` — admin かつ `invitation.status === pending`
-
-### FormRequest
-
-`app/Http/Requests/Auth/`:
-
-- **`OnboardingRequest`** — `name` required string / `bio` nullable string / `password` required string min:8 confirmed
-  - `authorize()` は **always true**（署名付き URL が認可、Controller 側で署名検証）
-
-Login / ForgotPassword / ResetPassword は Fortify の Pipeline 内バリデーションを使うため独自 FormRequest を作らない。
-
-### Notification / Mailable
-
-`app/Mail/`:
-
-- **`InvitationMail`** — Markdown Mailable
-  - 件名: 「Certify LMS への招待」
-  - 本文: 招待者名 / ロール / 有効期限 / 「アカウントを作成」ボタン（署名付きオンボーディング URL）
-  - テンプレ: `resources/views/emails/invitation.blade.php`
-
-Laravel 標準の `ResetPassword` Notification をパスワードリセットに使う（カスタマイズは `User::sendPasswordResetNotification()` をオーバーライドして件名・本文の日本語化のみ）。
 
 ### Middleware
 
-`app/Http/Middleware/EnsureUserRole.php`:
+`app/Http/Middleware/`:
+
+- `EnsureUserRole`(既存): `role:admin,coach` 形式でロール許可リスト判定、不一致で 403
+- **`EnsureActiveLearning`(v3 新規)**:
 
 ```php
-public function handle(Request $request, Closure $next, string ...$roles): Response
+namespace App\Http\Middleware;
+
+class EnsureActiveLearning
 {
-    $user = $request->user();
-    if (! $user || ! in_array($user->role->value, $roles, true)) {
-        abort(403);
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (!auth()->check()) {
+            return $next($request);  // auth middleware で処理済
+        }
+
+        if (auth()->user()->status !== UserStatus::InProgress) {
+            abort(403, 'プラン期間が満了しました。プラン機能はご利用いただけません。プロフィール / 修了証は引き続きアクセス可能です。');
+        }
+
+        return $next($request);
     }
-    return $next($request);
 }
 ```
 
-`app/Http/Kernel.php` の `$middlewareAliases` に `'role' => EnsureUserRole::class` を追加。
+`Kernel.php` の `$middlewareAliases` に `'active-learning' => EnsureActiveLearning::class` 追加。
 
-### Schedule Command
+### Policy
 
-`app/Console/Commands/Auth/ExpireInvitationsCommand.php`:
+- `InvitationPolicy::create / viewAny / revoke`(admin のみ true)
 
-- signature: `invitations:expire`
-- handle: `ExpireInvitationsAction` を呼ぶだけの薄いラッパー
-- `app/Console/Kernel.php::schedule()` で `->command('invitations:expire')->dailyAt('00:30')`
+### FormRequest
 
-### FortifyServiceProvider のカスタマイズ
-
-`app/Providers/FortifyServiceProvider.php`:
-
-- `Fortify::loginView(fn () => view('auth.login'))`
-- `Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'))`
-- `Fortify::resetPasswordView(fn ($request) => view('auth.reset-password', ['token' => $request->route('token'), 'email' => $request->email]))`
-- `Fortify::authenticateUsing(function (Request $request) { ... })` — email + password 検証後に `status === active` をチェック
-- `Fortify::rateLimit('login')` の閾値（5回/分）をそのまま採用
+- `OnboardingRequest`(`name: required string max:50` / `bio: nullable string max:1000` / `password: required string min:8 confirmed` / **`meeting_url: required_if:role,coach string url max:500`**(v3、coach の場合必須))
 
 ### Route
 
-`routes/web.php`（Fortify が `boot` 時に自動登録するルート + 本 Feature 固有の招待動線ルート）:
+`routes/web.php`:
 
 ```php
-// Fortify 自動登録（FortifyServiceProvider 経由、明示は不要）
-// - GET  /login                          name: login
-// - POST /login                          （Fortify::authenticateUsing）
-// - POST /logout                         name: logout
-// - GET  /forgot-password                name: password.request
-// - POST /forgot-password                name: password.email
-// - GET  /reset-password/{token}         name: password.reset
-// - POST /reset-password                 name: password.update
+// 未認証(署名付き URL が認可)
+Route::get('/onboarding/{invitation}', [OnboardingController::class, 'show'])
+    ->middleware('signed')
+    ->name('onboarding.show');
+Route::post('/onboarding/{invitation}', [OnboardingController::class, 'store'])
+    ->middleware('signed')
+    ->name('onboarding.store');
 
-// 本 Feature 固有: 招待 URL からのオンボーディング
-Route::middleware('signed')->group(function () {
-    Route::get('/onboarding/{invitation}', [OnboardingController::class, 'show'])
-        ->name('onboarding.show');
-    Route::post('/onboarding/{invitation}', [OnboardingController::class, 'store'])
-        ->name('onboarding.store');
+// Fortify ルートは Fortify が自動登録
+```
+
+各 Feature の routes/web.php で:
+```php
+Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])->group(function () {
+    // learning / quiz-answering / mock-exam / mentoring / chat / qa-board / ai-chat の student ルート
 });
 ```
 
-- `onboarding.show` / `onboarding.store` は `signed` middleware で URL 署名検証（招待 URL は `URL::temporarySignedRoute(...)` で 7 日有効、`Invitation::status === Pending` も Action 内で再検査）
-- ログアウト後のリダイレクト先は `FortifyServiceProvider::redirectsTo` で `/login` 固定
-- Fortify がパスワードリセットメール送信時に通知する `ResetPassword` 通知は本 Feature が `via` を override せず Laravel 標準（Mail）のまま使用
-
-## Blade ビュー
-
-`resources/views/auth/`:
-
-| ファイル | 役割 |
-|---|---|
-| `auth/login.blade.php` | ログインフォーム（email + password + 「パスワードを忘れた方」リンク）|
-| `auth/forgot-password.blade.php` | パスワードリセット要求フォーム（email のみ）|
-| `auth/reset-password.blade.php` | パスワードリセット確認フォーム（password + confirmation + token + email hidden）|
-| `auth/onboarding.blade.php` | オンボーディングフォーム（name + bio + password + confirmation）。`Invitation` の email / role を読み取り専用で表示 |
-| `auth/invitation-invalid.blade.php` | 「招待リンクが無効または期限切れです」エラー表示。「管理者へお問い合わせください」案内 |
-| `emails/invitation.blade.php` | InvitationMail の Markdown テンプレ |
-| `layouts/guest.blade.php` | 認証系の共通レイアウト（ロゴ + 中央カード）。本 Feature ではなく Wave 0b で先に用意される共通基盤 |
-
-### 主要コンポーネント
-
-すべて Wave 0b の Design System で先に整備済みの想定:
-
-- `<x-button>` — Primary / Outline / Ghost variant
-- `<x-form.input>` — label + input + error スロット
-- `<x-form.error>` — `@error` 直結のエラーメッセージ
-- `<x-alert>` — `success` / `error` / `info` variant（リダイレクト後の `session('status')` 表示）
-
 ## エラーハンドリング
 
-### 想定例外（`app/Exceptions/Auth/`）
+`app/Exceptions/Auth/`:
 
-- **`EmailAlreadyRegisteredException`** — `ConflictHttpException` 継承（HTTP 409）
-  - メッセージ: 「このメールアドレスは既に登録されています。」
-  - 発生: `IssueInvitationAction` の事前検査（active User あり）
-- **`PendingInvitationAlreadyExistsException`** — `ConflictHttpException` 継承（HTTP 409）
-  - メッセージ: 「このメールアドレスへの招待は既に保留中です。」
-  - 発生: `IssueInvitationAction(force=false)` で既存 invited User + pending Invitation 重複時
-- **`InvalidInvitationTokenException`** — `\Symfony\Component\HttpKernel\Exception\HttpException`（HTTP 410 Gone）継承
-  - メッセージ: 「招待リンクが無効または期限切れです。管理者へお問い合わせください。」
-  - 発生: `OnboardAction` の整合性チェック（Invitation 非 pending / 期限切れ / User 非 invited）
-- **`InvitationNotPendingException`** — `ConflictHttpException` 継承（HTTP 409）
-  - メッセージ: 「この招待は既に処理済みのため取り消せません。」
-  - 発生: `RevokeInvitationAction` が pending 以外の Invitation に対して呼ばれた場合
-
-### Controller / Action の境界
-
-- **署名 / 期限 / status のチェック**: `OnboardingController::show` では `auth/invitation-invalid` ビューを返す（ユーザーフレンドリ）
-- **同じ条件で `store` に到達した場合**: `OnboardAction` 内で `InvalidInvitationTokenException` を throw（直接 POST を試した攻撃者・期限が show と store の間で切れたケースをガード）
-
-### 列挙攻撃の防止
-
-- パスワードリセット要求: email 存在有無に関わらず同一メッセージ（NFR-auth 該当）
-- ログイン失敗: status 漏洩を避けるため、`invited` / `withdrawn` / 不正 password はすべて「認証情報が正しくありません」に統一
+- `EmailAlreadyRegisteredException`(HTTP 409)
+- `PendingInvitationAlreadyExistsException`(HTTP 409)
+- `InvalidInvitationTokenException`(HTTP 410)
 
 ## 関連要件マッピング
 
-| 要件ID | 実装ポイント |
+| 要件 ID | 実装ポイント |
 |---|---|
-| REQ-auth-001 〜 005 | `database/migrations/{date}_create_users_table.php`（`name` `password` を nullable）/ `App\Models\User` / `App\Enums\UserRole` / `App\Enums\UserStatus` / email rename ヘルパ（`User::withdraw()` メソッド、UserStatusLog 記録は呼出側責務） |
-| REQ-auth-010 〜 015 | `database/migrations/{date}_create_invitations_table.php`（`user_id` FK + 複合 INDEX）/ `App\Models\Invitation` / `App\Enums\InvitationStatus` / `IssueInvitationAction`（force flag + `UserStatusChangeService` DI、新規 User INSERT 時のみ status log 記録）/ `InvitationTokenService::generateUrl` / `App\Mail\InvitationMail` |
-| REQ-auth-020 〜 024 | `OnboardingController::show` / `OnboardingController::store` / `OnboardingRequest` / `OnboardAction`（User UPDATE 方式 + `UserStatusChangeService` DI で status log 記録）/ `InvitationTokenService::verify` / `auth/invitation-invalid.blade.php` |
-| REQ-auth-030 〜 036 | `FortifyServiceProvider::boot` / `auth/login.blade.php` / `auth/forgot-password.blade.php` / `auth/reset-password.blade.php` / `User::sendPasswordResetNotification` overrides |
-| REQ-auth-040 〜 042 | `App\Http\Middleware\EnsureUserRole` / `App\Http\Kernel::$middlewareAliases` |
-| REQ-auth-050 〜 052 | `ExpireInvitationsAction`（cascade User withdraw + `UserStatusChangeService` DI で actor=null の status log 記録）/ `App\Console\Commands\Auth\ExpireInvitationsCommand` / `App\Console\Kernel::schedule()` / `RevokeInvitationAction`（cascade flag + `$admin` 引数 + `UserStatusChangeService` DI で status log 記録） |
-| REQ-auth-060 〜 062 | `App\Policies\InvitationPolicy` / `routes/web.php`（`onboarding.*` ルートが `auth` middleware の **外** にあること）|
-| REQ-auth-070 〜 071 | `User::withdraw()` ヘルパ（email rename + status + soft delete のみ、UserStatusLog 記録は **呼出側 Action の責務**）/ 能動退会 UI は [[settings-profile]] / [[user-management]] |
-| NFR-auth-001 | `config/hashing.php` (default) |
-| NFR-auth-002 | `FortifyServiceProvider::boot` の `Fortify::rateLimit('login')` |
-| NFR-auth-003 | `layouts.guest` を全認証ビューで継承 |
-| NFR-auth-004 | `lang/ja/auth.php` / 各ドメイン例外のコンストラクタ |
-| NFR-auth-005 | 各 Action 内の `DB::transaction(function () { ... })` |
+| REQ-auth-001 | `database/migrations/{date}_create_users_table.php` + 追加 migration `{date}_add_meeting_url_to_users_table.php`(v3、D4) |
+| REQ-auth-003 | `App\Enums\UserStatus`(v3 で 4 値化) |
+| REQ-auth-011 | `App\UseCases\Auth\IssueInvitationAction`(v3 で Plan $plan 引数) |
+| REQ-auth-022 | `App\UseCases\Auth\OnboardAction`(v3 で status=InProgress + coach の meeting_url 必須) |
+| REQ-auth-025 | `App\Http\Requests\Auth\OnboardingRequest`(v3 で `meeting_url: required_if:role,coach`) |
+| REQ-auth-031〜032 | `App\Actions\Fortify\AuthenticateUserUsing`(`status IN (InProgress, Graduated)` でログイン許可) |
+| **REQ-auth-043〜045** | **`App\Http\Middleware\EnsureActiveLearning`**(v3 新規) |
+| REQ-auth-050 | `app/Console/Commands/ExpireInvitationsCommand` |
+
+## テスト戦略
+
+### Feature
+
+- `Auth/IssueInvitationActionTest`(Plan 必須引数検証 / 既存 in_progress / graduated 不在検査 / `UserPlanLog assigned` 記録)
+- **`Auth/OnboardActionTest`(v3)** — status=InProgress 遷移 / coach の meeting_url 必須(空文字で 422) / plan_started_at + plan_expires_at セット / MeetingQuotaTransaction granted_initial 記録
+- **`Middleware/EnsureActiveLearningTest`(v3 新規)** — InProgress で 200 / Graduated で 403 / Withdrawn で 403 / 適用除外ルート(`/settings/profile` / `/certificates/{id}/download` 等)で graduated も 200
+
+### Unit
+
+- `Enums/UserStatusTest`(`label()` 日本語表記 + 4 値網羅)

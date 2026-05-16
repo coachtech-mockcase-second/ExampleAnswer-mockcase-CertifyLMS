@@ -174,7 +174,7 @@
   - `stream` メソッドは Step 9 で実装、ここでは仮置き or 未定義のままで OK
 - [ ] `routes/web.php` に ai-chat ルートグループ追加（REQ-ai-chat-020 / 060 / 090）
   - `if (config('ai-chat.enabled'))` ガード
-  - `Route::middleware(['auth', 'role:student'])->prefix('ai-chat')->name('ai-chat.')->group(...)`
+  - `Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])->prefix('ai-chat')->name('ai-chat.')->group(...)`（v3 で `EnsureActiveLearning` 追加、graduated もブロック）
   - メッセージ送信系のみ `throttle:ai-chat` Middleware 適用
 - [ ] `app/Providers/RouteServiceProvider.php` の `configureRateLimiting()` に `RateLimiter::for('ai-chat', ...)` 追加（REQ-ai-chat-060）
   - `Limit::perDay(config('ai-chat.daily_message_limit', 50))->by($request->user()->id)`

@@ -584,7 +584,7 @@ class AiChatConversationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->role === UserRole::Student && $user->status === UserStatus::Active;
+        return $user->role === UserRole::Student && $user->status === UserStatus::InProgress;
     }
 
     public function view(User $user, AiChatConversation $conversation): bool
@@ -943,10 +943,10 @@ SSE の `event: error` を受信した場合、JS は:
 | REQ-ai-chat-011 | `database/migrations/{date}_create_ai_chat_messages_table.php` / `App\Models\AiChatMessage`（ULID + fillable + casts + リレーション）|
 | REQ-ai-chat-012 | `App\Enums\AiChatMessageRole` / `App\Enums\AiChatMessageStatus`（`label()` メソッド含む）|
 | REQ-ai-chat-013 | `App\UseCases\AiChat\StoreAction::__invoke` 内で `Enrollment` 自動補完 + 未登録時の `AiChatConversationCreationDeniedException` throw |
-| REQ-ai-chat-020 | `routes/web.php` の `role:student` Middleware 適用 / `<x-ai-chat.floating-widget>` の Blade 条件レンダリング |
+| REQ-ai-chat-020 | `routes/web.php` の `role:student` + **`EnsureActiveLearning`**（v3 新規） Middleware 適用 / `<x-ai-chat.floating-widget>` の Blade 条件レンダリング |
 | REQ-ai-chat-021 | `App\Policies\AiChatConversationPolicy`（`view` / `update` / `delete` で `$conversation->user_id === $user->id` 判定、admin/coach バイパスなし）|
 | REQ-ai-chat-022 | `App\UseCases\AiChat\StoreAction` 内の Enrollment 検索 / `Enrollment.status IN ('learning', 'passed')` フィルタ |
-| REQ-ai-chat-023 | `AiChatConversationPolicy::viewAny` で `$user->status === UserStatus::Active` 判定 + Fortify 認証ガード |
+| REQ-ai-chat-023 | `AiChatConversationPolicy::viewAny` で `$user->status === UserStatus::InProgress` 判定（v3 で `Active` → `InProgress` rename）+ **`EnsureActiveLearning` Middleware**（v3 新規、graduated もブロック）+ Fortify 認証ガード |
 | REQ-ai-chat-030 | `AiChatConversationController::index` / `App\UseCases\AiChat\IndexAction`（Eager Load + paginate + orderByDesc）|
 | REQ-ai-chat-031 | `AiChatConversationController::store` / `App\Http\Requests\AiChat\StoreRequest` / `App\UseCases\AiChat\StoreAction`（タイトル自動生成含む）|
 | REQ-ai-chat-032 | `AiChatConversationController::update` / `App\Http\Requests\AiChat\UpdateRequest` / `App\UseCases\AiChat\UpdateAction` |

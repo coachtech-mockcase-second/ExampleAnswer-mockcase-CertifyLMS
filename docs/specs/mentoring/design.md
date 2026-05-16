@@ -1,131 +1,122 @@
 # mentoring 設計
 
+> **v3 改修反映**（2026-05-16）: 申請・承認・拒否フロー撤回 → **自動コーチ割当**（過去 30 日実施数最少）、`Meeting.status` 6 値 → 3 値（`reserved` / `canceled` / `completed`）、`meetings:auto-complete` Schedule Command で時刻ベース自動完了、面談回数消費は [[meeting-quota]] と連携（`reserved` で `consumed`、`canceled` で `refunded`）、受講生宛通知撤回（コーチ宛のみ）、臨時シフト不採用、`EnsureActiveLearning` Middleware で `graduated` ロック。
+
 ## アーキテクチャ概要
 
-受講生は担当コーチに 60 分単位の面談を申請、コーチは承認 / 拒否 / 実施 / メモ記録、双方は所定タイミングでキャンセル可能。`Meeting` の状態遷移は `product.md` state diagram + `requested → canceled`（受講生取り下げ）を加えた **6 状態 × 7 遷移** で表現される。Controller は薄く、Action（UseCase）が `DB::transaction()` 内で整合性チェック + 状態 UPDATE + [[notification]] 発火を行う。`MeetingAvailabilityService` が「空き枠算出」を Eloquent range クエリで提供し、受講生申請時のバリデーション・GET /meetings/availability JSON エンドポイント・コーチ承認時の race 防止検査で再利用する。
+受講生は時刻スロットだけを選択 → `CoachMeetingLoadService` が担当資格コーチ集合のうち過去 30 日実施数最少のコーチを自動割当 → `reserved` で即時確定 + 面談回数 -1 消費 + 担当コーチ宛通知。承認・拒否フローは存在せず、運用負荷を削減（COACHTECH LMS 流のドライ運用）。時刻が終了予定（`scheduled_at + 60min`）を過ぎると `meetings:auto-complete` Schedule Command が `completed` 自動遷移。コーチが任意のタイミングで `MeetingMemo` を記録。当事者は終了予定前まで `canceled` 化可能（同時に面談回数 +1 返却）。
 
-`CoachAvailability` モデルと `CoachAvailabilityPolicy` は本 Feature が所有するが、編集 UI（`/settings/availability`）の Controller / FormRequest / Blade は [[settings-profile]] が所有する。`users.meeting_url` カラムは本 Feature が migration で追加する（`coach.meeting_url` を承認時に `Meeting.meeting_url_snapshot` へ焼き込む）。
+`CoachAvailability` モデルと `CoachAvailabilityPolicy` は本 Feature が所有するが、**編集 UI**（`/settings/availability`）の Controller / FormRequest / Blade は [[settings-profile]] が所有する。**`users.meeting_url` カラムの Migration は [[auth]] が所有**（D4 確定）、本 Feature は読み取り側として `Meeting\StoreAction` で `meeting_url_snapshot` に焼き込む。コーチオンボーディング時の必須入力は [[auth]] の `OnboardAction` で担保。
 
-### 1. 受講生予約申請 → コーチ通知
+### 1. 受講生の予約フロー（自動コーチ割当）
 
 ```mermaid
 sequenceDiagram
     participant Student as 受講生
     participant MC as MeetingController
-    participant Pol as MeetingPolicy
-    participant SA as StoreAction
-    participant Svc as MeetingAvailabilityService
-    participant NR as NotifyMeetingRequestedAction (notification)
+    participant SA as Meeting\StoreAction
+    participant QS as MeetingQuotaService
+    participant CLS as CoachMeetingLoadService
+    participant MAS as MeetingAvailabilityService
+    participant CQA as ConsumeQuotaAction (meeting-quota)
+    participant NR as NotifyMeetingReservedAction (notification)
     participant DB as DB
-    participant Mail as Mail Queue
-    participant Coach as コーチ
+    participant Coach as 担当コーチ（自動選出）
 
-    Student->>MC: POST /meetings (enrollment_id, scheduled_at, topic)
-    Note over MC: FormRequest authorize で MeetingPolicy::create
-    MC->>SA: __invoke($student, $validated)
-    SA->>DB: SELECT enrollments WHERE id=? AND user_id=$student->id
-    alt Enrollment 不所属
-        SA-->>MC: ModelNotFound (404)
+    Student->>MC: GET /meetings/availability?enrollment=X&date=YYYY-MM-DD
+    MC-->>Student: JSON [{slot_start, slot_end, available_coach_count}, ...]
+    Note over Student: コーチ指定なし、時刻スロットのみ選択
+
+    Student->>MC: POST /meetings {enrollment_id, scheduled_at, topic}
+    MC->>SA: __invoke(Enrollment, scheduled_at, topic)
+    SA->>QS: remaining(student)
+    alt 残数 0
+        SA-->>MC: InsufficientMeetingQuotaException (409)
     end
-    alt assigned_coach_id IS NULL
-        SA-->>MC: EnrollmentCoachNotAssignedException (409)
-    end
-    SA->>Svc: validateSlot($coach, $scheduled_at)
-    Svc->>DB: SELECT coach_availabilities WHERE coach_id=? AND day_of_week=? AND is_active=true
+    SA->>MAS: validateSlot(certification, scheduled_at)
     alt 枠外
         SA-->>MC: MeetingOutOfAvailabilityException (422)
     end
+    SA->>CLS: findAvailableCoaches(certification, scheduled_at)
+    Note over CLS: 担当コーチ集合 ∩ 当該時刻空き枠あり ∩ 他予約なし
+    alt 候補 0 名
+        SA-->>MC: MeetingNoAvailableCoachException (409)
+    end
+    SA->>CLS: leastLoadedCoach(候補集合)
+    Note over CLS: 過去 30 日 completed 数で昇順、同数 ULID 昇順
+    CLS-->>SA: 選出された Coach
+
     SA->>DB: BEGIN
-    SA->>DB: SELECT meetings WHERE coach_id=? AND scheduled_at=? AND status IN (requested, approved, in_progress) FOR UPDATE
-    alt 同時刻先約あり
-        SA-->>MC: MeetingTimeSlotTakenException (409)
-    end
-    SA->>DB: INSERT meetings(status=requested, ...)
-    SA->>NR: __invoke($meeting)
-    NR->>DB: INSERT notifications (database channel)
-    NR->>Mail: dispatch MeetingRequestedMail (coach 宛)
+    SA->>DB: INSERT meetings (coach_id=$coach, status=reserved, meeting_url_snapshot=$coach->meeting_url)
+    Note over DB: UNIQUE (coach_id, scheduled_at) で race ガード
+    SA->>CQA: __invoke(student, meeting)
+    CQA->>DB: INSERT meeting_quota_transactions (type=consumed, amount=-1)
+    SA->>DB: UPDATE meetings SET meeting_quota_transaction_id=$tx
     SA->>DB: COMMIT
-    Mail->>Coach: 「予約申請が届きました」メール
-    MC-->>Student: redirect /meetings + flash
+    SA->>NR: __invoke($meeting) [DB::afterCommit]
+    NR-->>Coach: 🔔 通知 DB + Mail（受講生名 + 日時 + topic + meeting_url_snapshot）
+    MC-->>Student: redirect /meetings + flash「予約完了」
 ```
 
-### 2. コーチ承認 → URL 焼き込み + 通知
+### 2. キャンセル（当事者、時刻前まで、D1 で通知撤回）
 
 ```mermaid
 sequenceDiagram
-    participant Coach as コーチ
+    participant Actor as 受講生 or コーチ
     participant MC as MeetingController
-    participant Pol as MeetingPolicy
-    participant AA as ApproveAction
-    participant NA as NotifyMeetingApprovedAction (notification)
-    participant DB as DB
-    participant Mail as Mail Queue
-    participant Student as 受講生
+    participant CA as Meeting\CancelAction
+    participant RQA as RefundQuotaAction
+    participant DB
 
-    Coach->>MC: POST /meetings/{meeting}/approve
-    MC->>Pol: authorize('approve', $meeting)
-    MC->>AA: __invoke($meeting, $coach)
-    AA->>DB: BEGIN
-    AA->>DB: SELECT meetings WHERE id=? FOR UPDATE
-    alt status != requested
-        AA-->>MC: MeetingStatusTransitionException (409)
+    Actor->>MC: POST /meetings/{meeting}/cancel
+    MC->>CA: __invoke meeting actor
+    CA->>DB: BEGIN
+    CA->>DB: SELECT meetings FOR UPDATE
+    alt status != reserved
+        CA-->>MC: MeetingStatusTransitionException 409
     end
-    AA->>DB: SELECT meetings WHERE coach_id=$coach->id AND scheduled_at=$meeting->scheduled_at AND status IN (approved, in_progress) AND id != $meeting->id
-    alt 同時刻に承認済の他面談あり
-        AA-->>MC: MeetingTimeSlotTakenException (409)
+    alt scheduled_at <= now
+        CA-->>MC: MeetingAlreadyStartedException 409
     end
-    AA->>DB: UPDATE meetings SET status=approved, meeting_url_snapshot=$coach->meeting_url
-    AA->>NA: __invoke($meeting)
-    NA->>DB: INSERT notifications (database channel, student 宛)
-    NA->>Mail: dispatch MeetingApprovedMail (URL + 日時 + topic)
-    AA->>DB: COMMIT
-    Mail->>Student: 「面談が承認されました」メール（meeting_url_snapshot 埋め込み）
-    MC-->>Coach: redirect /coach/meetings + flash
+    CA->>DB: UPDATE meetings SET status=canceled canceled_by_user_id canceled_at
+    CA->>RQA: __invoke meeting
+    RQA->>DB: INSERT meeting_quota_transactions type=refunded amount=+1
+    CA->>DB: COMMIT
+    Note over CA: D1 で MeetingCanceledNotification 撤回<br/>当事者の dashboard 面談一覧で確認するモデル
+    MC-->>Actor: redirect + flash
 ```
 
-### 3. リマインド Schedule（前日 18 時 + 1h 前、Command は [[notification]] 所有）
+### 3. 自動完了（Schedule Command、15 分間隔）
 
 ```mermaid
 sequenceDiagram
-    participant Cron5min as Schedule (everyFiveMinutes)
-    participant Cron18 as Schedule (dailyAt 18:00)
-    participant Cmd as SendMeetingRemindersCommand<br/>([[notification]] 所有)
-    participant NR as NotifyMeetingReminderAction<br/>([[notification]] 所有)
+    participant Cron as Schedule (cron */15 * * * *)
+    participant Cmd as AutoCompleteMeetingsCommand
+    participant ACA as AutoCompleteMeetingAction
     participant DB as DB
-    participant Mail as Mail Queue
 
-    Cron18->>Cmd: notifications:send-meeting-reminders --window=eve
-    Cmd->>DB: SELECT meetings WHERE status=approved AND scheduled_at BETWEEN tomorrow 00:00 AND tomorrow 23:59
+    Cron->>Cmd: php artisan meetings:auto-complete
+    Cmd->>DB: SELECT meetings WHERE status=reserved AND scheduled_at + 60min < now() FOR UPDATE
     loop 各 Meeting
-        Cmd->>NR: __invoke($meeting, MeetingReminderWindow::Eve)
-        NR->>NR: (meeting_id, window=eve) で既存検査
-        alt 未送信
-            NR->>DB: INSERT notifications (student + coach 両方)
-            NR->>Mail: dispatch MailMessage
-        end
+        Cmd->>ACA: __invoke($meeting)
+        ACA->>DB: UPDATE meetings SET status=completed, completed_at=now()
     end
-
-    Cron5min->>Cmd: notifications:send-meeting-reminders --window=one_hour_before
-    Cmd->>DB: SELECT meetings WHERE status=approved AND scheduled_at BETWEEN now+55min AND now+65min
-    loop 各 Meeting
-        Cmd->>NR: __invoke($meeting, MeetingReminderWindow::OneHourBefore)
-        NR->>NR: (meeting_id, window=one_hour_before) で既存検査
-        alt 未送信
-            NR->>DB: INSERT notifications (student + coach 両方) + Mail
-        end
-    end
+    Cmd-->>Cron: "N meetings completed"
+    Note over Cmd: 通知は発火しない（受講生・コーチとも履歴一覧で確認）
 ```
 
-> 本 Feature では Reminder 系の独自 Command を所有しない。`SendMeetingRemindersCommand` / `NotifyMeetingReminderAction` / `MeetingReminderWindow` Enum は [[notification]] が所有し、本 Feature は呼出仕様（Meeting テーブルへの SELECT 条件 + window 引数）を共有する責務のみ。
+### 4. リマインド（Schedule Command、[[notification]] が所有）
+
+`meetings:remind`（cron `*/15 * * * *`、1 時間前）と `meetings:remind-eve`（`dailyAt('18:00')`、前日）は [[notification]] が所有。本 Feature は抽出条件 `Meeting::where('status', Reserved)->whereBetween('scheduled_at', [...])` の仕様を提供する。重複排除は `(meeting_id, window)` ペアで [[notification]] 側 `data` JSON に対する検査。当事者双方（受講生 + コーチ）に通知。
 
 ## データモデル
 
 ### Eloquent モデル一覧
 
-- **`Meeting`** — 面談予約。`HasUlids` + `SoftDeletes`、`MeetingStatus` enum cast。`belongsTo(Enrollment)` / `belongsTo(User, 'coach_id', 'coach')` / `belongsTo(User, 'student_id', 'student')` / `belongsTo(User, 'canceled_by_user_id', 'canceledBy')`（NULL 許容、`withTrashed()`）/ `hasOne(MeetingMemo)`。スコープ: `scopeUpcoming()`（`status IN (requested, approved, in_progress) AND scheduled_at >= now()`）/ `scopePast()`（残り）/ `scopeForCoach($coachId)` / `scopeForStudent($studentId)`。
-- **`MeetingMemo`** — 面談メモ（1 Meeting : 1 Memo）。`HasUlids` + `SoftDeletes`。`belongsTo(Meeting)`。author は `meeting.coach` で一意なので独立カラム不要。
-- **`CoachAvailability`** — コーチの面談可能時間枠。`HasUlids` + `SoftDeletes`、`belongsTo(User, 'coach_id', 'coach')`。スコープ: `scopeActive()`（`is_active=true`）/ `scopeForDay($dow)`（曜日フィルタ）。
-- **`User`**（[[auth]] 所有、本 Feature が migration で `meeting_url` カラム追加）— `meeting_url` は coach のみ意味を持つ（DB レベルでは全ロール nullable 許容）。本 Feature は `coach.meeting_url` を読むのみ、編集 UI は [[settings-profile]] が所有。
+- **`Meeting`** — 面談予約。`HasUlids` + `SoftDeletes`、`MeetingStatus` enum cast。リレーション 6 つ: `belongsTo(Enrollment)` / `belongsTo(User, 'coach_id', 'coach')` / `belongsTo(User, 'student_id', 'student')` / `belongsTo(User, 'canceled_by_user_id', 'canceledBy')`（NULL 許容、`withTrashed()`）/ `hasOne(MeetingMemo)` / `belongsTo(MeetingQuotaTransaction, 'meeting_quota_transaction_id')`。スコープ: `scopeUpcoming()`（`status = reserved AND scheduled_at >= now()`）/ `scopePast()`（残り）/ `scopeForCoach($coachId)` / `scopeForStudent($studentId)`。
+- **`MeetingMemo`** — 面談メモ（1 Meeting : 1 Memo）。`HasUlids` + `SoftDeletes`、`belongsTo(Meeting)`。author は `meeting.coach` で一意。
+- **`CoachAvailability`** — コーチの面談可能時間枠。`HasUlids` + `SoftDeletes`、`belongsTo(User, 'coach_id', 'coach')`。スコープ: `scopeActive()` / `scopeForDay($dow)`。
+- **`User`**（[[auth]] 所有、`meeting_url` カラムは [[auth]] の Migration で追加、本 Feature は読み取り側）— `meeting_url` は role=coach のみ意味、オンボーディング時必須入力。
 
 ### ER 図
 
@@ -134,18 +125,19 @@ erDiagram
     USERS ||--o{ COACH_AVAILABILITIES : "coach_id"
     USERS ||--o{ MEETINGS_AS_COACH : "coach_id"
     USERS ||--o{ MEETINGS_AS_STUDENT : "student_id"
-    USERS ||--o{ MEETINGS_AS_CANCELER : "canceled_by_user_id (nullable)"
+    USERS ||--o{ MEETINGS_AS_CANCELER : "canceled_by_user_id"
     ENROLLMENTS ||--o{ MEETINGS : "enrollment_id"
     MEETINGS ||--|| MEETING_MEMOS : "meeting_id (1:1, optional)"
+    MEETING_QUOTA_TRANSACTIONS ||--o| MEETINGS : "meeting_quota_transaction_id"
 
     USERS {
         ulid id PK
-        string meeting_url "nullable coach only semantic"
+        string meeting_url "nullable, coach onboarding required"
     }
     COACH_AVAILABILITIES {
         ulid id PK
         ulid coach_id FK
-        tinyint day_of_week "0 sun 6 sat"
+        tinyint day_of_week "0=Sun..6=Sat"
         time start_time
         time end_time
         boolean is_active "default true"
@@ -156,17 +148,16 @@ erDiagram
     MEETINGS_AS_COACH {
         ulid id PK
         ulid enrollment_id FK
-        ulid coach_id FK
-        ulid student_id FK "redundant with enrollment.user_id"
-        datetime scheduled_at "60min fixed duration"
-        string status "requested approved rejected canceled in_progress completed"
+        ulid coach_id FK "auto-assigned"
+        ulid student_id FK
+        datetime scheduled_at "60min fixed"
+        string status "reserved/canceled/completed (3 values)"
         text topic
-        text rejected_reason "nullable"
         ulid canceled_by_user_id FK "nullable"
         datetime canceled_at "nullable"
-        string meeting_url_snapshot "nullable filled on approve"
-        datetime started_at "nullable"
-        datetime ended_at "nullable"
+        string meeting_url_snapshot "nullable, copied on reserved"
+        datetime completed_at "nullable, set by auto-complete"
+        ulid meeting_quota_transaction_id FK "consumed transaction"
         timestamp created_at
         timestamp updated_at
         timestamp deleted_at "nullable"
@@ -181,317 +172,324 @@ erDiagram
     }
 ```
 
-> Mermaid の制約で `users` への 4 つの FK を 1 ER box にまとめにくいため、`MEETINGS_AS_COACH` / `MEETINGS_AS_STUDENT` / `MEETINGS_AS_CANCELER` の名前で分解表記。実テーブルは `meetings` 1 つで `coach_id` / `student_id` / `canceled_by_user_id` の 3 カラム + `enrollment_id` を持つ。
+> v3 で削除されたカラム: `rejected_reason` / `started_at` / `ended_at`（申請承認 + 入室手動操作撤回のため）。v3 で追加: `completed_at` / `meeting_quota_transaction_id`。
 
-### 主要カラム + Enum
+### Enum
 
 | Model | Enum | 値 | 日本語ラベル |
 |---|---|---|---|
-| `Meeting.status` | `MeetingStatus` | `Requested` / `Approved` / `Rejected` / `Canceled` / `InProgress` / `Completed` | `予約申請中` / `承認済` / `拒否` / `キャンセル` / `面談中` / `完了` |
-
-> `CoachAvailability.day_of_week` は Enum 化せず tinyint（0-6）で保持。Carbon の `dayOfWeek` と一致（0=日曜）。UI 表示の曜日ラベルは Blade ヘルパ or `lang/ja/mentoring.php` に集約。
+| `Meeting.status` | `MeetingStatus` | `Reserved` / `Canceled` / `Completed` | `予約済` / `キャンセル` / `完了` |
 
 ### インデックス・制約
 
-- `meetings.(coach_id, scheduled_at)` 複合 INDEX（衝突検知 + コーチ一覧クエリの主軸）
-- `meetings.(student_id, scheduled_at)` 複合 INDEX（受講生一覧）
-- `meetings.(enrollment_id)` INDEX（resource view からの逆引き）
-- `meetings.(status, scheduled_at)` 複合 INDEX（リマインド Schedule Command）
-- `meetings.enrollment_id`: 外部キー `->constrained()->restrictOnDelete()`（Enrollment は SoftDeletes なので物理削除されない前提）
-- `meetings.coach_id` / `student_id`: 外部キー `->constrained('users')->restrictOnDelete()`
-- `meetings.canceled_by_user_id`: 外部キー `->constrained('users')->nullOnDelete()`
-- `meeting_memos.meeting_id`: 外部キー UNIQUE `->constrained()->cascadeOnDelete()`（1:1、cascade だが Meeting 自体は SoftDeletes のため通常は発火しない）
-- `coach_availabilities.(coach_id, day_of_week)` 複合 INDEX（曜日別検索）
-- `coach_availabilities.(coach_id, is_active)` 複合 INDEX（有効枠取得）
-- `coach_availabilities.coach_id`: 外部キー `->constrained('users')->cascadeOnDelete()`
-- `users.meeting_url`: nullable string（既存 `users` テーブルへ ALTER ADD COLUMN）
+- **`meetings.(coach_id, scheduled_at)` UNIQUE**（DB 制約で二重予約防止、race condition は INSERT 失敗で検知）
+- `meetings.(student_id, scheduled_at)` 複合 INDEX
+- `meetings.(enrollment_id)` INDEX
+- `meetings.(status, scheduled_at)` 複合 INDEX（`meetings:auto-complete` / `meetings:remind` 高速化）
+- `meetings.enrollment_id`: FK `->constrained()->restrictOnDelete()`
+- `meetings.coach_id` / `student_id`: FK `->constrained('users')->restrictOnDelete()`
+- `meetings.canceled_by_user_id`: FK `->constrained('users')->nullOnDelete()`
+- `meetings.meeting_quota_transaction_id`: FK `->constrained('meeting_quota_transactions')->nullOnDelete()`
+- `meeting_memos.meeting_id`: FK UNIQUE `->constrained()->cascadeOnDelete()`
+- `coach_availabilities.(coach_id, day_of_week)` / `(coach_id, is_active)` 複合 INDEX
+- `coach_availabilities.coach_id`: FK `->constrained('users')->cascadeOnDelete()`
+- `users.meeting_url`: **[[auth]] の Migration で追加**（D4 確定、本 Feature では作成しない）
 
 ## 状態遷移
 
-`product.md` の Meeting state diagram + 本 Feature が追加する `requested → canceled`（受講生取り下げ）パスを併せた完全版を以下に定義する。各遷移は **Action 単位** で一意にトリガされる。
-
 ```mermaid
 stateDiagram-v2
-    requested: requested（予約申請中）
-    approved: approved（承認済）
-    rejected: rejected（拒否）
+    reserved: reserved（予約済）
     canceled: canceled（キャンセル）
-    in_progress: in_progress（面談中）
     completed: completed（完了）
 
-    [*] --> requested: StoreAction（受講生申請）
-    requested --> approved: ApproveAction（コーチ承認 + URL 焼き込み）
-    requested --> rejected: RejectAction（コーチ拒否 + 理由）
-    requested --> canceled: CancelAction（受講生取り下げ、本 Feature 追加パス）
-    rejected --> [*]
-    approved --> canceled: CancelAction（受講生 or コーチが scheduled_at まで）
-    approved --> in_progress: StartAction（コーチが scheduled_at の 10 分前〜60 分後の窓で）
-    in_progress --> completed: CompleteAction（コーチがメモ本文記入と同時に完了）
+    [*] --> reserved: Meeting\StoreAction（時刻選択 + 自動コーチ割当 + 面談回数 -1）
+    reserved --> canceled: Meeting\CancelAction（当事者、scheduled_at まで + 面談回数 +1 返却）
+    reserved --> completed: AutoCompleteMeetingAction（Schedule Command 自動、scheduled_at + 60min 経過）
     canceled --> [*]
     completed --> [*]
 ```
 
-> `product.md` への反映: 本 Feature の実装と同時に `product.md` の Meeting state diagram に `requested --> canceled: 受講生が取り下げ` を追記する（Phase 0 で合意済）。
+> v3 で撤回された遷移: `requested` / `approved` / `rejected` / `in_progress` の 4 状態と関連遷移すべて。LMS 内に「面談中」状態は持たず、外部ツール（Google Meet 等）での実施に委ねる。
 
 ## コンポーネント
 
 ### Controller
 
-`app/Http/Controllers/MeetingController.php`（単一 Controller、ロール別 namespace は使わない / `structure.md` 準拠）。受講生用と coach 用の一覧 method を分離するため `index` と `indexAsCoach` を持つ。それ以外は当事者共通で 1 メソッド = 1 状態遷移。
+`app/Http/Controllers/MeetingController.php`（受講生用と coach 用の一覧 method を分離するため `index` と `indexAsCoach` を持つ）。
 
 ```php
 class MeetingController extends Controller
 {
     // student 向け一覧（自分の面談）
-    public function index(IndexRequest $request, IndexAction $action) { /* paginate(20) */ }
+    public function index(IndexRequest $request, IndexAction $action);
 
     // coach 向け一覧（自分宛の面談）
-    public function indexAsCoach(IndexAsCoachRequest $request, IndexAsCoachAction $action) { /* paginate(20) */ }
+    public function indexAsCoach(IndexAsCoachRequest $request, IndexAsCoachAction $action);
 
     // 詳細（当事者共通、Policy で view 判定）
-    public function show(Meeting $meeting, ShowAction $action) { $this->authorize('view', $meeting); }
+    public function show(Meeting $meeting, ShowAction $action);
 
     // 予約申請（student のみ）
-    public function store(StoreRequest $request, StoreAction $action) { /* MeetingPolicy::create */ }
+    public function store(StoreRequest $request, Meeting\StoreAction $action);
 
-    // 取り下げ・キャンセル（当事者共通、status で分岐）
-    public function cancel(Meeting $meeting, CancelAction $action) { $this->authorize('cancel', $meeting); }
+    // キャンセル（当事者共通）
+    public function cancel(Meeting $meeting, Meeting\CancelAction $action);
 
-    // 承認（coach のみ）
-    public function approve(Meeting $meeting, ApproveAction $action) { $this->authorize('approve', $meeting); }
+    // メモ記録 / 編集（coach のみ、reserved/completed どちらでも可）
+    public function upsertMemo(Meeting $meeting, UpsertMemoRequest $request, UpsertMemoAction $action);
 
-    // 拒否（coach のみ）
-    public function reject(Meeting $meeting, RejectRequest $request, RejectAction $action) { $this->authorize('reject', $meeting); }
-
-    // 入室開始（coach のみ）
-    public function start(Meeting $meeting, StartAction $action) { $this->authorize('start', $meeting); }
-
-    // 完了 + メモ作成（coach のみ）
-    public function complete(Meeting $meeting, CompleteRequest $request, CompleteAction $action) { $this->authorize('complete', $meeting); }
-
-    // メモ後追い編集（coach のみ）
-    public function updateMemo(Meeting $meeting, UpdateMemoRequest $request, UpdateMemoAction $action) { $this->authorize('updateMemo', $meeting); }
-
-    // 申請フォーム表示（student のみ、薄い view 返却）
-    public function create() { return view('meetings.create'); }
+    // 申請フォーム表示（student のみ）
+    public function create();
 
     // 空き枠取得 JSON（student のみ）
-    public function fetchAvailability(AvailabilityRequest $request, FetchAvailabilityAction $action) { /* */ }
+    public function fetchAvailability(AvailabilityRequest $request, FetchAvailabilityAction $action);
 }
 ```
 
-> `cancel` は受講生取り下げ（requested→canceled）と承認後キャンセル（approved→canceled）の 2 パスを `CancelAction` 内で分岐。Controller は薄く、Policy は当事者判定までを担う。
+> v3 で削除: `approve` / `reject` / `start` / `complete`（申請承認フロー撤回 + 入室手動操作撤回）。`upsertMemo` で完了概念を吸収（コーチがいつでも記録可）。
 
 ### Action（UseCase）
 
-すべて `app/UseCases/Meeting/` 配下。各 Action は単一トランザクション境界。
+`app/UseCases/Meeting/` 配下。すべて `DB::transaction()` 境界。
 
-#### `StoreAction`
+#### `Meeting\StoreAction`（v3 新規、自動コーチ割当、`MeetingController::store` と一致)
 
 ```php
+namespace App\UseCases\Meeting;
+
 class StoreAction
 {
     public function __construct(
         private MeetingAvailabilityService $availability,
-        private NotifyMeetingRequestedAction $notifyRequested,
+        private CoachMeetingLoadService $coachLoad,
+        private MeetingQuotaService $quotaService,
+        private ConsumeQuotaAction $consumeAction,
     ) {}
 
-    public function __invoke(User $student, array $validated): Meeting;
+    public function __invoke(Enrollment $enrollment, Carbon $scheduledAt, string $topic): Meeting
+    {
+        return DB::transaction(function () use ($enrollment, $scheduledAt, $topic) {
+            $student = $enrollment->user;
+
+            // 1. 受講生本人性
+            if ($enrollment->user_id !== auth()->id()) throw new AuthorizationException();
+
+            // 2. 残面談回数
+            if ($this->quotaService->remaining($student) < 1) {
+                throw new InsufficientMeetingQuotaException();
+            }
+
+            // 3. 枠内検証（資格コーチ集合の Union）
+            $this->availability->validateSlot($enrollment->certification, $scheduledAt);
+
+            // 4. 空きコーチ集合 → 最少実施数コーチ選出
+            $candidates = $this->findAvailableCoaches($enrollment->certification, $scheduledAt);
+            if ($candidates->isEmpty()) throw new MeetingNoAvailableCoachException();
+            $coach = $this->coachLoad->leastLoadedCoach($candidates);
+
+            // 5. Meeting INSERT (UNIQUE 制約で race 防止)
+            try {
+                $meeting = Meeting::create([
+                    'enrollment_id' => $enrollment->id,
+                    'coach_id' => $coach->id,
+                    'student_id' => $student->id,
+                    'scheduled_at' => $scheduledAt,
+                    'status' => MeetingStatus::Reserved,
+                    'topic' => $topic,
+                    'meeting_url_snapshot' => $coach->meeting_url,
+                ]);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                throw new MeetingNoAvailableCoachException(); // race condition
+            }
+
+            // 6. 面談回数消費
+            $transaction = ($this->consumeAction)($student, $meeting);
+            $meeting->update(['meeting_quota_transaction_id' => $transaction->id]);
+
+            // 7. コーチ宛通知（DB::afterCommit で送信）
+            DB::afterCommit(fn () => app(NotifyMeetingReservedAction::class)($meeting));
+
+            return $meeting;
+        });
+    }
+
+    private function findAvailableCoaches(Certification $certification, Carbon $scheduledAt): Collection
+    {
+        return $certification->coaches() // certification_coach_assignments 経由
+            ->whereHas('coachAvailabilities', function ($q) use ($scheduledAt) {
+                $q->where('day_of_week', $scheduledAt->dayOfWeek)
+                  ->where('is_active', true)
+                  ->whereTime('start_time', '<=', $scheduledAt->format('H:i:s'))
+                  ->whereTime('end_time', '>', $scheduledAt->format('H:i:s'));
+            })
+            ->whereDoesntHave('meetingsAsCoach', function ($q) use ($scheduledAt) {
+                $q->where('scheduled_at', $scheduledAt)
+                  ->whereIn('status', [MeetingStatus::Reserved, MeetingStatus::Completed]);
+            })
+            ->get();
+    }
 }
 ```
 
-責務: (1) `Enrollment` を `where('user_id', $student->id)->findOrFail($validated['enrollment_id'])` で取得、(2) `Enrollment.assigned_coach_id` 検証（NULL なら `EnrollmentCoachNotAssignedException`）、(3) `MeetingAvailabilityService::validateSlot()` で枠内検証、(4) 同コーチ × 同 `scheduled_at` の `requested/approved/in_progress` 不在検査（`whereExists` + `FOR UPDATE`、衝突時 `MeetingTimeSlotTakenException`）、(5) `Meeting` INSERT、(6) `NotifyMeetingRequestedAction` を呼ぶ。`DB::transaction()` で包む（REQ-mentoring-021〜025, 027）。
-
-#### `ApproveAction`
+#### `Meeting\CancelAction`（`MeetingController::cancel` と一致)
 
 ```php
-class ApproveAction
-{
-    public function __construct(private NotifyMeetingApprovedAction $notifyApproved) {}
+namespace App\UseCases\Meeting;
 
-    public function __invoke(Meeting $meeting, User $coach): Meeting;
-}
-```
-
-責務: (1) `Meeting.status === Requested` 検証（NG なら `MeetingStatusTransitionException`）、(2) 同コーチ × 同 `scheduled_at` で `approved/in_progress` の他 Meeting 不在の再検査（race 防止、NG なら `MeetingTimeSlotTakenException`）、(3) `meetings` を `status=Approved` / `meeting_url_snapshot=$coach->meeting_url` に UPDATE、(4) `NotifyMeetingApprovedAction` を呼ぶ。`DB::transaction()` で包む（REQ-mentoring-030, 033）。
-
-> `$coach` は Controller から `auth()->user()` を明示注入。`$meeting->coach_id === $coach->id` の所有検証は `MeetingPolicy::approve` で完結（Action 内では再検査しない、`backend-usecases.md`「認可は Action 内で呼ばない」原則）。
-
-#### `RejectAction`
-
-```php
-class RejectAction
-{
-    public function __construct(private NotifyMeetingRejectedAction $notifyRejected) {}
-
-    public function __invoke(Meeting $meeting, string $rejectedReason): Meeting;
-}
-```
-
-責務: `status === Requested` 検証 → `status=Rejected` / `rejected_reason=$rejectedReason` UPDATE → 通知。`DB::transaction()`（REQ-mentoring-031）。
-
-#### `CancelAction`
-
-```php
 class CancelAction
 {
-    public function __construct(private NotifyMeetingCanceledAction $notifyCanceled) {}
+    public function __construct(
+        private RefundQuotaAction $refundAction,
+        private NotifyMeetingCanceledAction $notifyCanceled,
+    ) {}
 
-    public function __invoke(Meeting $meeting, User $actor): Meeting;
+    public function __invoke(Meeting $meeting, User $actor): Meeting
+    {
+        return DB::transaction(function () use ($meeting, $actor) {
+            $meeting->lockForUpdate();
+            if ($meeting->status !== MeetingStatus::Reserved) {
+                throw new MeetingStatusTransitionException();
+            }
+            if ($meeting->scheduled_at <= now()) {
+                throw new MeetingAlreadyStartedException();
+            }
+
+            $meeting->update([
+                'status' => MeetingStatus::Canceled,
+                'canceled_by_user_id' => $actor->id,
+                'canceled_at' => now(),
+            ]);
+
+            ($this->refundAction)($meeting);
+
+            DB::afterCommit(fn () => ($this->notifyCanceled)($meeting, $actor));
+
+            return $meeting->fresh();
+        });
+    }
 }
 ```
 
-責務: (1) `Meeting.status === Requested || Approved` 検証（他は `MeetingStatusTransitionException`）、(2) `Approved` の場合 `scheduled_at > now()` 検証（NG なら `MeetingAlreadyStartedException`）、(3) `status=Canceled` / `canceled_by_user_id=$actor->id` / `canceled_at=now()` UPDATE、(4) `NotifyMeetingCanceledAction` を呼ぶ（相手方へ通知、`actor` のロールに応じて文面分岐は通知側で処理）。`DB::transaction()`（REQ-mentoring-040, 041, 042, 043）。
-
-> Policy で当事者判定済のため、`actor` は確実に当事者の `coach` か `student`。
-
-#### `StartAction`
+#### `AutoCompleteMeetingAction`（Schedule Command から呼ばれる）
 
 ```php
-class StartAction
+class AutoCompleteMeetingAction
 {
-    public function __invoke(Meeting $meeting): Meeting;
+    public function __invoke(Meeting $meeting): Meeting
+    {
+        return DB::transaction(function () use ($meeting) {
+            $meeting->lockForUpdate();
+            if ($meeting->status !== MeetingStatus::Reserved) return $meeting;
+
+            $meeting->update([
+                'status' => MeetingStatus::Completed,
+                'completed_at' => now(),
+            ]);
+            return $meeting;
+        });
+    }
 }
 ```
 
-責務: `status === Approved` 検証 → `scheduled_at - 10min <= now() < scheduled_at + 60min` 検証（NG なら `MeetingNotInStartWindowException`）→ `status=InProgress` / `started_at=now()` UPDATE。`DB::transaction()` 不要（単一 UPDATE）だが規約に倣って囲む（REQ-mentoring-050, 051、NFR-mentoring-001）。
-
-#### `CompleteAction`
+#### `UpsertMemoAction`（coach のみ、reserved/completed どちらでも可）
 
 ```php
-class CompleteAction
+class UpsertMemoAction
 {
-    public function __invoke(Meeting $meeting, string $memoBody): Meeting;
+    public function __invoke(Meeting $meeting, string $body): MeetingMemo
+    {
+        return DB::transaction(function () use ($meeting, $body) {
+            if (!in_array($meeting->status, [MeetingStatus::Reserved, MeetingStatus::Completed])) {
+                throw new MeetingStatusTransitionException();
+            }
+            return MeetingMemo::updateOrCreate(
+                ['meeting_id' => $meeting->id],
+                ['body' => $body]
+            );
+        });
+    }
 }
 ```
 
-責務: `status === InProgress` 検証 → `status=Completed` / `ended_at=now()` UPDATE → `MeetingMemo` INSERT（`meeting_id=$meeting->id`, `body=$memoBody`）。`DB::transaction()`（REQ-mentoring-052）。
+#### `IndexAction` / `IndexAsCoachAction` / `ShowAction` / `FetchAvailabilityAction`
 
-#### `UpdateMemoAction`
-
-```php
-class UpdateMemoAction
-{
-    public function __invoke(Meeting $meeting, string $memoBody): MeetingMemo;
-}
-```
-
-責務: `status === Completed` 検証 → 既存 `MeetingMemo.body` を UPDATE。新規作成は許容しない（CompleteAction でのみ作成、`MeetingMemoNotFoundException`）。`DB::transaction()`（REQ-mentoring-053）。
-
-#### `IndexAction`
-
-```php
-class IndexAction
-{
-    public function __invoke(User $student, ?string $filter, int $perPage = 20): LengthAwarePaginator;
-}
-```
-
-責務: `Meeting::forStudent($student->id)` 起点で `filter ∈ {upcoming, past, all}` でスコープ適用 → `with(['coach', 'enrollment.certification'])` eager load → `orderBy('scheduled_at', 'desc')` → paginate（REQ-mentoring-060）。
-
-#### `IndexAsCoachAction`
-
-```php
-class IndexAsCoachAction
-{
-    public function __invoke(User $coach, ?string $filter, ?string $studentId, ?string $enrollmentId, int $perPage = 20): LengthAwarePaginator;
-}
-```
-
-責務: `Meeting::forCoach($coach->id)` 起点で同様の filter + 受講生別 / Enrollment 別の追加フィルタ + eager load + paginate（REQ-mentoring-061）。
-
-#### `ShowAction`
-
-```php
-class ShowAction
-{
-    public function __invoke(Meeting $meeting): Meeting;
-}
-```
-
-責務: `Meeting` に `with(['coach', 'student', 'enrollment.certification', 'meetingMemo'])` eager load。状態に応じた操作可否判定は Blade 側で `MeetingPolicy::cancel/approve/...` を `@can` で参照（REQ-mentoring-062, 063）。
-
-#### `FetchAvailabilityAction`
-
-```php
-class FetchAvailabilityAction
-{
-    public function __construct(private MeetingAvailabilityService $availability) {}
-
-    public function __invoke(Enrollment $enrollment, Carbon $date): Collection;
-}
-```
-
-責務: (1) `Enrollment.assigned_coach_id` 取得（NULL なら `EnrollmentCoachNotAssignedException`）、(2) `MeetingAvailabilityService::slotsForDate($coach, $date)` を呼んで `Collection<array{slot_start, slot_end}>` を返す（REQ-mentoring-026）。
+責務は v2 設計を踏襲。ただし以下を変更:
+- `IndexAction` の filter: `upcoming = reserved`、`past = canceled | completed`
+- `FetchAvailabilityAction` は `Enrollment.certification` の **担当コーチ集合** に対する Union で空き枠を計算（個別コーチではない、JSON は `{slot_start, slot_end, available_coach_count}` 配列を返す）
 
 ### Service
 
-`app/Services/` 配下にフラット配置（`structure.md` 準拠）。
-
-#### `MeetingAvailabilityService`
+#### `MeetingAvailabilityService`（v3 で資格コーチ集合対応）
 
 ```php
 class MeetingAvailabilityService
 {
     /**
-     * 指定 coach の指定日における 60 分単位の空き開始時刻リストを返す。
-     * 各 slot は {slot_start: Carbon, slot_end: Carbon}。
+     * 指定 certification の担当コーチ集合の指定日における 60 分単位の空きスロットを返す（Union）。
+     * 戻り値: Collection<['slot_start' => Carbon, 'slot_end' => Carbon, 'available_coach_count' => int]>
      */
-    public function slotsForDate(User $coach, Carbon $date): Collection;
+    public function slotsForCertification(Certification $certification, Carbon $date): Collection;
 
     /**
-     * 指定 coach の指定 $scheduled_at（60 分枠の開始時刻）が有効枠内かつ未予約か検証する。
-     * 枠外 → MeetingOutOfAvailabilityException、先約あり → MeetingTimeSlotTakenException
+     * 指定 scheduled_at が certification 担当コーチの誰かの有効枠内か検証。
+     * 枠外 → MeetingOutOfAvailabilityException
      */
-    public function validateSlot(User $coach, Carbon $scheduled_at): void;
+    public function validateSlot(Certification $certification, Carbon $scheduledAt): void;
 }
 ```
 
 責務:
-- `slotsForDate`: `CoachAvailability::where('coach_id', $coach->id)->where('day_of_week', $date->dayOfWeek)->where('is_active', true)->get()` で当該曜日の枠を取得 → 各枠を 60 分刻みに展開（例: 09:00-12:00 枠 → 09:00 / 10:00 / 11:00 開始の 3 スロット）→ 同 coach の `where('coach_id', $coach->id)->where('scheduled_at', '>=', $date->startOfDay())->where('scheduled_at', '<', $date->endOfDay())->whereIn('status', ['requested', 'approved', 'in_progress'])->pluck('scheduled_at')` で除外対象を取得 → 差集合を返す
-- `validateSlot`: `slotsForDate()` を内部で呼んで `scheduled_at` の含有チェック + 同 coach × 同 `scheduled_at` × `status ∈ {requested, approved, in_progress}` の不在再検査（race を想定し、Action 側の `FOR UPDATE` クエリで最終ガード）
+- `slotsForCertification`: 担当コーチ全員の `CoachAvailability` を取得 → 各コーチで 60 分刻みのスロット集合に展開 → 同コーチの予約済時刻を除外 → コーチ全員の Union を取り、各スロットで `available_coach_count` を集計
+- `validateSlot`: `slotsForCertification` を呼んで `scheduled_at` の含有チェック
 
-DB トランザクションは持たない（呼び出し側 Action で囲む、`backend-services.md` 準拠）。
-
-#### `CoachActivityService`
+#### `CoachMeetingLoadService`（v3 新規）
 
 ```php
-class CoachActivityService
+class CoachMeetingLoadService
 {
     /**
-     * admin ダッシュボード向けに、各 coach の直近期間の面談実施統計を返す。
-     * 戻り値の要素型は `CoachActivitySummaryRow` DTO で固定（[[dashboard]] が型安全に消費）。
+     * 候補集合の中から、過去 30 日の completed Meeting 数が最少のコーチを 1 名返す。
+     * 同数の場合は ULID 昇順で先頭を選出。
      */
-    public function summarize(?Carbon $from = null, ?Carbon $to = null): Collection;
+    public function leastLoadedCoach(Collection $candidates): User
+    {
+        $coachIds = $candidates->pluck('id');
+        $counts = Meeting::query()
+            ->whereIn('coach_id', $coachIds)
+            ->where('status', MeetingStatus::Completed)
+            ->where('scheduled_at', '>', now()->subDays(30))
+            ->select('coach_id', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('coach_id')
+            ->pluck('cnt', 'coach_id');
+
+        return $candidates->sortBy([
+            fn (User $c) => $counts->get($c->id, 0),
+            fn (User $c) => $c->id,
+        ])->first();
+    }
 }
 ```
 
-戻り値 DTO（値オブジェクト、readonly class、`app/Services/CoachActivitySummaryRow.php`）:
+#### `CoachActivityService`（v2 から維持、`rejected_count` 削除）
 
 ```php
-namespace App\Services;
-
-use App\Models\User;
-
 final readonly class CoachActivitySummaryRow
 {
     public function __construct(
-        public User $coach,            // 担当コーチ User（with relations: なし、name + email + meeting_url のみ参照）
-        public int $completedCount,    // 期間内 completed Meeting 数
-        public int $canceledCount,     // 期間内 canceled Meeting 数
-        public int $rejectedCount,     // 期間内 rejected Meeting 数
-        public ?int $averageMemoLength, // 期間内 completed Meeting の MeetingMemo 平均長（バイト数、null = サンプル無し）
+        public User $coach,
+        public int $completedCount,
+        public int $canceledCount,
+        public ?int $averageMemoLength,
     ) {}
 }
 ```
 
-責務: `from` / `to` のデフォルトは「30 日前 〜 now」。`User::where('role', 'coach')->withCount([...])` で `completed_count` / `canceled_count` / `rejected_count` を集計し、平均メモ長は別クエリ（`MeetingMemo::join('meetings').whereBetween('scheduled_at', ...).selectRaw('coach_id, AVG(CHAR_LENGTH(body))')`）で取得、結果を `CoachActivitySummaryRow` DTO に詰めて返す（REQ-mentoring-090, 091）。
-
-> `User::meetingsAsCoach` リレーション（`hasMany(Meeting, 'coach_id')`）は [[auth]] の `User` モデルに本 Feature で追加する（migration ではなく Model の拡張）。
+`rejected_count` は撤回（拒否フロー消失のため）。
 
 ### Policy
 
-#### `app/Policies/MeetingPolicy.php`
+#### `MeetingPolicy`
 
 ```php
 class MeetingPolicy
@@ -517,105 +515,44 @@ class MeetingPolicy
 
     public function cancel(User $user, Meeting $meeting): bool
     {
-        // requested → canceled: student のみ可
-        if ($meeting->status === MeetingStatus::Requested) {
-            return $user->role === UserRole::Student && $meeting->student_id === $user->id;
-        }
-        // approved → canceled: 当事者（student or coach）双方
-        if ($meeting->status === MeetingStatus::Approved) {
-            return $meeting->student_id === $user->id || $meeting->coach_id === $user->id;
-        }
-        return false;
+        if ($meeting->status !== MeetingStatus::Reserved) return false;
+        return $meeting->student_id === $user->id || $meeting->coach_id === $user->id;
     }
 
-    public function approve(User $user, Meeting $meeting): bool
+    public function upsertMemo(User $user, Meeting $meeting): bool
     {
-        return $user->role === UserRole::Coach && $meeting->coach_id === $user->id;
-    }
-
-    public function reject(User $user, Meeting $meeting): bool
-    {
-        return $this->approve($user, $meeting); // 同条件
-    }
-
-    public function start(User $user, Meeting $meeting): bool
-    {
-        return $this->approve($user, $meeting);
-    }
-
-    public function complete(User $user, Meeting $meeting): bool
-    {
-        return $this->approve($user, $meeting);
-    }
-
-    public function updateMemo(User $user, Meeting $meeting): bool
-    {
-        return $this->approve($user, $meeting) && $meeting->status === MeetingStatus::Completed;
+        return $user->role === UserRole::Coach
+            && $meeting->coach_id === $user->id
+            && in_array($meeting->status, [MeetingStatus::Reserved, MeetingStatus::Completed]);
     }
 }
 ```
 
-> 自己コーチング（coach が自分宛の面談を申請する）は `create` で禁止。admin は閲覧のみ、操作系はすべて false。
+> v3 で削除: `approve` / `reject` / `start` / `complete` メソッド。`upsertMemo` で coach のメモ操作を集約。
 
-#### `app/Policies/CoachAvailabilityPolicy.php`
+#### `CoachAvailabilityPolicy`（v2 から変更なし）
 
-```php
-class CoachAvailabilityPolicy
-{
-    public function viewAny(User $user): bool
-    {
-        return in_array($user->role, [UserRole::Admin, UserRole::Coach, UserRole::Student]);
-    }
-
-    public function view(User $user, CoachAvailability $availability): bool
-    {
-        return true; // 全ユーザー閲覧可（受講生は予約画面で利用、coach は自分の枠表示）
-    }
-
-    public function create(User $user): bool
-    {
-        return $user->role === UserRole::Coach;
-    }
-
-    public function update(User $user, CoachAvailability $availability): bool
-    {
-        return $user->role === UserRole::Coach && $availability->coach_id === $user->id;
-    }
-
-    public function delete(User $user, CoachAvailability $availability): bool
-    {
-        return $this->update($user, $availability);
-    }
-}
-```
-
-> Policy は本 Feature 所有、利用先（[[settings-profile]] の編集 Controller）から `$this->authorize()` で呼ばれる。
+`viewAny` 全ユーザー true / `view` 全ユーザー true / `create` / `update` / `delete` は `coach_id === $user->id` のみ。
 
 ### FormRequest
 
-`app/Http/Requests/Meeting/`:
+| FormRequest | rules |
+|---|---|
+| `Meeting\IndexRequest` | `filter: nullable in:upcoming,past,all` |
+| `Meeting\IndexAsCoachRequest` | `filter` / `student` / `enrollment` nullable |
+| `Meeting\StoreRequest` | `enrollment_id: required ulid exists` / `scheduled_at: required date after:now,regex /^\d{4}-\d{2}-\d{2}T\d{2}:00:00.*$/`（毎時 00 分のみ）/ `topic: required string max:1000` |
+| `Meeting\UpsertMemoRequest` | `body: required string max:5000` |
+| `Meeting\AvailabilityRequest` | `enrollment: required ulid exists` / `date: required date_format:Y-m-d after_or_equal:today` |
 
-| FormRequest | rules | authorize |
-|---|---|---|
-| `Meeting\IndexRequest` | `filter: nullable in:upcoming,past,all` | `auth()->user()->can('viewAny', Meeting::class)` |
-| `Meeting\IndexAsCoachRequest` | `filter` 同上 / `student: nullable ulid` / `enrollment: nullable ulid` | 同上 + `role:coach` middleware で限定 |
-| `Meeting\StoreRequest` | `enrollment_id: required ulid exists:enrollments,id` / `scheduled_at: required date after:now,regex:/:00:00\|:30:00$/` / `topic: required string max:1000` | `auth()->user()->can('create', Meeting::class)` |
-| `Meeting\RejectRequest` | `rejected_reason: required string max:500` | `auth()->user()->can('reject', $this->route('meeting'))` |
-| `Meeting\CompleteRequest` | `body: required string max:5000` | `auth()->user()->can('complete', $this->route('meeting'))` |
-| `Meeting\UpdateMemoRequest` | `body: required string max:5000` | `auth()->user()->can('updateMemo', $this->route('meeting'))` |
-| `Meeting\AvailabilityRequest` | `enrollment: required ulid exists:enrollments,id` / `date: required date_format:Y-m-d after_or_equal:today` | `auth()->user()->can('create', Meeting::class)` |
-
-> `scheduled_at` の分単位制約は `regex:/^\d{4}-\d{2}-\d{2}T\d{2}:(00\|30):00.*$/` で 30 分刻みのみ許容（REQ-mentoring-023）。
+> v3 で削除: `RejectRequest` / `CompleteRequest`。`StoreRequest` の分単位制約は v2 の 30 分刻みから **毎時 00 分のみ** に変更（より厳格）。
 
 ### Route
 
-`routes/web.php` に追加。`auth` + ロール別 middleware で保護。
-
 ```php
 // student 専用
-Route::middleware(['auth', 'role:student'])->group(function () {
+Route::middleware(['auth', 'role:student', 'active.learning'])->group(function () {
     Route::get('/meetings', [MeetingController::class, 'index'])->name('meetings.index');
-    Route::get('/meetings/create', [MeetingController::class, 'create'])->name('meetings.create'); // 申請フォーム表示
+    Route::get('/meetings/create', [MeetingController::class, 'create'])->name('meetings.create');
     Route::post('/meetings', [MeetingController::class, 'store'])->name('meetings.store');
     Route::get('/meetings/availability', [MeetingController::class, 'fetchAvailability'])->name('meetings.availability');
 });
@@ -623,162 +560,142 @@ Route::middleware(['auth', 'role:student'])->group(function () {
 // coach 専用
 Route::middleware(['auth', 'role:coach'])->prefix('coach')->group(function () {
     Route::get('/meetings', [MeetingController::class, 'indexAsCoach'])->name('coach.meetings.index');
-    Route::post('/meetings/{meeting}/approve', [MeetingController::class, 'approve'])->name('coach.meetings.approve');
-    Route::post('/meetings/{meeting}/reject', [MeetingController::class, 'reject'])->name('coach.meetings.reject');
-    Route::post('/meetings/{meeting}/start', [MeetingController::class, 'start'])->name('coach.meetings.start');
-    Route::post('/meetings/{meeting}/complete', [MeetingController::class, 'complete'])->name('coach.meetings.complete');
-    Route::put('/meetings/{meeting}/memo', [MeetingController::class, 'updateMemo'])->name('coach.meetings.updateMemo');
+    Route::put('/meetings/{meeting}/memo', [MeetingController::class, 'upsertMemo'])->name('coach.meetings.memo');
 });
 
-// 当事者共通（show / cancel）
+// 当事者共通
 Route::middleware(['auth'])->group(function () {
     Route::get('/meetings/{meeting}', [MeetingController::class, 'show'])->name('meetings.show');
     Route::post('/meetings/{meeting}/cancel', [MeetingController::class, 'cancel'])->name('meetings.cancel');
 });
 ```
 
-> `meetings.create` は申請フォーム表示用。`@vite('resources/js/mentoring/availability-picker.js')` で空き枠取得 JS を読み込む。
+> v3 で削除: `approve` / `reject` / `start` / `complete` ルート。`active.learning` Middleware（[[auth]] 所有）で `graduated` 受講生の予約をブロック。
 
 ### Schedule Command
 
-**本 Feature では独自の Reminder Command を所有しない**。`SendMeetingRemindersCommand`（signature: `notifications:send-meeting-reminders {--window=eve|one_hour_before}`）と `NotifyMeetingReminderAction(Meeting $meeting, MeetingReminderWindow $window)` および `MeetingReminderWindow` Enum はすべて [[notification]] が所有する。
+#### 本 Feature 所有: `meetings:auto-complete`
 
-本 Feature が共有するのは以下の仕様契約のみ:
+```php
+// app/Console/Commands/Mentoring/AutoCompleteMeetingsCommand.php
+class AutoCompleteMeetingsCommand extends Command
+{
+    protected $signature = 'meetings:auto-complete';
 
-- 抽出条件: `Meeting::where('status', MeetingStatus::Approved)->whereBetween('scheduled_at', [...])` の `whereBetween` 範囲を window 別に分岐
-  - `MeetingReminderWindow::Eve`: `[now()->addDay()->startOfDay(), now()->addDay()->endOfDay()]`
-  - `MeetingReminderWindow::OneHourBefore`: `[now()->addMinutes(55), now()->addMinutes(65)]`
-- 重複排除: `(meeting_id, window)` ペアで `notifications.data` JSON カラムを `whereJsonContains` で検査（[[notification]] 側責務）
-- スケジュール頻度: `dailyAt('18:00')`（eve）+ `everyFiveMinutes()`（one_hour_before）
+    public function handle(AutoCompleteMeetingAction $action): int
+    {
+        Meeting::query()
+            ->where('status', MeetingStatus::Reserved)
+            ->where('scheduled_at', '<', now()->subMinutes(60))
+            ->chunkById(100, function ($meetings) use ($action) {
+                foreach ($meetings as $meeting) {
+                    $action($meeting);
+                }
+            });
+        return Command::SUCCESS;
+    }
+}
 
-> 詳細は [[notification]] design.md の「Schedule Command」セクション参照。
+// app/Console/Kernel.php
+$schedule->command('meetings:auto-complete')->cron('*/15 * * * *');
+```
 
-## Blade ビュー
+#### [[notification]] 所有: `meetings:remind` / `meetings:remind-eve`
 
-`resources/views/meetings/`（student / 共通）と `resources/views/coach/meetings/`（coach 一覧）に配置。
+抽出条件のみ本 Feature が仕様提供:
+- `MeetingReminderWindow::OneHourBefore`: `[now()->addMinutes(55), now()->addMinutes(65)]`
+- `MeetingReminderWindow::Eve`: `[tomorrow start, tomorrow end]`
+
+両方とも `status = Reserved` の Meeting が対象。
+
+## Blade
+
+`resources/views/meetings/`:
 
 | ファイル | 役割 |
 |---|---|
-| `meetings/index.blade.php` | 受講生の面談一覧（filter タブ: upcoming/past/all、ステータスバッジ、行クリックで詳細） |
-| `meetings/create.blade.php` | 予約申請フォーム（Enrollment 選択 → 日付選択 → 空き枠選択 → topic 入力）。空き枠は `resources/js/mentoring/availability-picker.js` で `/meetings/availability` を fetch して描画 |
-| `meetings/show.blade.php` | 当事者共通詳細。状態に応じた操作ボタン（取り下げ / キャンセル / 承認 / 拒否 / 入室 / 完了 / メモ編集）を `@can` で出し分け。`MeetingMemo` は `completed` 時のみ表示 |
-| `meetings/_partials/status-badge.blade.php` | ステータスバッジ（`<x-badge variant="...">` を `MeetingStatus.label()` で動的描画） |
-| `meetings/_modals/reject-form.blade.php` | 拒否理由入力モーダル（`<x-modal id="reject-modal">`、`<x-form.textarea name="rejected_reason">`） |
-| `meetings/_modals/complete-form.blade.php` | 完了 + メモ記入モーダル（`<x-modal id="complete-modal">`、`<x-form.textarea name="body" maxlength="5000">`） |
-| `meetings/_modals/cancel-confirm.blade.php` | キャンセル確認モーダル |
-| `coach/meetings/index.blade.php` | コーチの面談一覧（filter タブ + 受講生別 / 資格別フィルタ） |
-| `emails/meeting-requested.blade.php` | コーチ宛: 「申請が届きました」Markdown Mailable |
-| `emails/meeting-approved.blade.php` | 受講生宛: 「承認されました」+ `meeting_url_snapshot` + 日時 + topic |
-| `emails/meeting-rejected.blade.php` | 受講生宛: 「拒否されました」+ `rejected_reason` |
-| `emails/meeting-canceled.blade.php` | 相手方宛: 「キャンセルされました」+ canceler ロール |
-| `emails/meeting-reminder.blade.php` | 双方宛: リマインド（前日 18:00 / 1 時間前） |
+| `meetings/index.blade.php` | 受講生の面談一覧（filter タブ: upcoming/past、ステータスバッジ 3 値） |
+| `meetings/create.blade.php` | 予約フォーム（Enrollment 選択 → 日付選択 → 空きスロット表示 → topic 入力）。**コーチ指定なし、自動割当案内のヒント表示** |
+| `meetings/show.blade.php` | 当事者共通詳細。`reserved` 時はキャンセルボタン + コーチに meeting_url 案内、`completed` 時は MeetingMemo 表示 |
+| `meetings/_partials/status-badge.blade.php` | 3 値バッジ |
+| `meetings/_modals/cancel-confirm.blade.php` | キャンセル確認モーダル（+ 「面談回数が返却されます」案内） |
+| `coach/meetings/index.blade.php` | コーチの面談一覧 |
+| `coach/meetings/_memo_form.blade.php` | メモ入力フォーム（`reserved` / `completed` どちらでも表示）|
+| `emails/meeting-reserved.blade.php` | コーチ宛: 「予約が入りました」 |
+| `emails/meeting-canceled.blade.php` | 相手方宛: 「キャンセルされました」 |
+| `emails/meeting-reminder.blade.php` | 双方宛: リマインド |
 
-> Email Blade は本 Feature 配下に置くが、Mailable クラス自体は [[notification]] が所有（`Notification` channel + `MailMessage` から本 Blade を `markdown(...)` で参照）。
+> v3 で削除した Blade: `meeting-requested.blade.php` / `meeting-approved.blade.php` / `meeting-rejected.blade.php` / reject-form / complete-form モーダル。
 
-### 主要 Blade コンポーネント参照
+### JS
 
-[frontend-blade.md](../../.claude/rules/frontend-blade.md) の「共通コンポーネント API」を利用。
-
-- `<x-button variant="primary|outline|danger|ghost">` — 操作ボタン
-- `<x-badge variant="...">` — ステータス表示
-- `<x-card>` — 面談詳細カード
-- `<x-modal id="...">` — 拒否 / 完了 / キャンセル確認モーダル
-- `<x-form.textarea>` / `<x-form.input>` / `<x-form.select>` / `<x-form.error>` — フォーム
-- `<x-tabs>` — filter タブ（upcoming / past / all）
-- `<x-table>` — 一覧テーブル
-- `<x-paginator>` — ページネーション
-- `<x-empty-state icon="calendar-days" title="...">` — 0 件時
+`resources/js/mentoring/slot-picker.js`: `/meetings/availability` を fetch して空きスロットを描画、コーチ名は表示せず `available_coach_count` のみヒント表示。
 
 ## エラーハンドリング
 
-### 想定例外（`app/Exceptions/Mentoring/`）
+`app/Exceptions/Mentoring/`:
 
-- **`MeetingOutOfAvailabilityException`** — `HttpException(422)` 継承
-  - メッセージ: 「指定の日時はコーチの面談可能時間外です。」
-  - 発生: `StoreAction` の `MeetingAvailabilityService::validateSlot()` で枠外検出時
-- **`MeetingTimeSlotTakenException`** — `ConflictHttpException(409)` 継承
-  - メッセージ: 「指定の日時は既に予約が入っています。別の時間を選んでください。」
-  - 発生: `StoreAction` / `ApproveAction` で同コーチ × 同 `scheduled_at` の他 Meeting 検出時
-- **`MeetingStatusTransitionException`** — `ConflictHttpException(409)` 継承
-  - メッセージ: 「現在の面談状態ではこの操作を実行できません。」
-  - 発生: `ApproveAction` / `RejectAction` / `CancelAction` / `StartAction` / `CompleteAction` / `UpdateMemoAction` で前提状態違反時
-- **`MeetingNotInStartWindowException`** — `ConflictHttpException(409)` 継承
-  - メッセージ: 「入室可能な時間帯ではありません（開始 10 分前から終了予定までの間に入室してください）。」
-  - 発生: `StartAction` で `scheduled_at - 10min <= now() < scheduled_at + 60min` 範囲外時
-- **`MeetingAlreadyStartedException`** — `ConflictHttpException(409)` 継承
-  - メッセージ: 「面談開始時刻を過ぎているためキャンセルできません。」
-  - 発生: `CancelAction` で `approved` 状態かつ `scheduled_at <= now()` 時
-- **`EnrollmentCoachNotAssignedException`** — `ConflictHttpException(409)` 継承
-  - メッセージ: 「この資格にはまだ担当コーチが割り当てられていません。管理者へお問い合わせください。」
-  - 発生: `StoreAction` / `FetchAvailabilityAction` で `Enrollment.assigned_coach_id IS NULL` 時
-- **`MeetingMemoNotFoundException`** — `NotFoundHttpException(404)` 継承
-  - メッセージ: 「面談メモが見つかりません。」
-  - 発生: `UpdateMemoAction` で MeetingMemo 不在時（理論上は CompleteAction で必ず作成されるため、整合性違反時の防衛例外）
+- `MeetingOutOfAvailabilityException`（422）: 枠外
+- `MeetingNoAvailableCoachException`（409）: 候補コーチ 0 名 / race condition による UNIQUE 違反
+- `MeetingStatusTransitionException`（409）: 状態違反
+- `MeetingAlreadyStartedException`（409）: 開始時刻超過後のキャンセル試行
+- `InsufficientMeetingQuotaException`（409）: 残面談回数 0
 
-### Controller / Action の境界
-
-- **Policy 違反** は Controller の `$this->authorize()` または FormRequest の `authorize()` で `AuthorizationException`（403）として処理。Action では再検査しない（`backend-usecases.md` 準拠）
-- **状態整合性違反**（status 不一致 / 時刻範囲外 / FK 未存在）は Action 内で具象ドメイン例外を throw
-- **race condition** は `DB::transaction()` + `FOR UPDATE` ロック + 例外時の自動 ROLLBACK で防御
-
-### 共通エラー表示
-
-- ドメイン例外 → `app/Exceptions/Handler.php` で `HttpException` 系を catch し `session()->flash('error', $e->getMessage())` + `back()` で受講生 / コーチに表示
-- FormRequest バリデーション失敗 → Laravel 標準の `back()->withErrors()` → Blade で `@error` 表示
+> v3 で削除: `MeetingTimeSlotTakenException` / `MeetingNotInStartWindowException` / `EnrollmentCoachNotAssignedException` / `MeetingMemoNotFoundException`（旧フロー由来）
 
 ## 関連要件マッピング
 
-| 要件ID | 実装ポイント |
+| 要件 ID | 実装ポイント |
 |---|---|
-| REQ-mentoring-001 | `database/migrations/{date}_create_meetings_table.php` / `app/Models/Meeting.php` / `app/Enums/MeetingStatus.php` |
-| REQ-mentoring-002 | `app/Enums/MeetingStatus.php`（label() 含む）|
-| REQ-mentoring-003 | `app/Models/Meeting.php`（5 リレーション）|
-| REQ-mentoring-004 | `database/migrations/{date}_create_meetings_table.php`（INDEX 定義）|
-| REQ-mentoring-010 | `database/migrations/{date}_create_coach_availabilities_table.php` / `app/Models/CoachAvailability.php` |
-| REQ-mentoring-011 | `database/migrations/{date}_create_coach_availabilities_table.php`（INDEX 定義）|
-| REQ-mentoring-012 | 同上（複合 UNIQUE を採用しない）|
-| REQ-mentoring-013 | `app/Http/Requests/Settings/Availability/StoreRequest.php`（[[settings-profile]] 所有、`end_time > start_time` ルール）|
-| REQ-mentoring-014 | `database/migrations/{date}_add_meeting_url_to_users_table.php` |
-| REQ-mentoring-015 | `database/migrations/{date}_create_meeting_memos_table.php` / `app/Models/MeetingMemo.php`（`meeting_id` UNIQUE）|
-| REQ-mentoring-016 | `app/Models/MeetingMemo.php`（belongsTo Meeting）|
-| REQ-mentoring-020 | `app/Http/Requests/Meeting/StoreRequest.php`（rules）|
-| REQ-mentoring-021 | `app/UseCases/Meeting/StoreAction.php` / `app/Services/MeetingAvailabilityService.php::validateSlot` |
-| REQ-mentoring-022 | `app/Exceptions/Mentoring/MeetingOutOfAvailabilityException.php` |
-| REQ-mentoring-023 | `app/Http/Requests/Meeting/StoreRequest.php`（regex で `:00\|:30` 検証）|
-| REQ-mentoring-024 | 同上（`after:now`）|
-| REQ-mentoring-025 | `app/Exceptions/Mentoring/EnrollmentCoachNotAssignedException.php` |
-| REQ-mentoring-026 | `app/UseCases/Meeting/FetchAvailabilityAction.php` / `app/Services/MeetingAvailabilityService.php::slotsForDate` / `routes/web.php`（`meetings.availability`）|
-| REQ-mentoring-027 | `app/UseCases/Meeting/StoreAction.php`（`FOR UPDATE` 検査）/ `app/Exceptions/Mentoring/MeetingTimeSlotTakenException.php` |
-| REQ-mentoring-030 | `app/UseCases/Meeting/ApproveAction.php` / `app/UseCases/Notification/NotifyMeetingApprovedAction.php`（[[notification]] 所有）|
-| REQ-mentoring-031 | `app/UseCases/Meeting/RejectAction.php` / `app/Http/Requests/Meeting/RejectRequest.php` |
-| REQ-mentoring-032 | `app/Exceptions/Mentoring/MeetingStatusTransitionException.php`（各 Action から throw）|
-| REQ-mentoring-033 | `app/UseCases/Meeting/ApproveAction.php`（race 防止再検査）|
-| REQ-mentoring-040 | `app/UseCases/Meeting/CancelAction.php`（requested 分岐）|
-| REQ-mentoring-041 | `app/Exceptions/Mentoring/MeetingStatusTransitionException.php` |
-| REQ-mentoring-042 | `app/UseCases/Meeting/CancelAction.php`（approved 分岐）|
-| REQ-mentoring-043 | `app/Exceptions/Mentoring/MeetingAlreadyStartedException.php` |
-| REQ-mentoring-050 | `app/UseCases/Meeting/StartAction.php` |
-| REQ-mentoring-051 | `app/Exceptions/Mentoring/MeetingNotInStartWindowException.php` |
-| REQ-mentoring-052 | `app/UseCases/Meeting/CompleteAction.php` / `app/Http/Requests/Meeting/CompleteRequest.php` |
-| REQ-mentoring-053 | `app/UseCases/Meeting/UpdateMemoAction.php` / `app/Http/Requests/Meeting/UpdateMemoRequest.php` / `app/Exceptions/Mentoring/MeetingMemoNotFoundException.php` |
-| REQ-mentoring-054 | `app/Policies/MeetingPolicy.php`（updateMemo は coach のみ）+ Blade（受講生には編集ボタン非表示）|
-| REQ-mentoring-060 | `app/UseCases/Meeting/IndexAction.php` / `resources/views/meetings/index.blade.php` |
-| REQ-mentoring-061 | `app/UseCases/Meeting/IndexAsCoachAction.php` / `resources/views/coach/meetings/index.blade.php` |
-| REQ-mentoring-062 | `app/UseCases/Meeting/ShowAction.php` / `resources/views/meetings/show.blade.php` |
-| REQ-mentoring-063 | `resources/views/meetings/show.blade.php`（`@if($meeting->status === Completed && $meeting->meetingMemo)` で表示）|
-| REQ-mentoring-064 | `app/Models/Meeting.php`（`scopeUpcoming()`、[[dashboard]] が利用）|
-| REQ-mentoring-070 | 各 Action の通知呼出 + [[notification]] 側の `NotifyMeeting*Action`（5 種類）|
-| REQ-mentoring-071 | `app/Console/Commands/Mentoring/RemindUpcomingMeetingsCommand.php` / `app/Console/Kernel.php::schedule()`（`cron('*/15 * * * *')`）|
-| REQ-mentoring-072 | `app/Console/Commands/Mentoring/RemindEveMeetingsCommand.php` / `app/Console/Kernel.php::schedule()`（`dailyAt('18:00')`）|
-| REQ-mentoring-073 | `resources/views/emails/meeting-approved.blade.php` |
-| REQ-mentoring-080 | `app/Policies/MeetingPolicy.php`（9 メソッド） / `AuthServiceProvider::$policies` |
-| REQ-mentoring-081 | `app/Policies/CoachAvailabilityPolicy.php`（5 メソッド） / `AuthServiceProvider::$policies` |
-| REQ-mentoring-090 | `app/Services/CoachActivityService.php::summarize` |
-| REQ-mentoring-091 | [[dashboard]] が `CoachActivityService` を DI で利用（mentoring 側で provider 登録は不要、Laravel 標準 service container）|
-| NFR-mentoring-001 | 各 Action 内 `DB::transaction()` |
-| NFR-mentoring-002 | 各 Action 冒頭の `Meeting.status` 検証 + `MeetingStatusTransitionException` |
-| NFR-mentoring-003 | `StoreAction` + `ApproveAction` の `FOR UPDATE` 検査 + `MeetingTimeSlotTakenException` |
-| NFR-mentoring-004 | `app/Exceptions/Mentoring/*.php`（7 種類）|
-| NFR-mentoring-005 | `app/Models/Meeting.php`（`scheduled_at` のみ保持、duration は固定 60 分でコード内 const）|
-| NFR-mentoring-006 | `lang/ja/mentoring.php` / 各例外コンストラクタ |
-| NFR-mentoring-007 | `MeetingAvailabilityService::slotsForDate`（2 クエリ完結、eager load 前提）|
+| REQ-mentoring-001 | `migrations/{date}_create_meetings_table.php`（3 値 + UNIQUE）/ `Models/Meeting.php` / `Enums/MeetingStatus.php` |
+| REQ-mentoring-002 | `Enums/MeetingStatus.php` |
+| REQ-mentoring-003 | `Models/Meeting.php`（6 リレーション） |
+| REQ-mentoring-004 | migration（INDEX 4 種 + UNIQUE） |
+| REQ-mentoring-010-013 | `migrations/{date}_create_coach_availabilities_table.php` / `Models/CoachAvailability.php` |
+| REQ-mentoring-014 | **[[auth]] の `migrations/{date}_add_meeting_url_to_users_table.php` を参照**（D4 確定、本 Feature では作成しない） |
+| REQ-mentoring-015 | 臨時シフト不採用、design に明記 |
+| REQ-mentoring-016-018 | `Models/MeetingMemo.php` / `UpsertMemoAction`（reserved/completed 両方可）|
+| REQ-mentoring-020 | `FetchAvailabilityAction`（資格コーチ集合 Union）|
+| REQ-mentoring-021 | `Meeting\StoreAction` |
+| REQ-mentoring-022 | `Requests/Meeting/StoreRequest.php`（regex `:00`）|
+| REQ-mentoring-023-026 | `Meeting\StoreAction` 内ガード（status / 残数 / 枠 / 候補 0 名 / EnsureActiveLearning） |
+| REQ-mentoring-030-032 | `Meeting\CancelAction` + `RefundQuotaAction` 連携 + 通知 |
+| REQ-mentoring-040-042 | `AutoCompleteMeetingsCommand` / `AutoCompleteMeetingAction` / `Console\Kernel`（cron `*/15 * * * *`）|
+| REQ-mentoring-050-052 | `UpsertMemoAction` / `UpsertMemoRequest` |
+| REQ-mentoring-060-064 | `IndexAction` / `IndexAsCoachAction` / `ShowAction` |
+| REQ-mentoring-070-075 | [[notification]] 連携、本 Feature は呼出元として `NotifyMeeting*Action` を起動 |
+| REQ-mentoring-080-081 | `MeetingPolicy` / `CoachAvailabilityPolicy` |
+| REQ-mentoring-090-093 | `CoachActivityService` / `CoachMeetingLoadService` |
+| NFR-mentoring-001-008 | 各 Action `DB::transaction()` + UNIQUE 制約 + `lockForUpdate()` |
+
+## テスト戦略
+
+`tests/Feature/UseCases/Meeting/`:
+- `Meeting\StoreActionTest.php`:
+  - 正常系: コーチ自動割当 + Meeting INSERT + MeetingQuotaTransaction 連携 + 通知発火
+  - 残数 0 → InsufficientMeetingQuotaException (409)
+  - 枠外 → MeetingOutOfAvailabilityException (422)
+  - 候補 0 名 → MeetingNoAvailableCoachException (409)
+  - 自動割当ロジック: 過去 30 日 completed 数最少コーチ選出（同数 ULID 昇順）
+  - UNIQUE 制約 race → MeetingNoAvailableCoachException
+  - graduated ユーザー → 403（EnsureActiveLearning Middleware）
+- `Meeting\CancelActionTest.php`:
+  - 当事者キャンセル + RefundQuotaAction 連携 + 通知
+  - `scheduled_at <= now()` → MeetingAlreadyStartedException
+  - `status != reserved` → MeetingStatusTransitionException
+- `AutoCompleteMeetingActionTest.php`:
+  - `scheduled_at + 60min` 超過で completed 遷移
+  - 既に canceled/completed の Meeting はスキップ
+- `UpsertMemoActionTest.php`:
+  - reserved/completed どちらでも作成 + 更新可
+  - canceled では MeetingStatusTransitionException
+
+`tests/Unit/Services/`:
+- `CoachMeetingLoadServiceTest.php`: 同数 ULID 昇順 + ゼロ件コーチ考慮
+- `MeetingAvailabilityServiceTest.php`: 資格コーチ集合の Union + 重複 scheduled_at 除外
+
+`tests/Feature/Commands/`:
+- `AutoCompleteMeetingsCommandTest.php`: バッチ全件遷移
+
+`tests/Feature/Http/MeetingControllerTest.php`:
+- 各エンドポイントの認可 / バリデーション / 状態遷移

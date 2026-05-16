@@ -1,117 +1,98 @@
 # user-management 要件定義
 
+> **v3 改修反映**（2026-05-16）:
+> - **招待モーダルに `plan_id` フィールド追加**（[[plan-management]] の `Plan` マスタから選択、v3 で `IssueInvitationAction` が `Plan $plan` 必須）
+> - **ユーザー詳細にプラン情報パネル / プラン延長ボタン / 面談回数手動付与 UI を追加**（[[plan-management]] / [[meeting-quota]] と連携）
+> - **status フィルタに `graduated` 追加**（v3 で `UserStatus` enum 4 値化）
+> - **`UpdateAction`（プロフィール編集）/ `UpdateRoleAction`（ロール変更）を撤回**（admin が他者のプロフィール / ロールを変更する動線を撤回、編集動線なし）
+> - **`SelfWithdrawAction` 呼出は撤回**（[[settings-profile]] で自己退会動線撤回、本 Feature の `WithdrawAction` のみで admin 経由退会）
+> - **`UserStatus::Active` 参照を `UserStatus::InProgress` に統一**
+
 ## 概要
 
 Certify LMS の管理者向けユーザー管理 Feature。**admin が他ユーザーのライフサイクル全体を運用する画面**を提供する。
-具体的には: ユーザー一覧（フィルタ・検索 + 招待動線）→ 詳細画面（プロフィール / 受講中資格概要 / ステータス変更履歴 / 招待履歴）→ プロフィール編集 / ロール変更 / 強制退会、および 詳細からの再招待・取消フロー。
+具体的には: ユーザー一覧（フィルタ・検索 + 招待動線）→ 詳細画面（プロフィール / 受講中資格概要 / **プラン情報パネル**（v3）/ ステータス変更履歴 / 招待履歴 / **面談回数残数**（v3））→ **強制退会 / プラン延長 / 面談回数手動付与**、および詳細からの再招待・取消フロー。
 
-[[auth]] が提供する `User` / `Invitation` モデルと `IssueInvitationAction` / `RevokeInvitationAction` の上に **admin 向け UI と HTTP 層** を構築する。
-さらに、ユーザー受講状態の遷移履歴を追跡する `UserStatusLog` モデルと、**全 Feature 共通のステータス変更記録エントリポイント** である `UserStatusChangeService` を本 Feature で新設する（[[auth]] / [[settings-profile]] のステータス変更系 Action からも呼び出される）。
+[[auth]] が提供する `User` / `Invitation` モデルと **`IssueInvitationAction(Plan $plan, ...)`**（v3 で Plan 引数必須）/ `RevokeInvitationAction` の上に **admin 向け UI と HTTP 層** を構築する。
+さらに、ユーザー受講状態の遷移履歴を追跡する `UserStatusLog` モデルと、**全 Feature 共通のステータス変更記録エントリポイント** である `UserStatusChangeService` を本 Feature で新設する（[[auth]] のステータス変更系 Action から呼び出される、v3 で settings-profile からの呼出は撤回）。
+
+**v3 で「プロフィール編集 / ロール変更」UI を撤回**: admin が他者のプロフィール / ロールを変更する動線を本 Feature では提供しない（メールアドレス変更は invitation を新規発行する形でのみ可能、ロール変更は撤回）。
 
 ## ロールごとのストーリー
 
-- **管理者（admin）**: ダッシュボードから「ユーザー管理」へ遷移し、ユーザー一覧でロール / ステータス / キーワード検索でフィルタしてユーザーを把握する。一覧から「+招待」ボタンで新規招待を発行、行クリックで詳細へ遷移し、プロフィール編集・ロール変更・強制退会・再招待・取消の各操作を行う。各ユーザーの受講状態変化は履歴として時系列で閲覧できる。
-- **コーチ（coach）/ 受講生（student）**: 本 Feature の URL（`/admin/users/*` および `/admin/invitations/*`）にアクセスすると HTTP 403。自分自身のプロフィール編集 / 自己退会は [[settings-profile]] で行う。
+- **管理者（admin）**: ユーザー一覧で `role` / `status`（v3 で `graduated` 追加）/ keyword フィルタを使い、招待発行（**Plan 必須選択**、v3）/ 再招待 / 強制退会 / **プラン延長** / **面談回数手動付与** を行う。詳細画面でプロフィール / 受講状態履歴 / プラン情報 / 面談回数残数を閲覧する。プロフィール編集・ロール変更 UI は提供しない（v3 で撤回）。
 
 ## 受け入れ基準（EARS形式）
 
 ### 機能要件 — ユーザー一覧
 
-- **REQ-user-management-001**: The system shall `GET /admin/users` で User 一覧をテーブル形式（氏名 / メール / ロール badge / ステータス badge / 作成日 / 最終ログイン日時）で表示する。並び順は (1) status の優先度（`active` を上、`invited` を中、`withdrawn` を下）→ (2) 同 status 内では `created_at` 降順。
-- **REQ-user-management-002**: When admin が一覧画面で検索キーワードを入力した際, the system shall `users.name` または `users.email` の部分一致（LIKE）でフィルタリングする。空文字列の場合はフィルタしない。
-- **REQ-user-management-003**: When admin がロールフィルタを選択した際, the system shall `users.role` が指定値（`admin` / `coach` / `student`）と一致する User のみを表示する。空の場合は全ロール表示。
-- **REQ-user-management-004**: When admin がステータスフィルタを選択した際, the system shall `users.status` が指定値（`invited` / `active` / `withdrawn`）と一致する User のみを表示する。空の場合は `withdrawn` を **デフォルト除外** し、`active` + `invited` のみ表示する。
-- **REQ-user-management-005**: The system shall 一覧を 20 件 / ページでサーバサイドページネーションし、検索・フィルタ条件をクエリストリング（`?keyword=...&role=...&status=...&page=...`）で保持する。
-- **REQ-user-management-006**: When admin が一覧の行をクリックした際, the system shall `GET /admin/users/{user}` で詳細ページへ遷移する。
-- **REQ-user-management-007**: The system shall 一覧画面に「+招待」ボタンを配置し、クリックで招待フォーム（モーダル）を開く。
-- **REQ-user-management-008**: The system shall `withdrawn` の User を表示する際、`status` フィルタで明示的に `withdrawn` を選択された場合に限り `users` モデルの `withTrashed()` スコープを適用し、soft delete 済みレコードを含めて取得する。
+- **REQ-user-management-001**: The system shall `GET /admin/users` で `User::where('role', '!=', null)->orderBy('created_at', 'desc')->paginate(20)` をテーブル表示する。
+- **REQ-user-management-002**: The system shall フィルタ提供: `role`（admin / coach / student）/ **`status`（`invited` / `in_progress`（v3） / `graduated`（v3 新規） / `withdrawn`）** / `keyword`（name / email 部分一致）。
+- **REQ-user-management-003**: The system shall 各ユーザー行に `name` / `email` / `role` バッジ / `status` バッジ（4 値、v3）/ 最終ログイン日時 / **Plan 名（v3 新規）** / **プラン残日数（v3 新規）** / 「詳細」リンクを表示する。
+- **REQ-user-management-004**: The system shall ユーザー一覧上部に「+ 新規招待」ボタンを配置し、招待モーダルを開く。
 
-### 機能要件 — ユーザー招待・再招待・取消
+### 機能要件 — 招待発行（v3 で Plan 必須化）
 
-- **REQ-user-management-010**: The system shall 招待フォームで `email`（必須 / メール形式）と `role`（`coach` または `student` のみ、`admin` は選択肢に含めない）を入力するフォームを表示する。
-- **REQ-user-management-011**: When admin が招待フォームから `POST /admin/invitations` を送信した際, the system shall [[auth]] の `IssueInvitationAction($email, $role, $admin, force: false)` を呼ぶ。Action 内で User INSERT + Invitation INSERT + InvitationMail dispatch + `UserStatusChangeService::record($user, UserStatus::Invited, $admin, '新規招待')` が **同一トランザクション内** で実行される。
-- **REQ-user-management-012**: When admin がユーザー詳細画面で「再招待」ボタンを押下した際, the system shall [[auth]] の `IssueInvitationAction($user->email, $user->role, $admin, force: true)` を呼ぶ。同 user_id の旧 pending Invitation は revoke され、User は invited のまま、新 Invitation が同 user_id に紐付いて発行される。`UserStatusLog` は **新規挿入しない**（status 変化なし）。
-- **REQ-user-management-013**: When admin がユーザー詳細画面で「招待を取消」ボタンを押下した際, the system shall [[auth]] の `RevokeInvitationAction($invitation, $admin, cascadeWithdrawUser: true)` を呼ぶ。Invitation は revoked、User は invited → withdrawn + soft delete + email リネーム、`UserStatusChangeService::record($user, UserStatus::Withdrawn, $admin, '招待取消')` も同一トランザクション内で記録される。
-- **REQ-user-management-014**: If 対象 Invitation が `pending` 以外（既に `accepted` / `expired` / `revoked`）の場合, then the system shall [[auth]] の `InvitationNotPendingException`（HTTP 409）でそのまま伝播する。
-- **REQ-user-management-015**: The system shall 再招待・取消の確認ステップ（モーダル）を表示し、誤操作を防止する。
+- **REQ-user-management-010**: The system shall 招待モーダルに `email`（必須 / email 形式）/ `role`（必須 / `admin` / `coach` / `student` から選択）/ **`plan_id`（v3 新規、必須、[[plan-management]] の `Plan::published()` から `<x-form.select>` で選択）** の入力フィールドを提供する。
+- **REQ-user-management-011**: When admin が招待フォームから `POST /admin/invitations` を送信した際, the system shall [[auth]] の **`IssueInvitationAction($email, $role, $plan, $admin, force: false)`**（v3 で `Plan $plan` 引数追加）を呼ぶ。Action 内で User INSERT + Invitation INSERT + InvitationMail dispatch + `UserStatusChangeService::record($user, UserStatus::Invited, $admin, '新規招待')` + **`UserPlanLog`（v3、event_type=assigned）** が **同一トランザクション内** で実行される。
+- **REQ-user-management-012**: When admin がユーザー詳細画面で「再招待」ボタンを押下した際, the system shall [[auth]] の `IssueInvitationAction($user->email, $user->role, $user->plan, $admin, force: true)` を呼ぶ（**既存 plan_id を再利用**、v3）。同 user_id の旧 pending Invitation は revoke され、User は invited のまま、新 Invitation が同 user_id に紐付いて発行される。
+- **REQ-user-management-013**: When 招待発行が失敗した際（既存 active User と email 衝突など）, the system shall [[auth]] のドメイン例外をそのまま伝播し、フラッシュメッセージで日本語エラーを表示する。
 
 ### 機能要件 — ユーザー詳細
 
-- **REQ-user-management-020**: The system shall `GET /admin/users/{user}` で対象 User のプロフィール（`name` / `email` / `role` badge / `status` badge / `bio` / `avatar_url` / `created_at` / `last_login_at`）を表示する。`withdrawn` の User も `withTrashed` で取得し、リネーム済 email を表示する。
-- **REQ-user-management-021**: The system shall 同画面に対象 User の `Enrollment` 概要（資格名 / `status` / `current_term` / `exam_date`）を最大 10 件まで `created_at` 降順で一覧表示し、詳細リンクで [[enrollment]] / [[dashboard]] へ遷移可能とする。受講中資格が無い場合は「受講中の資格はありません」と表示する。
-- **REQ-user-management-022**: The system shall 同画面に対象 User の `UserStatusLog` 履歴を `changed_at` 降順で全件表示する（`status` badge + `changed_at` + 変更者名（NULL なら「システム」） + `changed_reason`）。
-- **REQ-user-management-023**: The system shall 同画面に対象 User の `Invitation` 履歴を `created_at` 降順で表示する（`status` badge + `expires_at` + `accepted_at` / `revoked_at` の補助情報）。
-- **REQ-user-management-024**: If 指定 ID の User が存在しない場合, then the system shall HTTP 404 を返す。`withdrawn` の User は `withTrashed` で取得し詳細表示する（admin にとっては「過去ユーザーの監査」のため）。
+- **REQ-user-management-020**: The system shall `GET /admin/users/{user}` でユーザー詳細を表示し、以下のセクションを提供する: (a) プロフィール（name / email / role / status バッジ / avatar / bio / 招待日 / 最終ログイン）、(b) **プラン情報パネル（v3 新規）**（Plan 名 / `plan_started_at` / `plan_expires_at` / プラン残日数 / **`max_meetings`** / **残面談回数**（`MeetingQuotaService::remaining` 経由））、(c) 受講中資格一覧（Enrollment 経由）、(d) **ステータス変更履歴 + プラン履歴 + 面談回数履歴**（v3 で `UserStatusLog` + `UserPlanLog` + `MeetingQuotaTransaction` を統合表示）、(e) 招待履歴一覧（pending / accepted / expired / revoked）。
+- **REQ-user-management-021**: The system shall 詳細画面に以下のアクションボタンを提供する: 「再招待」（pending Invitation あり時のみ）/ 「招待取消」（pending Invitation あり時のみ）/ 「強制退会」（status=in_progress / graduated 時のみ）/ **「プラン延長」**（v3 新規、status=in_progress / graduated 時、modal で Plan 選択）/ **「面談回数手動付与」**（v3 新規、status=in_progress 時、modal で `amount` 入力）。
+- **REQ-user-management-022**: **削除（v3 撤回）**: 「プロフィール編集」「ロール変更」ボタンは提供しない。プロフィール編集は本人が [[settings-profile]] で行う、ロール変更は撤回（メールアドレス変更 / ロール変更が必要な場合は退会 + 再招待）。
 
-### 機能要件 — プロフィール編集（admin → 他者）
+### 機能要件 — 強制退会（admin 経由）
 
-- **REQ-user-management-030**: When admin が `PATCH /admin/users/{user}` をプロフィール編集フォームから送信した際, the system shall `name`（必須 / 1-50 文字）/ `email`（必須 / メール形式 / 自分以外で UNIQUE）/ `bio`（任意 / 最大 1000 文字）/ `avatar_url`（任意 / URL 形式 / 最大 500 文字）の検証後、`users` 行を更新する。
-- **REQ-user-management-031**: If 同 `email` を持つ別 User（active / invited）が存在する場合, then the system shall FormRequest バリデーションエラー（日本語メッセージ）で拒否する。soft delete 済みの User（email は `{ulid}@deleted.invalid` 形式にリネーム済み）は重複対象外。
-- **REQ-user-management-032**: When プロフィール編集が成功した際, the system shall 詳細ページにリダイレクトし、Flash メッセージで成功を通知する。`UserStatusLog` への記録は行わない（status 変化なし）。
-- **REQ-user-management-033**: If 対象 User が `withdrawn` の場合, then the system shall `UserAlreadyWithdrawnException`（HTTP 409）でプロフィール編集を拒否する。
+- **REQ-user-management-040**: When admin が「強制退会」ボタンを押下した際, the system shall `POST /admin/users/{user}/withdraw` を呼び、`WithdrawAction` で単一トランザクション内に (1) [[auth]] の `User::withdraw()` ヘルパ呼出（status=withdrawn + soft delete + email リネーム）、(2) `UserStatusChangeService::record($user, UserStatus::Withdrawn, $admin, '管理者による退会')` を実行する。
+- **REQ-user-management-041**: If 退会対象が admin ロールで、かつ削除後に残る admin が 0 人になる場合, then the system shall `LastAdminWithdrawException`（HTTP 409、日本語メッセージ「最後の管理者は退会できません。」）で拒否する。
 
-### 機能要件 — ロール変更
+### 機能要件 — プラン延長（v3 新規）
 
-- **REQ-user-management-040**: When admin が `PATCH /admin/users/{user}/role` をロール変更フォームから送信した際, the system shall `role`（`admin` / `coach` / `student` のいずれか必須）の検証後、`users.role` を更新する。
-- **REQ-user-management-041**: If admin が **自分自身** のロールを変更しようとした場合, then the system shall `SelfRoleChangeForbiddenException`（HTTP 403）で拒否する。
-- **REQ-user-management-042**: If 対象 User が `withdrawn` の場合, then the system shall `UserAlreadyWithdrawnException`（HTTP 409）でロール変更を拒否する。
-- **REQ-user-management-043**: The system shall ロール変更時に `UserStatusLog` への記録を行わない（本 Feature ではロール変更履歴を保持しない、`UserStatusLog` は status 専用）。
+- **REQ-user-management-050**: When admin が「プラン延長」ボタンを押下した際, the system shall モーダルに `Plan::published()` から選択する `plan_id` フィールドを表示する。
+- **REQ-user-management-051**: When admin がプラン延長フォームを送信した際, the system shall `POST /admin/users/{user}/extend-course` を呼び、[[plan-management]] の **`ExtendCourseAction($user, $plan, $admin)`** を実行する（plan_expires_at += plan.duration_days + max_meetings += plan.default_meeting_quota + UserPlanLog renewed 記録 + MeetingQuotaTransaction granted_initial 起票、全工程 1 トランザクション）。
 
-### 機能要件 — admin による強制退会
+### 機能要件 — 面談回数手動付与（v3 新規）
 
-- **REQ-user-management-050**: When admin が `POST /admin/users/{user}/withdraw` を退会確認モーダルから送信した際, the system shall 単一トランザクション内で (1) `users.email` を `{ulid}@deleted.invalid` 形式へリネーム、(2) `users.status = withdrawn` を更新、(3) `users.deleted_at = now()`（soft delete）、(4) `UserStatusChangeService::record($user, UserStatus::Withdrawn, $admin, $reason)` を実行する。
-- **REQ-user-management-051**: If admin が **自分自身** を退会させようとした場合, then the system shall `SelfWithdrawForbiddenException`（HTTP 403）で拒否する。
-- **REQ-user-management-052**: If 対象 User が既に `withdrawn` の場合, then the system shall `UserAlreadyWithdrawnException`（HTTP 409）で拒否する。
-- **REQ-user-management-053**: If 対象 User が `invited` 状態の場合, then the system shall `WithdrawAction` ではなく **招待取消ルート**（`DELETE /admin/invitations/{invitation}`）を案内し、HTTP 422 で拒否する。`WithdrawAction` は **active User のみ** を対象とする。
-- **REQ-user-management-054**: The system shall 退会理由（`reason`、**必須** / 最大 200 文字）を admin に入力させ、`UserStatusLog.changed_reason` に保存する。**重要操作の誤操作防止 + 「誰が・なぜ退会させたか」を後から振り返れる監査ログ目的** で必須化する。
+- **REQ-user-management-060**: When admin が「面談回数手動付与」ボタンを押下した際, the system shall モーダルに `amount`（unsigned int、1..100）/ `reason`（任意、最大 200 文字）入力フィールドを表示する。
+- **REQ-user-management-061**: When admin が面談回数手動付与フォームを送信した際, the system shall `POST /admin/users/{user}/grant-meeting-quota` を呼び、[[meeting-quota]] の **`AdminGrantQuotaAction($user, $amount, $admin, $reason)`** を実行する（MeetingQuotaTransaction admin_grant 起票 + granted_by 記録、`DB::transaction`）。
 
-### 機能要件 — UserStatusLog（履歴モデル）
+### 機能要件 — UserStatusLog と UserStatusChangeService
 
-- **REQ-user-management-060**: The system shall ULID 主キー / `user_id`（`users.id` FK、`cascadeOnDelete` なし — 履歴は User の物理削除で消えない設計だが、Certify は soft delete のみで物理削除を行わないため実害なし）/ `changed_by_user_id`（`users.id` FK、nullable、NULL は **システム自動変更** を意味する）/ `status`（`UserStatus` Enum string cast）/ `changed_at` datetime / `changed_reason` string nullable（最大 200 文字）/ timestamps を備えた `user_status_logs` テーブルを提供する。**soft delete は採用しない**（履歴は不可逆）。
-- **REQ-user-management-061**: The system shall `user_status_logs.user_id`、`user_status_logs.changed_by_user_id`、`user_status_logs.changed_at` に各々 INDEX を付与する。
-- **REQ-user-management-062**: The system shall `UserStatusLog` モデルに `belongsTo(User::class, 'user_id')`（変更対象）と `belongsTo(User::class, 'changed_by_user_id', 'changedBy')`（変更者）の 2 リレーションを定義し、`changedBy` リレーションは `withTrashed()` を含めて soft delete 済 admin も解決可能にする。
+- **REQ-user-management-070**: The system shall `UserStatusLog` テーブルを提供する: ULID 主キー / `user_id` ULID FK / **`event_type` `UserStatusEventType` enum**（2026-05-16 追加、`UserPlanLog.event_type` とフォーマット統一、現時点では `status_change` の 1 値固定で将来拡張可）/ `from_status` `UserStatus` enum（**4 値**、v3）/ `to_status` `UserStatus` enum（**4 値**、v3）/ `changed_by_user_id` ULID FK nullable（システム自動変更時 NULL）/ `changed_reason` text nullable / `changed_at` datetime / timestamps。`(user_id, changed_at)` 複合 INDEX、`(event_type, changed_at)` 複合 INDEX（将来の event_type 拡張時のクエリ高速化）。
+- **REQ-user-management-070b**: The system shall `App\Enums\UserStatusEventType` enum を提供する（`StatusChange = 'status_change'` の 1 値、`label()` で日本語ラベル「ステータス変更」を返す）。
+- **REQ-user-management-071**: The system shall ステータス変化を伴う全 Action（[[auth]] の `IssueInvitationAction` / `OnboardAction` / `ExpireInvitationsAction` / `RevokeInvitationAction`、本 Feature の `WithdrawAction`、[[plan-management]] の `GraduateExpiredUsersAction`（v3 新規））が本 Service を経由して `UserStatusLog` を記録する設計とする。**`User.status` の UPDATE と `UserStatusLog` の INSERT は同一トランザクション内** で行うことを呼び出し側 Action が保証する。
+- **REQ-user-management-072**: The system shall `UserStatusChangeService::record(User $user, UserStatus $newStatus, ?User $changedBy, ?string $reason): UserStatusLog` シグネチャを提供する。本 Service は内部で `event_type = UserStatusEventType::StatusChange` を自動挿入する（呼出側は event_type を意識しない設計、`UserPlanLog` とフォーマット統一）。将来 `event_type` を拡張する場合は本メソッドの引数追加か新規 method `recordEvent(User, UserStatusEventType, ...)` を追加して対応する。
 
-### 機能要件 — UserStatusChangeService（共通エントリポイント）
+### 機能要件 — 認可
 
-- **REQ-user-management-070**: The system shall `record(User $user, UserStatus $newStatus, ?User $changedBy, ?string $reason = null): UserStatusLog` を提供する。
-- **REQ-user-management-071**: The system shall ステータス変化を伴う全 Action（[[auth]] の `IssueInvitationAction` / `OnboardAction` / `ExpireInvitationsAction` / `RevokeInvitationAction`、本 Feature の `WithdrawAction`、[[settings-profile]] の `SelfWithdrawAction`）が本 Service を経由して `UserStatusLog` を記録する設計とする。**`User.status` の UPDATE と `UserStatusLog` の INSERT は同一トランザクション内** で行うことを呼び出し側 Action が保証する。
-- **REQ-user-management-072**: The system shall `record` の引数 `$newStatus` を呼び出し側に **更新後の値を渡す責任** を持たせる。`$user->status` を Service 内で書き換えない（呼び出し側 Action が `User::update(['status' => ...])` した後で Service を呼ぶ）。
-- **REQ-user-management-073**: When `$changedBy === null` で記録された場合, the `changed_by_user_id` shall NULL となり、ビュー / Resource 上の actor 名は **「システム」** と表示される。Schedule Command（[[auth]] の `invitations:expire` 等）からの呼出を想定。
-
-### 機能要件 — 認可（Policy + Middleware）
-
-- **REQ-user-management-080**: The system shall すべての `/admin/users/*` および `/admin/invitations/*` ルートを `auth` + `role:admin` Middleware で保護する。
-- **REQ-user-management-081**: The system shall `UserPolicy` で `viewAny` / `view` / `update` / `updateRole` / `withdraw` を実装し、admin のみ true を返す。`update` / `updateRole` / `withdraw` は自分自身対象でも true を返し、**自己操作禁止は Action 内のドメイン例外で表現** する（「権限の有無」と「業務制約」を分離するため）。
-- **REQ-user-management-082**: The system shall `InvitationPolicy::create` / `revoke`（[[auth]] 既存）を引き続き admin のみ true で利用する。
-- **REQ-user-management-083**: If coach / student が `/admin/users/*` にアクセスした場合, then the system shall `EnsureUserRole` Middleware で HTTP 403 を返す。
+- **REQ-user-management-080**: The system shall `/admin/users/*` ルートに `auth + role:admin` Middleware を適用する。
+- **REQ-user-management-081**: The system shall `UserPolicy::view / withdraw / extendCourse / grantMeetingQuota`（v3 新規 2 つ追加）を admin のみ true で実装する。**`update`（プロフィール編集）/ `updateRole`（ロール変更）は本 Feature で提供しない**（v3 撤回）。
 
 ### 非機能要件
 
-- **NFR-user-management-001**: The system shall 状態変更を伴うすべての Action（`UpdateAction` / `UpdateRoleAction` / `WithdrawAction`、および本 Feature 経由で呼ばれる [[auth]] / [[settings-profile]] の Action）を `DB::transaction()` で囲む。
-- **NFR-user-management-002**: The system shall 一覧の検索・フィルタ・ページネーションを **SQL レベル** で実行する。Eloquent クエリの `where` / `orderBy` / `paginate` を使い、全件取得後のコレクション操作は禁止。
-- **NFR-user-management-003**: The system shall `users.name` と `users.email` の部分一致検索を LIKE で実装する。FULLTEXT 化は本 Feature ではスコープ外。
-- **NFR-user-management-004**: The system shall ドメイン例外を `app/Exceptions/UserManagement/` 配下に独立クラスとして配置する（`SelfRoleChangeForbiddenException` / `SelfWithdrawForbiddenException` / `UserAlreadyWithdrawnException`）。
-- **NFR-user-management-005**: The system shall `UserStatusChangeService` を **single-responsibility（記録のみ）** とし、User の状態を書き換えない / Notification を送らない。状態変化と通知は呼び出し側 Action の責務とする。
-- **NFR-user-management-006**: The system shall 全 admin 操作画面を `layouts.app` 上で描画し、Wave 0b の Design System コンポーネント（`<x-button>` / `<x-form.*>` / `<x-modal>` / `<x-alert>` / `<x-card>` / `<x-badge>`）を再利用する。
+- **NFR-user-management-001**: The system shall 状態変更を伴うすべての Action（`WithdrawAction`、および本 Feature 経由で呼ばれる [[auth]] / [[plan-management]] / [[meeting-quota]] の Action）を `DB::transaction()` で囲む。**`UpdateAction` / `UpdateRoleAction` は提供しない**（v3 撤回）。
+- **NFR-user-management-002**: The system shall N+1 を避けるため `with(['plan', 'enrollments.certification', 'invitations'])` Eager Loading を使用する。
+- **NFR-user-management-003**: The system shall ドメイン例外を `app/Exceptions/UserManagement/` 配下に配置する: `LastAdminWithdrawException`（409）/ `UserAlreadyWithdrawnException`（409）。
 
 ## スコープ外
 
-- **自己プロフィール編集 / 自己退会**（[[settings-profile]]）— 本 Feature は admin → 他者のみ
-- **物理削除（force delete）** — soft delete + email リネームのみ採用（[[auth]] / `tech.md` 「SoftDeletes 採用」方針）
-- **ロール変更履歴の独立テーブル化** — `UserStatusLog` は status 専用、ロール変更履歴は教育PJスコープ外
-- **`withdrawn → active` 復活フロー** — state diagram の終端、再招待は別 Invitation として新規発行（同 user_id を維持する [[auth]] `IssueInvitationAction(force=true)` も `invited` 状態の User のみ対象）
-- **バルク操作（一括招待 / 一括退会 / 一括ロール変更）** — 教育PJスコープ外
-- **CSV エクスポート / インポート** — `product.md` スコープ外
-- **招待履歴の全 User 横断ビュー** — 個別 User 詳細でのみ閲覧、運用拡張範囲
-- **メール変更時の確認フロー**（旧 email 通知 + 新 email 確認リンク）— admin が直接変更（self-service は [[settings-profile]] スコープ）
-- **ロール変更時の旧ロール固有データのクリーンアップ**（例: coach → student で担当資格を解除）— 関連 Feature（[[certification-management]]）が後続対応
+- **プロフィール編集（admin → 他者）**（v3 で撤回） — 本人が [[settings-profile]] で行う
+- **ロール変更（admin → 他者）**（v3 で撤回） — メールアドレス / ロール変更が必要な場合は退会 + 再招待
+- 自己プロフィール編集 / 自己退会（[[settings-profile]]）— v3 で自己退会動線も撤回
+- 招待 / Invitation モデル / `IssueInvitationAction` の実装本体（[[auth]]）
+- `Plan` モデル / `ExtendCourseAction` の実装本体（[[plan-management]]）
+- `MeetingQuotaTransaction` / `AdminGrantQuotaAction` の実装本体（[[meeting-quota]]）
+- 2FA / IP制限 / ログイン履歴の詳細管理
+- `withdrawn → in_progress` 復活フロー — state diagram の終端、再招待は別 Invitation として新規発行
 
 ## 関連 Feature
 
 - **依存元**（本 Feature を利用する）:
   - [[auth]]: `IssueInvitationAction` / `OnboardAction` / `ExpireInvitationsAction` / `RevokeInvitationAction` が本 Feature の `UserStatusChangeService::record` を呼ぶ
-  - [[settings-profile]]: 自己退会 Action が本 Feature の `UserStatusChangeService::record` を呼ぶ
-  - [[dashboard]]: admin ダッシュボードから本 Feature の一覧 / 詳細へ遷移
 - **依存先**（本 Feature が前提とする）:
-  - [[auth]]: `User` / `Invitation` モデル、`UserStatus` / `UserRole` / `InvitationStatus` Enum、`IssueInvitationAction` / `RevokeInvitationAction` Action、`EnsureUserRole` Middleware
-  - [[enrollment]]: ユーザー詳細画面で `Enrollment` 概要を表示するため `Enrollment` モデルを Read-only で参照
+  - [[auth]]: `User` / `Invitation` モデル、`UserStatus`（v3 で 4 値化） / `UserRole` / `InvitationStatus` Enum、`IssueInvitationAction(Plan $plan, ...)` / `RevokeInvitationAction` Action、`EnsureUserRole` Middleware
+  - **[[plan-management]]**: `Plan` Model（招待モーダル / プラン延長モーダル）/ `ExtendCourseAction` / `UserPlanLog`（v3 新規）
+  - **[[meeting-quota]]**: `MeetingQuotaService::remaining`（プラン情報パネル表示）/ `AdminGrantQuotaAction`（面談回数手動付与、v3 新規）

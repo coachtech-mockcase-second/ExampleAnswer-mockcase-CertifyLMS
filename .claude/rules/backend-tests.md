@@ -94,3 +94,52 @@ class UpdateTest extends TestCase
 - 他リソース非影響を `assertDatabaseHas` で別レコードも確認（必要に応じて）
 - ロール別テストは `User::factory()->admin()` / `coach()` / `student()` ステートで切替
 - Factory に `state()` を充実させる
+
+## Feature(Http) と Feature(UseCases) の責務分離
+
+`tests/Feature/Http/{Entity}/{Action}Test.php` と `tests/Feature/UseCases/{Entity}/{Action}ActionTest.php` は **役割を分離** する。両方を書く Action もあるが、書く内容は重複させない。
+
+### Feature(Http) — Controller 経由の統合テスト
+
+**対象**: HTTP リクエスト → 認可 → FormRequest バリデーション → Action 呼出 → リダイレクト / ビュー描画 / DB 反映の一連の流れ。
+
+**書く内容**:
+- 認可漏れの検証（他ロール / 他人リソース / 未ログインで 403 / 404 / 302）
+- FormRequest バリデーション失敗（必須項目欠落 / 型不一致 / Enum 値外）の HTTP レスポンス
+- 正常系の **代表 1-2 ケース**（status code + `assertDatabaseHas` で DB 反映確認 + redirect 先確認）
+- Flash メッセージ / リダイレクト先 / ビューデータの確認
+- CSRF / Middleware（`auth` / `role:student` / `EnsureActiveLearning` 等）の効きを検証
+
+### Feature(UseCases) — Action 単体の業務ロジックテスト
+
+**対象**: HTTP 文脈を介さず、Action を直接 `__invoke()` した時の業務ロジック動作。
+
+**書く内容**:
+- 複雑な業務分岐の網羅（例: `IssueInvitationAction` の「新規」「既存 invited + pending」「既存 invited + force=true」「既存 active」の 4 分岐）
+- 例外パスの検証（独自例外が正しく throw されるか、各分岐ごとに）
+- DB トランザクション原子性（途中で例外発生時に部分書込が残らないこと）
+- 副作用検証（Mail / Notification / Schedule Command 起動 / 外部 Service 呼出）
+- 冪等性（同条件で 2 回呼んだ時の挙動）
+- DB スナップショット（Action 前後で関係テーブルの状態が想定通り）
+
+### 棲み分けの判断軸
+
+| シナリオの性質 | Feature(Http) | Feature(UseCases) |
+|---|---|---|
+| 認可漏れ（他者 403 等） | ✅ | ❌（Action は HTTP 認可を持たない） |
+| FormRequest バリデーション失敗 | ✅ | ❌（Action は validated array を受け取るだけ） |
+| 正常系 1 ケース（status + DB + redirect） | ✅ | （複雑なら ✅、単純なら不要） |
+| 業務分岐の網羅 | ❌（Http で書くと冗長） | ✅ |
+| 例外パスの細かい検証 | ❌（代表 1 ケースを Http で）| ✅ |
+| 副作用検証（Mail / Notification 等） | （HTTP 経由で 1 ケース） | ✅（細かいケース別検証） |
+| DB トランザクション原子性 | ❌ | ✅ |
+
+### 簡易ケースで UseCases テストを省略する判断
+
+Action が単純（1-2 行で `Model::create()` を呼ぶだけ 等）の場合、`tests/Feature/UseCases/` は **書かなくてよい**。`tests/Feature/Http/` の代表 1 ケースで DB 反映を確認すれば十分。
+
+書くべき判断軸: **業務分岐が 2 つ以上 / 例外パスが 2 つ以上 / 副作用が複数（DB + Mail + Notification 等）** のいずれかを満たす場合、`tests/Feature/UseCases/` を書く。
+
+### 二重で書かない原則
+
+「正常系の status code + DB 反映確認」を **両方に書くのは禁止**（DRY 違反）。Feature(Http) で書いたら Feature(UseCases) では別の業務分岐 / 例外パスを検証する役割に絞る。

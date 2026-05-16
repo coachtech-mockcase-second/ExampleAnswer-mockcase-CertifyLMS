@@ -157,6 +157,28 @@ specs/{name}/
 └── spec.json           # 任意：メタデータ（status, priority, depends_on 等）
 ```
 
+### spec 名と app/ ディレクトリの対応規則
+
+spec ディレクトリは **kebab-case**、app/ 配下のディレクトリは **PascalCase** で対応させる。
+
+| spec ディレクトリ | 対応する app/ ディレクトリ | 補足 |
+|---|---|---|
+| `docs/specs/auth/` | `app/UseCases/Auth/` | 単一 Entity 対応 |
+| `docs/specs/user-management/` | `app/UseCases/User/` + `app/UseCases/Invitation/` | 1 Feature が複数 Entity を持つケース |
+| `docs/specs/certification-management/` | `app/UseCases/Certification/` + `app/UseCases/Certificate/` | 同上 |
+| `docs/specs/content-management/` | `app/UseCases/Section/` / `Chapter/` / `Part/` / `Question/` / `QuestionCategory/` / `SectionImage/` | 教材階層の Entity 群 |
+| `docs/specs/quiz-answering/` | `app/UseCases/SectionQuiz/` / `SectionQuestionAnswer/` / `WeakDrill/` / `QuizHistory/` / `QuizStats/` | 複数 UseCase 群 |
+| `docs/specs/mock-exam/` | `app/UseCases/MockExam/` / `MockExamSession/` | 同上 |
+| `docs/specs/plan-management/` | `app/UseCases/Plan/` | 単一 |
+| `docs/specs/meeting-quota/` | `app/UseCases/MeetingQuota/` | 単一 |
+
+**変換ルール**:
+- Feature 名（kebab-case）はドメイン領域を表す。**spec のフォルダ名 = Feature 名**
+- app/ 配下の Entity ディレクトリ名（PascalCase）は **Model 名と完全一致**させる（例: `App\Models\Certification` ↔ `app/UseCases/Certification/`）
+- 1 Feature が複数 Entity を持つ場合、Feature 内に対応する複数の `app/UseCases/{Entity}/` を配置（user-management が User と Invitation を持つ等）
+- `app/Models/` / `app/Http/Controllers/` / `app/Policies/` / `app/Http/Requests/` / `tests/Feature/Http/` / `tests/Feature/UseCases/` も同じ PascalCase Entity 名で配置（Laravel 標準慣習に揃える）
+- ハイフン区切り → PascalCase 変換: `user-management` → `UserManagement`、`mock-exam` → `MockExam`、`plan-management` → `PlanManagement`、`meeting-quota` → `MeetingQuota`
+
 ### 新規ページの原則
 
 - 新規機能ページは **自己完結** とし、既存ページから参照を持たせない

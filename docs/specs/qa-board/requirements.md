@@ -1,5 +1,10 @@
 # qa-board 要件定義
 
+> **v3 改修反映**（2026-05-16）:
+> - `User.status = active` → `UserStatus::InProgress` に統一（v3 で enum 拡張）
+> - 全 student / coach ルートに **`EnsureActiveLearning` Middleware** 追加（graduated 受講生をブロック）
+> - `QaReplyCreatedNotification` → **`QaReplyReceivedNotification`** に rename（[[notification]] spec と統一）
+
 ## 概要
 
 受講生・コーチが資格別に技術質問を **公開で** 投稿・回答する Q&A 掲示板。1on1 の [[chat]] と異なり、回答が他受講生にも参照される **集合知型** の相談導線。`QaThread`（質問スレッド）と `QaReply`（回答）の 2 エンティティで構成し、テキストのみ（添付ファイル非対応）。スレッドは `Certification` に必須紐付け、`Section` / `Question` への紐付けは持たない。
@@ -78,7 +83,7 @@
 - **REQ-qa-board-062**: If admin が回答投稿しようとした場合, then the system shall HTTP 403 を返す（admin は閲覧 + 削除のみ、回答は持たない）。
 - **REQ-qa-board-063**: If `body` が 5000 文字を超える / 空文字 / 全角空白のみの場合, then the system shall HTTP 422 を返す。
 - **REQ-qa-board-064**: When 回答投稿が成功する, the system shall `qa_replies` に `qa_thread_id` / `user_id = 投稿者.id` / `body` を INSERT し、`/qa-board/{thread}#reply-{ulid}` に redirect して flash success を表示する。
-- **REQ-qa-board-065**: When 回答投稿が成功し、かつ **回答者がスレッド投稿者と異なる** 場合, the system shall `QaReplyCreatedNotification` を `database` + `mail` channel でスレッド投稿者に送る。自己回答（回答者 = 投稿者）は通知対象外。
+- **REQ-qa-board-065**: When 回答投稿が成功し、かつ **回答者がスレッド投稿者と異なる** 場合, the system shall **`QaReplyReceivedNotification`**（v3 で `QaReplyCreatedNotification` から rename、[[notification]] spec と統一）を `database` + `mail` channel でスレッド投稿者に送る。自己回答（回答者 = 投稿者）は通知対象外。
 
 ### 機能要件 — 回答編集
 
@@ -160,10 +165,10 @@
 ## 関連 Feature
 
 - **依存先**（本 Feature が前提とする）
-  - [[auth]] — `User` モデル + `UserRole` Enum + `User.status = active` 前提
+  - [[auth]] — `User` モデル + `UserRole` Enum + `UserStatus::InProgress` 前提（v3 で `active` → `InProgress` rename）+ **`EnsureActiveLearning` Middleware**（v3 新規、graduated 受講生をロック）
   - [[certification-management]] — `Certification` モデル + `Certification.status` Enum（`published` フィルタ）+ `CertificationCoachAssignment`（コーチ担当資格の検証）
   - [[notification]] — `database` + `mail` channel 固定送信の通知配信基盤（`NotifyQaReplyReceivedAction` ラッパー + `QaReplyReceivedNotification` クラス本体を所有）
 
 - **依存元**（本 Feature を利用する）
   - [[dashboard]] — coach ダッシュボードの「未対応 Q&A」カウント / リンク（本 Feature の `SidebarBadgeComposer` 集計を共有）
-  - [[notification]] — `QaReplyCreatedNotification` を本 Feature が dispatch する起点になる
+  - [[notification]] — **`QaReplyReceivedNotification`**（v3 rename）を本 Feature が dispatch する起点になる

@@ -44,7 +44,7 @@ sequenceDiagram
     RA->>DB: BEGIN
     RA->>DB: INSERT qa_replies
     alt $replier.id != $thread.user_id
-        RA->>Notif: thread.user->notify(QaReplyCreatedNotification)
+        RA->>Notif: thread.user->notify(QaReplyReceivedNotification)
         Notif->>DB: INSERT notifications (database channel)
         Notif->>Author: Mail (mail channel, 設定 ON の場合)
     end
@@ -582,22 +582,24 @@ XSS 防御: 本文 / 回答の表示は `{!! nl2br(e($thread->body)) !!}` パタ
 
 ```php
 Route::middleware('auth')->group(function () {
-    // student / coach 公開エンドポイント
-    Route::get('/qa-board', [QaThreadController::class, 'index'])->name('qa-board.index');
-    Route::get('/qa-board/create', [QaThreadController::class, 'create'])->name('qa-board.create');
-    Route::post('/qa-board', [QaThreadController::class, 'store'])->name('qa-board.store');
-    Route::get('/qa-board/{thread}', [QaThreadController::class, 'show'])->name('qa-board.show');
-    Route::get('/qa-board/{thread}/edit', [QaThreadController::class, 'edit'])->name('qa-board.edit');
-    Route::patch('/qa-board/{thread}', [QaThreadController::class, 'update'])->name('qa-board.update');
-    Route::delete('/qa-board/{thread}', [QaThreadController::class, 'destroy'])->name('qa-board.destroy');
-    Route::post('/qa-board/{thread}/resolve', [QaThreadController::class, 'resolve'])->name('qa-board.resolve');
-    Route::post('/qa-board/{thread}/unresolve', [QaThreadController::class, 'unresolve'])->name('qa-board.unresolve');
+    // student / coach 公開エンドポイント（v3 で EnsureActiveLearning 追加、graduated 受講生をブロック、coach は status 常に in_progress なので影響なし）
+    Route::middleware(EnsureActiveLearning::class)->group(function () {
+        Route::get('/qa-board', [QaThreadController::class, 'index'])->name('qa-board.index');
+        Route::get('/qa-board/create', [QaThreadController::class, 'create'])->name('qa-board.create');
+        Route::post('/qa-board', [QaThreadController::class, 'store'])->name('qa-board.store');
+        Route::get('/qa-board/{thread}', [QaThreadController::class, 'show'])->name('qa-board.show');
+        Route::get('/qa-board/{thread}/edit', [QaThreadController::class, 'edit'])->name('qa-board.edit');
+        Route::patch('/qa-board/{thread}', [QaThreadController::class, 'update'])->name('qa-board.update');
+        Route::delete('/qa-board/{thread}', [QaThreadController::class, 'destroy'])->name('qa-board.destroy');
+        Route::post('/qa-board/{thread}/resolve', [QaThreadController::class, 'resolve'])->name('qa-board.resolve');
+        Route::post('/qa-board/{thread}/unresolve', [QaThreadController::class, 'unresolve'])->name('qa-board.unresolve');
 
-    Route::post('/qa-board/{thread}/replies', [QaReplyController::class, 'store'])->name('qa-board.replies.store');
-    Route::patch('/qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'update'])->name('qa-board.replies.update');
-    Route::delete('/qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'destroy'])->name('qa-board.replies.destroy');
+        Route::post('/qa-board/{thread}/replies', [QaReplyController::class, 'store'])->name('qa-board.replies.store');
+        Route::patch('/qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'update'])->name('qa-board.replies.update');
+        Route::delete('/qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'destroy'])->name('qa-board.replies.destroy');
+    });
 
-    // admin モデレーション
+    // admin モデレーション（EnsureActiveLearning 不要、admin は status 制約なし）
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('/qa-board', [Admin\QaThreadController::class, 'index'])->name('qa-board.index');
         Route::get('/qa-board/{thread}', [Admin\QaThreadController::class, 'show'])->name('qa-board.show')->withTrashed();
@@ -643,12 +645,12 @@ Route::middleware('auth')->group(function () {
 | REQ-qa-board-030 〜 037 | `app/Http/Controllers/QaThreadController::index` / `app/Http/Controllers/QaThreadController::show` / `app/Http/Controllers/Admin/QaThreadController::index` / `app/UseCases/QaThread/IndexAction` / `app/UseCases/QaThread/ShowAction` / `app/UseCases/AdminQaThread/IndexAction` / `app/Policies/QaThreadPolicy::viewAny` / `app/Policies/QaThreadPolicy::view` / `resources/views/qa-board/index.blade.php` / `resources/views/qa-board/show.blade.php` |
 | REQ-qa-board-040 〜 044 | `app/Http/Controllers/QaThreadController::edit` / `app/Http/Controllers/QaThreadController::update` / `app/Http/Requests/QaThread/UpdateRequest` / `app/UseCases/QaThread/UpdateAction` / `app/Policies/QaThreadPolicy::update` / `resources/views/qa-board/edit.blade.php` |
 | REQ-qa-board-050 〜 054 | `app/Http/Controllers/QaThreadController::destroy` / `app/Http/Controllers/Admin/QaThreadController::destroy` / `app/UseCases/QaThread/DestroyAction` / `app/UseCases/AdminQaThread/DestroyAction` / `app/Policies/QaThreadPolicy::delete` / `app/Exceptions/QaBoard/QaThreadHasRepliesException` |
-| REQ-qa-board-060 〜 065 | `app/Http/Controllers/QaReplyController::store` / `app/Http/Requests/QaReply/StoreRequest` / `app/UseCases/QaReply/StoreAction` / `app/Policies/QaReplyPolicy::create` / `app/Notifications/QaReplyCreatedNotification` |
+| REQ-qa-board-060 〜 065 | `app/Http/Controllers/QaReplyController::store` / `app/Http/Requests/QaReply/StoreRequest` / `app/UseCases/QaReply/StoreAction` / `app/Policies/QaReplyPolicy::create` / **`app/Notifications/QaReplyReceivedNotification`**（v3 rename） |
 | REQ-qa-board-070 〜 073 | `app/Http/Controllers/QaReplyController::update` / `app/Http/Requests/QaReply/UpdateRequest` / `app/UseCases/QaReply/UpdateAction` / `app/Policies/QaReplyPolicy::update` |
 | REQ-qa-board-080 〜 084 | `app/Http/Controllers/QaReplyController::destroy` / `app/Http/Controllers/Admin/QaReplyController::destroy` / `app/UseCases/QaReply/DestroyAction` / `app/UseCases/AdminQaReply/DestroyAction` / `app/Policies/QaReplyPolicy::delete` |
 | REQ-qa-board-090 〜 094 | `app/Http/Controllers/QaThreadController::resolve` / `app/Http/Controllers/QaThreadController::unresolve` / `app/UseCases/QaThread/ResolveAction` / `app/UseCases/QaThread/UnresolveAction` / `app/Policies/QaThreadPolicy::resolve` / `app/Policies/QaThreadPolicy::unresolve` / `app/Exceptions/QaBoard/QaThreadAlreadyResolvedException` / `app/Exceptions/QaBoard/QaThreadNotResolvedException` |
 | REQ-qa-board-100 〜 105 | `app/Http/Requests/QaThread/IndexRequest` / `app/UseCases/QaThread/IndexAction`（フィルタ + LIKE 検索）/ `resources/views/qa-board/_filter.blade.php` |
-| REQ-qa-board-110 〜 113 | `app/Notifications/QaReplyCreatedNotification`（`via` / `toMail` / `toDatabase`）/ `app/UseCases/QaReply/StoreAction`（dispatch 条件）|
+| REQ-qa-board-110 〜 113 | **`app/Notifications/QaReplyReceivedNotification`**（v3 rename、`via` / `toMail` / `toDatabase`）/ `app/UseCases/QaReply/StoreAction`（dispatch 条件）|
 | REQ-qa-board-120 〜 122 | `app/View/Composers/SidebarBadgeComposer`（coach 分岐に未回答件数集計を追加）/ `resources/views/layouts/_partials/sidebar-coach.blade.php` |
 | REQ-qa-board-130 〜 133 | `app/Http/Controllers/Admin/QaThreadController` / `app/Http/Controllers/Admin/QaReplyController` / `app/UseCases/AdminQaThread/IndexAction` / `ShowAction` / `DestroyAction` / `app/UseCases/AdminQaReply/DestroyAction` / `resources/views/admin/qa-board/index.blade.php` / `resources/views/admin/qa-board/show.blade.php` |
 | NFR-qa-board-001 | 各 Action 内の `DB::transaction(function () { ... })` |

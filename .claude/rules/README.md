@@ -16,6 +16,7 @@
 | Policy で認可ルール定義 | `backend-policies.md` |
 | Feature/Unit テスト作成 | `backend-tests.md` |
 | ドメイン例外定義 | `backend-exceptions.md` |
+| 型宣言 / DocBlock / `declare(strict_types=1)` / `readonly` の使い方 | `backend-types-and-docblocks.md` |
 | Blade テンプレート / 共通コンポーネント API 参照 | `frontend-blade.md` |
 | サイドバー構造 / ロール共通画面責務 / Wave 0a/0b プロセス / デザイントークン要件 | `frontend-ui-foundation.md` |
 | 素のJS（タイマー / fetch 等）実装 | `frontend-javascript.md` |
