@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Enums\InvitationStatus;
@@ -15,10 +17,10 @@ class InvitationPolicyTest extends TestCase
 
     private function policy(): InvitationPolicy
     {
-        return new InvitationPolicy();
+        return new InvitationPolicy;
     }
 
-    public function test_admin_can_create_viewAny_revoke(): void
+    public function test_admin_can_create_view_any_revoke(): void
     {
         $admin = User::factory()->admin()->create();
         $user = User::factory()->invited()->create();
@@ -30,7 +32,7 @@ class InvitationPolicyTest extends TestCase
         $this->assertTrue($this->policy()->revoke($admin, $pending));
     }
 
-    public function test_coach_and_student_cannot_create_viewAny_revoke(): void
+    public function test_coach_and_student_cannot_create_view_any_revoke(): void
     {
         $admin = User::factory()->admin()->create();
         $coach = User::factory()->coach()->create();

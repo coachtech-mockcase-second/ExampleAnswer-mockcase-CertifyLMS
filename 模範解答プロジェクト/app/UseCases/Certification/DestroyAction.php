@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Certification;
 
 use App\Enums\CertificationStatus;
@@ -12,7 +14,7 @@ class DestroyAction
     public function __invoke(Certification $certification): void
     {
         if ($certification->status !== CertificationStatus::Draft) {
-            throw new CertificationNotDeletableException();
+            throw new CertificationNotDeletableException;
         }
 
         DB::transaction(fn () => $certification->delete());

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\QuestionCategory;
 
 use App\Exceptions\Content\QuestionCategoryInUseException;
@@ -11,7 +13,7 @@ class DestroyAction
     public function __invoke(QuestionCategory $category): void
     {
         if ($category->questions()->exists()) {
-            throw new QuestionCategoryInUseException();
+            throw new QuestionCategoryInUseException;
         }
 
         DB::transaction(fn () => $category->delete());

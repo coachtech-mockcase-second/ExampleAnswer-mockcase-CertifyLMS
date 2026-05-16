@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Auth;
 
 use App\Enums\InvitationStatus;
@@ -8,13 +10,15 @@ use App\Exceptions\Auth\InvitationNotPendingException;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Services\UserStatusChangeService;
+use App\Services\UserWithdrawalService;
 use Illuminate\Support\Facades\DB;
 
 class RevokeInvitationAction
 {
-    public function __construct(private UserStatusChangeService $statusChanger)
-    {
-    }
+    public function __construct(
+        private readonly UserStatusChangeService $statusChanger,
+        private readonly UserWithdrawalService $withdrawalService,
+    ) {}
 
     /**
      * pending Invitation を revoke する。
@@ -22,7 +26,7 @@ class RevokeInvitationAction
      * - $cascadeWithdrawUser=true（admin 完全取消、デフォルト）: User を invited→withdrawn + soft delete + email リネーム + UserStatusLog 記録
      * - $cascadeWithdrawUser=false（IssueInvitationAction(force=true) からの内部呼出）: Invitation のみ revoke、User は invited のまま継続、UserStatusLog 記録なし
      *
-     * @param  ?User  $admin  操作者。null ならシステム自動相当として UserStatusLog に記録される（$cascadeWithdrawUser=true の場合のみ意味あり）
+     * @param ?User $admin 操作者。null ならシステム自動相当として UserStatusLog に記録される（$cascadeWithdrawUser=true の場合のみ意味あり）
      */
     public function __invoke(
         Invitation $invitation,
@@ -31,7 +35,7 @@ class RevokeInvitationAction
     ): void {
         DB::transaction(function () use ($invitation, $admin, $cascadeWithdrawUser) {
             if ($invitation->status !== InvitationStatus::Pending) {
-                throw new InvitationNotPendingException();
+                throw new InvitationNotPendingException;
             }
 
             $invitation->forceFill([
@@ -49,7 +53,7 @@ class RevokeInvitationAction
                 return;
             }
 
-            $user->withdraw();
+            $this->withdrawalService->withdraw($user);
 
             $this->statusChanger->record(
                 $user,

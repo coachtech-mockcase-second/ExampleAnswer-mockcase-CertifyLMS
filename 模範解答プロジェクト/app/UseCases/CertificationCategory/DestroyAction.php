@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\CertificationCategory;
 
 use App\Exceptions\Certification\CertificationCategoryInUseException;
@@ -11,7 +13,7 @@ class DestroyAction
     public function __invoke(CertificationCategory $category): void
     {
         if ($category->certifications()->exists()) {
-            throw new CertificationCategoryInUseException();
+            throw new CertificationCategoryInUseException;
         }
 
         DB::transaction(fn () => $category->delete());

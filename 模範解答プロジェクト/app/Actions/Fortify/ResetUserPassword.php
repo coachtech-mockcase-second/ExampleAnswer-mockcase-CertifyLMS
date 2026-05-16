@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Fortify;
 
 use App\Models\User;
@@ -8,6 +10,12 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
 
+/**
+ * Fortify 公式パターンの Action（`Laravel\Fortify\Contracts\ResetsUserPasswords` 実装）。
+ * **本プロジェクトの `App\UseCases\{Entity}\{Action}Action` とは別物**で、Fortify 固有のパスワードリセットフローから呼ばれる例外領域。
+ *
+ * 詳細は `.claude/rules/backend-usecases.md` の「Fortify Action と UseCase Action の名前空間衝突」セクション参照。
+ */
 class ResetUserPassword implements ResetsUserPasswords
 {
     use PasswordValidationRules;
@@ -15,7 +23,7 @@ class ResetUserPassword implements ResetsUserPasswords
     /**
      * Validate and reset the user's forgotten password.
      *
-     * @param  array<string, string>  $input
+     * @param array<string, string> $input
      *
      * @throws ValidationException
      */

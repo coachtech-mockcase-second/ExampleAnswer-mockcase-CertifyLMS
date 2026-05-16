@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use App\Models\Certificate;
@@ -16,7 +18,7 @@ class CertificateSerialNumberServiceTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-05-14 10:00:00'));
 
-        $serial = (new CertificateSerialNumberService())->generate();
+        $serial = (new CertificateSerialNumberService)->generate();
 
         $this->assertSame('CT-202605-00001', $serial);
     }
@@ -27,7 +29,7 @@ class CertificateSerialNumberServiceTest extends TestCase
 
         Certificate::factory()->withSerial('CT-202605-00042')->create();
 
-        $serial = (new CertificateSerialNumberService())->generate();
+        $serial = (new CertificateSerialNumberService)->generate();
 
         $this->assertSame('CT-202605-00043', $serial);
     }
@@ -39,7 +41,7 @@ class CertificateSerialNumberServiceTest extends TestCase
 
         Carbon::setTestNow(Carbon::parse('2026-06-01 00:00:01'));
 
-        $serial = (new CertificateSerialNumberService())->generate();
+        $serial = (new CertificateSerialNumberService)->generate();
 
         $this->assertSame('CT-202606-00001', $serial);
     }
@@ -50,7 +52,7 @@ class CertificateSerialNumberServiceTest extends TestCase
 
         Certificate::factory()->withSerial('CT-202605-00007')->create();
 
-        $serial = (new CertificateSerialNumberService())->generate();
+        $serial = (new CertificateSerialNumberService)->generate();
 
         $this->assertSame('CT-202605-00008', $serial);
         $this->assertMatchesRegularExpression('/^CT-\d{6}-\d{5}$/', $serial);

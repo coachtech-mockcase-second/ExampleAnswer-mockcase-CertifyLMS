@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Http\Admin\Question;
 
 use App\Models\Certification;
 use App\Models\Question;
-use App\Models\QuestionCategory;
 use App\Models\QuestionOption;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

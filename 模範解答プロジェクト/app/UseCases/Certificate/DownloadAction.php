@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Certificate;
 
 use App\Exceptions\Certification\CertificatePdfNotFoundException;
@@ -14,7 +16,7 @@ class DownloadAction
         $disk = Storage::disk('private');
 
         if (! $disk->exists($certificate->pdf_path)) {
-            throw new CertificatePdfNotFoundException();
+            throw new CertificatePdfNotFoundException;
         }
 
         return $disk->download(

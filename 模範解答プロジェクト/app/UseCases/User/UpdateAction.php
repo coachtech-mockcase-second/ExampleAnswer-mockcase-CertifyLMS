@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\User;
 
 use App\Enums\UserStatus;
@@ -12,7 +14,7 @@ class UpdateAction
     public function __invoke(User $user, array $validated): User
     {
         if ($user->status === UserStatus::Withdrawn) {
-            throw new UserAlreadyWithdrawnException();
+            throw new UserAlreadyWithdrawnException;
         }
 
         return DB::transaction(function () use ($user, $validated) {

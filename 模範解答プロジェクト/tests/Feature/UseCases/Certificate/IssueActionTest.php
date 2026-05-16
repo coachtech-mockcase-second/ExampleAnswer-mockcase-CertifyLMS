@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\UseCases\Certificate;
 
 use App\Enums\EnrollmentStatus;
+use App\Exceptions\Certification\CertificatePdfGenerationFailedException;
 use App\Exceptions\Certification\EnrollmentNotPassedException;
 use App\Models\Certificate;
 use App\Models\Enrollment;
 use App\Models\User;
-use App\Services\CertificatePdfGenerator;
+use App\Services\CertificatePdfService;
 use App\UseCases\Certificate\IssueAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -95,14 +98,41 @@ class IssueActionTest extends TestCase
         $admin = User::factory()->admin()->create();
         $enrollment = Enrollment::factory()->passed()->create();
 
-        $pdfMock = Mockery::mock(CertificatePdfGenerator::class);
+        $pdfMock = Mockery::mock(CertificatePdfService::class);
         $pdfMock->shouldReceive('generate')->once();
-        $this->app->instance(CertificatePdfGenerator::class, $pdfMock);
+        $this->app->instance(CertificatePdfService::class, $pdfMock);
 
         $action = $this->app->make(IssueAction::class);
         $action($enrollment, $admin);
         $action($enrollment, $admin);
 
         $this->addToAssertionCount(1);
+    }
+
+    public function test_rolls_back_certificate_and_deletes_pdf_on_pdf_generation_failure(): void
+    {
+        Storage::fake('private');
+
+        $admin = User::factory()->admin()->create();
+        $enrollment = Enrollment::factory()->passed()->create();
+
+        // PDF 生成が例外を投げるようモック（P1-8 検証、2026-05-16）
+        $pdfMock = Mockery::mock(CertificatePdfService::class);
+        $pdfMock->shouldReceive('generate')->once()->andThrow(new \RuntimeException('forced PDF failure'));
+        $this->app->instance(CertificatePdfService::class, $pdfMock);
+
+        $this->expectException(CertificatePdfGenerationFailedException::class);
+
+        try {
+            $action = $this->app->make(IssueAction::class);
+            $action($enrollment, $admin);
+        } finally {
+            // Certificate INSERT が DB::transaction で ROLLBACK されている
+            $this->assertSame(0, Certificate::query()->where('enrollment_id', $enrollment->id)->count());
+            // Storage に部分書き込みされた可能性のある PDF も削除されている（Storage::fake では assertMissing で検証）
+            // pdf_path は ROLLBACK 後参照不可なので glob で確認
+            $remaining = Storage::disk('private')->allFiles('certificates');
+            $this->assertEmpty($remaining, 'PDF orphan file should be cleaned up on rollback');
+        }
     }
 }

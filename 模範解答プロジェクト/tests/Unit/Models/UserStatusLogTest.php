@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Models;
 
 use App\Enums\UserStatus;
 use App\Models\User;
 use App\Models\UserStatusLog;
+use App\Services\UserWithdrawalService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -37,7 +41,7 @@ class UserStatusLogTest extends TestCase
         ]);
 
         // 操作者（admin）を soft delete
-        $admin->withdraw();
+        app(UserWithdrawalService::class)->withdraw($admin);
 
         // changedBy リレーションは withTrashed で解決可能
         $resolved = $log->fresh()->changedBy;
@@ -76,6 +80,6 @@ class UserStatusLogTest extends TestCase
             'changed_at' => '2026-05-01 12:00:00',
         ]);
 
-        $this->assertInstanceOf(\Carbon\Carbon::class, $log->changed_at);
+        $this->assertInstanceOf(Carbon::class, $log->changed_at);
     }
 }

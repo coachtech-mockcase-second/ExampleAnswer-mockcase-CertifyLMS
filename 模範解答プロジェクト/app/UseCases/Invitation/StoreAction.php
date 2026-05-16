@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Invitation;
 
 use App\Enums\UserRole;
@@ -9,9 +11,7 @@ use App\UseCases\Auth\IssueInvitationAction;
 
 class StoreAction
 {
-    public function __construct(private IssueInvitationAction $issue)
-    {
-    }
+    public function __construct(private readonly IssueInvitationAction $issue) {}
 
     public function __invoke(string $email, UserRole $role, User $admin): Invitation
     {

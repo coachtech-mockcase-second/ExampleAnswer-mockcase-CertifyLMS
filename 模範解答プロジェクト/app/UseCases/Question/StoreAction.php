@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Question;
 
 use App\Enums\ContentStatus;
@@ -22,7 +24,7 @@ class StoreAction
         if ($sectionId !== null && $sectionId !== '') {
             $section = Section::with('chapter.part')->findOrFail($sectionId);
             if ($section->chapter->part->certification_id !== $certification->id) {
-                throw new QuestionCertificationMismatchException();
+                throw new QuestionCertificationMismatchException;
             }
         } else {
             $sectionId = null;
@@ -30,13 +32,13 @@ class StoreAction
 
         $category = QuestionCategory::find($validated['category_id'] ?? null);
         if ($category === null || $category->certification_id !== $certification->id) {
-            throw new QuestionCategoryMismatchException();
+            throw new QuestionCategoryMismatchException;
         }
 
         $options = $validated['options'] ?? [];
         $correctCount = collect($options)->where('is_correct', true)->count();
         if ($correctCount !== 1) {
-            throw new QuestionInvalidOptionsException();
+            throw new QuestionInvalidOptionsException;
         }
 
         return DB::transaction(function () use ($certification, $validated, $options, $sectionId) {

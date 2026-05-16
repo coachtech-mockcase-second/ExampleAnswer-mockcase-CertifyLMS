@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Auth;
 
 use App\Enums\InvitationStatus;
@@ -17,10 +19,9 @@ use Illuminate\Support\Facades\Mail;
 class IssueInvitationAction
 {
     public function __construct(
-        private UserStatusChangeService $statusChanger,
-        private RevokeInvitationAction $revokeInvitation,
-    ) {
-    }
+        private readonly UserStatusChangeService $statusChanger,
+        private readonly RevokeInvitationAction $revokeInvitation,
+    ) {}
 
     /**
      * 招待を発行する。
@@ -44,7 +45,7 @@ class IssueInvitationAction
                 ->first();
 
             if ($activeUser !== null) {
-                throw new EmailAlreadyRegisteredException();
+                throw new EmailAlreadyRegisteredException;
             }
 
             $invitedUser = User::where('email', $email)
@@ -59,7 +60,7 @@ class IssueInvitationAction
 
                 if ($pendingInvitation !== null) {
                     if (! $force) {
-                        throw new PendingInvitationAlreadyExistsException();
+                        throw new PendingInvitationAlreadyExistsException;
                     }
 
                     // force=true: 旧 pending を revoke（cascade なし、UserStatusLog 記録なし）

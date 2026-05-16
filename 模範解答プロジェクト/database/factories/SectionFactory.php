@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\ContentStatus;
@@ -20,7 +22,7 @@ class SectionFactory extends Factory
             'chapter_id' => Chapter::factory(),
             'title' => fake()->sentence(3),
             'description' => fake()->optional()->sentence(),
-            'body' => "## ".fake()->sentence()."\n\n".fake()->paragraph()."\n\n```\n".fake()->word()."\n```",
+            'body' => '## '.fake()->sentence()."\n\n".fake()->paragraph()."\n\n```\n".fake()->word()."\n```",
             'order' => fake()->numberBetween(1, 99),
             'status' => ContentStatus::Draft->value,
             'published_at' => null,

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Section;
 
 use App\Exceptions\Content\ContentReorderInvalidException;
@@ -11,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class ReorderAction
 {
     /**
-     * @param  string[]  $orderedIds
+     * @param string[] $orderedIds
      */
     public function __invoke(Chapter $chapter, User $actor, array $orderedIds): void
     {
@@ -21,7 +23,7 @@ class ReorderAction
             || count(array_diff($existing, $orderedIds)) > 0
             || count($orderedIds) !== count(array_unique($orderedIds))
         ) {
-            throw new ContentReorderInvalidException();
+            throw new ContentReorderInvalidException;
         }
 
         DB::transaction(function () use ($chapter, $orderedIds) {

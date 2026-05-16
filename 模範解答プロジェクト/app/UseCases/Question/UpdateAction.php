@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Question;
 
 use App\Exceptions\Content\QuestionCategoryMismatchException;
@@ -23,7 +25,7 @@ class UpdateAction
         if ($newSectionId !== null && $newSectionId !== $question->section_id) {
             $section = Section::with('chapter.part')->findOrFail($newSectionId);
             if ($section->chapter->part->certification_id !== $question->certification_id) {
-                throw new QuestionCertificationMismatchException();
+                throw new QuestionCertificationMismatchException;
             }
         }
 
@@ -32,14 +34,14 @@ class UpdateAction
         ) {
             $category = QuestionCategory::find($validated['category_id']);
             if ($category === null || $category->certification_id !== $question->certification_id) {
-                throw new QuestionCategoryMismatchException();
+                throw new QuestionCategoryMismatchException;
             }
         }
 
         if (array_key_exists('options', $validated)) {
             $correctCount = collect($validated['options'])->where('is_correct', true)->count();
             if ($correctCount !== 1) {
-                throw new QuestionInvalidOptionsException();
+                throw new QuestionInvalidOptionsException;
             }
         }
 

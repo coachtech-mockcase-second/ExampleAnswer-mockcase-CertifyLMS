@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Models;
 
 use App\Models\Certification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CertificationScopesTest extends TestCase
@@ -31,7 +34,7 @@ class CertificationScopesTest extends TestCase
         $assigned = Certification::factory()->published()->create();
         $assigned->coaches()->syncWithoutDetaching([
             $coach->id => [
-                'id' => (string) \Illuminate\Support\Str::ulid(),
+                'id' => (string) Str::ulid(),
                 'assigned_by_user_id' => User::factory()->admin()->create()->id,
                 'assigned_at' => now(),
             ],
@@ -40,7 +43,7 @@ class CertificationScopesTest extends TestCase
         $notAssigned = Certification::factory()->published()->create();
         $notAssigned->coaches()->syncWithoutDetaching([
             $otherCoach->id => [
-                'id' => (string) \Illuminate\Support\Str::ulid(),
+                'id' => (string) Str::ulid(),
                 'assigned_by_user_id' => User::factory()->admin()->create()->id,
                 'assigned_at' => now(),
             ],

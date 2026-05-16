@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use League\CommonMark\Environment\Environment;
@@ -26,8 +28,8 @@ class MarkdownRenderingService
             ],
         ]);
 
-        $environment->addExtension(new CommonMarkCoreExtension());
-        $environment->addExtension(new TableExtension());
+        $environment->addExtension(new CommonMarkCoreExtension);
+        $environment->addExtension(new TableExtension);
 
         $this->converter = new MarkdownConverter($environment);
     }

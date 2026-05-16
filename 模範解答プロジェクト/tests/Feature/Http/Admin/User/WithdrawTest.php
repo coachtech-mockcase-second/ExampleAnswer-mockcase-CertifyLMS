@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Http\Admin\User;
 
 use App\Enums\UserStatus;
 use App\Models\User;
-use App\Models\UserStatusLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

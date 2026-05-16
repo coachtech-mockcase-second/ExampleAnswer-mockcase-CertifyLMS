@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CertificationCoachAssignment\StoreRequest;
 use App\Models\Certification;
+use App\Models\CertificationCoachAssignment;
 use App\Models\User;
 use App\UseCases\CertificationCoachAssignment\DestroyAction;
 use App\UseCases\CertificationCoachAssignment\StoreAction;
@@ -24,7 +27,7 @@ class CertificationCoachAssignmentController extends Controller
 
     public function destroy(Certification $certification, User $user, DestroyAction $action): RedirectResponse
     {
-        $this->authorize('delete', \App\Models\CertificationCoachAssignment::class);
+        $this->authorize('delete', CertificationCoachAssignment::class);
 
         $action($certification, $user);
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Http\Admin\SectionImage;
 
 use App\Models\Certification;

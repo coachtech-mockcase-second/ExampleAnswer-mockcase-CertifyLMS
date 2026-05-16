@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Middleware;
 
 use App\Http\Middleware\EnsureUserRole;
@@ -19,7 +21,7 @@ class EnsureUserRoleTest extends TestCase
         $request = Request::create('/admin/users');
         $request->setUserResolver(fn () => $admin);
 
-        $middleware = new EnsureUserRole();
+        $middleware = new EnsureUserRole;
         $response = $middleware->handle($request, fn () => response('OK'), 'admin');
 
         $this->assertSame('OK', $response->getContent());
@@ -31,7 +33,7 @@ class EnsureUserRoleTest extends TestCase
         $request = Request::create('/admin/users');
         $request->setUserResolver(fn () => $coach);
 
-        $middleware = new EnsureUserRole();
+        $middleware = new EnsureUserRole;
         $response = $middleware->handle($request, fn () => response('OK'), 'admin', 'coach');
 
         $this->assertSame('OK', $response->getContent());
@@ -43,7 +45,7 @@ class EnsureUserRoleTest extends TestCase
         $request = Request::create('/admin/users');
         $request->setUserResolver(fn () => $student);
 
-        $middleware = new EnsureUserRole();
+        $middleware = new EnsureUserRole;
 
         try {
             $middleware->handle($request, fn () => response('OK'), 'admin');
@@ -58,7 +60,7 @@ class EnsureUserRoleTest extends TestCase
         $request = Request::create('/admin/users');
         $request->setUserResolver(fn () => null);
 
-        $middleware = new EnsureUserRole();
+        $middleware = new EnsureUserRole;
 
         try {
             $middleware->handle($request, fn () => response('OK'), 'admin');

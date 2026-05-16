@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Models\CertificationCategory;
@@ -16,7 +18,7 @@ class CertificationCategoryPolicyTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $category = CertificationCategory::factory()->create();
-        $policy = new CertificationCategoryPolicy();
+        $policy = new CertificationCategoryPolicy;
 
         $this->assertTrue($policy->viewAny($admin));
         $this->assertTrue($policy->create($admin));
@@ -29,7 +31,7 @@ class CertificationCategoryPolicyTest extends TestCase
         $coach = User::factory()->coach()->create();
         $student = User::factory()->student()->create();
         $category = CertificationCategory::factory()->create();
-        $policy = new CertificationCategoryPolicy();
+        $policy = new CertificationCategoryPolicy;
 
         foreach ([$coach, $student] as $user) {
             $this->assertFalse($policy->viewAny($user));

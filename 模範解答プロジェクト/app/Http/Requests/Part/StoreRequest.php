@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Part;
 
 use App\Models\Certification;
+use App\Models\Part;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRequest extends FormRequest
@@ -12,7 +15,7 @@ class StoreRequest extends FormRequest
         $certification = $this->route('certification');
 
         return $certification instanceof Certification
-            && ($this->user()?->can('create', [\App\Models\Part::class, $certification]) ?? false);
+            && ($this->user()?->can('create', [Part::class, $certification]) ?? false);
     }
 
     public function rules(): array

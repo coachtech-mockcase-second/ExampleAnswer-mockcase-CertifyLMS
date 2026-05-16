@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use App\Models\Certificate;
-use App\Services\CertificatePdfGenerator;
+use App\Services\CertificatePdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-class CertificatePdfGeneratorTest extends TestCase
+class CertificatePdfServiceTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -21,7 +23,7 @@ class CertificatePdfGeneratorTest extends TestCase
             'pdf_path' => 'certificates/test.pdf',
         ]);
 
-        (new CertificatePdfGenerator())->generate($certificate);
+        (new CertificatePdfService)->generate($certificate);
 
         Storage::disk('private')->assertExists('certificates/test.pdf');
     }
@@ -32,7 +34,7 @@ class CertificatePdfGeneratorTest extends TestCase
 
         $certificate = Certificate::factory()->create();
 
-        (new CertificatePdfGenerator())->generate($certificate);
+        (new CertificatePdfService)->generate($certificate);
 
         // PDF binary should be non-empty
         $content = Storage::disk('private')->get($certificate->pdf_path);

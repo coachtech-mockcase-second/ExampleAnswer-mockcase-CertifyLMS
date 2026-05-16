@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\UseCases\Certification;
 
 use App\Enums\CertificationStatus;
@@ -19,7 +21,7 @@ class PublishActionTest extends TestCase
         $admin = User::factory()->admin()->create();
         $cert = Certification::factory()->draft()->create();
 
-        $result = (new PublishAction())($cert, $admin);
+        $result = (new PublishAction)($cert, $admin);
 
         $this->assertSame(CertificationStatus::Published, $result->status);
         $this->assertNotNull($result->published_at);
@@ -33,7 +35,7 @@ class PublishActionTest extends TestCase
 
         $this->expectException(CertificationInvalidTransitionException::class);
 
-        (new PublishAction())($cert, $admin);
+        (new PublishAction)($cert, $admin);
     }
 
     public function test_throws_when_archived(): void
@@ -43,6 +45,6 @@ class PublishActionTest extends TestCase
 
         $this->expectException(CertificationInvalidTransitionException::class);
 
-        (new PublishAction())($cert, $admin);
+        (new PublishAction)($cert, $admin);
     }
 }

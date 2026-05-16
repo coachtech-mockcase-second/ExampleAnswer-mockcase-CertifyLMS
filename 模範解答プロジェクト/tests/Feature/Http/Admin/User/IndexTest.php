@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Http\Admin\User;
 
 use App\Enums\UserStatus;
 use App\Models\User;
+use App\Services\UserWithdrawalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -87,14 +90,14 @@ class IndexTest extends TestCase
         $admin = User::factory()->admin()->create();
         $active = User::factory()->create(['email' => 'active@example.test']);
         $gone = User::factory()->create(['email' => 'gone@example.test']);
-        $gone->withdraw();
+        app(UserWithdrawalService::class)->withdraw($gone);
 
         $response = $this->actingAs($admin)->get(route('admin.users.index'));
 
         $response->assertOk();
         $response->assertSee('active@example.test');
         $response->assertDontSee('gone@example.test');
-        // After withdraw(), the email is renamed to {ulid}@deleted.invalid
+        // UserWithdrawalService 経由で email が {ulid}@deleted.invalid にリネームされる
         $response->assertDontSee($gone->fresh()->email);
     }
 
@@ -103,7 +106,7 @@ class IndexTest extends TestCase
         $admin = User::factory()->admin()->create();
         User::factory()->create(['email' => 'active@example.test']);
         $gone = User::factory()->create(['email' => 'gone@example.test']);
-        $gone->withdraw();
+        app(UserWithdrawalService::class)->withdraw($gone);
         $renamedEmail = $gone->fresh()->email;
 
         $response = $this->actingAs($admin)->get(route('admin.users.index', ['status' => 'withdrawn']));

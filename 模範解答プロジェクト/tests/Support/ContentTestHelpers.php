@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Support;
 
 use App\Models\Certification;
@@ -8,6 +10,7 @@ use App\Models\Part;
 use App\Models\QuestionCategory;
 use App\Models\Section;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 trait ContentTestHelpers
 {
@@ -16,7 +19,7 @@ trait ContentTestHelpers
         $admin = $admin ?? User::factory()->admin()->create();
 
         $certification->coaches()->attach($coach->id, [
-            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'id' => (string) Str::ulid(),
             'assigned_by_user_id' => $admin->id,
             'assigned_at' => now(),
         ]);

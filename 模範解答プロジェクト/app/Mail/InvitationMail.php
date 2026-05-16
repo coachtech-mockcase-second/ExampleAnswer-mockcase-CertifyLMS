@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use App\Models\Invitation;
@@ -14,9 +16,7 @@ class InvitationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Invitation $invitation)
-    {
-    }
+    public function __construct(public Invitation $invitation) {}
 
     public function envelope(): Envelope
     {

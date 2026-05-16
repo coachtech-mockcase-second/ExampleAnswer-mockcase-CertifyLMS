@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Question;
 
 use App\Exceptions\Content\QuestionInUseException;
@@ -16,7 +18,7 @@ class DestroyAction
                 ->where('question_id', $question->id)
                 ->exists();
             if ($inUse) {
-                throw new QuestionInUseException();
+                throw new QuestionInUseException;
             }
         }
 

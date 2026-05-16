@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\CertificationCatalog;
 
 use App\Enums\EnrollmentStatus;
@@ -11,7 +13,8 @@ use Illuminate\Database\Eloquent\Collection;
 class IndexAction
 {
     /**
-     * @param  array{category_id?: string|null, difficulty?: string|null, tab?: string|null}  $filter
+     * @param array{category_id?: string|null, difficulty?: string|null, tab?: string|null} $filter
+     *
      * @return array{catalog: Collection, enrolled: Collection, enrolled_ids: \Illuminate\Support\Collection}
      */
     public function __invoke(User $student, array $filter): array

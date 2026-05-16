@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\UseCases\Certification;
 
 use App\Exceptions\Certification\CertificationNotDeletableException;
@@ -16,7 +18,7 @@ class DestroyActionTest extends TestCase
     {
         $cert = Certification::factory()->draft()->create();
 
-        (new DestroyAction())($cert);
+        (new DestroyAction)($cert);
 
         $this->assertSoftDeleted('certifications', ['id' => $cert->id]);
     }
@@ -27,7 +29,7 @@ class DestroyActionTest extends TestCase
 
         $this->expectException(CertificationNotDeletableException::class);
 
-        (new DestroyAction())($cert);
+        (new DestroyAction)($cert);
     }
 
     public function test_throws_when_archived(): void
@@ -36,6 +38,6 @@ class DestroyActionTest extends TestCase
 
         $this->expectException(CertificationNotDeletableException::class);
 
-        (new DestroyAction())($cert);
+        (new DestroyAction)($cert);
     }
 }

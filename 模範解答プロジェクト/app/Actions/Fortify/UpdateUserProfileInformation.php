@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Fortify;
 
 use App\Models\User;
@@ -9,12 +11,18 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 
+/**
+ * Fortify 公式パターンの Action（`Laravel\Fortify\Contracts\UpdatesUserProfileInformation` 実装）。
+ * **本プロジェクトの `App\UseCases\{Entity}\{Action}Action` とは別物**で、Fortify 固有のプロフィール更新フローから呼ばれる例外領域。
+ *
+ * 詳細は `.claude/rules/backend-usecases.md` の「Fortify Action と UseCase Action の名前空間衝突」セクション参照。
+ */
 class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {
     /**
      * Validate and update the given user's profile information.
      *
-     * @param  array<string, string>  $input
+     * @param array<string, string> $input
      *
      * @throws ValidationException
      */
@@ -46,7 +54,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     /**
      * Update the given verified user's profile information.
      *
-     * @param  array<string, string>  $input
+     * @param array<string, string> $input
      */
     protected function updateVerifiedUser(User $user, array $input): void
     {

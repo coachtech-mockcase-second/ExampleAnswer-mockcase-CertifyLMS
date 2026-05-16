@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Models\Certificate;
@@ -16,7 +18,7 @@ class CertificatePolicyTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $certificate = Certificate::factory()->create();
-        $policy = new CertificatePolicy();
+        $policy = new CertificatePolicy;
 
         $this->assertTrue($policy->view($admin, $certificate));
         $this->assertTrue($policy->download($admin, $certificate));
@@ -26,7 +28,7 @@ class CertificatePolicyTest extends TestCase
     {
         $student = User::factory()->student()->create();
         $certificate = Certificate::factory()->for($student)->create();
-        $policy = new CertificatePolicy();
+        $policy = new CertificatePolicy;
 
         $this->assertTrue($policy->view($student, $certificate));
         $this->assertTrue($policy->download($student, $certificate));
@@ -37,7 +39,7 @@ class CertificatePolicyTest extends TestCase
         $owner = User::factory()->student()->create();
         $stranger = User::factory()->student()->create();
         $certificate = Certificate::factory()->for($owner)->create();
-        $policy = new CertificatePolicy();
+        $policy = new CertificatePolicy;
 
         $this->assertFalse($policy->view($stranger, $certificate));
         $this->assertFalse($policy->download($stranger, $certificate));

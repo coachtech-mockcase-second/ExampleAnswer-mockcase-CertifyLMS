@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\User;
 
 use App\Enums\UserRole;
@@ -14,11 +16,11 @@ class UpdateRoleAction
     public function __invoke(User $user, UserRole $newRole, User $admin): User
     {
         if ($user->is($admin)) {
-            throw new SelfRoleChangeForbiddenException();
+            throw new SelfRoleChangeForbiddenException;
         }
 
         if ($user->status === UserStatus::Withdrawn) {
-            throw new UserAlreadyWithdrawnException();
+            throw new UserAlreadyWithdrawnException;
         }
 
         return DB::transaction(function () use ($user, $newRole) {

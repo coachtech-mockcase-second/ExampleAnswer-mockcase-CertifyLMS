@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\UserRole;
@@ -12,11 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, HasUlids, Notifiable, SoftDeletes;
+    use HasFactory, HasUlids, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -88,19 +89,9 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    /**
-     * email を `{ulid}@deleted.invalid` 形式へリネーム + status=withdrawn + soft delete を 1 操作で行う。
-     * UserStatusLog 記録は呼び出し側 Action の責務（同一トランザクション内で呼ぶこと）。
-     */
-    public function withdraw(): void
-    {
-        $this->forceFill([
-            'email' => $this->id.'@deleted.invalid',
-            'status' => UserStatus::Withdrawn,
-        ])->save();
-
-        $this->delete();
-    }
+    // 旧 withdraw() メソッドは 2026-05-16 に削除（P1-4 対応）。
+    // email リネーム + status 更新 + soft delete のドメインロジックは App\Services\UserWithdrawalService に集約。
+    // 呼出側 Action（WithdrawAction / RevokeInvitationAction / ExpireInvitationsAction）が DI で UserWithdrawalService を受けて呼ぶ。
 
     public function sendPasswordResetNotification($token): void
     {

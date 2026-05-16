@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Auth;
 
 use App\Enums\InvitationStatus;
@@ -14,14 +16,12 @@ use Illuminate\Support\Facades\Hash;
 
 class OnboardAction
 {
-    public function __construct(private UserStatusChangeService $statusChanger)
-    {
-    }
+    public function __construct(private readonly UserStatusChangeService $statusChanger) {}
 
     /**
      * 招待を受領し、既存 invited User を active に遷移させ、自動ログインする。
      *
-     * @param  array{name: string, bio?: ?string, password: string}  $validated
+     * @param array{name: string, bio?: ?string, password: string} $validated
      */
     public function __invoke(Invitation $invitation, array $validated): User
     {
@@ -36,7 +36,7 @@ class OnboardAction
                 || $invitation->expires_at->isPast()
                 || $user->status !== UserStatus::Invited
             ) {
-                throw new InvalidInvitationTokenException();
+                throw new InvalidInvitationTokenException;
             }
 
             $user->forceFill([

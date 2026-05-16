@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Http\ContentSearch;
 
 use App\Models\Certification;
 use App\Models\Enrollment;
-use App\Models\Section;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\ContentTestHelpers;

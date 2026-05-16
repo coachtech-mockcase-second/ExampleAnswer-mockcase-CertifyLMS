@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Http\Admin\User;
 
 use App\Enums\UserStatus;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Models\UserStatusLog;
+use App\Services\UserWithdrawalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -33,7 +36,7 @@ class ShowTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $target = User::factory()->create(['email' => 'gone@example.test']);
-        $target->withdraw();
+        app(UserWithdrawalService::class)->withdraw($target);
         $renamed = $target->fresh()->email;
 
         $response = $this->actingAs($admin)->get(route('admin.users.show', $target));

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Models\User;
@@ -15,7 +17,7 @@ class UserPolicyTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $target = User::factory()->student()->create();
-        $policy = new UserPolicy();
+        $policy = new UserPolicy;
 
         $this->assertTrue($policy->viewAny($admin));
         $this->assertTrue($policy->view($admin, $target));
@@ -28,7 +30,7 @@ class UserPolicyTest extends TestCase
     {
         $coach = User::factory()->coach()->create();
         $target = User::factory()->student()->create();
-        $policy = new UserPolicy();
+        $policy = new UserPolicy;
 
         $this->assertFalse($policy->viewAny($coach));
         $this->assertFalse($policy->view($coach, $target));
@@ -41,7 +43,7 @@ class UserPolicyTest extends TestCase
     {
         $student = User::factory()->student()->create();
         $target = User::factory()->student()->create();
-        $policy = new UserPolicy();
+        $policy = new UserPolicy;
 
         $this->assertFalse($policy->viewAny($student));
         $this->assertFalse($policy->view($student, $target));

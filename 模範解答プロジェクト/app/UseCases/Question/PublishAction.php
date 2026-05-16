@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Question;
 
 use App\Enums\ContentStatus;
@@ -23,7 +25,7 @@ class PublishAction
 
         $options = $question->options()->get();
         if ($options->count() < 2 || $options->where('is_correct', true)->count() !== 1) {
-            throw new QuestionNotPublishableException();
+            throw new QuestionNotPublishableException;
         }
 
         return DB::transaction(function () use ($question) {

@@ -1,18 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Auth;
 
 use App\Enums\InvitationStatus;
 use App\Enums\UserStatus;
 use App\Models\Invitation;
 use App\Services\UserStatusChangeService;
+use App\Services\UserWithdrawalService;
 use Illuminate\Support\Facades\DB;
 
 class ExpireInvitationsAction
 {
-    public function __construct(private UserStatusChangeService $statusChanger)
-    {
-    }
+    public function __construct(
+        private readonly UserStatusChangeService $statusChanger,
+        private readonly UserWithdrawalService $withdrawalService,
+    ) {}
 
     /**
      * 期限切れ pending Invitation を一括 expired にし、紐付く invited User を cascade withdraw する。
@@ -31,7 +35,7 @@ class ExpireInvitationsAction
 
                 $user = $invitation->user;
                 if ($user !== null && $user->status === UserStatus::Invited) {
-                    $user->withdraw();
+                    $this->withdrawalService->withdraw($user);
                     $this->statusChanger->record(
                         $user,
                         UserStatus::Withdrawn,

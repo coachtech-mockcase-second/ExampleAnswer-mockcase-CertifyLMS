@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Models\Certification;
@@ -16,7 +18,7 @@ class CertificationPolicyTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $cert = Certification::factory()->draft()->create();
-        $policy = new CertificationPolicy();
+        $policy = new CertificationPolicy;
 
         $this->assertTrue($policy->viewAny($admin));
         $this->assertTrue($policy->view($admin, $cert));
@@ -31,7 +33,7 @@ class CertificationPolicyTest extends TestCase
     public function test_admin_can_view_draft_and_archived_certifications(): void
     {
         $admin = User::factory()->admin()->create();
-        $policy = new CertificationPolicy();
+        $policy = new CertificationPolicy;
 
         $this->assertTrue($policy->view($admin, Certification::factory()->draft()->create()));
         $this->assertTrue($policy->view($admin, Certification::factory()->archived()->create()));
@@ -45,7 +47,7 @@ class CertificationPolicyTest extends TestCase
         $draft = Certification::factory()->draft()->create();
         $published = Certification::factory()->published()->create();
         $archived = Certification::factory()->archived()->create();
-        $policy = new CertificationPolicy();
+        $policy = new CertificationPolicy;
 
         $this->assertFalse($policy->view($coach, $draft));
         $this->assertFalse($policy->view($coach, $archived));
@@ -61,7 +63,7 @@ class CertificationPolicyTest extends TestCase
         $coach = User::factory()->coach()->create();
         $student = User::factory()->student()->create();
         $cert = Certification::factory()->draft()->create();
-        $policy = new CertificationPolicy();
+        $policy = new CertificationPolicy;
 
         $this->assertFalse($policy->viewAny($coach));
         $this->assertFalse($policy->create($coach));

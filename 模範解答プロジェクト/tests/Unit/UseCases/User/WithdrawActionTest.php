@@ -1,16 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\UseCases\User;
 
 use App\Enums\UserStatus;
+use App\Exceptions\UserManagement\InvitedUserWithdrawNotAllowedException;
 use App\Exceptions\UserManagement\SelfWithdrawForbiddenException;
 use App\Exceptions\UserManagement\UserAlreadyWithdrawnException;
 use App\Models\User;
 use App\Services\UserStatusChangeService;
+use App\Services\UserWithdrawalService;
 use App\UseCases\User\WithdrawAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class WithdrawActionTest extends TestCase
@@ -36,7 +39,7 @@ class WithdrawActionTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         $target = User::factory()->create();
-        $target->withdraw();
+        app(UserWithdrawalService::class)->withdraw($target);
         $fresh = User::withTrashed()->find($target->id);
 
         $this->expectException(UserAlreadyWithdrawnException::class);
@@ -44,19 +47,18 @@ class WithdrawActionTest extends TestCase
         app(WithdrawAction::class)($fresh, $admin, '再退会');
     }
 
-    public function test_throws_http_422_for_invited_user(): void
+    public function test_throws_invited_user_withdraw_not_allowed_for_invited_user(): void
     {
         $admin = User::factory()->admin()->create();
         $invited = User::factory()->invited()->create();
 
+        $this->expectException(InvitedUserWithdrawNotAllowedException::class);
+
         try {
             app(WithdrawAction::class)($invited, $admin, 'テスト');
-            $this->fail('HttpException が throw されるはず');
-        } catch (HttpException $e) {
-            $this->assertSame(422, $e->getStatusCode());
+        } finally {
+            $this->assertNotSoftDeleted($invited);
         }
-
-        $this->assertNotSoftDeleted($invited);
     }
 
     public function test_active_user_is_withdrawn_with_email_rename_and_status_log(): void

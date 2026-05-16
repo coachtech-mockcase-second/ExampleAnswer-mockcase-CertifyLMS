@@ -1,34 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UseCases\Certificate;
 
 use App\Enums\EnrollmentStatus;
+use App\Exceptions\Certification\CertificatePdfGenerationFailedException;
 use App\Exceptions\Certification\EnrollmentNotPassedException;
 use App\Models\Certificate;
 use App\Models\Enrollment;
 use App\Models\User;
-use App\Services\CertificatePdfGenerator;
+use App\Services\CertificatePdfService;
 use App\Services\CertificateSerialNumberService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class IssueAction
 {
     public function __construct(
-        private CertificateSerialNumberService $serialService,
-        private CertificatePdfGenerator $pdfGenerator,
+        private readonly CertificateSerialNumberService $serialService,
+        private readonly CertificatePdfService $pdfService,
     ) {}
 
     /**
      * 修了証を発行する。
      * 冪等性: 同一 Enrollment で 2 回呼ばれた場合、既存 Certificate を返却し副作用なし。
      *
-     * @throws EnrollmentNotPassedException Enrollment が status=passed でない / passed_at が null
+     * @throws EnrollmentNotPassedException             Enrollment が status=passed でない / passed_at が null
+     * @throws CertificatePdfGenerationFailedException  PDF 生成中の例外を ラップして再 throw（Storage の orphan ファイルは事前削除済）
      */
     public function __invoke(Enrollment $enrollment, User $admin): Certificate
     {
         if ($enrollment->status !== EnrollmentStatus::Passed || $enrollment->passed_at === null) {
-            throw new EnrollmentNotPassedException();
+            throw new EnrollmentNotPassedException;
         }
 
         return DB::transaction(function () use ($enrollment, $admin) {
@@ -50,7 +55,15 @@ class IssueAction
                 'issued_by_user_id' => $admin->id,
             ]);
 
-            $this->pdfGenerator->generate($certificate);
+            try {
+                $this->pdfService->generate($certificate);
+            } catch (\Throwable $e) {
+                // PDF 生成失敗時の Storage rollback（P1-8、2026-05-16）:
+                // DB は DB::transaction の ROLLBACK で巻き戻るが、
+                // Storage に部分書き込みされた可能性のある PDF を明示削除し orphan ファイルを残さない
+                Storage::disk('private')->delete($certificate->pdf_path);
+                throw new CertificatePdfGenerationFailedException(previous: $e);
+            }
 
             return $certificate;
         });

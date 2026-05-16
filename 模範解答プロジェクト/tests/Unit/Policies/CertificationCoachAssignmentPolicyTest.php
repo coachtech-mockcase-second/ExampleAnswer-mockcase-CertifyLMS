@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Policies;
 
 use App\Models\User;
@@ -14,7 +16,7 @@ class CertificationCoachAssignmentPolicyTest extends TestCase
     public function test_admin_can_create_and_delete_assignments(): void
     {
         $admin = User::factory()->admin()->create();
-        $policy = new CertificationCoachAssignmentPolicy();
+        $policy = new CertificationCoachAssignmentPolicy;
 
         $this->assertTrue($policy->create($admin));
         $this->assertTrue($policy->delete($admin));
@@ -24,7 +26,7 @@ class CertificationCoachAssignmentPolicyTest extends TestCase
     {
         $coach = User::factory()->coach()->create();
         $student = User::factory()->student()->create();
-        $policy = new CertificationCoachAssignmentPolicy();
+        $policy = new CertificationCoachAssignmentPolicy;
 
         foreach ([$coach, $student] as $user) {
             $this->assertFalse($policy->create($user));
