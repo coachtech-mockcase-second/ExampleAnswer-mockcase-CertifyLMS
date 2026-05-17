@@ -17,7 +17,7 @@
 ### Enum
 
 - [ ] `App\Enums\UserRole`(`Admin` / `Coach` / `Student` + `label()`)
-- [ ] **`App\Enums\UserStatus`(v3 で 4 値化)** — `Invited` / **`InProgress`**(v3 で `Active` から rename) / **`Graduated`**(v3 新規) / `Withdrawn` + `label()` 日本語(`招待中` / `受講中` / `修了` / `退会済`)
+- [ ] **`App\Enums\UserStatus`(v3 で 4 値化)** — `Invited` / **`InProgress`**(v3 で `Active` から rename) / **`Graduated`**(v3 新規) / `Withdrawn` + `label()` 日本語(`招待中` / `受講中` / `卒業` / `退会済`)
 - [ ] `App\Enums\InvitationStatus`(`Pending` / `Accepted` / `Expired` / `Revoked` + `label()`)
 
 ### Model

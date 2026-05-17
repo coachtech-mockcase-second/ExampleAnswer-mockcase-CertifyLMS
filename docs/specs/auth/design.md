@@ -130,7 +130,7 @@ erDiagram
 | Model | Enum | 値（v3） | 日本語ラベル |
 |---|---|---|---|
 | `User.role` | `UserRole` | `Admin` / `Coach` / `Student` | `管理者` / `コーチ` / `受講生` |
-| `User.status` | `UserStatus`(v3 で 4 値化) | `Invited` / **`InProgress`** / **`Graduated`** / `Withdrawn` | `招待中` / `受講中` / `修了` / `退会済` |
+| `User.status` | `UserStatus`(v3 で 4 値化) | `Invited` / **`InProgress`** / **`Graduated`** / `Withdrawn` | `招待中` / `受講中` / `卒業` / `退会済` |
 | `Invitation.status` | `InvitationStatus` | `Pending` / `Accepted` / `Expired` / `Revoked` | `招待中` / `承諾済` / `期限切れ` / `取消済` |
 
 ## 状態遷移

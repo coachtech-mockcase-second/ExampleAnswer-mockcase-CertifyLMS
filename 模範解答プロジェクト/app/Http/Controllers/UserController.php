@@ -10,6 +10,7 @@ use App\Http\Requests\User\IndexRequest;
 use App\Http\Requests\User\UpdateRequest;
 use App\Http\Requests\User\UpdateRoleRequest;
 use App\Http\Requests\User\WithdrawRequest;
+use App\Models\Plan;
 use App\Models\User;
 use App\UseCases\User\IndexAction;
 use App\UseCases\User\ShowAction;
@@ -36,6 +37,7 @@ class UserController extends Controller
             'keyword' => $validated['keyword'] ?? '',
             'role' => $validated['role'] ?? '',
             'status' => $validated['status'] ?? '',
+            'inviteFormPlans' => Plan::query()->published()->ordered()->get(),
         ]);
     }
 

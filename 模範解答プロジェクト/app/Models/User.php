@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Notifications\Auth\ResetPasswordNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,7 @@ class User extends Authenticatable
         'plan_started_at',
         'plan_expires_at',
         'max_meetings',
+        'meeting_url',
     ];
 
     protected $hidden = [
@@ -60,36 +62,57 @@ class User extends Authenticatable
         'max_meetings' => 'integer',
     ];
 
+    /**
+     * @return HasMany<UserStatusLog, $this>
+     */
     public function statusLogs(): HasMany
     {
         return $this->hasMany(UserStatusLog::class, 'user_id');
     }
 
+    /**
+     * @return HasMany<UserStatusLog, $this>
+     */
     public function statusChanges(): HasMany
     {
         return $this->hasMany(UserStatusLog::class, 'changed_by_user_id');
     }
 
+    /**
+     * @return HasMany<Invitation, $this>
+     */
     public function invitations(): HasMany
     {
         return $this->hasMany(Invitation::class, 'user_id');
     }
 
+    /**
+     * @return HasMany<Invitation, $this>
+     */
     public function issuedInvitations(): HasMany
     {
         return $this->hasMany(Invitation::class, 'invited_by_user_id');
     }
 
+    /**
+     * @return HasMany<Enrollment, $this>
+     */
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
     }
 
+    /**
+     * @return HasMany<Certificate, $this>
+     */
     public function certificates(): HasMany
     {
         return $this->hasMany(Certificate::class);
     }
 
+    /**
+     * @return BelongsToMany<Certification, $this>
+     */
     public function assignedCertifications(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -135,8 +158,26 @@ class User extends Authenticatable
         return $this->hasMany(Payment::class);
     }
 
+    /**
+     * Laravel フレームワーク側のシグナル(`Illuminate\Foundation\Auth\User::sendPasswordResetNotification($token)`)
+     * との LSP 整合のため、引数に型宣言を付与しない(親クラスが parameter type なしで宣言しているため)。
+     *
+     * @param  string  $token  パスワードリセット用の署名付きトークン
+     */
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
+     * 受講中(in_progress) と 卒業(graduated) を「ログイン可能 = 活動アカウント」として扱うスコープ。
+     * Fortify の認証通過判定や、管理画面の active 集計に使う。
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereIn('status', [UserStatus::InProgress, UserStatus::Graduated]);
     }
 }

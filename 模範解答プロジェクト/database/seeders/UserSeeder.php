@@ -67,6 +67,7 @@ class UserSeeder extends Seeder
                 'bio' => '5 年以上のコーチング経験。基本情報・応用情報を中心に指導。',
                 'profile_setup_completed' => true,
                 'email_verified_at' => $now,
+                'meeting_url' => 'https://meet.google.com/coach-taro-room',
             ])
             ->create();
 
@@ -80,6 +81,7 @@ class UserSeeder extends Seeder
                 'bio' => 'PMP・AWS 系を中心にビジネスサイドの資格を指導。',
                 'profile_setup_completed' => true,
                 'email_verified_at' => $now,
+                'meeting_url' => 'https://meet.google.com/coach-hanako-room',
             ])
             ->create();
 

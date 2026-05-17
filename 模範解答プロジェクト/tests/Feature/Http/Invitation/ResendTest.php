@@ -9,25 +9,39 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Mail\InvitationMail;
 use App\Models\Invitation;
+use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserStatusLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
+/**
+ * 管理者の招待再送信 HTTP エンドポイント(`POST /admin/users/{user}/resend-invitation`)の Feature テスト。
+ * 旧 pending の revoke + 同 User への新 Invitation 発行 + status 不変(invited 継続)を担保する。
+ */
 class ResendTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function plan(): Plan
+    {
+        return Plan::factory()->published()->create([
+            'duration_days' => 90,
+            'default_meeting_quota' => 6,
+        ]);
+    }
 
     public function test_admin_can_resend_invitation_with_force_true(): void
     {
         Mail::fake();
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->invited()->create([
+        $plan = $this->plan();
+        $target = User::factory()->invited()->withPlan($plan)->create([
             'email' => 'pending@example.test',
             'role' => UserRole::Student->value,
         ]);
-        $oldPending = Invitation::factory()->forUser($target)->pending()->create([
+        Invitation::factory()->forUser($target)->pending()->create([
             'invited_by_user_id' => $admin->id,
         ]);
 
@@ -43,7 +57,8 @@ class ResendTest extends TestCase
     {
         Mail::fake();
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->invited()->create([
+        $plan = $this->plan();
+        $target = User::factory()->invited()->withPlan($plan)->create([
             'email' => 'pending@example.test',
             'role' => UserRole::Student->value,
         ]);
@@ -76,7 +91,8 @@ class ResendTest extends TestCase
     {
         Mail::fake();
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->invited()->create([
+        $plan = $this->plan();
+        $target = User::factory()->invited()->withPlan($plan)->create([
             'email' => 'pending@example.test',
         ]);
         Invitation::factory()->forUser($target)->pending()->create([

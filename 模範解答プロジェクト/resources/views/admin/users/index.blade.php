@@ -177,5 +177,5 @@
         </div>
     @endif
 
-    @include('admin.users._modals.invite-user-form')
+    @include('admin.users._modals.invite-user-form', ['plans' => $inviteFormPlans])
 @endsection

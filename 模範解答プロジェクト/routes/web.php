@@ -24,7 +24,6 @@ use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionImageController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Webhooks\StripeWebhookController;
-use App\Http\Middleware\EnsureActiveLearning;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -216,7 +215,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
 // ============================================================
 // 受講生専用ルート(受講中=in_progress のみ通過)
 // ============================================================
-Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])->prefix('meeting-quota')->name('meeting-quota.')->group(function () {
+Route::middleware(['auth', 'role:student', 'active-learning'])->prefix('meeting-quota')->name('meeting-quota.')->group(function () {
     // 追加面談購入動線(Stripe Checkout への遷移)
     Route::get('checkout', [MeetingQuotaCheckoutController::class, 'select'])->name('checkout.select');
     Route::post('checkout', [MeetingQuotaCheckoutController::class, 'create'])->name('checkout.create');

@@ -47,6 +47,20 @@
             placeholder="目標や学習する資格について自由に記入してください（任意）"
         />
 
+        @if ($invitation->role === \App\Enums\UserRole::Coach)
+            <x-form.input
+                name="meeting_url"
+                label="ミーティング URL"
+                type="url"
+                :value="old('meeting_url')"
+                :error="$errors->first('meeting_url')"
+                :required="true"
+                hint="受講生との面談で常用する Google Meet / Zoom 等の招待 URL"
+                placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                autocomplete="off"
+            />
+        @endif
+
         <x-form.input
             name="password"
             label="パスワード"
