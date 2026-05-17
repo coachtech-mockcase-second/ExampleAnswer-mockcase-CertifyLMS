@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * 修了証を発行するユースケース。受講生自己発火型の修了承認フロー（[[enrollment]] `ReceiveCertificateAction`）から呼び出される。
+ * 修了証を発行するユースケース。受講生自己発火型の修了処理 `\App\UseCases\Enrollment\ReceiveCertificateAction` から呼び出される。
  *
  * 業務分岐:
  * - Enrollment が `status=passed` + `passed_at != null` でない: EnrollmentNotPassedException（409）

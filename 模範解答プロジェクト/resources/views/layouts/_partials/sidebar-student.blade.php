@@ -1,8 +1,9 @@
 <x-nav.sidebar>
     <x-nav.item route="dashboard.index" icon="home" label="ダッシュボード" />
 
-    <x-nav.section title="学習" :routes="['certifications.index', 'contents.index', 'mock-exams.index']" />
+    <x-nav.section title="学習" :routes="['certifications.index', 'enrollments.index', 'contents.index', 'mock-exams.index']" />
     <x-nav.item route="certifications.index" icon="magnifying-glass" label="資格カタログ" />
+    <x-nav.item route="enrollments.index" icon="clipboard-document-list" label="受講中資格" />
     <x-nav.item route="contents.index" icon="book-open" label="教材" />
     <x-nav.item route="mock-exams.index" icon="clipboard-document-check" label="模試" :badge="$sidebarBadges['unfinishedMockExams'] ?? 0" />
 

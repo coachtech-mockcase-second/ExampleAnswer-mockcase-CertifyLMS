@@ -9,6 +9,7 @@ memo/
 
 # 一時的な design 比較スクリーンショット（Playwright で取得、Git には含めない）
 /.tmp-design-compare/
+/e2e-*.png
 
 # macOS のノイズ
 .DS_Store

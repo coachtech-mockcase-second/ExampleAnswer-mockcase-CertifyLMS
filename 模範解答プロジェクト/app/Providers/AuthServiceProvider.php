@@ -8,6 +8,9 @@ use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\CertificationCategory;
 use App\Models\Chapter;
+use App\Models\Enrollment;
+use App\Models\EnrollmentGoal;
+use App\Models\EnrollmentNote;
 use App\Models\Invitation;
 use App\Models\MeetingQuotaPlan;
 use App\Models\Part;
@@ -20,6 +23,9 @@ use App\Policies\CertificatePolicy;
 use App\Policies\CertificationCategoryPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ChapterPolicy;
+use App\Policies\EnrollmentGoalPolicy;
+use App\Policies\EnrollmentNotePolicy;
+use App\Policies\EnrollmentPolicy;
 use App\Policies\InvitationPolicy;
 use App\Policies\MeetingQuotaPlanPolicy;
 use App\Policies\MeetingQuotaPolicy;
@@ -52,6 +58,9 @@ class AuthServiceProvider extends ServiceProvider
         SectionQuestion::class => SectionQuestionPolicy::class,
         QuestionCategory::class => QuestionCategoryPolicy::class,
         MeetingQuotaPlan::class => MeetingQuotaPlanPolicy::class,
+        Enrollment::class => EnrollmentPolicy::class,
+        EnrollmentGoal::class => EnrollmentGoalPolicy::class,
+        EnrollmentNote::class => EnrollmentNotePolicy::class,
     ];
 
     /**

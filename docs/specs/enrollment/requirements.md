@@ -37,12 +37,11 @@
 - **REQ-enrollment-014**: When 受講登録が成功した直後, the system shall `EnrollmentStatusLog` に `to_status = learning` / `changed_reason = '新規登録'` を 1 件 INSERT する。担当コーチの自動設定は行わない（資格 × N コーチ N:N、`certification_coach_assignments` 経由）。
 - **REQ-enrollment-015**: When 受講生のログインユーザーが `User.status != UserStatus::InProgress` の場合, the system shall 受講登録を `EnsureActiveLearning` Middleware（[[auth]] 所有）でブロックし、HTTP 403 を返す（`graduated` ユーザーはプラン機能利用不可）。
 
-### 機能要件 — 受講登録（admin の手動割当）
+### 機能要件 — admin の Enrollment 運用
 
-- **REQ-enrollment-020**: When admin が受講生 × 資格を手動割当する, the system shall 受講生 (`user_id`) と資格 (`certification_id`) を admin が指定し、`exam_date`（任意）を入力させて Enrollment を INSERT する。
-- **REQ-enrollment-021**: If 対象受講生が `User.status != in_progress` または `User.role != student` の場合, then the system shall HTTP 422 を返す（`invited` / `graduated` / `withdrawn` の受講生には受講登録できない）。
-- **REQ-enrollment-022**: When admin が手動割当を実行した直後, the system shall `EnrollmentStatusLog` に `to_status = learning` / `changed_by_user_id = admin.id` / `changed_reason = 'admin による割当'`（または admin が入力した理由）を 1 件 INSERT する。
 - **REQ-enrollment-023**: When admin が Enrollment の `exam_date` を変更する, the system shall `status != passed` を検証し、`exam_date` のみを UPDATE する（`status` / `current_term` / `passed_at` は本操作で更新しない、各々の専用 Action 経由のみとする）。
+
+> 旧 REQ-enrollment-020 〜 022(admin による受講生 × 資格の手動割当)は撤回。受講生は自己登録で完結し、admin が代行発行する業務必要性が薄いため。admin は閲覧 / 状態強制更新(失敗マーク / 試験日変更)のみ提供する。
 
 ### 機能要件 — 受講中資格閲覧
 
@@ -92,7 +91,7 @@
 ### 機能要件 — 修了の自己完結（ReceiveCertificateAction）
 
 - **REQ-enrollment-090**: When 受講生が `/enrollments/{enrollment}/receive-certificate` POST で「修了証を受け取る」ボタンを押下する, the system shall `ReceiveCertificateAction::__invoke(Enrollment $enrollment): Certificate` を実行する。
-- **REQ-enrollment-091**: The system shall `ReceiveCertificateAction` で以下ロジックを `DB::transaction()` 内で実行する: (1) `CompletionEligibilityService::isEligible($enrollment)` を呼んで判定、不合格なら `CompletionNotEligibleException`（HTTP 409）を throw、(2) `Enrollment.status = passed` / `passed_at = now()` を UPDATE、(3) `EnrollmentStatusLog` に `from_status = learning` / `to_status = passed` / `changed_by_user_id = $student->id` / `changed_reason = '受講生による修了証受領'` を記録、(4) [[certification-management]] の `IssueCertificateAction` を呼んで `Certificate` INSERT + PDF 生成、(5) [[notification]] の `NotifyCompletionApprovedAction` を `DB::afterCommit()` で dispatch（受講生本人宛て、修了証 PDF DL リンク含む）。
+- **REQ-enrollment-091**: The system shall `ReceiveCertificateAction` で以下ロジックを `DB::transaction()` 内で実行する: (1) `CompletionEligibilityService::isEligible($enrollment)` を呼んで判定、不合格なら `CompletionNotEligibleException`（HTTP 409）を throw、(2) `Enrollment.status = passed` / `passed_at = now()` を UPDATE、(3) `EnrollmentStatusLog` に `from_status = learning` / `to_status = passed` / `changed_by_user_id = $student->id` / `changed_reason = '受講生による修了証受領'` を記録、(4) [[certification-management]] の `IssueCertificateAction` を呼んで `Certificate` INSERT + PDF 生成。修了通知 (Database channel / Mail channel) は **送らない**(受講生がボタンを押した直後の画面に PDF DL リンクが表示されるため、二重通知は冗長)。
 - **REQ-enrollment-092**: The system shall `CompletionEligibilityService::isEligible(Enrollment)` を以下ロジックで実装する: 対象 Enrollment の `certification_id` に紐付く **公開済 MockExam（`is_published = true`）の件数** と、**当該 Enrollment 配下の MockExamSession で `pass = true` かつ DISTINCT な `mock_exam_id` の件数** が一致したとき真を返す（公開模試 0 件の場合は false）。
 - **REQ-enrollment-093**: If 受講生が `status != learning` の Enrollment で `ReceiveCertificateAction` を呼んだ場合, then the system shall `EnrollmentNotLearningException`（HTTP 409）を返す。
 - **REQ-enrollment-094**: If 受講生が他者の Enrollment に対して `ReceiveCertificateAction` を呼んだ場合, then the system shall `EnrollmentPolicy::receiveCertificate` で HTTP 403 を返す。
@@ -131,6 +130,8 @@
 
 - **修了取消フロー** — 受講生が「修了証を受け取る」ボタンを押下後の取消は提供しない（Certificate 発行が伴うため運用上複雑、誤押下防止は UI 側の確認ダイアログで対応）
 - **修了申請承認フロー** — 撤回（受講生自己完結に統一、Progate 流）
+- **修了証受領時の Database / Mail 通知** — 撤回（受講生がボタンを押下した直後の画面に PDF DL リンクが表示されるため、Database 通知 + Mail 通知は冗長）
+- **admin による受講生 × 資格の手動割当** — 撤回（受講生は自己登録で完結し、admin が代行発行する業務必要性が薄い。admin は閲覧 / 状態強制更新のみ）
 - **休止（paused）** — 撤回（複数資格同時受講可モデルでは「他資格に集中」で代替可能、Plan 期間が一律に進む前提では明示的な休止状態は不要）
 - **資格非紐づきの総合目標** — 「複数資格をまたぐ生活習慣等」の総合目標は `product.md` 明示によりスコープ外。EnrollmentGoal は Enrollment 単位（資格紐づき）のみ
 - **目標テンプレートのマスタ管理** — `product.md` 明示。受講生個別の自由入力のみ
@@ -150,6 +151,5 @@
 - **依存元**（本 Feature を利用する）
   - [[learning]] — `Enrollment` をベースに `SectionProgress` / `LearningSession` を集計、`status IN (learning, passed)` で学習・閲覧許可
   - [[mock-exam]] — `MockExamSession` の状態変化時に `TermJudgementService::recalculate` を呼ぶ
-  - [[notification]] — 修了証受領時通知の dispatch 起点（`ReceiveCertificateAction` 内から呼ぶ）
   - [[dashboard]] — 受講生ダッシュボード（試験日カウントダウン / 修了証を受け取るボタン / 修了済資格セクション）/ admin ダッシュボード（KPI）/ coach ダッシュボード（担当資格受講生一覧）が本 Feature の Service 群を消費
   - [[settings-profile]] — 自己退会動線は撤回されたが、admin が退会させる際の Enrollment SoftDelete 流儀は本 Feature が担保

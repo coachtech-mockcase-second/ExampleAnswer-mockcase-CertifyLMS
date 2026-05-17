@@ -42,7 +42,6 @@ final class IndexAction
         $enrolledIds = $student->enrollments()
             ->whereIn('status', [
                 EnrollmentStatus::Learning->value,
-                EnrollmentStatus::Paused->value,
                 EnrollmentStatus::Passed->value,
                 EnrollmentStatus::Failed->value,
             ])

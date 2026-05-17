@@ -77,14 +77,12 @@ paths:
 │ ダッシュボード         [home]    │ → dashboard.index
 ├─────────────────────────────────┤
 │ 運用                            │
-│ ユーザー管理         [users]        │ → admin.users.index
-│ プラン管理      [credit-card]       │ → admin.plans.index
-│ 追加面談プラン管理 [banknotes]      │ → admin.meeting-quota-plans.index
-│ 資格マスタ管理 [academic-cap]       │ → admin.certifications.index
-│ カテゴリ管理         [tag]          │ → admin.certification-categories.index
-├─────────────────────────────────┤
-│ 承認                            │
-│ 修了申請承認 [check-badge] (N)  │ → admin.enrollments.pending
+│ ユーザー管理         [users]                       │ → admin.users.index
+│ 受講登録管理 [clipboard-document-list]             │ → admin.enrollments.index
+│ プラン管理      [credit-card]                      │ → admin.plans.index
+│ 追加面談プラン管理 [banknotes]                     │ → admin.meeting-quota-plans.index
+│ 資格マスタ管理 [academic-cap]                      │ → admin.certifications.index
+│ カテゴリ管理         [tag]                         │ → admin.certification-categories.index
 ├─────────────────────────────────┤
 │ 分析                            │
 │ 運用統計      [chart-bar]       │ → admin.stats.index
@@ -95,7 +93,32 @@ paths:
 └─────────────────────────────────┘
 ```
 
-`(N)` は通知 / 修了申請待ちの **未対応件数バッジ**（後述「サイドバー実装規約」）。
+`(N)` は通知の **未対応件数バッジ**（後述「サイドバー実装規約」）。
+
+> 旧「承認」セクションの「修了申請承認」(`admin.enrollments.pending`)は撤回（修了は受講生自己完結に統一されたため、admin が承認する画面は存在しない）。
+
+### 新規画面を追加する時のサイドバー反映チェックリスト（全ロール必須）
+
+新規 Controller / Route を増やす時は、**同セッション中に該当ロールのサイドバーへの追加も必ず行う**。URL 直打ちだけで完結する経路は導線が見えず、運用上発見されにくい。**admin だけでなく coach / student も対象**(下記の各ロール別サイドバー Blade を編集する):
+
+| ロール | 編集対象 Blade | 編集対象構造図 |
+|---|---|---|
+| admin | `resources/views/layouts/_partials/sidebar-admin.blade.php` | 上記「admin（管理者）」セクションのテキスト図 |
+| coach | `resources/views/layouts/_partials/sidebar-coach.blade.php` | 上記「coach（コーチ）」セクションのテキスト図 |
+| student | `resources/views/layouts/_partials/sidebar-student.blade.php` | 上記「student（受講生）」セクションのテキスト図 |
+
+各 ロール経路追加時の手順:
+
+1. `routes/web.php` の対象 middleware グループに新規ルートを足す
+2. 該当ロールの `sidebar-{role}.blade.php` に `<x-nav.item route="..." icon="..." label="..." />` を追加(`Route::has()` で自動ガードされるので、未実装 Feature の経路を先に書いてもエラーにはならない)
+3. `<x-nav.section :routes="[...]">` の `routes` 配列にも新規ルート名を追加（アクティブハイライトの判定対象、セクション見出しのアクティブ表現にも影響）
+4. 上記の該当ロールのテキスト図にも反映（rules と実装を整合）
+
+「Controller 増えたけどサイドバーに出てこない」は仕様忘れではなく **規約違反**として扱う(ロール問わず)。受講生 / コーチが新機能の存在を URL 直打ちでしか知れない状態は受講生体験として致命的。
+
+#### 「資格カタログから個別ページ経由でしか辿り着けない」も違反
+
+受講生サイドバーで顕在化しやすいパターン: 「`/enrollments` を作ったが、`/certifications/{id}` (個別資格カタログ) からのみ遷移できる状態にしてしまった」など、**サイドバーに表に出さず、特定の Feature からの導線でしか入れない設計**は本規約違反。受講生向けの主要動線(教材 / 受講中資格 / 模試 / 演習履歴 等)はすべてサイドバーから 1 クリックで届くようにする。
 
 ### coach（コーチ）
 
@@ -129,9 +152,10 @@ paths:
 │ ダッシュボード         [home]    │ → dashboard.index
 ├─────────────────────────────────┤
 │ 学習                            │
-│ 資格カタログ [magnifying-glass] │ → certifications.index
-│ 教材          [book-open]       │ → contents.index
-│ 模試 [clipboard-document-check] (N) │ → mock-exams.index
+│ 資格カタログ [magnifying-glass]                    │ → certifications.index
+│ 受講中資格 [clipboard-document-list]               │ → enrollments.index
+│ 教材          [book-open]                          │ → contents.index
+│ 模試 [clipboard-document-check] (N)                │ → mock-exams.index
 ├─────────────────────────────────┤
 │ 相談                            │
 │ chat (コーチへ) [chat-bubble-left-right] (N) │ → chat.index
@@ -144,6 +168,8 @@ paths:
 │ 設定          [cog]             │ → settings.profile.edit
 └─────────────────────────────────┘
 ```
+
+`受講中資格`(`/enrollments`)は登録管理(個人目標 / 修了証受領 / 受講解除 / 状態遷移履歴)の入口。資格を選んで教材を読む動線は別 Feature [[learning]] の `/learning` 配下が提供する(資格カードから Part → Chapter → Section への深掘り)。**両者は責務分離**(管理 vs 学習動線)で、受講生サイドバーには両方を独立した item として並べる。
 
 ### サイドバー実装規約
 

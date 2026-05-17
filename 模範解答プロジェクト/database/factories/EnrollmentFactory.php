@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Enums\EnrollmentStatus;
+use App\Enums\TermType;
 use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\User;
@@ -17,6 +18,9 @@ class EnrollmentFactory extends Factory
 {
     protected $model = Enrollment::class;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [
@@ -24,8 +28,7 @@ class EnrollmentFactory extends Factory
             'certification_id' => Certification::factory()->published(),
             'status' => EnrollmentStatus::Learning->value,
             'exam_date' => now()->addMonths(3)->toDateString(),
-            'current_term' => 'basic_learning',
-            'completion_requested_at' => null,
+            'current_term' => TermType::BasicLearning->value,
             'passed_at' => null,
         ];
     }
@@ -38,19 +41,11 @@ class EnrollmentFactory extends Factory
         ]);
     }
 
-    public function paused(): static
-    {
-        return $this->state(fn () => [
-            'status' => EnrollmentStatus::Paused->value,
-        ]);
-    }
-
     public function passed(): static
     {
         return $this->state(fn () => [
             'status' => EnrollmentStatus::Passed->value,
             'passed_at' => now(),
-            'completion_requested_at' => now()->subDay(),
         ]);
     }
 
@@ -58,6 +53,20 @@ class EnrollmentFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => EnrollmentStatus::Failed->value,
+        ]);
+    }
+
+    public function withoutExamDate(): static
+    {
+        return $this->state(fn () => [
+            'exam_date' => null,
+        ]);
+    }
+
+    public function mockPractice(): static
+    {
+        return $this->state(fn () => [
+            'current_term' => TermType::MockPractice->value,
         ]);
     }
 }

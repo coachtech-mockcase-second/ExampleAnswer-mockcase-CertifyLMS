@@ -7,9 +7,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * [[enrollment]] Feature の正式実装に先立つ stub。
- * [[certification-management]] が必要とする最小スキーマのみ定義する。
- * Enrollment Feature 実装時、追加カラムは別 migration（`add_*_to_enrollments_table`）で足す。
+ * 受講登録(Enrollment)の中心テーブル。
+ *
+ * 1 受講生 × 1 資格 = 1 行。assigned_coach_id は持たない(担当コーチは資格 × N コーチ N:N、
+ * certification_coach_assignments で資格経由で割当)。修了は受講生自己完結の即時 passed 遷移。
  */
 return new class extends Migration
 {
@@ -23,16 +24,19 @@ return new class extends Migration
             $table->foreignUlid('certification_id')
                 ->constrained('certifications')
                 ->restrictOnDelete();
-            $table->string('status', 20)->default('learning');
             $table->date('exam_date')->nullable();
-            $table->string('current_term', 30)->nullable();
-            $table->timestamp('completion_requested_at')->nullable();
+            $table->string('status', 20)->default('learning');
+            $table->string('current_term', 30)->default('basic_learning');
             $table->timestamp('passed_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
+            $table->unique(['user_id', 'certification_id']);
             $table->index(['user_id', 'status']);
-            $table->index('certification_id');
+            $table->index(['certification_id', 'status']);
+            // Schedule Command(enrollments:fail-expired)の高速抽出用
+            $table->index(['status', 'exam_date']);
+            $table->index('deleted_at');
         });
     }
 

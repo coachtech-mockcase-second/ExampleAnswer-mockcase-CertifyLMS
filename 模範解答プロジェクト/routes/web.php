@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AdminEnrollmentController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\CertificationCatalogController;
@@ -10,6 +11,9 @@ use App\Http\Controllers\CertificationCoachAssignmentController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\ContentSearchController;
+use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\EnrollmentGoalController;
+use App\Http\Controllers\EnrollmentNoteController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
@@ -19,6 +23,7 @@ use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlanStatusController;
 use App\Http\Controllers\QuestionCategoryController;
+use App\Http\Controllers\ReceiveCertificateController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionImageController;
 use App\Http\Controllers\SectionQuestionController;
@@ -76,6 +81,41 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
     // 教材検索(登録資格内の Published Section を全文検索)
     Route::get('contents/search', [ContentSearchController::class, 'search'])
         ->name('contents.search');
+
+    // 受講登録(受講中一覧 / 詳細 / 自己登録 / 受講解除 / 再挑戦)
+    Route::get('enrollments', [EnrollmentController::class, 'index'])->name('enrollments.index');
+    Route::get('enrollments/{enrollment}', [EnrollmentController::class, 'show'])->name('enrollments.show');
+    Route::post('enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
+    Route::delete('enrollments/{enrollment}', [EnrollmentController::class, 'destroy'])->name('enrollments.destroy');
+    Route::post('enrollments/{enrollment}/resume', [EnrollmentController::class, 'resume'])->name('enrollments.resume');
+
+    // 修了証受領(受講生自己発火、graduated は active-learning でブロックされるため新規受領不可)
+    Route::post('enrollments/{enrollment}/receive-certificate', [ReceiveCertificateController::class, 'store'])
+        ->name('enrollments.receiveCertificate');
+
+    // 個人目標(受講生本人のみ CRUD)
+    Route::post('enrollments/{enrollment}/goals', [EnrollmentGoalController::class, 'store'])
+        ->name('enrollments.goals.store');
+    Route::patch('enrollment-goals/{goal}', [EnrollmentGoalController::class, 'update'])
+        ->name('enrollment-goals.update');
+    Route::delete('enrollment-goals/{goal}', [EnrollmentGoalController::class, 'destroy'])
+        ->name('enrollment-goals.destroy');
+    Route::post('enrollment-goals/{goal}/achieve', [EnrollmentGoalController::class, 'markAchieved'])
+        ->name('enrollment-goals.markAchieved');
+    Route::delete('enrollment-goals/{goal}/achieve', [EnrollmentGoalController::class, 'unmarkAchieved'])
+        ->name('enrollment-goals.unmarkAchieved');
+});
+
+// ============================================================
+// admin + コーチ共有ルート(コーチメモ: coach は担当資格内のみ、admin は越境可)
+// ============================================================
+Route::middleware(['auth', 'role:admin,coach'])->group(function () {
+    Route::post('admin/enrollments/{enrollment}/notes', [EnrollmentNoteController::class, 'store'])
+        ->name('admin.enrollments.notes.store');
+    Route::patch('enrollment-notes/{note}', [EnrollmentNoteController::class, 'update'])
+        ->name('enrollment-notes.update');
+    Route::delete('enrollment-notes/{note}', [EnrollmentNoteController::class, 'destroy'])
+        ->name('enrollment-notes.destroy');
 });
 
 // ============================================================
@@ -140,6 +180,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->name('admin.meeting-quota-plans.archive');
     Route::post('meeting-quota-plans/{plan}/unarchive', [MeetingQuotaPlanStatusController::class, 'unarchive'])
         ->name('admin.meeting-quota-plans.unarchive');
+
+    // 受講登録管理(全件一覧 / 詳細 / 試験日変更 / 手動学習中止)。新規作成は受講生自身の自己登録のみ
+    Route::get('enrollments', [AdminEnrollmentController::class, 'index'])->name('admin.enrollments.index');
+    Route::get('enrollments/{enrollment}', [AdminEnrollmentController::class, 'show'])
+        ->withTrashed()
+        ->name('admin.enrollments.show');
+    Route::patch('enrollments/{enrollment}/exam-date', [AdminEnrollmentController::class, 'updateExamDate'])
+        ->name('admin.enrollments.updateExamDate');
+    Route::post('enrollments/{enrollment}/fail', [AdminEnrollmentController::class, 'fail'])
+        ->name('admin.enrollments.fail');
 });
 
 // ============================================================

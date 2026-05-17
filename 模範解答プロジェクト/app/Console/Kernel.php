@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        // 目標受験日超過の learning Enrollment を failed に自動遷移(他バッチと時刻被りなしで先頭起動)
+        $schedule->command('enrollments:fail-expired')->dailyAt('00:00')->withoutOverlapping(5);
+
         // 期限切れ Invitation の cascade 処理
         $schedule->command('invitations:expire')->dailyAt('00:30')->withoutOverlapping(5);
 

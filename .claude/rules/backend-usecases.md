@@ -35,6 +35,33 @@ app/UseCases/
     └── ...
 ```
 
+### Entity 配下にロール別サブディレクトリを切らない (禁止)
+
+`app/UseCases/{Entity}/` 配下に **`Admin/` / `Coach/` / `Student/` のロール別サブディレクトリを切るのは禁止**。`backend-http.md` の Controller 「ロール別 namespace 禁止」と同じ理由:
+
+- 同じ Action 名 (`StoreAction` 等) を student 用 / admin 用で分けたくなった場合は、**Entity 自体を分けるか、Action 名で意味を区別する** (例: `Enrollment\StoreAction` (student 自己登録) + `Enrollment\AssignAction` (admin 手動割当))
+- 「admin の操作だから `Admin/` フォルダに置く」発想は、後で他ロールが同操作を持った時に大規模リネームが必要になる
+- リソース固有認可の境界は Policy で表現すべきで、ファイルパスで表現しない
+
+#### ❌ 悪い (ロール別サブディレクトリ)
+
+```
+app/UseCases/Enrollment/
+├── StoreAction.php          # student 自己登録
+└── Admin/
+    └── StoreAction.php      # admin 手動割当  ← 禁止
+```
+
+#### ✅ 良い (Action 名で意味を区別)
+
+```
+app/UseCases/Enrollment/
+├── StoreAction.php          # student 自己登録
+└── AssignAction.php         # admin 手動割当 (Controller method 名と一致)
+```
+
+Controller 側も `EnrollmentController::store()` (student) と `AdminEnrollmentController::assign()` (admin) のように method 名で対称性を保つ。
+
 ## 命名規則
 
 ### 大原則: **Controller メソッド名 = Action クラス名（PascalCase化）**
