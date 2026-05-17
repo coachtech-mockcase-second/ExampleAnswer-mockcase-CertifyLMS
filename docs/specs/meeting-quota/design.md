@@ -161,41 +161,51 @@ class GrantInitialQuotaAction
 
 ### ConsumeQuotaAction(mentoring の `Meeting\StoreAction` から呼ばれる)
 
-```php
-class ConsumeQuotaAction
-{
-    public function __construct(private MeetingQuotaService $service) {}
+`Meeting` Model は [[mentoring]] Feature 所有で、本 Feature の Migration 時点では `meetings` テーブル未作成。よって `Meeting` Object ではなく ULID 文字列 (`string $meetingId`) で受け取る(FK 制約は別 Migration で後付け)。同時消費 race を直列化するため `DB::transaction` + `User::lockForUpdate` を内部に持つ。
 
-    public function __invoke(User $user, Meeting $meeting): MeetingQuotaTransaction
+```php
+final class ConsumeQuotaAction
+{
+    public function __construct(private readonly MeetingQuotaService $service) {}
+
+    public function __invoke(User $user, string $meetingId): MeetingQuotaTransaction
     {
-        if ($this->service->remaining($user) < 1) {
-            throw new InsufficientMeetingQuotaException();
-        }
-        return MeetingQuotaTransaction::create([
-            'user_id' => $user->id,
-            'type' => MeetingQuotaTransactionType::Consumed,
-            'amount' => -1,
-            'related_meeting_id' => $meeting->id,
-            'occurred_at' => now(),
-        ]);
+        return DB::transaction(function () use ($user, $meetingId) {
+            // 同一受講生の同時消費を直列化(TOCTOU 防止)
+            User::query()->whereKey($user->id)->lockForUpdate()->first();
+
+            if ($this->service->remaining($user) < 1) {
+                throw new InsufficientMeetingQuotaException();
+            }
+
+            return MeetingQuotaTransaction::create([
+                'user_id' => $user->id,
+                'type' => MeetingQuotaTransactionType::Consumed,
+                'amount' => -1,
+                'related_meeting_id' => $meetingId,
+                'occurred_at' => now(),
+            ]);
+        });
     }
 }
 ```
 
 ### RefundQuotaAction(mentoring の `Meeting\CancelAction` から呼ばれる)
 
+`Meeting` Model 未実装の物理制約により ULID 文字列で受け取る(`ConsumeQuotaAction` と同様)。
+
 ```php
-class RefundQuotaAction
+final class RefundQuotaAction
 {
-    public function __invoke(User $user, Meeting $meeting): MeetingQuotaTransaction
+    public function __invoke(User $user, string $meetingId): MeetingQuotaTransaction
     {
-        return MeetingQuotaTransaction::create([
+        return DB::transaction(fn () => MeetingQuotaTransaction::create([
             'user_id' => $user->id,
             'type' => MeetingQuotaTransactionType::Refunded,
             'amount' => +1,
-            'related_meeting_id' => $meeting->id,
+            'related_meeting_id' => $meetingId,
             'occurred_at' => now(),
-        ]);
+        ]));
     }
 }
 ```

@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\UseCases\Plan;
 
+use App\Enums\MeetingQuotaTransactionType;
 use App\Enums\UserPlanLogEventType;
 use App\Enums\UserStatus;
 use App\Exceptions\Plan\PlanNotPublishedException;
 use App\Exceptions\Plan\UserNotInProgressException;
 use App\Models\Plan;
 use App\Models\User;
-use App\UseCases\MeetingQuota\GrantInitialQuotaAction;
 use App\UseCases\Plan\ExtendCourseAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery\MockInterface;
 use Tests\TestCase;
 
 class ExtendCourseActionTest extends TestCase
@@ -29,17 +28,6 @@ class ExtendCourseActionTest extends TestCase
 
         $originalExpires = $user->fresh()->plan_expires_at;
 
-        $this->mock(GrantInitialQuotaAction::class, function (MockInterface $mock) use ($user, $admin) {
-            $mock->shouldReceive('__invoke')
-                ->once()
-                ->withArgs(function ($u, $amount, $by, $reason) use ($user, $admin) {
-                    return $u->is($user)
-                        && $amount === 4
-                        && $by !== null && $by->is($admin)
-                        && is_string($reason);
-                });
-        });
-
         $result = app(ExtendCourseAction::class)($user, $plan, $admin, 'プラン更新');
 
         $this->assertSame(
@@ -47,6 +35,14 @@ class ExtendCourseActionTest extends TestCase
             $result->plan_expires_at->toDateTimeString(),
         );
         $this->assertSame($plan->default_meeting_quota + $plan->default_meeting_quota, $result->max_meetings);
+
+        $this->assertDatabaseHas('meeting_quota_transactions', [
+            'user_id' => $user->id,
+            'type' => MeetingQuotaTransactionType::GrantedInitial->value,
+            'amount' => 4,
+            'granted_by_user_id' => $admin->id,
+            'note' => 'プラン更新',
+        ]);
     }
 
     public function test_records_renewed_user_plan_log(): void
@@ -54,8 +50,6 @@ class ExtendCourseActionTest extends TestCase
         $admin = User::factory()->admin()->create();
         $plan = Plan::factory()->published()->create();
         $user = User::factory()->inProgress()->withPlan($plan)->create();
-
-        $this->mock(GrantInitialQuotaAction::class, fn (MockInterface $mock) => $mock->shouldReceive('__invoke')->once());
 
         app(ExtendCourseAction::class)($user, $plan, $admin, 'プラン更新');
 
@@ -73,8 +67,6 @@ class ExtendCourseActionTest extends TestCase
         $plan = Plan::factory()->published()->create();
         $user = User::factory()->graduated()->withPlan($plan)->create();
 
-        $this->mock(GrantInitialQuotaAction::class);
-
         $this->expectException(UserNotInProgressException::class);
         app(ExtendCourseAction::class)($user, $plan, null);
     }
@@ -83,8 +75,6 @@ class ExtendCourseActionTest extends TestCase
     {
         $plan = Plan::factory()->published()->create();
         $user = User::factory()->withdrawn()->withPlan($plan)->create();
-
-        $this->mock(GrantInitialQuotaAction::class);
 
         $this->expectException(UserNotInProgressException::class);
         app(ExtendCourseAction::class)($user, $plan, null);
@@ -95,8 +85,6 @@ class ExtendCourseActionTest extends TestCase
         $plan = Plan::factory()->draft()->create();
         $user = User::factory()->inProgress()->withPlan($plan)->create();
 
-        $this->mock(GrantInitialQuotaAction::class);
-
         $this->expectException(PlanNotPublishedException::class);
         app(ExtendCourseAction::class)($user, $plan, null);
     }
@@ -105,8 +93,6 @@ class ExtendCourseActionTest extends TestCase
     {
         $plan = Plan::factory()->archived()->create();
         $user = User::factory()->inProgress()->withPlan($plan)->create();
-
-        $this->mock(GrantInitialQuotaAction::class);
 
         $this->expectException(PlanNotPublishedException::class);
         app(ExtendCourseAction::class)($user, $plan, null);
@@ -123,8 +109,6 @@ class ExtendCourseActionTest extends TestCase
             'max_meetings' => 0,
         ]);
 
-        $this->mock(GrantInitialQuotaAction::class, fn (MockInterface $mock) => $mock->shouldReceive('__invoke')->once());
-
         $result = app(ExtendCourseAction::class)($user, $plan, $admin);
 
         $this->assertNotNull($result->plan_expires_at);
@@ -136,8 +120,6 @@ class ExtendCourseActionTest extends TestCase
         $admin = User::factory()->admin()->create();
         $plan = Plan::factory()->published()->create();
         $user = User::factory()->inProgress()->withPlan($plan)->create();
-
-        $this->mock(GrantInitialQuotaAction::class, fn (MockInterface $mock) => $mock->shouldReceive('__invoke')->once());
 
         $result = app(ExtendCourseAction::class)($user, $plan, $admin);
 

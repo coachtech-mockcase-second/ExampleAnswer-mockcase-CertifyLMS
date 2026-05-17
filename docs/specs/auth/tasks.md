@@ -48,8 +48,8 @@
 ### Middleware
 
 - [ ] `App\Http\Middleware\EnsureUserRole`(既存)
-- [ ] **`App\Http\Middleware\EnsureActiveLearning`(v3 新規)** — `auth()->user()->status !== UserStatus::InProgress` で 403 + 日本語メッセージ
-- [ ] `Kernel.php::$middlewareAliases` に `'role' => EnsureUserRole::class` + **`'active-learning' => EnsureActiveLearning::class`(v3)** 追加
+- [x] **`App\Http\Middleware\EnsureActiveLearning`(v3 新規)** — `auth()->user()->status !== UserStatus::InProgress` で 403 + 日本語メッセージ ⚠️ **meeting-quota Feature 実装時に暫定追加済み**(`final class` で実装、`tests/Feature/Middleware/EnsureActiveLearningTest.php` で 3 ロール × 4 status を網羅)。auth Feature 本実装時に **所有移管 + 整合確認**(日本語メッセージの確定 / 適用除外ルートの設定方針)を実施
+- [ ] `Kernel.php::$middlewareAliases` に `'role' => EnsureUserRole::class` + **`'active-learning' => EnsureActiveLearning::class`(v3)** 追加 ⚠️ alias 未登録 — meeting-quota Feature のルートは `EnsureActiveLearning::class` クラス名直接指定で適用済。auth Feature 本実装時に alias 登録 + 既存ルートの class 名指定を alias に置換
 - [ ] **適用しないルート(v3)** — `/settings/profile` / `/settings/password` / `/settings/avatar` / `/certificates/{certificate}/download` / `/notifications` 系には EnsureActiveLearning を **適用しない**(各 Feature 側で対応)
 
 ### Route

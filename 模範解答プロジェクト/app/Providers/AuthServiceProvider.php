@@ -10,6 +10,7 @@ use App\Models\CertificationCategory;
 use App\Models\CertificationCoachAssignment;
 use App\Models\Chapter;
 use App\Models\Invitation;
+use App\Models\MeetingQuotaPlan;
 use App\Models\Part;
 use App\Models\Question;
 use App\Models\QuestionCategory;
@@ -22,6 +23,8 @@ use App\Policies\CertificationCoachAssignmentPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ChapterPolicy;
 use App\Policies\InvitationPolicy;
+use App\Policies\MeetingQuotaPlanPolicy;
+use App\Policies\MeetingQuotaPolicy;
 use App\Policies\PartPolicy;
 use App\Policies\QuestionCategoryPolicy;
 use App\Policies\QuestionPolicy;
@@ -29,6 +32,7 @@ use App\Policies\SectionImagePolicy;
 use App\Policies\SectionPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -50,6 +54,7 @@ class AuthServiceProvider extends ServiceProvider
         SectionImage::class => SectionImagePolicy::class,
         Question::class => QuestionPolicy::class,
         QuestionCategory::class => QuestionCategoryPolicy::class,
+        MeetingQuotaPlan::class => MeetingQuotaPlanPolicy::class,
     ];
 
     /**
@@ -57,6 +62,8 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // 追加面談購入動線(購入 / 履歴閲覧)は Model に直接紐づかない受講生 Ability として Gate 登録する
+        Gate::define('purchase-meeting-quota', [MeetingQuotaPolicy::class, 'purchase']);
+        Gate::define('view-meeting-quota-history', [MeetingQuotaPolicy::class, 'viewHistory']);
     }
 }

@@ -4,29 +4,46 @@ declare(strict_types=1);
 
 namespace App\UseCases\MeetingQuota;
 
+use App\Enums\MeetingQuotaTransactionType;
+use App\Models\MeetingQuotaTransaction;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
- * 面談回数の初期付与ユースケース。受講開始 / プラン延長時に、プラン定義値ぶんの面談枠を付与する。
+ * 受講開始 / プラン延長時の初期付与記録ユースケース。
  *
- * 現状は MeetingQuotaTransaction を INSERT せず no-op で返す最小スタブで、プラン延長 / オンボーディングが
- * 統一シグネチャ `(User $user, int $amount, ?User $admin = null, ?string $reason = null)` で呼ぶための受け皿。
- * テストでは Mockery でモックされ、呼出回数 / 引数の検証のみ行う。
- *
- * TODO(meeting-quota): meeting-quota Feature 本実装時に、`MeetingQuotaTransaction(type=granted_initial,
- *                       amount=+$amount, granted_by_user_id=$admin?->id)` の INSERT を追加し、戻り値型を
- *                       MeetingQuotaTransaction に確定する。同タイミングで `final class` 化する
- *                       (現状 Mockery 互換性のため非 final にしている)。
+ * `User.max_meetings` カラムの UPDATE は呼出側責務(オンボーディング / プラン延長 Action)。
+ * 本 Action は `MeetingQuotaTransaction(type=granted_initial)` の INSERT のみを担い、
+ * 残数集計と整合した監査ログとして付与履歴を残す。
  */
-class GrantInitialQuotaAction
+final class GrantInitialQuotaAction
 {
+    /**
+     * @param  User  $user  対象受講生
+     * @param  int  $amount  付与回数(正の整数)
+     * @param  ?User  $admin  admin 経由のプラン延長時の操作 admin、システム自動付与時は NULL
+     * @param  ?string  $reason  監査ログ用の理由文字列
+     *
+     * @throws InvalidArgumentException 付与回数が 0 以下の場合
+     */
     public function __invoke(
         User $user,
         int $amount,
         ?User $admin = null,
         ?string $reason = null,
-    ): mixed {
-        // 本実装まで no-op。呼出側は Mockery で呼出引数を検証する。
-        return null;
+    ): MeetingQuotaTransaction {
+        if ($amount <= 0) {
+            throw new InvalidArgumentException('付与する面談回数は正の整数で指定してください。');
+        }
+
+        return DB::transaction(fn () => MeetingQuotaTransaction::create([
+            'user_id' => $user->id,
+            'type' => MeetingQuotaTransactionType::GrantedInitial,
+            'amount' => $amount,
+            'granted_by_user_id' => $admin?->id,
+            'note' => $reason,
+            'occurred_at' => now(),
+        ]));
     }
 }

@@ -77,9 +77,11 @@ paths:
 │ ダッシュボード         [home]    │ → dashboard.index
 ├─────────────────────────────────┤
 │ 運用                            │
-│ ユーザー管理         [users]    │ → admin.users.index
-│ 資格マスタ管理 [academic-cap]   │ → admin.certifications.index
-│ カテゴリ管理         [tag]      │ → admin.certification-categories.index
+│ ユーザー管理         [users]        │ → admin.users.index
+│ プラン管理      [credit-card]       │ → admin.plans.index
+│ 追加面談プラン管理 [banknotes]      │ → admin.meeting-quota-plans.index
+│ 資格マスタ管理 [academic-cap]       │ → admin.certifications.index
+│ カテゴリ管理         [tag]          │ → admin.certification-categories.index
 ├─────────────────────────────────┤
 │ 承認                            │
 │ 修了申請承認 [check-badge] (N)  │ → admin.enrollments.pending

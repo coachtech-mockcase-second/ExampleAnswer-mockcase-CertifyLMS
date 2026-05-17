@@ -11,6 +11,10 @@ use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\ContentSearchController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\MeetingQuotaCheckoutController;
+use App\Http\Controllers\MeetingQuotaHistoryController;
+use App\Http\Controllers\MeetingQuotaPlanController;
+use App\Http\Controllers\MeetingQuotaPlanStatusController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlanStatusController;
@@ -19,16 +23,9 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionImageController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Webhooks\StripeWebhookController;
+use App\Http\Middleware\EnsureActiveLearning;
 use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-| Wave 0b 骨組み: 各 Feature が実装フェーズで自身のルートを追加していく。
-| ここではナビゲーション (topbar / sidebar) から `Route::has()` で参照される
-| プレースホルダのみを定義する。
-*/
 
 Route::get('/', function () {
     return auth()->check()
@@ -36,47 +33,54 @@ Route::get('/', function () {
         : redirect('/login');
 });
 
-// [[auth]] 招待 URL からのオンボーディング（署名付き URL が認可、auth middleware は付けない）
-// - show: signed middleware を付けず、Controller 内で verify して invalid 時は friendly view（REQ-auth-020）
-// - store: signed middleware で署名を強制検証、改竄時は 403（REQ-auth-022）
+// ============================================================
+// 認証フロー(オンボーディング: 招待 URL 経由の初回登録)
+// ============================================================
+// signed middleware は store のみに適用し、show は Controller 内で署名検証して invalid 時に friendly view を返す
 Route::get('/onboarding/{invitation}', [OnboardingController::class, 'show'])
     ->name('onboarding.show');
 Route::post('/onboarding/{invitation}', [OnboardingController::class, 'store'])
     ->middleware('signed')
     ->name('onboarding.store');
 
+// ============================================================
+// 認証後の全ロール共通ルート
+// ============================================================
 Route::middleware('auth')->group(function () {
-    // [[dashboard]] が実装される
+    // ダッシュボード
     Route::view('/dashboard', 'placeholders.coming-soon', ['feature' => 'dashboard'])
         ->name('dashboard.index');
 
-    // [[settings-profile]] が実装される
+    // プロフィール設定
     Route::view('/settings/profile', 'placeholders.coming-soon', ['feature' => 'settings-profile'])
         ->name('settings.profile.edit');
 
-    // [[notification]] が実装される
+    // 通知
     Route::view('/notifications', 'placeholders.coming-soon', ['feature' => 'notification'])
         ->name('notifications.index');
 
-    // [[certification-management]] 受講生カタログ
+    // 資格カタログ(受講生視点の閲覧)
     Route::get('certifications', [CertificationCatalogController::class, 'index'])
         ->name('certifications.index');
     Route::get('certifications/{certification}', [CertificationCatalogController::class, 'show'])
         ->name('certifications.show');
 
-    // [[certification-management]] 修了証配信
+    // 修了証配信
     Route::get('certificates/{certificate}', [CertificateController::class, 'show'])
         ->name('certificates.show');
     Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
         ->name('certificates.download');
 
-    // [[content-management]] 受講生向け教材検索
+    // 教材検索
     Route::get('contents/search', [ContentSearchController::class, 'search'])
         ->name('contents.search');
 });
 
-// [[user-management]] admin 専用
+// ============================================================
+// admin 専用ルート
+// ============================================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    // ユーザー管理
     Route::get('users', [UserController::class, 'index'])->name('admin.users.index');
     Route::get('users/{user}', [UserController::class, 'show'])
         ->withTrashed()
@@ -85,11 +89,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::patch('users/{user}/role', [UserController::class, 'updateRole'])->name('admin.users.updateRole');
     Route::post('users/{user}/withdraw', [UserController::class, 'withdraw'])->name('admin.users.withdraw');
 
+    // 招待管理
     Route::post('invitations', [InvitationController::class, 'store'])->name('admin.invitations.store');
     Route::post('users/{user}/resend-invitation', [InvitationController::class, 'resend'])->name('admin.invitations.resend');
     Route::delete('invitations/{invitation}', [InvitationController::class, 'destroy'])->name('admin.invitations.destroy');
 
-    // [[plan-management]] admin 受講プラン マスタ CRUD + 状態遷移
+    // プラン管理(受講プラン マスタ + 状態遷移)
     Route::resource('plans', PlanController::class)
         ->parameters(['plans' => 'plan'])
         ->names('admin.plans');
@@ -100,7 +105,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('plans/{plan}/unarchive', [PlanStatusController::class, 'unarchive'])
         ->name('admin.plans.unarchive');
 
-    // [[certification-management]] admin 資格マスタ CRUD + 状態遷移
+    // 資格マスタ管理(資格本体 + 状態遷移)
     Route::resource('certifications', CertificationController::class)
         ->parameters(['certifications' => 'certification'])
         ->names('admin.certifications');
@@ -111,22 +116,35 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('certifications/{certification}/unarchive', [CertificationController::class, 'unarchive'])
         ->name('admin.certifications.unarchive');
 
-    // [[certification-management]] 担当コーチ割当
+    // 担当コーチ割当(資格 ↔ コーチ)
     Route::post('certifications/{certification}/coaches', [CertificationCoachAssignmentController::class, 'store'])
         ->name('admin.certifications.coaches.store');
     Route::delete('certifications/{certification}/coaches/{user}', [CertificationCoachAssignmentController::class, 'destroy'])
         ->name('admin.certifications.coaches.destroy');
 
-    // [[certification-management]] 資格分類マスタ
+    // カテゴリ管理(資格分類マスタ)
     Route::resource('certification-categories', CertificationCategoryController::class)
         ->parameters(['certification-categories' => 'category'])
         ->except(['show', 'create', 'edit'])
         ->names('admin.certification-categories');
+
+    // 追加面談プラン管理(SKU マスタ + 状態遷移)
+    Route::resource('meeting-quota-plans', MeetingQuotaPlanController::class)
+        ->parameters(['meeting-quota-plans' => 'plan'])
+        ->names('admin.meeting-quota-plans');
+    Route::post('meeting-quota-plans/{plan}/publish', [MeetingQuotaPlanStatusController::class, 'publish'])
+        ->name('admin.meeting-quota-plans.publish');
+    Route::post('meeting-quota-plans/{plan}/archive', [MeetingQuotaPlanStatusController::class, 'archive'])
+        ->name('admin.meeting-quota-plans.archive');
+    Route::post('meeting-quota-plans/{plan}/unarchive', [MeetingQuotaPlanStatusController::class, 'unarchive'])
+        ->name('admin.meeting-quota-plans.unarchive');
 });
 
-// [[content-management]] admin + coach (担当資格のみ Policy で絞り込み)
+// ============================================================
+// admin + コーチ共有ルート(教材管理: コーチは担当資格のみ Policy で絞り込み)
+// ============================================================
 Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function () {
-    // 資格配下: Part 一覧 / 新規作成 / 並び替え
+    // 教材管理 — Part(章): 一覧 / 新規作成 / 並び替え
     Route::get('certifications/{certification}/parts', [PartController::class, 'index'])
         ->name('admin.certifications.parts.index');
     Route::post('certifications/{certification}/parts', [PartController::class, 'store'])
@@ -134,7 +152,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::patch('certifications/{certification}/parts/reorder', [PartController::class, 'reorder'])
         ->name('admin.certifications.parts.reorder');
 
-    // Part: 詳細 / 更新 / 削除 / 公開遷移 / 配下 Chapter 操作
+    // 教材管理 — Part: 詳細 / 更新 / 削除 / 公開遷移 + 配下 Chapter 操作
     Route::get('parts/{part}', [PartController::class, 'show'])->name('admin.parts.show');
     Route::patch('parts/{part}', [PartController::class, 'update'])->name('admin.parts.update');
     Route::delete('parts/{part}', [PartController::class, 'destroy'])->name('admin.parts.destroy');
@@ -144,7 +162,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::patch('parts/{part}/chapters/reorder', [ChapterController::class, 'reorder'])
         ->name('admin.parts.chapters.reorder');
 
-    // Chapter: 詳細 / 更新 / 削除 / 公開遷移 / 配下 Section 操作
+    // 教材管理 — Chapter(節): 詳細 / 更新 / 削除 / 公開遷移 + 配下 Section 操作
     Route::get('chapters/{chapter}', [ChapterController::class, 'show'])->name('admin.chapters.show');
     Route::patch('chapters/{chapter}', [ChapterController::class, 'update'])->name('admin.chapters.update');
     Route::delete('chapters/{chapter}', [ChapterController::class, 'destroy'])->name('admin.chapters.destroy');
@@ -155,7 +173,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::patch('chapters/{chapter}/sections/reorder', [SectionController::class, 'reorder'])
         ->name('admin.chapters.sections.reorder');
 
-    // Section: 詳細 / 更新 / 削除 / 公開遷移 / Markdown プレビュー / 画像アップロード
+    // 教材管理 — Section(本文): 詳細 / 更新 / 削除 / 公開遷移 / Markdown プレビュー / 画像アップロード
     Route::get('sections/{section}', [SectionController::class, 'show'])->name('admin.sections.show');
     Route::patch('sections/{section}', [SectionController::class, 'update'])->name('admin.sections.update');
     Route::delete('sections/{section}', [SectionController::class, 'destroy'])->name('admin.sections.destroy');
@@ -165,11 +183,11 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::post('sections/{section}/images', [SectionImageController::class, 'store'])
         ->name('admin.sections.images.store');
 
-    // SectionImage 削除
+    // 教材管理 — Section 内画像の削除
     Route::delete('section-images/{image}', [SectionImageController::class, 'destroy'])
         ->name('admin.section-images.destroy');
 
-    // 資格配下: QuestionCategory マスタ CRUD
+    // 演習管理 — QuestionCategory(問題分類マスタ)
     Route::get('certifications/{certification}/question-categories', [QuestionCategoryController::class, 'index'])
         ->name('admin.certifications.question-categories.index');
     Route::post('certifications/{certification}/question-categories', [QuestionCategoryController::class, 'store'])
@@ -179,7 +197,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::delete('question-categories/{category}', [QuestionCategoryController::class, 'destroy'])
         ->name('admin.question-categories.destroy');
 
-    // 資格配下: Question 一覧 / 作成 / 詳細・編集 / 公開遷移
+    // 演習管理 — Question(問題): 一覧 / 作成 / 詳細・編集 / 公開遷移
     Route::get('certifications/{certification}/questions', [QuestionController::class, 'index'])
         ->name('admin.certifications.questions.index');
     Route::get('certifications/{certification}/questions/create', [QuestionController::class, 'create'])
@@ -195,7 +213,30 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
         ->name('admin.questions.unpublish');
 });
 
-// 開発専用: コンポーネントショーケース (APP_ENV=local のみ表示)
+// ============================================================
+// 受講生専用ルート(受講中=in_progress のみ通過)
+// ============================================================
+Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])->prefix('meeting-quota')->name('meeting-quota.')->group(function () {
+    // 追加面談購入動線(Stripe Checkout への遷移)
+    Route::get('checkout', [MeetingQuotaCheckoutController::class, 'select'])->name('checkout.select');
+    Route::post('checkout', [MeetingQuotaCheckoutController::class, 'create'])->name('checkout.create');
+    Route::get('success', [MeetingQuotaCheckoutController::class, 'success'])->name('success');
+
+    // 面談回数履歴
+    Route::get('history', [MeetingQuotaHistoryController::class, 'index'])->name('history');
+});
+
+// ============================================================
+// Webhook(認証なし、署名検証 + CSRF 除外)
+// ============================================================
+// Stripe Webhook: 追加面談購入の決済確定通知を受け取る(VerifyStripeSignature middleware で署名検証)
+Route::post('webhooks/stripe', [StripeWebhookController::class, 'handle'])
+    ->middleware('stripe.signature')
+    ->name('webhooks.stripe');
+
+// ============================================================
+// 開発専用: 共通コンポーネントショーケース(APP_ENV=local のみ表示)
+// ============================================================
 if (app()->environment('local')) {
     Route::get('/_dev/components', function () {
         return view('_dev.components');

@@ -20,7 +20,8 @@ paths:
 tests/
 ├── Feature/
 │   ├── Auth/{Flow}Test.php
-│   ├── Http/{Entity}/{Action}Test.php         # Controller 単位
+│   ├── Http/{Entity}/{Action}Test.php         # Controller 単位、Entity ディレクトリで Feature 配下にグルーピング
+│   ├── Middleware/{Middleware}Test.php        # Middleware 単位
 │   └── UseCases/{Entity}/{Action}ActionTest.php  # Action 単位（複雑なケース）
 └── Unit/
     ├── Services/{Feature}ServiceTest.php
@@ -28,6 +29,70 @@ tests/
     ├── Repositories/{Source}RepositoryTest.php
     └── Policies/{Entity}PolicyTest.php
 ```
+
+### ロール別ディレクトリは禁止（`backend-http.md` namespace 方針と整合）
+
+Controller のロール別 namespace 禁止と同じ理由でテストパスも **ロール別ディレクトリ禁止**。`tests/Feature/Http/Admin/` `Coach/` `Student/` のような階層は作らない。
+
+| パターン | 例 | 採用可否 |
+|---|---|---|
+| Entity ベース (フラット) | `tests/Feature/Http/Plan/PlanControllerTest.php` / `tests/Feature/Http/User/IndexTest.php` | ✅ |
+| ロール別 + Entity | `tests/Feature/Http/Admin/Plan/PlanControllerTest.php` | ❌ 禁止 |
+| Feature 単位 (多 Controller の Feature) | `tests/Feature/Http/MeetingQuota/CheckoutControllerTest.php` / `tests/Feature/Http/MeetingQuotaPlan/MeetingQuotaPlanControllerTest.php` | ✅ |
+| 領域別 (外部連携) | `tests/Feature/Http/Webhooks/StripeWebhookControllerTest.php` | ⚪ 許容 (Controller 側 `Webhooks\` namespace と対応) |
+
+namespace 宣言も同じく `Tests\Feature\Http\{Entity}` で、`Tests\Feature\Http\Admin\{Entity}` は禁止。
+
+> 認可テスト (admin のみ通過 / coach 403 等) は **Policy で判定するロジックの検証** であって、テストファイルの **配置とは別レイヤー**。「admin のテストだから Admin/ 配下に」という発想は規約違反。同じ Entity の認可テストは同じディレクトリにまとめる。
+
+## ドメイン例外テスト: JSON / HTML の使い分け
+
+`Handler.php` が HttpException(409 / 422)を HTML リクエスト時 `redirect()->back()->with('error', ...)` に変換する仕様(`backend-exceptions.md` 「Handler によるブラウザ向け redirect+flash 変換」参照)に合わせて、テストでは以下を使い分ける:
+
+| 検証したいこと | 使うメソッド | assert 例 |
+|---|---|---|
+| **ドメイン例外の HTTP ステータス**(状態違反 / 削除不可 / 残数不足等で 409 / 422 が返ることの保証) | `deleteJson()` / `postJson()` / `patchJson()` / `putJson()` | `$response->assertStatus(409)` / `$this->assertSame(409, $response->status())` |
+| **HTML 経由 redirect+flash 挙動**(ブラウザから削除ボタン押下 → 元画面に戻る + 赤 Alert 表示の保証) | `->from(route(...))->delete(route(...))` 等(リファラ設定 + 通常の HTML リクエスト) | `$response->assertRedirect(route(...))` + `$response->assertSessionHas('error')` |
+| **FormRequest バリデーション失敗**(422 を返すが Handler 変換対象外、`ValidationException` 経路) | どちらでも OK(`postJson` 推奨で素直に書ける) | `$response->assertStatus(422)` |
+| **Policy 拒否 (403)**(`$this->authorize()` 失敗 / 他ロールアクセス) | どちらでも OK(Handler 変換対象外、`assertForbidden` がそのまま使える) | `$response->assertForbidden()` |
+
+### サンプル実装
+
+```php
+// JSON 経由(status code 検証、テスト主目的が「拒否されることの保証」)
+public function test_destroy_returns_409_for_published_plan(): void
+{
+    $admin = User::factory()->admin()->create();
+    $plan = Plan::factory()->published()->create();
+
+    $response = $this->actingAs($admin)->deleteJson(route('admin.plans.destroy', $plan));
+
+    $this->assertSame(409, $response->status());
+    $this->assertDatabaseHas('plans', ['id' => $plan->id, 'deleted_at' => null]);
+}
+
+// HTML 経由(redirect + flash 検証、テスト主目的が「ブラウザ UX が正しいことの保証」)
+public function test_destroy_via_browser_redirects_back_with_flash_error_for_published_plan(): void
+{
+    $admin = User::factory()->admin()->create();
+    $plan = Plan::factory()->published()->create();
+
+    $response = $this->actingAs($admin)
+        ->from(route('admin.plans.show', $plan))
+        ->delete(route('admin.plans.destroy', $plan));
+
+    $response->assertRedirect(route('admin.plans.show', $plan));
+    $response->assertSessionHas('error');
+    $this->assertDatabaseHas('plans', ['id' => $plan->id, 'deleted_at' => null]);
+}
+```
+
+### 書き分けの判断軸
+
+- **同じドメイン例外を JSON と HTML の両方で検証する必要はない**(Handler のロジックが共通なので片方で十分)
+- 既存テストで `assertStatus(40x)` / `assertSame(40x, ...)` を書くなら **JSON 経由**(`->deleteJson` 等)に書き換える(これが既存パターンとの整合性も高い)
+- **ブラウザ実機の UX(リダイレクト先 + flash メッセージ)を保証したい** 場合のみ、追加で HTML 経由テストを 1 件書く(`Plan` / `MeetingQuotaPlan` のテストにサンプル実装あり)
+- 全 Feature の全ドメイン例外で HTML 経由テストを書く必要はない(Handler の挙動は共通なので、代表 1 件で十分)
 
 ## 必須シナリオ（カテゴリ別）
 

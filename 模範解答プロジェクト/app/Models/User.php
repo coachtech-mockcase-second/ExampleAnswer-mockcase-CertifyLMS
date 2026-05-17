@@ -119,6 +119,22 @@ class User extends Authenticatable
         return $this->hasMany(UserPlanLog::class);
     }
 
+    /**
+     * @return HasMany<MeetingQuotaTransaction, $this>
+     */
+    public function meetingQuotaTransactions(): HasMany
+    {
+        return $this->hasMany(MeetingQuotaTransaction::class);
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
