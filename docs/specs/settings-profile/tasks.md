@@ -128,6 +128,12 @@
 
 - [ ] `Unit/Policies/UserPolicyTest.php`(`updateSelf` 本人 true / 他人 false)
 
+## Step 6.5: Factory + Seeder
+
+- [ ] `database/factories/CoachAvailabilityFactory.php`(state: `weekday()` / `weekend()` / `morning()` / `evening()` の時間帯網羅)
+- [ ] **Seeder 不要**: 本 Feature は [[auth]] の `UserSeeder` が投入したユーザーが自分のプロフィール / アバター / パスワード / コーチ可用時間を編集する責務のため、専用 Seeder は提供しない(`structure.md` Seeder 規約「⑤ 自己リソース系」分類)
+- [ ] CoachAvailability の demo データ投入は [[mentoring]] の `MentoringSeeder` が `coach@certify-lms.test` / `coach2@certify-lms.test` に対して実施する(本 Feature では Factory のみ提供)
+
 ## Step 7: 動作確認 & 整形
 
 - [ ] `sail artisan test --filter=SettingsProfile` 全件 pass

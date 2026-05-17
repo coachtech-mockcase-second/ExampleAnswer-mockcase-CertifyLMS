@@ -2,8 +2,9 @@
     use App\Enums\UserStatus;
 
     $statusBadge = fn (UserStatus $s) => match ($s) {
-        UserStatus::Active => 'success',
+        UserStatus::InProgress => 'success',
         UserStatus::Invited => 'warning',
+        UserStatus::Graduated => 'info',
         UserStatus::Withdrawn => 'gray',
     };
 

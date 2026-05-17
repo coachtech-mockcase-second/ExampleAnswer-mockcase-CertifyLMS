@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class StoreAction
 {
     /**
-     * @param  array{name: string, slug: string, sort_order?: ?int, description?: ?string}  $validated  QuestionCategory/StoreRequest::rules() で検証済
+     * @param array{name: string, slug: string, sort_order?: ?int, description?: ?string} $validated QuestionCategory/StoreRequest::rules() で検証済
      */
     public function __invoke(Certification $certification, User $actor, array $validated): QuestionCategory
     {

@@ -33,12 +33,12 @@ class OnboardActionTest extends TestCase
             'password' => 'secret-pass',
         ]);
 
-        $this->assertSame(UserStatus::Active, $result->status);
+        $this->assertSame(UserStatus::InProgress, $result->status);
         $this->assertSame(InvitationStatus::Accepted, $invitation->fresh()->status);
         $this->assertTrue(Hash::check('secret-pass', $result->password));
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $user->id,
-            'status' => UserStatus::Active->value,
+            'status' => UserStatus::InProgress->value,
             'changed_by_user_id' => $user->id,
             'changed_reason' => 'オンボーディング完了',
         ]);

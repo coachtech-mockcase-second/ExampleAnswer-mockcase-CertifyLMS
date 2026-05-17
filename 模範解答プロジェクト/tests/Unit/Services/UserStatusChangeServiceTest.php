@@ -20,12 +20,12 @@ class UserStatusChangeServiceTest extends TestCase
         $admin = User::factory()->admin()->create();
         $target = User::factory()->student()->create();
 
-        app(UserStatusChangeService::class)->record($target, UserStatus::Active, $admin, 'オンボーディング');
+        app(UserStatusChangeService::class)->record($target, UserStatus::InProgress, $admin, 'オンボーディング');
 
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $target->id,
             'changed_by_user_id' => $admin->id,
-            'status' => UserStatus::Active->value,
+            'status' => UserStatus::InProgress->value,
             'changed_reason' => 'オンボーディング',
         ]);
     }
@@ -50,7 +50,7 @@ class UserStatusChangeServiceTest extends TestCase
         $target = User::factory()->invited()->create();
         $originalStatus = $target->status;
 
-        app(UserStatusChangeService::class)->record($target, UserStatus::Active, $admin);
+        app(UserStatusChangeService::class)->record($target, UserStatus::InProgress, $admin);
 
         // Service だけでは User の status を書き換えない
         $this->assertSame($originalStatus, $target->fresh()->status);
@@ -79,7 +79,7 @@ class UserStatusChangeServiceTest extends TestCase
 
         $log = app(UserStatusChangeService::class)->record(
             $target,
-            UserStatus::Active,
+            UserStatus::InProgress,
             $admin,
         );
 

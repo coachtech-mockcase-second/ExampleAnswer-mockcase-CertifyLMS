@@ -33,4 +33,9 @@ class UserPolicy
     {
         return $auth->role === UserRole::Admin;
     }
+
+    public function extendCourse(User $auth, User $target): bool
+    {
+        return $auth->role === UserRole::Admin;
+    }
 }

@@ -23,7 +23,7 @@ class PasswordResetTest extends TestCase
 
         $existing = User::factory()->create([
             'email' => 'exists@example.test',
-            'status' => UserStatus::Active,
+            'status' => UserStatus::InProgress,
         ]);
 
         $r1 = $this->post('/forgot-password', ['email' => 'exists@example.test']);
@@ -43,7 +43,7 @@ class PasswordResetTest extends TestCase
         $user = User::factory()->create([
             'email' => 'reset@example.test',
             'password' => Hash::make('old-pass'),
-            'status' => UserStatus::Active,
+            'status' => UserStatus::InProgress,
         ]);
 
         $token = Password::createToken($user);

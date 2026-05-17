@@ -136,7 +136,7 @@
 
 - [ ] [[settings-profile]] spec / 実装に **通知設定タブを実装しない**(全通知 Database + Mail 固定送信、ユーザー設定 UI なし)
 
-## Step 11: Advance Broadcasting
+## Step 11: Broadcasting（Pusher リアルタイム）
 
 - [ ] `.env.example` に `BROADCAST_DRIVER=pusher` / `PUSHER_APP_*`(Wave 0b で整備済前提)
 - [ ] 全 8 個の Notification クラスに `broadcastOn(): PrivateChannel("notifications.{$notifiable->id}")` + `broadcastWith()` 実装
@@ -180,6 +180,11 @@
 - [ ] `NotificationPolicyTest` / `AdminAnnouncementPolicyTest`
 - [ ] `NotificationBadgeComposerTest`(未認証 0 / 99 超 → "99+")
 
+## Step 12.5: Factory + Seeder
+
+- [ ] **Seeder 不要**: 本 Feature の `DatabaseNotification` 行は他 Feature(`enrollment`, `mentoring`, `chat`, `qa-board`, `mock-exam`)の Action 実行時に副作用として INSERT されるため、専用 Seeder は提供しない(`structure.md` Seeder 規約「④ 集計・読み取り専用系」分類)
+- [ ] ただし TopBar ベル / 通知一覧画面の動作確認には **既読・未読・各種通知タイプの混在** が必要。これは他 Feature の Seeder(`ChatSeeder` / `MentoringSeeder` / `EnrollmentSeeder` 等)が Action 経由で通知を発火することで自動的に揃う想定
+
 ## Step 13: 動作確認 & 整形
 
 - [ ] `sail bin pint --dirty` 整形
@@ -200,5 +205,5 @@
   - [ ] `sail artisan notifications:send-meeting-reminders --window=eve` → 翌日 Reserved 面談に対し受講生 + コーチ両方に「面談リマインド(前日)」追加
   - [ ] 2 回目実行で重複しない
   - [ ] `--window=one_hour_before` → +55..65min 範囲 Meeting に対し両方に「面談リマインド(1h 前)」
-- [ ] Advance Pusher 動作確認(`BROADCAST_DRIVER=pusher`):
+- [ ] Pusher リアルタイム配信 動作確認(`BROADCAST_DRIVER=pusher`):
   - [ ] Tab A で受講生、Tab B でコーチが chat 送信 → Tab A の TopBar ベルバッジ +1 + ドロップダウン先頭に行追加(リロード不要)

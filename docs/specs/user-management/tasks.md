@@ -125,7 +125,13 @@
 
 - [ ] `tests/Unit/Policies/UserPolicyTest.php`(view / withdraw / **extendCourse**(v3) / **grantMeetingQuota**(v3) の admin 真偽値網羅、`update` / `updateRole` テストなし)
 
-## Step 7: 動作確認 & 整形
+## Step 7: Factory + Seeder
+
+- [ ] `database/factories/InvitationFactory.php`(status 網羅 state: `pending()` / `accepted()` / `expired()` / `revoked()`)
+- [ ] `database/factories/UserStatusLogFactory.php`(`event_type=status_change` の各 from/to 組合せ state)
+- [ ] **Seeder 不要**: 本 Feature は [[auth]] の `UserSeeder` が投入した admin / coach / student / 各 status の demo students に対する CRUD・履歴表示が責務のため、専用 Seeder は提供しない(`structure.md` Seeder 規約「⑤ 自己リソース系」分類)。一覧フィルタ・status バッジ・プラン情報パネル等の動作確認は `UserSeeder` の状態網羅 demo データで担保される
+
+## Step 8: 動作確認 & 整形
 
 - [ ] `sail artisan test --filter=UserManagement` 全件 pass
 - [ ] `sail bin pint --dirty` 整形

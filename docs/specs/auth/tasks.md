@@ -111,7 +111,26 @@
 
 - [ ] **`tests/Unit/Enums/UserStatusTest.php`(v3 更新)** — `label()` 日本語表記 + 4 値網羅(Invited / InProgress / Graduated / Withdrawn)
 
-## Step 7: 動作確認 & 整形
+## Step 7: Factory + Seeder
+
+- [ ] `database/factories/UserFactory.php` — 状態網羅 state:
+  - role state: `admin()` / `coach()` / `student()`
+  - status state: `invited()` / `inProgress()` / `graduated()` / `withdrawn()`
+  - 関連 state: `withPlan(Plan $plan, ?Carbon $startedAt = null)` / `unverified()`
+- [ ] **`database/seeders/UserSeeder.php`** — `structure.md` Seeder 規約「① ユーザー基盤」分類、**固定アカウント + 状態網羅 demo** の 2 層構造:
+  - **固定アカウント**(全 `password='password'`、PR スクショ / 動作確認で安定参照):
+    - `admin@certify-lms.test` (admin、in_progress)
+    - `coach@certify-lms.test` (coach、in_progress、bio 入り)
+    - `coach2@certify-lms.test` (coach、in_progress、別ドメイン担当)
+    - `student@certify-lms.test` (student、in_progress、Plan 紐づけは PlanSeeder で実施)
+  - **状態網羅 demo データ**(Factory + state + count、admin / coach 視点での一覧フィルタ確認用):
+    - `student × invited × 2` (Plan 未確定、name / password NULL)
+    - `student × in_progress × 8` (Plan / 進捗位置の多様化は PlanSeeder で実施)
+    - `student × graduated × 3` (`plan_expires_at` は過去 1〜90 日内のランダム)
+    - `student × withdrawn × 2` (`deleted_at` 設定、email リネーム)
+- [ ] `DatabaseSeeder::run()` の `$this->call([...])` 先頭に `UserSeeder::class` を登録(後続 Seeder の前提)
+
+## Step 8: 動作確認 & 整形
 
 - [ ] `sail artisan migrate:fresh --seed` 通過(`UserStatus` 4 値マイグレーション正常)
 - [ ] `sail artisan test --filter=Auth` 全件 pass

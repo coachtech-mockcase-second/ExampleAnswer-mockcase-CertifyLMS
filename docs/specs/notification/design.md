@@ -57,7 +57,7 @@ flowchart LR
     subgraph Channels["Laravel channels"]
         DBChan["DatabaseChannel"]
         MailChan["MailChannel"]
-        BroadcastChan["BroadcastChannel(Pusher、Advance)"]
+        BroadcastChan["BroadcastChannel(Pusher)"]
     end
     subgraph Receivers["受信者"]
         UI["TopBar 通知ベル / /notifications"]
@@ -69,7 +69,7 @@ flowchart LR
     NotifyAction --> NotificationClass
     NotificationClass --> DBChan --> UI
     NotificationClass --> MailChan --> InboxMail
-    NotificationClass -.Advance.-> BroadcastChan --> PusherClient
+    NotificationClass --> BroadcastChan --> PusherClient
 ```
 
 ### 2. chat 双方向通知(v3 新規)
@@ -142,7 +142,7 @@ sequenceDiagram
 
 `App\Notifications\BaseNotification`(abstract、`Illuminate\Notifications\Notification` 継承、`ShouldQueue` 実装):
 - コンストラクタで `$this->id = (string) Str::ulid()`
-- `via($notifiable): array` で `['database', 'mail']` を固定返却(Advance Broadcasting 有効時は `'broadcast'` 追加)
+- `via($notifiable): array` で `['database', 'mail', 'broadcast']` を固定返却(3 channel 同時配信)
 - `viaQueues(): array` で `['mail' => 'notifications']`
 
 ### Notification クラス(v3 で 10 → 8 種類)

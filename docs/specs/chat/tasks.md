@@ -158,7 +158,7 @@
 - [ ] `sail artisan test --filter=Chat` 通過
 - [ ] `sail bin pint --dirty` 整形
 - [ ] `sail artisan migrate:fresh --seed` で `ChatSeeder` 投入確認
-- [ ] ブラウザ動作確認(Basic):
+- [ ] ブラウザ動作確認（基本動線）:
   - [ ] 受講生で `/chat-rooms` を開きルーム一覧表示
   - [ ] 担当コーチ未割当の Enrollment で「コーチ未割当」バッジ + 開く disabled
   - [ ] 受講生で初回メッセージ送信 → `ChatRoom` + 全 `ChatMember` 生成、コーチ側で未読バッジ点灯
@@ -167,7 +167,7 @@
   - [ ] 受講生のメッセージ送信フォームに **添付フィールドが表示されない**(E-2 確認)
   - [ ] admin で `/admin/chat-rooms` を開き全件監査閲覧
   - [ ] `graduated` ユーザーで `/chat-rooms` → 403
-- [ ] ブラウザ動作確認(Advance Pusher):
+- [ ] ブラウザ動作確認（Pusher リアルタイム）:
   - [ ] Tab A(受講生)で `/chat-rooms/{id}` を開き、Tab B(コーチ)で同じルームを開く
   - [ ] Tab A で送信 → Tab B のメッセージリストにリアルタイム追加(リロード不要)
   - [ ] 非 ChatMember で同 channel subscribe 試行 → 403

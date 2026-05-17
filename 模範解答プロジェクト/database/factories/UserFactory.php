@@ -6,7 +6,9 @@ namespace Database\Factories;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Models\Plan;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -26,7 +28,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'role' => UserRole::Student->value,
-            'status' => UserStatus::Active->value,
+            'status' => UserStatus::InProgress->value,
             'profile_setup_completed' => true,
             'remember_token' => Str::random(10),
         ];
@@ -57,6 +59,16 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function inProgress(): static
+    {
+        return $this->state(fn () => ['status' => UserStatus::InProgress->value]);
+    }
+
+    public function graduated(): static
+    {
+        return $this->state(fn () => ['status' => UserStatus::Graduated->value]);
+    }
+
     public function withdrawn(): static
     {
         return $this->state(fn () => ['status' => UserStatus::Withdrawn->value]);
@@ -65,5 +77,17 @@ class UserFactory extends Factory
     public function unverified(): static
     {
         return $this->state(fn () => ['email_verified_at' => null]);
+    }
+
+    public function withPlan(Plan $plan, ?Carbon $startedAt = null): static
+    {
+        $started = $startedAt ?? now();
+
+        return $this->state(fn () => [
+            'plan_id' => $plan->id,
+            'plan_started_at' => $started,
+            'plan_expires_at' => $started->copy()->addDays($plan->duration_days),
+            'max_meetings' => $plan->default_meeting_quota,
+        ]);
     }
 }

@@ -98,7 +98,7 @@ class StoreRequest extends FormRequest
 ## Route
 
 - `routes/web.php` に画面遷移ルート、`routes/api.php` に **API キー認証エンドポイント**（[[analytics-export]] 等、`ApiKeyMiddleware` 経由）
-- **Sanctum SPA / 公開 JSON API は LMS 全体で不採用**（2026-05-16 確定、`steering/tech.md` 参照）。当初 quiz-answering で Advance SPA を検討したが Blade + Form POST + Redirect で十分実装可能なため撤回
+- **Sanctum SPA / 公開 JSON API は LMS 全体で不採用**（`steering/tech.md` 参照）。Blade + Form POST + Redirect で完結する純 Laravel 標準パターンに統一
 - リソースルート優先（`Route::resource()`）
 - ミドルウェアでロール分岐: `Route::middleware(['auth', 'role:coach'])->group(...)`
 - ルート名は `{entity}.{action}` 形式（例: `enrollments.index`）

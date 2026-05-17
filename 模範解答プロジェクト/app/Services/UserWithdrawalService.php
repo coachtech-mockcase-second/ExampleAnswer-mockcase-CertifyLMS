@@ -11,10 +11,11 @@ use App\Models\User;
  * ユーザー退会の物理的処理を集約する Service。
  *
  * email を `{ulid}@deleted.invalid` 形式へリネーム + status=Withdrawn + soft delete を 1 操作で行う。
- * 呼出側 Action（[[user-management]] `WithdrawAction` / [[auth]] `RevokeInvitationAction`, `ExpireInvitationsAction`）が
+ * 呼出側 Action（`WithdrawAction` / `RevokeInvitationAction` / `ExpireInvitationsAction`）が
  * 同一トランザクション内で `UserStatusChangeService::record()` も呼んで監査ログを記録する契約。
  *
- * 旧 `User::withdraw()` メソッド（Active Record にドメインロジック残置）を本 Service に集約（2026-05-16、P1-4 対応）。
+ * 退会処理を Active Record に持たせず Service に集約することで、退会経路の一元管理と
+ * 呼出側 Action の transaction 境界を明示化する。
  */
 final class UserWithdrawalService
 {

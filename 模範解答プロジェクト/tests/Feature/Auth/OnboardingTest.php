@@ -98,7 +98,7 @@ class OnboardingTest extends TestCase
     public function test_show_renders_invalid_view_when_user_status_not_invited(): void
     {
         $admin = User::factory()->admin()->create();
-        $user = User::factory()->create(['status' => UserStatus::Active]);
+        $user = User::factory()->create(['status' => UserStatus::InProgress]);
         $invitation = Invitation::factory()
             ->forUser($user)
             ->pending()
@@ -130,7 +130,7 @@ class OnboardingTest extends TestCase
         $response->assertRedirect(route('dashboard.index'));
         $this->assertDatabaseHas('users', [
             'id' => $userBefore->id,
-            'status' => UserStatus::Active->value,
+            'status' => UserStatus::InProgress->value,
             'name' => '受講太郎',
             'bio' => 'よろしくお願いします',
             'profile_setup_completed' => true,

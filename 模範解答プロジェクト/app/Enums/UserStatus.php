@@ -7,14 +7,16 @@ namespace App\Enums;
 enum UserStatus: string
 {
     case Invited = 'invited';
-    case Active = 'active';
+    case InProgress = 'in_progress';
+    case Graduated = 'graduated';
     case Withdrawn = 'withdrawn';
 
     public function label(): string
     {
         return match ($this) {
             self::Invited => '招待中',
-            self::Active => 'アクティブ',
+            self::InProgress => '受講中',
+            self::Graduated => '卒業',
             self::Withdrawn => '退会済',
         };
     }

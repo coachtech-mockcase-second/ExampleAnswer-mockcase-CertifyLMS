@@ -183,3 +183,106 @@ spec ディレクトリは **kebab-case**、app/ 配下のディレクトリは 
 
 - 新規機能ページは **自己完結** とし、既存ページから参照を持たせない
 - ナビゲーション表示は `Route::has()` で制御し、Bladeエラーを防ぐ
+
+## Seeder 規約
+
+### 目的 — Seeder は「動作確認の典型シナリオ網羅」が本務
+
+`sail artisan migrate:fresh --seed` 1 発で **本番運用で想定される全ロール × 全 status × 各種マスタの状態** が揃った DB を作る。受講生・コーチ・管理者の各画面で「一覧に各ステータスのレコードが並ぶ」「フィルタが効く」「状態遷移ボタンが活性化する条件が満たされる」を実機で確認できる状態を担保する。
+
+「ロール 1 人ずつ」「マスタ 1 件だけ」のような **最小データは Seeder の役割ではない**(それは migration の DEFAULT 値か Fixture の責務)。Seeder は「業界標準の demo data 思想に従い、想定されるユースケース全てを再現する」ためのもの。
+
+> 業界標準: [Laravel 公式 Eloquent Factories](https://laravel.com/docs/10.x/eloquent-factories) — `state()` + `count()` + `Sequence` で複数バリエーションを 1 ファイルから生成する。
+
+### 2 層構造 — 固定アカウント + 状態網羅 demo データ
+
+Seeder 内部を 2 種類に分けて書く:
+
+| 層 | 目的 | 例(`UserSeeder`) |
+|---|---|---|
+| **① 固定アカウント**(deterministic) | 動作確認 / PR スクショ / 要件シート例示で **email / password が安定** していること | `admin@certify-lms.test` / `coach@certify-lms.test` / `coach2@certify-lms.test` / `student@certify-lms.test`(全 `password`) |
+| **② 状態網羅 demo データ**(Factory + state + count) | 一覧 / フィルタ / 状態遷移ボタンが各 status で動くことを実機確認 | `User::factory()->student()->invited()->count(2)->create()` / `->graduated()->count(3)->create([...])` 等 |
+
+固定アカウントは `->create()` の引数に email / password を明示。多様な demo データは Factory state を素直に組み合わせる。
+
+### 各 Feature の Seeder 責務分類
+
+| 分類 | 対象 Feature | Seeder の中身 |
+|---|---|---|
+| **① ユーザー基盤** | auth | `UserSeeder` — 固定 4 アカウント(admin / coach × 2 / student、全 `password`) + 状態網羅 demo(`invited` × 2 / `in_progress` × 8 / `graduated` × 3 / `withdrawn` × 2) |
+| **② マスタ系**(admin が CRUD) | plan-management / certification-management / certification-category / content-management(Part/Chapter/Section/SectionQuestion) / mock-exam / meeting-quota / qa-board(カテゴリ) | `{Entity}Seeder` — **status 網羅**(published / draft / archived の全 status を最低 1 件ずつ)+ 受講生に紐づけ可能な published × 3 件以上 |
+| **③ 派生・運用系**(マスタ + ユーザーに乗る) | enrollment / learning(LearningSession) / chat / mentoring(Meeting / CoachAvailability) | `{Entity}Seeder` — 状態網羅 + 上流 Seeder が作った demo ユーザーに紐づけ |
+| **④ 集計・読み取り専用系** | dashboard / analytics-export / notification(他 Feature から発火)/ ai-chat | **Seeder 不要**(他 Feature の Seeder で投入されたデータを表示するのみ)|
+| **⑤ 自己リソース系**(ユーザー自身の編集) | settings-profile / user-management(改修のみ) | **Seeder 不要**(`UserSeeder` のユーザーで動作確認できる) |
+
+### 状態網羅の具体パターン
+
+#### パターン A: Factory state + count を組み合わせる
+
+```php
+// 各 status で複数件
+User::factory()->student()->invited()->count(2)->create();
+User::factory()->student()->inProgress()->count(8)->create();
+User::factory()->student()->graduated()->count(3)->create([
+    'plan_expires_at' => now()->subDays(fake()->numberBetween(1, 90)),
+]);
+User::factory()->student()->withdrawn()->count(2)->create([
+    'deleted_at' => now()->subDays(fake()->numberBetween(1, 60)),
+]);
+```
+
+#### パターン B: Sequence で 1 回ループで状態混在投入
+
+`Illuminate\Database\Eloquent\Factories\Sequence` を使うと、count() で生成される N 件に対して状態をローテーション適用できる。マスタの sort_order / status の組み合わせを綺麗に分散させたいときに有効:
+
+```php
+use Illuminate\Database\Eloquent\Factories\Sequence;
+
+Plan::factory()
+    ->count(5)
+    ->state(new Sequence(
+        ['status' => PlanStatus::Published->value, 'duration_days' => 30],
+        ['status' => PlanStatus::Published->value, 'duration_days' => 90],
+        ['status' => PlanStatus::Published->value, 'duration_days' => 180],
+        ['status' => PlanStatus::Draft->value,     'duration_days' => 365],
+        ['status' => PlanStatus::Archived->value,  'duration_days' => 60],
+    ))
+    ->create();
+```
+
+#### パターン C: 既存 demo データに紐づける
+
+`User::query()->where('role', 'student')->where('status', 'in_progress')->get()` 等で上流 Seeder が作った demo データを取り、続く Seeder が **進捗・期限・関連レコード** を多様化する。`PlanSeeder` で `assignPlansToStudents()` を実装している例を参照。
+
+### tasks.md への記述パターン
+
+各 spec の `tasks.md` の「Factory + Seeder」セクションは以下のいずれかで書く。
+
+**パターン A: 自前 Seeder あり(分類 ①②③)**
+
+```markdown
+## Step N: Factory + Seeder
+
+- [ ] `database/factories/{Entity}Factory.php`({状態} state を網羅: `xxx()` / `yyy()` / `zzz()`)
+- [ ] **`database/seeders/{Entity}Seeder.php`** — 状態網羅 demo 投入(`structure.md` Seeder 規約「{分類名}」分類):
+  - {Entity status A} × N 件
+  - {Entity status B} × N 件
+  - 固定参照用 entity(必要なら deterministic 識別子で 1 件)
+- [ ] `DatabaseSeeder::run()` に `{Entity}Seeder::class` を {依存上流 Seeder} の **後** に登録
+```
+
+**パターン B: Seeder 不要(分類 ④⑤)**
+
+```markdown
+## Step N: Factory + Seeder
+
+- [ ] `database/factories/{Entity}Factory.php`(状態を網羅した state 群)
+- [ ] **Seeder 不要**: 本 Feature は {根拠: 他 Feature の Seeder データを表示するのみ / 上流の UserSeeder データへの操作のみ} のため、専用 Seeder は提供しない(`structure.md` Seeder 規約「{④集計・読み取り専用系 or ⑤自己リソース系}」分類)
+```
+
+### Seeder の依存関係
+
+- `DatabaseSeeder::run()` の `$this->call([...])` 配列の順序が依存解決順となる
+- 標準順序: `UserSeeder` → `PlanSeeder` → `CertificationCategorySeeder` → `CertificationSeeder` → `{以降のマスタ}` → `EnrollmentSeeder` → 派生 Seeder
+- 上流の admin user(`UserSeeder` 投入)を `created_by_user_id` に使うパターンが頻出するため、`UserSeeder` を最初に呼ぶことを徹底する
+- 教育 PJ では **環境分岐(`if (App::environment('local'))`)は不採用** — local / staging / 採点者環境すべてで同じ demo データが揃う前提

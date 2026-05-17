@@ -12,7 +12,7 @@ paths:
 
 PHP コードを書く際に **型宣言（Type Declaration）** と **DocBlock（PHPDoc）** をどう使い分けるかの規約。両者は **別概念で補完関係** にあり、置換関係ではない。
 
-Pro 生レベルとして実務 Laravel プロジェクト（Spatie / Symfony / Filament / 実務 OSS）の最新標準に沿わせる。コメント密度は **「実務で想定されるなかでも多い方」** を採用する（クラス DocBlock 全クラス必須、メソッド DocBlock は自明でない場合必須）。
+Pro 生レベルとして実務 Laravel プロジェクト（Spatie / Symfony / Filament / 実務 OSS）の最新標準に沿わせる。コメント密度は **「実務で想定されるなかでも多い方」** を採用する（クラス DocBlock 全クラス必須、メソッド DocBlock は自明でない場合必須）。**ただし「What の言い換え」（コードを読めば自明な処理内容の説明）は書かず、Why（なぜそう設計したか）/ 契約（事前条件・事後条件・副作用）/ 不変条件 / マジック値の根拠 を伝える内容に絞る**。
 
 ## コメントの 4 層
 
@@ -63,6 +63,60 @@ $user->update(['status' => UserStatus::InProgress]);
 - 単純な getter / setter / 自明なファクトリメソッド
 - Laravel の慣習から自明なメソッド（`boot()` / `register()` / `up()` / `down()` 等）
 - Eloquent の単純リレーションメソッド本体（`return $this->belongsTo(...)` のみのワンライナー）
+
+## コードコメントで使わない構築側メタ情報
+
+本プロジェクトは **構築側メタ階層**（`docs/specs/` / `docs/foundation/` / `docs/steering/` / `.claude/rules/` / `関連ドキュメント/要件シート_100%.md` 等）と **受講生に渡るコードベース** が物理的に分離している（AssignedProject リポへの配置時に `docs/` `.claude/` が除外）。**構築側メタ情報がコードコメントに漏れると、受講生視点で意味不明な `dangling reference` になる**。以下の表現はコードコメント（`/** */` / `//` 両方）で使用禁止。
+
+| 禁止表現 | 理由 | 代替 |
+|---|---|---|
+| `[[feature-name]]` wikilink（例: `[[plan-management]]` / `[[auth]]`）| 元の spec ドキュメント（`docs/specs/{name}/`）を受講生は見れない | クラス・メソッド参照（`\App\UseCases\Auth\IssueInvitationAction`）または自然な責務記述（「Plan ドメインで...」「招待取消フローで...」等） |
+| `docs/specs/` / `docs/foundation/` / `docs/steering/` / `.claude/rules/` パス参照 | 構築側メタ階層 | 削除、または `@see` でクラス参照のみ |
+| 改修フェーズ用語（`v3 改修` / `2026-05-XX 対応` / `P1-X 対応` / `段階 X` / `Step N` 等）| 受講生視点で意味不明、変更履歴は **git log** で見るのが筋 | 削除（コードコメントは「現在の意図」を書く場所、履歴は書かない） |
+| 構築側組織用語（`COACHTECH` / `Pro 生` / `模擬案件` / `構築側` 等）| 受講生コンテキストに不要 | 削除または LMS 業務用語に置換 |
+| 歴史的記述（「旧 ... メソッド」「過去の実装」「以前は ... だった」等）| git log / blame で見るべき情報、コード現在地の意図ではない | 削除、現在の責務のみ記述。後方互換の存在理由を残したい場合は理由を抽象化（例: `Mailable 互換性のため public 維持`） |
+
+**LMS 業務用語は OK**: `受講生` / `コーチ` / `管理者` / `修了証` / `面談` / `招待` / `プラン` 等は本 LMS の業務ドメイン語彙で、受講生が読んでも自然に理解できる。隠蔽不要。
+
+### 良例 / 悪例
+
+```php
+// ❌ 悪い（構築側 wikilink、受講生は spec を見れない）
+/**
+ * 所有 Feature: [[plan-management]]
+ * 利用先: [[dashboard]](受講生プラン情報パネル) / [[plan-management]](Schedule Command の事前判定)
+ */
+
+// ✅ 良い（責務 + 利用先を自然な文章で）
+/**
+ * Plan の期限満了判定とプラン期間内の残日数算出を提供する Service。
+ * 受講生ダッシュボードのプラン情報パネルと、期限満了 Schedule Command の事前判定から利用される。
+ */
+```
+
+```php
+// ❌ 悪い（改修フェーズ用語、git log で見れば十分）
+// PDF 生成失敗時の Storage rollback（P1-8、2026-05-16）:
+Storage::disk('private')->delete($certificate->pdf_path);
+
+// ✅ 良い（現在の意図のみ）
+// PDF 生成失敗時の Storage 保険削除: DB は transaction の ROLLBACK で巻き戻るが、
+// Storage に部分書き込みされた可能性のあるファイルを明示削除し orphan を残さない
+Storage::disk('private')->delete($certificate->pdf_path);
+```
+
+```php
+// ❌ 悪い（rules パス参照、受講生は .claude/ を見れない）
+/**
+ * 詳細は `.claude/rules/backend-usecases.md` の「Fortify Action と UseCase Action の名前空間衝突」セクション参照。
+ */
+
+// ✅ 良い（クラス参照のみ、または責務記述）
+/**
+ * Fortify 公式パターンの Action（`Laravel\Fortify\Contracts\CreatesNewUsers` 実装）。
+ * 本プロジェクトの `App\UseCases\{Entity}\{Action}Action` とは別物で、Fortify 固有の認証フローから呼ばれる例外領域。
+ */
+```
 
 ## 型宣言と DocBlock の役割分担
 
@@ -355,14 +409,20 @@ public function __invoke(
 
 ### `@deprecated`
 
-非推奨化したメソッド / クラスをマーキング。**移行先と削除予定時期を併記**。
+非推奨化したメソッド / クラスをマーキング。**移行先（完全名空間）と削除予定タイミング**を併記。改修フェーズ用語（`v3` / `Step N` / `P1-X` 等の構築側用語）は書かない。
 
 ```php
+// ✅ 良い（代替クラス + 削除タイミングを業務語で書く）
 /**
- * @deprecated v3 改修で plan-management の ExtendCourseAction へ移行。Step 4 で削除予定。
- *             代替: \App\UseCases\Plan\ExtendCourseAction
+ * @deprecated 代替: \App\UseCases\Plan\ExtendCourseAction
+ *             次回 admin ユーザー管理画面リリース時に削除予定
  */
 public function extendEnrollment(...)
+
+// ❌ 悪い（改修フェーズ用語）
+/**
+ * @deprecated v3 改修で plan-management の ExtendCourseAction へ移行。Step 4 で削除予定。
+ */
 ```
 
 ### `@internal`
@@ -379,12 +439,19 @@ public function syncStatusLog(...)
 
 ### `@see`
 
-関連リソース（Controller / Test / 関連 Action / 設計ドキュメント）へのリンク。クラス DocBlock に積極採用。
+関連リソース（Controller / Test / 関連 Action）へのリンク。クラス DocBlock に積極採用。
+
+**`@see` は完全名空間でのクラス・メソッド参照のみ**。`docs/` / `.claude/` 等の構築側メタ階層パス参照は禁止（前述「コードコメントで使わない構築側メタ情報」参照）。
 
 ```php
+// ✅ 良い
 /**
  * @see \App\Http\Controllers\Admin\InvitationController::store()
  * @see \Tests\Feature\UseCases\Auth\IssueInvitationActionTest
+ */
+
+// ❌ 悪い（docs/ パス参照、受講生は構築側メタ階層を見れない）
+/**
  * @see docs/specs/auth/design.md
  */
 ```

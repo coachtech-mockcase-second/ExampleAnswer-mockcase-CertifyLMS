@@ -54,7 +54,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             if (
                 $user === null
-                || $user->status !== UserStatus::Active
+                || $user->status !== UserStatus::InProgress
                 || $user->password === null
                 || ! Hash::check($request->input('password'), $user->password)
             ) {

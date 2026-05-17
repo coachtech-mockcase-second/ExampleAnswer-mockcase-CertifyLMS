@@ -12,6 +12,8 @@ use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\ContentSearchController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\PartController;
+use App\Http\Controllers\PlanController;
+use App\Http\Controllers\PlanStatusController;
 use App\Http\Controllers\QuestionCategoryController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\SectionController;
@@ -86,6 +88,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('invitations', [InvitationController::class, 'store'])->name('admin.invitations.store');
     Route::post('users/{user}/resend-invitation', [InvitationController::class, 'resend'])->name('admin.invitations.resend');
     Route::delete('invitations/{invitation}', [InvitationController::class, 'destroy'])->name('admin.invitations.destroy');
+
+    // [[plan-management]] admin 受講プラン マスタ CRUD + 状態遷移
+    Route::resource('plans', PlanController::class)
+        ->parameters(['plans' => 'plan'])
+        ->names('admin.plans');
+    Route::post('plans/{plan}/publish', [PlanStatusController::class, 'publish'])
+        ->name('admin.plans.publish');
+    Route::post('plans/{plan}/archive', [PlanStatusController::class, 'archive'])
+        ->name('admin.plans.archive');
+    Route::post('plans/{plan}/unarchive', [PlanStatusController::class, 'unarchive'])
+        ->name('admin.plans.unarchive');
 
     // [[certification-management]] admin 資格マスタ CRUD + 状態遷移
     Route::resource('certifications', CertificationController::class)

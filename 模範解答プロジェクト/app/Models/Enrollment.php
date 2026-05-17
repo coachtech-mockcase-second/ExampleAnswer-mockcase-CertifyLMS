@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * [[enrollment]] Feature の正式実装に先立つ stub。
- * [[certification-management]] が必要とする最小カラム + リレーションのみ定義する。
+ * 受講登録（User × Certification）を表す Model。
+ * 修了証発行や受講中資格一覧で参照される最小カラム + リレーションを提供する。
  */
 class Enrollment extends Model
 {

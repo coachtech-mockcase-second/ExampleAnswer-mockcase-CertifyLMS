@@ -33,12 +33,14 @@
 
             <main class="flex-1">
                 <div class="max-w-7xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
-                    <x-flash />
                     @yield('content')
                 </div>
             </main>
         </div>
     </div>
+
+    {{-- Toast: body 直下に置いて fixed 配置(コンテンツのレイアウトに影響しない) --}}
+    <x-flash />
 
     @stack('scripts')
 </body>

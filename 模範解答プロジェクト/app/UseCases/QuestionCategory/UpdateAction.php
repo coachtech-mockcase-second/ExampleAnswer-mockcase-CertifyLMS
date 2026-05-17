@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 class UpdateAction
 {
     /**
-     * @param  array{name: string, slug: string, sort_order?: ?int, description?: ?string}  $validated  QuestionCategory/UpdateRequest::rules() で検証済
+     * @param array{name: string, slug: string, sort_order?: ?int, description?: ?string} $validated QuestionCategory/UpdateRequest::rules() で検証済
      */
     public function __invoke(QuestionCategory $category, User $actor, array $validated): QuestionCategory
     {

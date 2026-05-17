@@ -9,12 +9,19 @@ use App\Enums\UserStatus;
 use App\Notifications\Auth\ResetPasswordNotification;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * プラン受講中のユーザーを表す Model。
+ *
+ * 関連: Plan / Enrollment / UserStatusLog / UserPlanLog / Invitation / Certificate
+ * 主要 Service: UserStatusChangeService(status 遷移ログ) / PlanExpirationService(期限判定)
+ */
 class User extends Authenticatable
 {
     use HasFactory, HasUlids, Notifiable, SoftDeletes;
@@ -30,6 +37,10 @@ class User extends Authenticatable
         'profile_setup_completed',
         'email_verified_at',
         'last_login_at',
+        'plan_id',
+        'plan_started_at',
+        'plan_expires_at',
+        'max_meetings',
     ];
 
     protected $hidden = [
@@ -44,6 +55,9 @@ class User extends Authenticatable
         'role' => UserRole::class,
         'status' => UserStatus::class,
         'profile_setup_completed' => 'boolean',
+        'plan_started_at' => 'datetime',
+        'plan_expires_at' => 'datetime',
+        'max_meetings' => 'integer',
     ];
 
     public function statusLogs(): HasMany
@@ -89,9 +103,21 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    // 旧 withdraw() メソッドは 2026-05-16 に削除（P1-4 対応）。
-    // email リネーム + status 更新 + soft delete のドメインロジックは App\Services\UserWithdrawalService に集約。
-    // 呼出側 Action（WithdrawAction / RevokeInvitationAction / ExpireInvitationsAction）が DI で UserWithdrawalService を受けて呼ぶ。
+    /**
+     * @return BelongsTo<Plan, $this>
+     */
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    /**
+     * @return HasMany<UserPlanLog, $this>
+     */
+    public function planLogs(): HasMany
+    {
+        return $this->hasMany(UserPlanLog::class);
+    }
 
     public function sendPasswordResetNotification($token): void
     {

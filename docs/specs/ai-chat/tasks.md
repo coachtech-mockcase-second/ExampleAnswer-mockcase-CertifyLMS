@@ -386,7 +386,7 @@
   - FAB クリック → ウィジェット展開 → 教材 Section コンテキストでメッセージ送信
   - ストリーミング中にブラウザリロード → 中断耐性の確認
 - [ ] PR 説明（`tech.md`「PR 記述 7 セクション必須」準拠）:
-  1. **関連チケット**: Advance チケット #A-XX（要件シート参照）
+  1. **関連チケット**: 要件シート側の該当チケット（提供時に紐付け）
   2. **調査内容**: `docs/specs/ai-chat/*.md`、`backend-repositories.md`、`frontend-blade.md`、COACHTECH LMS の `AiChatbot*` 一式、iField LMS の `semantic-search/` spec
   3. **原因分析 / 設計判断**: Why の言語化（design.md「主要な設計判断」セクションを PR 内で再掲、特に Gemini Repository 抽象 / SSE 方式選定 / Section コンテキスト注入の経緯）
   4. **実装内容**: 振る舞い単位で箇条書き（「受講生が AI と相談できるようになった」「教材から FAB で文脈付き相談できる」「ストリーミングで逐次応答」等）

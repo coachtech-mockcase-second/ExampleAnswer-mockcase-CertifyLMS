@@ -23,7 +23,7 @@ class WithdrawAction
     /**
      * admin によるユーザー退会処理。
      * 認可（admin 確認）は Controller の $this->authorize('withdraw', $user) で完結済の前提。
-     * Policy 集約（self 禁止 / withdrawn 不変）は段階 5（user-management v3 改修）で完了予定、現状はガードを Action 内に残す。
+     * 自己退会禁止 / 既退会の重複禁止 / 招待中ユーザーの退会禁止は本 Action 内のガードで判定（業務不整合を即座に例外化する責務）。
      *
      * @throws SelfWithdrawForbiddenException 自分自身を退会させようとした
      * @throws UserAlreadyWithdrawnException 対象が既に退会済み

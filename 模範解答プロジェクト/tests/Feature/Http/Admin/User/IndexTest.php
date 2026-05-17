@@ -75,7 +75,7 @@ class IndexTest extends TestCase
     public function test_status_filter_returns_only_matching_status(): void
     {
         $admin = User::factory()->admin()->create();
-        User::factory()->create(['email' => 'active1@example.test', 'status' => UserStatus::Active->value]);
+        User::factory()->create(['email' => 'active1@example.test', 'status' => UserStatus::InProgress->value]);
         User::factory()->invited()->create(['email' => 'invited1@example.test']);
 
         $response = $this->actingAs($admin)->get(route('admin.users.index', ['status' => 'invited']));

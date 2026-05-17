@@ -54,7 +54,7 @@ class ShowTest extends TestCase
         UserStatusLog::factory()->create([
             'user_id' => $target->id,
             'changed_by_user_id' => $admin->id,
-            'status' => UserStatus::Active->value,
+            'status' => UserStatus::InProgress->value,
             'changed_at' => now()->subDays(2),
             'changed_reason' => 'オンボーディング完了',
         ]);

@@ -69,4 +69,6 @@
 - [ ] `tests/Unit/Services/TermJudgementServiceTest.php`
 
 ## Factory / Seeder
-- [ ] `EnrollmentFactory` / `EnrollmentGoalFactory` / `EnrollmentNoteFactory` / `EnrollmentStatusLogFactory`
+- [ ] `EnrollmentFactory`(`learning()` / `passed()` / `failed()` state)/ `EnrollmentGoalFactory` / `EnrollmentNoteFactory` / `EnrollmentStatusLogFactory`
+- [ ] **`database/seeders/EnrollmentSeeder.php`**(`student@certify-lms.test` を `CertificationSeeder` 投入の published 資格 1-2 件に `learning` で登録、`learning_started_at=now()-30days` 等の現実的な値)。`structure.md` Seeder 規約「派生・運用系」分類
+- [ ] `DatabaseSeeder::run()` に `EnrollmentSeeder::class` を `CertificationSeeder` の後に登録

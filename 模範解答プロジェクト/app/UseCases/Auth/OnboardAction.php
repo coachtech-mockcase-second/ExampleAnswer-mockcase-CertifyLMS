@@ -43,7 +43,7 @@ class OnboardAction
                 'name' => $validated['name'],
                 'bio' => $validated['bio'] ?? null,
                 'password' => Hash::make($validated['password']),
-                'status' => UserStatus::Active,
+                'status' => UserStatus::InProgress,
                 'profile_setup_completed' => true,
                 'email_verified_at' => now(),
             ])->save();
@@ -55,7 +55,7 @@ class OnboardAction
 
             $this->statusChanger->record(
                 $user,
-                UserStatus::Active,
+                UserStatus::InProgress,
                 $user,
                 'オンボーディング完了',
             );

@@ -120,6 +120,11 @@
   - PR 動作確認 4 点(Sheet URL / 採点者シェア / Sheet スクショ / GAS コード)
   - **v3 改修関連の注意**: `?assigned_coach_id` クエリは撤回されたため、コーチ別フィルタは GAS 側で `certification_coach_assignments` を別途取得して結合する必要がある
 
+## Step 6.5: Factory + Seeder
+
+- [ ] **Seeder 不要**: 本 Feature は他 Feature が永続化したデータを **読み取り専用** で API 出力するだけのため、専用 Seeder は提供しない(`structure.md` Seeder 規約「④ 集計・読み取り専用系」分類)
+- [ ] API 動作確認には **status 網羅された User / Enrollment / MockExamSession** が必要で、これは上流 Seeder で自動的に揃う想定(`UserSeeder` の 4 status × `PlanSeeder` の進捗多様 / `EnrollmentSeeder` の learning/passed/failed / `MockExamSessionSeeder` の各 status)。GAS から fetch して Sheet に展開した際の検証可能性を担保する
+
 ## Step 7: 動作確認 & 整形
 
 - [ ] `sail artisan test --filter=Api\\\\Admin` 全件 pass

@@ -19,7 +19,7 @@ class LoginTest extends TestCase
         $user = User::factory()->create([
             'email' => 'login@example.test',
             'password' => Hash::make('secret-pass'),
-            'status' => UserStatus::Active,
+            'status' => UserStatus::InProgress,
             'last_login_at' => null,
         ]);
 
@@ -74,7 +74,7 @@ class LoginTest extends TestCase
         User::factory()->create([
             'email' => 'live@example.test',
             'password' => Hash::make('correct-pass'),
-            'status' => UserStatus::Active,
+            'status' => UserStatus::InProgress,
         ]);
 
         $response = $this->from('/login')->post('/login', [

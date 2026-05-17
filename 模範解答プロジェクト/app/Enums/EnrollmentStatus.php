@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Enums;
 
 /**
- * [[enrollment]] Feature が将来正式所有する Enum。
- * [[certification-management]] Feature では `certification_catalog` の受講中タブ判定と
- * `Certificate\IssueAction` の Enrollment ガード判定で参照する。
+ * 受講登録（Enrollment）の状態を表す Enum。学習中 / 一時停止 / 修了 / 不合格の 4 値。
+ * 資格カタログの受講中タブ判定と、`Certificate\IssueAction` の修了証発行ガードから参照される。
  */
 enum EnrollmentStatus: string
 {

@@ -9,8 +9,9 @@
     };
 
     $statusBadge = match ($user->status) {
-        UserStatus::Active => 'success',
+        UserStatus::InProgress => 'success',
         UserStatus::Invited => 'warning',
+        UserStatus::Graduated => 'info',
         UserStatus::Withdrawn => 'gray',
     };
 @endphp

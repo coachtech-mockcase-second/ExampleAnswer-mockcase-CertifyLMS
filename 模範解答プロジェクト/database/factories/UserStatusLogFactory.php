@@ -19,7 +19,7 @@ class UserStatusLogFactory extends Factory
         return [
             'user_id' => User::factory(),
             'changed_by_user_id' => User::factory()->admin(),
-            'status' => UserStatus::Active->value,
+            'status' => UserStatus::InProgress->value,
             'changed_at' => now(),
             'changed_reason' => null,
         ];

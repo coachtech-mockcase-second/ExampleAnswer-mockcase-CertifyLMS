@@ -164,6 +164,15 @@
 
 - `Services/StagnationDetectionServiceTest.php`(Service 自体削除)
 
+## Step 6.5: Factory + Seeder
+
+- [ ] `database/factories/LearningSessionFactory.php`(状態網羅 state: `active()`(進行中) / `closed()`(明示停止) / `autoClosed()`(4h 経過自動停止))
+- [ ] **`database/seeders/LearningSeeder.php`** — `structure.md` Seeder 規約「③ 派生・運用系」分類、`EnrollmentSeeder` の demo enrollment に対し各種 LearningSession を投入:
+  - `student@certify-lms.test` (固定): 直近 7 日連続でセッション開始(`Streak` 動作確認用)
+  - demo enrollments: `active` × 数件 + `closed` × 数件 + `autoClosed` × 数件
+  - SectionReadMark も同時投入(進捗ゲージ表示用、`EnrollmentSeeder` の learning 中 enrollment に対し Section 数の 30〜70% を完了状態)
+- [ ] `DatabaseSeeder::run()` に `LearningSeeder::class` を `EnrollmentSeeder` の **後** に登録
+
 ## Step 7: 動作確認 & 整形
 
 - [ ] `sail artisan test --filter=Learning` 全件 pass

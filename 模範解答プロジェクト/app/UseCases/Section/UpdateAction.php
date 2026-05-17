@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * @param  array{title: string, description?: ?string, body: string}  $validated  Section/UpdateRequest::rules() で検証済
+ * @param array{title: string, description?: ?string, body: string} $validated Section/UpdateRequest::rules() で検証済
  */
 class UpdateAction
 {

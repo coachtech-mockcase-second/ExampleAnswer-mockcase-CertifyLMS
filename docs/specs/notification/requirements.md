@@ -6,7 +6,7 @@
 
 **受講生宛 + コーチ宛通知** を扱う通知配信基盤。各 Feature が起こした学習・運用イベントを、**Database + Mail channel の両方固定送信** で対象ユーザーに届ける。**admin 宛通知のみ不採用**（運用情報は [[dashboard]] / 各 Feature の管理画面で集約確認）。
 
-通知種別ごとの ON/OFF 設定 UI は持たない。受信者は `/notifications` で通知一覧を時系列閲覧 + 既読化、TopBar 通知ベル + サイドバーバッジで未読件数を把握する。Advance では Pusher + WebSocket で TopBar ベルへリアルタイム push、Queue（database driver）でメール配信を非同期化する。
+通知種別ごとの ON/OFF 設定 UI は持たない。受信者は `/notifications` で通知一覧を時系列閲覧 + 既読化、TopBar 通知ベル + サイドバーバッジで未読件数を把握する。**TopBar ベルへのリアルタイム反映は Pusher + WebSocket（Laravel Broadcasting）で push、メール配信は Queue（database driver）で非同期化** する。
 
 通知種別（v3 改修後）:
 
@@ -46,7 +46,7 @@
 ### 機能要件 — Notification クラス共通基盤
 
 - **REQ-notification-020**: The system shall `App\Notifications\BaseNotification` 抽象クラス（`extends Illuminate\Notifications\Notification implements ShouldQueue`）を提供する。
-- **REQ-notification-021**: The system shall すべての Notification クラスの `via($notifiable)` を **固定値 `['database', 'mail']`**（Advance Broadcasting 有効時は `['database', 'mail', 'broadcast']`）として返却する。
+- **REQ-notification-021**: The system shall すべての Notification クラスの `via($notifiable)` を **固定値 `['database', 'mail', 'broadcast']`** として返却する（3 channel 同時配信）。
 - **REQ-notification-022**: The system shall 各通知種別に対応する `App\UseCases\Notification\Notify{Type}Action.php` ラッパー Action を提供し、各 Feature の Action から `app(NotifyXxxAction::class)($entity)` で呼び出せるようにする。
 - **REQ-notification-023**: When ラッパー Action `Notify{Type}Action::__invoke` が呼ばれる際, the system shall 受信者の解決 → 受信者の `status === in_progress` 確認（`graduated` / `withdrawn` 宛通知はスキップ）→ `$user->notify(new {Type}Notification(...))` を実行する。
 - **REQ-notification-024**: If 受信者の `User.status` が `withdrawn` または `graduated` の場合, then the system shall 該当受信者への通知 dispatch をスキップする。
@@ -119,7 +119,7 @@
 - **REQ-notification-111**: The system shall `NotificationPolicy::view` で `$notification->notifiable_id === $auth->id` を判定する。
 - **REQ-notification-113**: The system shall `/admin/announcements` を `auth + role:admin` で保護する。
 
-### 機能要件 — Advance Broadcasting
+### 機能要件 — Broadcasting（Pusher リアルタイム push）
 
 - **REQ-notification-120**: The system shall 各 Notification クラスに `broadcastOn(): PrivateChannel` を実装し、`new PrivateChannel("notifications.{$notifiable->id}")` を返す。
 - **REQ-notification-121**: The system shall `broadcastWith()` で TopBar 更新用最小フィールドを返す。

@@ -160,7 +160,7 @@
 - **検索のあいまい一致 / FULLTEXT INDEX / 外部検索エンジン** — `LIKE` のみで実装
 - **admin による投稿内容編集** — admin は閲覧 + 削除のみ、編集 UI / API は持たない
 - **解決マークの admin 代行** — 投稿者本人のみ、admin であっても代行不可
-- **通知の Advance 化（Broadcasting / リアルタイム push）** — Basic 範囲は DB + Mail のみ、[[notification]] の Advance 拡張に追従
+- **通知の独自配信ロジック** — Broadcasting / Mail 配信はすべて [[notification]] の責務（本 Feature は `Notify*Action` ラッパーを呼び出すだけ）
 
 ## 関連 Feature
 

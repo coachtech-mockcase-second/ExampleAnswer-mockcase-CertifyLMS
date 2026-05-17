@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Certificate;
+use App\UseCases\Certificate\IssueAction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
  * `final` 不採用: IssueActionTest で `Mockery::mock(CertificatePdfService::class)` を使うため（Mockery は final クラスを mock できない）。
  * Service 共通の `final` 規約は `backend-types-and-docblocks.md` で「Mockery でテストする場合は不採用可」の例外を許容。
  *
- * @see \App\UseCases\Certificate\IssueAction::__invoke()
+ * @see IssueAction::__invoke()
  */
 class CertificatePdfService
 {

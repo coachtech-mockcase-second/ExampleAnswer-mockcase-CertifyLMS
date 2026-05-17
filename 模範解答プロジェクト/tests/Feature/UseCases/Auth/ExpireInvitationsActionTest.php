@@ -43,7 +43,7 @@ class ExpireInvitationsActionTest extends TestCase
     public function test_does_not_touch_active_or_accepted_users(): void
     {
         $admin = User::factory()->admin()->create();
-        $activeUser = User::factory()->create(['status' => UserStatus::Active]);
+        $activeUser = User::factory()->create(['status' => UserStatus::InProgress]);
         $acceptedInv = Invitation::factory()->forUser($activeUser)->accepted()
             ->create(['invited_by_user_id' => $admin->id]);
         $futureUser = User::factory()->invited()->create();
@@ -55,7 +55,7 @@ class ExpireInvitationsActionTest extends TestCase
 
         $this->assertSame(InvitationStatus::Accepted, $acceptedInv->fresh()->status);
         $this->assertSame(InvitationStatus::Pending, $futureInv->fresh()->status);
-        $this->assertSame(UserStatus::Active, $activeUser->fresh()->status);
+        $this->assertSame(UserStatus::InProgress, $activeUser->fresh()->status);
         $this->assertSame(UserStatus::Invited, $futureUser->fresh()->status);
     }
 

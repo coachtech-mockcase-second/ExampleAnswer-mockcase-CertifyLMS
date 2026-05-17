@@ -60,7 +60,7 @@ class IssueInvitationActionTest extends TestCase
         $admin = User::factory()->admin()->create();
         User::factory()->create([
             'email' => 'taken@example.test',
-            'status' => UserStatus::Active,
+            'status' => UserStatus::InProgress,
         ]);
 
         $this->expectException(EmailAlreadyRegisteredException::class);

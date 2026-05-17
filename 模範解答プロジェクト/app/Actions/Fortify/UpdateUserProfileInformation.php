@@ -13,9 +13,7 @@ use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 
 /**
  * Fortify 公式パターンの Action（`Laravel\Fortify\Contracts\UpdatesUserProfileInformation` 実装）。
- * **本プロジェクトの `App\UseCases\{Entity}\{Action}Action` とは別物**で、Fortify 固有のプロフィール更新フローから呼ばれる例外領域。
- *
- * 詳細は `.claude/rules/backend-usecases.md` の「Fortify Action と UseCase Action の名前空間衝突」セクション参照。
+ * 本プロジェクトの `App\UseCases\{Entity}\{Action}Action` とは別物で、Fortify 固有のプロフィール更新フローから呼ばれる例外領域。
  */
 class UpdateUserProfileInformation implements UpdatesUserProfileInformation
 {

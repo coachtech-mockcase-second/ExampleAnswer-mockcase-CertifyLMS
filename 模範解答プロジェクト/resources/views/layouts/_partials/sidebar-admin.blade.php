@@ -1,8 +1,9 @@
 <x-nav.sidebar>
     <x-nav.item route="dashboard.index" icon="home" label="ダッシュボード" />
 
-    <x-nav.section title="運用" :routes="['admin.users.index', 'admin.certifications.index', 'admin.certification-categories.index']" />
+    <x-nav.section title="運用" :routes="['admin.users.index', 'admin.plans.index', 'admin.certifications.index', 'admin.certification-categories.index']" />
     <x-nav.item route="admin.users.index" icon="users" label="ユーザー管理" />
+    <x-nav.item route="admin.plans.index" icon="credit-card" label="プラン管理" />
     <x-nav.item route="admin.certifications.index" icon="academic-cap" label="資格マスタ管理" />
     <x-nav.item route="admin.certification-categories.index" icon="tag" label="カテゴリ管理" />
 

@@ -107,7 +107,16 @@
 - [ ] `DashboardArchitectureTest`(`app/Services/Dashboard*Service.php` ゼロ / `Cache::` 不使用 / `app/Policies/Dashboard*` ゼロ / `app/Http/Middleware/Dashboard*` ゼロ)
 - [ ] `DashboardBladeLintTest`(`resources/views/dashboard/**` で `DB::` / `\App\Models\` の `::query()` 不使用)
 
-## Step 7: 動作確認 & 整形
+## Step 7: Factory + Seeder
+
+- [ ] **Seeder 不要**: 本 Feature は他 Feature の集計を表示するだけで自前の永続データを持たないため、専用 Seeder は提供しない(`structure.md` Seeder 規約「④ 集計・読み取り専用系」分類)
+- [ ] ただし **動作確認の網羅性確保のため** 以下を要求(各上流 Seeder が満たしていれば本 Feature 単体追加は不要):
+  - 受講生ダッシュボード: in_progress + Plan 紐づけ + 進捗多様(開始直後 / 中盤 / 期限直前)→ [[auth]] / [[plan-management]] が担保
+  - graduated 専用ダッシュボード: graduated student × Plan 過去履歴 → [[auth]] / [[plan-management]] が担保
+  - 修了済資格セクション: passed enrollment + 修了証 → [[enrollment]] / [[certification-management]] が担保
+  - admin ダッシュボード: KPI 集計 → 各マスタ Seeder の網羅データから自動集計
+
+## Step 8: 動作確認 & 整形
 
 - [ ] `sail artisan test --filter=Dashboard` 全通過
 - [ ] `sail bin pint --dirty` 整形

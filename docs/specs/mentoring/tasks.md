@@ -177,6 +177,22 @@
 - [ ] [[meeting-quota]] の `RefundQuotaAction` を `Meeting\CancelAction` 内で呼ぶ
 - [ ] DB::transaction 内で連携、片方失敗で全体ロールバック
 
+## Step 10.5: Factory + Seeder
+
+- [ ] `database/factories/MeetingFactory.php`(status 網羅 state: `reserved()` / `canceled()` / `completed()` + `inPast()` / `inFuture()` の時系列 state)
+- [ ] CoachAvailabilityFactory は [[settings-profile]] 所有のため、本 Feature では参照のみ
+- [ ] **`database/seeders/MentoringSeeder.php`** — `structure.md` Seeder 規約「③ 派生・運用系」分類、コーチ受講生双方の動線網羅:
+  - **CoachAvailability 投入**(自動コーチ割当の動作確認用):
+    - `coach@certify-lms.test` に翌週分の平日 19:00〜21:00
+    - `coach2@certify-lms.test` に翌週分の週末 10:00〜12:00 / 14:00〜16:00
+    - その他 Factory 生成 coach にも数件
+  - **Meeting status 網羅**(受講生 / コーチ視点の一覧 + 集計用):
+    - reserved × 数件(今後数日以内、当日分も含む)
+    - completed × 数件(過去日、面談履歴 + meeting_quota 消費済)
+    - canceled × 数件(受講生キャンセル + コーチキャンセル両方、refund 動作確認用)
+  - **固定参照**: `student@certify-lms.test` に reserved × 1 件 + completed × 1 件
+- [ ] `DatabaseSeeder::run()` に `MentoringSeeder::class` を `EnrollmentSeeder` の **後** に登録
+
 ## Step 11: lang ファイル + 共通リソース
 
 - [ ] `lang/ja/mentoring.php` — エラーメッセージ + Blade ラベル日本語集約

@@ -41,10 +41,10 @@ class IndexAction
         $driver = $query->getConnection()->getDriverName();
 
         if ($driver === 'mysql') {
-            $query->orderByRaw("FIELD(status, 'active', 'invited', 'withdrawn')");
+            $query->orderByRaw("FIELD(status, 'in_progress', 'invited', 'graduated', 'withdrawn')");
         } else {
             $query->orderByRaw(
-                "CASE status WHEN 'active' THEN 1 WHEN 'invited' THEN 2 WHEN 'withdrawn' THEN 3 ELSE 4 END"
+                "CASE status WHEN 'in_progress' THEN 1 WHEN 'invited' THEN 2 WHEN 'graduated' THEN 3 WHEN 'withdrawn' THEN 4 ELSE 5 END"
             );
         }
 

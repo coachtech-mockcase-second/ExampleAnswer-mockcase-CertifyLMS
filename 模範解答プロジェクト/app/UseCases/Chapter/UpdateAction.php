@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 class UpdateAction
 {
     /**
-     * @param  array{title: string, description?: ?string}  $validated  Chapter/UpdateRequest::rules() で検証済
+     * @param array{title: string, description?: ?string} $validated Chapter/UpdateRequest::rules() で検証済
      */
     public function __invoke(Chapter $chapter, User $actor, array $validated): Chapter
     {

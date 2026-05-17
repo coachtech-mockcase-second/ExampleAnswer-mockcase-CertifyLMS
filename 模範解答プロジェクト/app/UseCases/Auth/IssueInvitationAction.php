@@ -41,7 +41,7 @@ class IssueInvitationAction
     ): Invitation {
         return DB::transaction(function () use ($email, $role, $invitedBy, $force) {
             $activeUser = User::where('email', $email)
-                ->where('status', UserStatus::Active)
+                ->where('status', UserStatus::InProgress)
                 ->first();
 
             if ($activeUser !== null) {

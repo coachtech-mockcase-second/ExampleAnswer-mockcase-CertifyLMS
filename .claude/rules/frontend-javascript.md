@@ -82,9 +82,9 @@ const interval = setInterval(() => {
 }, 1000);
 ```
 
-## Advance での SPA / リアルタイム化
+## SPA / リアルタイム化を扱う場合
 
-- Sanctum で API 認証（cookies-based）
-- 自前 SPA: 素の JS + `fetch` でCRUD
+- Sanctum で API 認証（cookies-based）が必要な場合に採用
+- 自前 SPA: 素の JS + `fetch` で CRUD
 - リアルタイムチャット: Pusher + `laravel-echo` を `resources/js/echo.js` から読み込み
-- 必要に応じて Vue / React を導入するチケットも検討（Advance 範囲）
+- 大規模 UI 要件があれば Vue / React の導入を検討

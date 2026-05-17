@@ -145,7 +145,7 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 - When 受講生が同じ `section_id` で会話作成 API を呼び出した場合, the ai-chat Module shall 既存の `(user_id, section_id, deleted_at IS NULL)` の最新会話があればそれを返却し、新規作成しない（フローティングウィジェット用、`POST /ai-chat/conversations` のレスポンスは `200 OK`（既存）または `201 Created`（新規）で区別）。
 - The ai-chat Module shall この自動再開挙動はフローティングウィジェット由来のリクエスト（クエリ `?source=widget`）でのみ有効とし、フル画面の「新規相談」フォーム経由は常に新規作成する。
 
-### REQ-ai-chat-040: 同期メッセージ送信（B-1 Step N: 基礎実装）
+### REQ-ai-chat-040: 同期メッセージ送信
 
 - The ai-chat Module shall `POST /ai-chat/conversations/{id}/messages` で受講生のメッセージを受け付け、Gemini API へ同期呼出を実行し、応答を返す。
 - The ai-chat Module shall 以下の処理を `DB::transaction()` 境界で実行する:

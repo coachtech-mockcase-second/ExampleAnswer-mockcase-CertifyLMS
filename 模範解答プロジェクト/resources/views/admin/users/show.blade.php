@@ -8,7 +8,7 @@
 
     $isWithdrawn = $user->status === UserStatus::Withdrawn;
     $isInvited = $user->status === UserStatus::Invited;
-    $isActive = $user->status === UserStatus::Active;
+    $isActive = $user->status === UserStatus::InProgress;
     $isSelf = $user->is(auth()->user());
     $pendingInvitation = $user->invitations->firstWhere('status', InvitationStatus::Pending);
 @endphp
