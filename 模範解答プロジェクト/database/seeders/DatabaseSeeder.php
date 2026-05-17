@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             MeetingQuotaPlanSeeder::class,
             CertificationCategorySeeder::class,
             CertificationSeeder::class,
+            EnrollmentSeeder::class,
+            ContentSeeder::class,
         ]);
     }
 }
