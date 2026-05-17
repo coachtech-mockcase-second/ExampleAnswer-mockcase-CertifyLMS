@@ -55,7 +55,8 @@ class GraduateExpiredUsersCommandTest extends TestCase
 
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $user->id,
-            'status' => 'graduated',
+            'from_status' => UserStatus::InProgress->value,
+            'to_status' => UserStatus::Graduated->value,
             'changed_by_user_id' => null,
             'changed_reason' => '期限満了による自動卒業',
         ]);

@@ -13,6 +13,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * 招待 URL 経由のオンボーディング前の状態を表す Model。
+ *
+ * 1 招待 = 1 メール送信。同一 User に対する再招待は旧 pending Invitation を revoke した上で
+ * 新規 Invitation を発行する設計(同 user_id に対する複数 Invitation が時系列に並ぶ)。
+ *
+ * 関連: User(対象、user_id) / invitedBy(発行 admin、invited_by_user_id)
+ * 主要 Action: `IssueInvitationAction` / `RevokeInvitationAction` / `ExpireInvitationsAction` / `OnboardAction`
+ */
 class Invitation extends Model
 {
     use HasFactory, HasUlids, SoftDeletes;

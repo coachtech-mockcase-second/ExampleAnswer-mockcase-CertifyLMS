@@ -40,10 +40,8 @@ class UserStatusLogTest extends TestCase
             'changed_by_user_id' => $admin->id,
         ]);
 
-        // 操作者（admin）を soft delete
         app(UserWithdrawalService::class)->withdraw($admin);
 
-        // changedBy リレーションは withTrashed で解決可能
         $resolved = $log->fresh()->changedBy;
         $this->assertNotNull($resolved);
         $this->assertSame('退会する管理者', $resolved->name);
@@ -60,16 +58,19 @@ class UserStatusLogTest extends TestCase
         $this->assertNull($log->changedBy);
     }
 
-    public function test_status_is_cast_to_enum(): void
+    public function test_status_columns_are_cast_to_enum(): void
     {
         $target = User::factory()->create();
         $log = UserStatusLog::factory()->create([
             'user_id' => $target->id,
-            'status' => UserStatus::Withdrawn->value,
+            'from_status' => UserStatus::InProgress->value,
+            'to_status' => UserStatus::Withdrawn->value,
         ]);
 
-        $this->assertInstanceOf(UserStatus::class, $log->status);
-        $this->assertSame(UserStatus::Withdrawn, $log->status);
+        $this->assertInstanceOf(UserStatus::class, $log->from_status);
+        $this->assertInstanceOf(UserStatus::class, $log->to_status);
+        $this->assertSame(UserStatus::InProgress, $log->from_status);
+        $this->assertSame(UserStatus::Withdrawn, $log->to_status);
     }
 
     public function test_changed_at_is_cast_to_datetime(): void
@@ -81,5 +82,30 @@ class UserStatusLogTest extends TestCase
         ]);
 
         $this->assertInstanceOf(Carbon::class, $log->changed_at);
+    }
+
+    public function test_scope_for_user_filters_by_user_id(): void
+    {
+        $target1 = User::factory()->create();
+        $target2 = User::factory()->create();
+        UserStatusLog::factory()->count(3)->create(['user_id' => $target1->id]);
+        UserStatusLog::factory()->count(2)->create(['user_id' => $target2->id]);
+
+        $logs = UserStatusLog::forUser($target1)->get();
+
+        $this->assertCount(3, $logs);
+    }
+
+    public function test_scope_recent_orders_by_changed_at_desc(): void
+    {
+        $target = User::factory()->create();
+        UserStatusLog::factory()->create(['user_id' => $target->id, 'changed_at' => now()->subDays(2)]);
+        UserStatusLog::factory()->create(['user_id' => $target->id, 'changed_at' => now()->subDay()]);
+        UserStatusLog::factory()->create(['user_id' => $target->id, 'changed_at' => now()]);
+
+        $logs = UserStatusLog::forUser($target)->recent()->get();
+
+        $this->assertTrue($logs[0]->changed_at->greaterThan($logs[1]->changed_at));
+        $this->assertTrue($logs[1]->changed_at->greaterThan($logs[2]->changed_at));
     }
 }

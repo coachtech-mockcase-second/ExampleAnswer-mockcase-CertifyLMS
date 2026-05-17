@@ -30,9 +30,10 @@ final class GraduateUserAction
     public function __invoke(User $user): void
     {
         DB::transaction(function () use ($user) {
-            $user->update(['status' => UserStatus::Graduated->value]);
-
+            // record() は遷移前 status を参照するため、必ず status UPDATE より前に呼ぶ
             $this->statusChanger->record($user, UserStatus::Graduated, null, '期限満了による自動卒業');
+
+            $user->update(['status' => UserStatus::Graduated->value]);
 
             if ($user->plan !== null) {
                 $this->planLog->record($user, $user->plan, UserPlanLogEventType::Expired, null, '期限満了');

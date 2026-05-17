@@ -74,7 +74,8 @@ class ExpireInvitationsActionTest extends TestCase
         foreach ([$u1, $u2] as $u) {
             $this->assertDatabaseHas('user_status_logs', [
                 'user_id' => $u->id,
-                'status' => UserStatus::Withdrawn->value,
+                'from_status' => UserStatus::Invited->value,
+                'to_status' => UserStatus::Withdrawn->value,
                 'changed_by_user_id' => null,
                 'changed_reason' => '招待期限切れ',
             ]);

@@ -9,7 +9,13 @@ use App\Enums\UserStatus;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-class IndexAction
+/**
+ * 管理者向けユーザー一覧 (`UserController::index`) のクエリ Action。
+ *
+ * role / status / keyword フィルタを適用し、in_progress → invited → graduated → withdrawn のステータス
+ * 優先順位 + created_at 降順で paginate する。`status=withdrawn` 指定時のみ soft delete 済の User を含める。
+ */
+final class IndexAction
 {
     public function __invoke(
         ?string $keyword,
@@ -49,6 +55,7 @@ class IndexAction
         }
 
         return $query
+            ->with('plan')
             ->orderByDesc('created_at')
             ->paginate($perPage)
             ->withQueryString();

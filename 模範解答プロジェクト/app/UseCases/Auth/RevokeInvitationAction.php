@@ -13,7 +13,16 @@ use App\Services\UserStatusChangeService;
 use App\Services\UserWithdrawalService;
 use Illuminate\Support\Facades\DB;
 
-class RevokeInvitationAction
+/**
+ * pending Invitation を revoke するユースケース。
+ *
+ * - 管理者操作の招待取消(`InvitationController::destroy` → `App\UseCases\Invitation\DestroyAction` 経由): cascadeWithdrawUser=true で User を connected withdrawn
+ * - `IssueInvitationAction(force=true)` からの内部呼出: cascadeWithdrawUser=false で Invitation のみ revoke、User は invited のまま継続
+ *
+ * @see \App\UseCases\Invitation\DestroyAction
+ * @see \App\UseCases\Auth\IssueInvitationAction
+ */
+final class RevokeInvitationAction
 {
     public function __construct(
         private readonly UserStatusChangeService $statusChanger,
@@ -26,7 +35,9 @@ class RevokeInvitationAction
      * - $cascadeWithdrawUser=true（admin 完全取消、デフォルト）: User を invited→withdrawn + soft delete + email リネーム + UserStatusLog 記録
      * - $cascadeWithdrawUser=false（IssueInvitationAction(force=true) からの内部呼出）: Invitation のみ revoke、User は invited のまま継続、UserStatusLog 記録なし
      *
-     * @param ?User $admin 操作者。null ならシステム自動相当として UserStatusLog に記録される（$cascadeWithdrawUser=true の場合のみ意味あり）
+     * @param  ?User  $admin  操作者。null ならシステム自動相当として UserStatusLog に記録される（$cascadeWithdrawUser=true の場合のみ意味あり）
+     *
+     * @throws InvitationNotPendingException 対象 Invitation が pending 以外の状態(accepted / expired / revoked)
      */
     public function __invoke(
         Invitation $invitation,
@@ -53,14 +64,15 @@ class RevokeInvitationAction
                 return;
             }
 
-            $this->withdrawalService->withdraw($user);
-
+            // record() は遷移前 status を参照するため、必ず WithdrawalService より前に呼ぶ
             $this->statusChanger->record(
                 $user,
                 UserStatus::Withdrawn,
                 $admin,
                 '招待取消',
             );
+
+            $this->withdrawalService->withdraw($user);
         });
     }
 }

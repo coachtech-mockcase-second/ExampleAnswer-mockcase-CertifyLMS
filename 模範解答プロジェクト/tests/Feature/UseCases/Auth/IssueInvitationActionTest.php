@@ -238,7 +238,8 @@ class IssueInvitationActionTest extends TestCase
 
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $invitation->user_id,
-            'status' => UserStatus::Invited->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::Invited->value,
             'changed_by_user_id' => $admin->id,
             'changed_reason' => '新規招待',
         ]);

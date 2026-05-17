@@ -95,7 +95,8 @@ class RevokeInvitationActionTest extends TestCase
 
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $invitation->user_id,
-            'status' => UserStatus::Withdrawn->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::Withdrawn->value,
             'changed_by_user_id' => $admin->id,
             'changed_reason' => '招待取消',
         ]);
@@ -109,7 +110,8 @@ class RevokeInvitationActionTest extends TestCase
 
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $invitation->user_id,
-            'status' => UserStatus::Withdrawn->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::Withdrawn->value,
             'changed_by_user_id' => null,
             'changed_reason' => '招待取消',
         ]);

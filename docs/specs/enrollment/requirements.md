@@ -1,6 +1,7 @@
 # enrollment 要件定義
 
 > **v3 改修反映**（2026-05-16）: `assigned_coach_id` 削除（資格 × N コーチ N:N に変更）、`paused` 削除（status 3 値化）、修了申請承認フロー削除（受講生「修了証を受け取る」ボタンで自己完結）、`coach_change` event_type 削除。
+> **2026-05-17 設計修正**: `EnrollmentStatusLog.event_type` カラムごと撤回（`from_status` / `to_status` で遷移を表現できるため冗長、`UserStatusLog` と同じ判断で引き算統一）。
 
 ## 概要
 
@@ -33,14 +34,14 @@
 - **REQ-enrollment-011**: If 対象資格が `Certification.status != published` または SoftDelete 済の場合, then the system shall HTTP 404 を返す。
 - **REQ-enrollment-012**: If 同一 `user_id` × `certification_id` の Enrollment が SoftDelete されていない状態で既に存在する場合, then the system shall `EnrollmentAlreadyEnrolledException`（HTTP 409）を返す。
 - **REQ-enrollment-013**: If `exam_date` が指定された場合かつ当日以前の場合, then the system shall バリデーションエラー（HTTP 422）を返す。`exam_date` 未指定（NULL）も許容する。
-- **REQ-enrollment-014**: When 受講登録が成功した直後, the system shall `EnrollmentStatusLog` に `event_type = status_change` / `to_status = learning` / `changed_reason = '新規登録'` を 1 件 INSERT する。担当コーチの自動設定は行わない（資格 × N コーチ N:N、`certification_coach_assignments` 経由）。
+- **REQ-enrollment-014**: When 受講登録が成功した直後, the system shall `EnrollmentStatusLog` に `to_status = learning` / `changed_reason = '新規登録'` を 1 件 INSERT する。担当コーチの自動設定は行わない（資格 × N コーチ N:N、`certification_coach_assignments` 経由）。
 - **REQ-enrollment-015**: When 受講生のログインユーザーが `User.status != UserStatus::InProgress` の場合, the system shall 受講登録を `EnsureActiveLearning` Middleware（[[auth]] 所有）でブロックし、HTTP 403 を返す（`graduated` ユーザーはプラン機能利用不可）。
 
 ### 機能要件 — 受講登録（admin の手動割当）
 
 - **REQ-enrollment-020**: When admin が受講生 × 資格を手動割当する, the system shall 受講生 (`user_id`) と資格 (`certification_id`) を admin が指定し、`exam_date`（任意）を入力させて Enrollment を INSERT する。
 - **REQ-enrollment-021**: If 対象受講生が `User.status != in_progress` または `User.role != student` の場合, then the system shall HTTP 422 を返す（`invited` / `graduated` / `withdrawn` の受講生には受講登録できない）。
-- **REQ-enrollment-022**: When admin が手動割当を実行した直後, the system shall `EnrollmentStatusLog` に `event_type = status_change` / `to_status = learning` / `changed_by_user_id = admin.id` / `changed_reason = 'admin による割当'`（または admin が入力した理由）を 1 件 INSERT する。
+- **REQ-enrollment-022**: When admin が手動割当を実行した直後, the system shall `EnrollmentStatusLog` に `to_status = learning` / `changed_by_user_id = admin.id` / `changed_reason = 'admin による割当'`（または admin が入力した理由）を 1 件 INSERT する。
 - **REQ-enrollment-023**: When admin が Enrollment の `exam_date` を変更する, the system shall `status != passed` を検証し、`exam_date` のみを UPDATE する（`status` / `current_term` / `passed_at` は本操作で更新しない、各々の専用 Action 経由のみとする）。
 
 ### 機能要件 — 受講中資格閲覧
@@ -53,8 +54,8 @@
 
 ### 機能要件 — 受講状態遷移
 
-- **REQ-enrollment-040**: When admin が任意の Enrollment を手動で `failed` に更新する, the system shall `status = learning` の Enrollment にのみ手動失敗マークを許可し、`status` を `failed` に更新し、`EnrollmentStatusLog` に `event_type = status_change` / `from_status = learning` / `to_status = failed` / `changed_by_user_id = admin.id` / `changed_reason = admin 入力値` を記録する。
-- **REQ-enrollment-041**: When 受講生または admin が `failed` Enrollment を再挑戦のため `learning` に戻す, the system shall `status` を `learning` に更新し、`EnrollmentStatusLog` に `event_type = status_change` / `from_status = failed` / `to_status = learning` / `changed_by_user_id = 操作者.id` / `changed_reason = '再挑戦'` を記録する。
+- **REQ-enrollment-040**: When admin が任意の Enrollment を手動で `failed` に更新する, the system shall `status = learning` の Enrollment にのみ手動失敗マークを許可し、`status` を `failed` に更新し、`EnrollmentStatusLog` に `from_status = learning` / `to_status = failed` / `changed_by_user_id = admin.id` / `changed_reason = admin 入力値` を記録する。
+- **REQ-enrollment-041**: When 受講生または admin が `failed` Enrollment を再挑戦のため `learning` に戻す, the system shall `status` を `learning` に更新し、`EnrollmentStatusLog` に `from_status = failed` / `to_status = learning` / `changed_by_user_id = 操作者.id` / `changed_reason = '再挑戦'` を記録する。
 - **REQ-enrollment-042**: The system shall `status = passed` の Enrollment に対する状態変更操作（admin 含む）をすべて拒否し、`EnrollmentAlreadyPassedException`（HTTP 409）を返す。
 - **REQ-enrollment-043**: The system shall 状態遷移マトリクスを以下の通り強制する: `learning → passed`（受講生「修了証を受け取る」自己発火）、`learning → failed`（admin 手動 or 試験日超過 Schedule Command）、`failed → learning`（再挑戦）。それ以外の遷移はすべて `EnrollmentInvalidTransitionException`（HTTP 409）。`paused` 状態は採用しない。
 
@@ -91,7 +92,7 @@
 ### 機能要件 — 修了の自己完結（ReceiveCertificateAction）
 
 - **REQ-enrollment-090**: When 受講生が `/enrollments/{enrollment}/receive-certificate` POST で「修了証を受け取る」ボタンを押下する, the system shall `ReceiveCertificateAction::__invoke(Enrollment $enrollment): Certificate` を実行する。
-- **REQ-enrollment-091**: The system shall `ReceiveCertificateAction` で以下ロジックを `DB::transaction()` 内で実行する: (1) `CompletionEligibilityService::isEligible($enrollment)` を呼んで判定、不合格なら `CompletionNotEligibleException`（HTTP 409）を throw、(2) `Enrollment.status = passed` / `passed_at = now()` を UPDATE、(3) `EnrollmentStatusLog` に `event_type = status_change` / `from_status = learning` / `to_status = passed` / `changed_by_user_id = $student->id` / `changed_reason = '受講生による修了証受領'` を記録、(4) [[certification-management]] の `IssueCertificateAction` を呼んで `Certificate` INSERT + PDF 生成、(5) [[notification]] の `NotifyCompletionApprovedAction` を `DB::afterCommit()` で dispatch（受講生本人宛て、修了証 PDF DL リンク含む）。
+- **REQ-enrollment-091**: The system shall `ReceiveCertificateAction` で以下ロジックを `DB::transaction()` 内で実行する: (1) `CompletionEligibilityService::isEligible($enrollment)` を呼んで判定、不合格なら `CompletionNotEligibleException`（HTTP 409）を throw、(2) `Enrollment.status = passed` / `passed_at = now()` を UPDATE、(3) `EnrollmentStatusLog` に `from_status = learning` / `to_status = passed` / `changed_by_user_id = $student->id` / `changed_reason = '受講生による修了証受領'` を記録、(4) [[certification-management]] の `IssueCertificateAction` を呼んで `Certificate` INSERT + PDF 生成、(5) [[notification]] の `NotifyCompletionApprovedAction` を `DB::afterCommit()` で dispatch（受講生本人宛て、修了証 PDF DL リンク含む）。
 - **REQ-enrollment-092**: The system shall `CompletionEligibilityService::isEligible(Enrollment)` を以下ロジックで実装する: 対象 Enrollment の `certification_id` に紐付く **公開済 MockExam（`is_published = true`）の件数** と、**当該 Enrollment 配下の MockExamSession で `pass = true` かつ DISTINCT な `mock_exam_id` の件数** が一致したとき真を返す（公開模試 0 件の場合は false）。
 - **REQ-enrollment-093**: If 受講生が `status != learning` の Enrollment で `ReceiveCertificateAction` を呼んだ場合, then the system shall `EnrollmentNotLearningException`（HTTP 409）を返す。
 - **REQ-enrollment-094**: If 受講生が他者の Enrollment に対して `ReceiveCertificateAction` を呼んだ場合, then the system shall `EnrollmentPolicy::receiveCertificate` で HTTP 403 を返す。
@@ -100,13 +101,13 @@
 
 ### 機能要件 — 試験日超過自動失敗
 
-- **REQ-enrollment-100**: When Schedule Command `enrollments:fail-expired` が日次 00:00 に起動する, the system shall `status = learning AND exam_date IS NOT NULL AND exam_date < CURRENT_DATE` の Enrollment を抽出して `status = failed` に更新し、`EnrollmentStatusLog` に `event_type = status_change` / `from_status = learning` / `to_status = failed` / `changed_by_user_id = null` / `changed_reason = '試験日超過による自動失敗'` を記録する。
+- **REQ-enrollment-100**: When Schedule Command `enrollments:fail-expired` が日次 00:00 に起動する, the system shall `status = learning AND exam_date IS NOT NULL AND exam_date < CURRENT_DATE` の Enrollment を抽出して `status = failed` に更新し、`EnrollmentStatusLog` に `from_status = learning` / `to_status = failed` / `changed_by_user_id = null` / `changed_reason = '試験日超過による自動失敗'` を記録する。
 - **REQ-enrollment-101**: The system shall `exam_date IS NULL` の Enrollment は試験日超過自動失敗の対象外とする（目標受験日未設定は任意）。
 
 ### 機能要件 — EnrollmentStatusLog
 
-- **REQ-enrollment-110**: The system shall ULID 主キー / SoftDeletes 非採用（履歴は不可逆）を備えた `enrollment_status_logs` テーブルを提供し、`enrollment_id` / `event_type`（`status_change` のみ、`coach_change` は削除）/ `from_status`（nullable, EnrollmentStatus）/ `to_status`（nullable, EnrollmentStatus）/ `changed_by_user_id`（nullable, `users.id` 参照、null はシステム自動）/ `changed_at` / `changed_reason`（nullable, max 200）/ `created_at` / `updated_at` カラムを保持する。
-- **REQ-enrollment-111**: The system shall `event_type = status_change` のとき `from_status` / `to_status` を必須とする。
+- **REQ-enrollment-110**: The system shall ULID 主キー / SoftDeletes 非採用（履歴は不可逆）を備えた `enrollment_status_logs` テーブルを提供し、`enrollment_id` / `from_status`（nullable, EnrollmentStatus）/ `to_status`（EnrollmentStatus）/ `changed_by_user_id`（nullable, `users.id` 参照、null はシステム自動）/ `changed_at` / `changed_reason`（nullable, max 200）/ `created_at` / `updated_at` カラムを保持する。**イベント分類用の event_type カラムは持たない**(`from_status` / `to_status` で遷移を表現するため冗長カラムを排除、2026-05-17 設計修正)。
+- **REQ-enrollment-111**: The system shall `from_status` を初回登録時のみ nullable、それ以降の遷移では必須とする。`to_status` は常に必須。
 - **REQ-enrollment-112**: The system shall `EnrollmentStatusChangeService::recordStatusChange` メソッドを公開し、各 Action がトランザクション内で呼び出すことで履歴を 1 か所に集約する。`recordCoachChange` メソッドは **削除**（担当コーチは Enrollment に紐づかない、`certification_coach_assignments` の変更は本 Feature の責務外）。
 
 ### 機能要件 — 集計 Service の公開（他 Feature への提供契約）

@@ -54,7 +54,8 @@ class ShowTest extends TestCase
         UserStatusLog::factory()->create([
             'user_id' => $target->id,
             'changed_by_user_id' => $admin->id,
-            'status' => UserStatus::InProgress->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::InProgress->value,
             'changed_at' => now()->subDays(2),
             'changed_reason' => 'オンボーディング完了',
         ]);
@@ -85,7 +86,8 @@ class ShowTest extends TestCase
 
         UserStatusLog::factory()->bySystem()->create([
             'user_id' => $target->id,
-            'status' => UserStatus::Withdrawn->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::Withdrawn->value,
             'changed_reason' => '招待期限切れ',
         ]);
 

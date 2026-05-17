@@ -18,8 +18,9 @@ class UserStatusLogFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::InProgress->value,
             'changed_by_user_id' => User::factory()->admin(),
-            'status' => UserStatus::InProgress->value,
             'changed_at' => now(),
             'changed_reason' => null,
         ];
@@ -30,8 +31,18 @@ class UserStatusLogFactory extends Factory
         return $this->state(fn () => ['changed_by_user_id' => null]);
     }
 
-    public function status(UserStatus $status): static
+    public function from(UserStatus $status): static
     {
-        return $this->state(fn () => ['status' => $status->value]);
+        return $this->state(fn () => ['from_status' => $status->value]);
+    }
+
+    public function to(UserStatus $status): static
+    {
+        return $this->state(fn () => ['to_status' => $status->value]);
+    }
+
+    public function byAdmin(User $admin): static
+    {
+        return $this->state(fn () => ['changed_by_user_id' => $admin->id]);
     }
 }

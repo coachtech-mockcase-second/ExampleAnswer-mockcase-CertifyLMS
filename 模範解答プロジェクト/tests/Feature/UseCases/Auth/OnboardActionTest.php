@@ -125,7 +125,8 @@ class OnboardActionTest extends TestCase
 
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $user->id,
-            'status' => UserStatus::InProgress->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::InProgress->value,
             'changed_by_user_id' => $user->id,
             'changed_reason' => 'オンボーディング完了',
         ]);

@@ -5,6 +5,8 @@
 > - `UpdateAction`（プロフィール編集）/ `UpdateRoleAction`（ロール変更）撤回（admin が他者のプロフィール / ロールを変更する動線を撤回）
 > - `UserStatus::Active` 参照を `UserStatus::InProgress` に統一、`Graduated` 値追加
 > - `IssueInvitationAction` 呼出時に `Plan $plan` を渡す（v3、招待モーダルで Plan 選択）
+>
+> **2026-05-17 設計修正**: `UserStatusLog.event_type` カラムごと撤回(`from_status` / `to_status` で遷移を表現できるため冗長、`UserPlanLog.event_type` のみ 4 値で必要、引き算で揃える)。
 
 ## アーキテクチャ概要
 
@@ -110,20 +112,12 @@ sequenceDiagram
 
 ### Eloquent モデル
 
-- **`UserStatusLog`** — `HasUlids` + `HasFactory`、**`event_type` `UserStatusEventType` cast**(2026-05-16 追加、`UserPlanLog.event_type` とフォーマット統一)/ `from_status` / `to_status` `UserStatus` cast(**4 値**、v3) / `changed_at` datetime cast、`belongsTo(User)` / `belongsTo(User, changed_by_user_id, changedBy)`。`scopeForUser` / `scopeRecent` / **`scopeOfEventType(UserStatusEventType)`**(新規、将来の event_type 拡張用)
+- **`UserStatusLog`** — `HasUlids` + `HasFactory`、`from_status` / `to_status` `UserStatus` cast(**4 値**、v3) / `changed_at` datetime cast、`belongsTo(User)` / `belongsTo(User, changed_by_user_id, changedBy)`。`scopeForUser` / `scopeRecent`。**イベント分類用の追加カラム(`event_type` 相当)は持たない**(`from_status` / `to_status` で遷移内容は完結し、追加カラムは冗長になるため、2026-05-17 設計修正で撤回)
 
-### Enum: UserStatusEventType(2026-05-16 新設、`UserPlanLog.event_type` と概念対応)
-
-`app/Enums/UserStatusEventType.php`:
-
-| 値 | 説明 |
-|---|---|
-| `status_change` | ユーザーステータス遷移(`invited` / `in_progress` / `graduated` / `withdrawn` 間の遷移すべて、現時点では本 enum の唯一の値) |
-
-> **Why event_type を持つか**(2026-05-16 設計判断、`feature-data-models.md` の「監査ログフォーマット統一」決着):
-> - [[plan-management]] の `UserPlanLog.event_type`(`assigned` / `renewed` / `canceled` / `expired`)と **同じ "append-only 監査ログ" 概念に属する** ため、フォーマットを揃えて受講生が「Status 監査と Plan 監査は同じ仕組み」と認識できるようにする
-> - 現時点では `status_change` の 1 値で固定だが、将来「`reactivated`(撤回退会の取消)」「`migrated`(別プラン移行)」等の event_type を追加する余地を残す
-> - `event_type` カラムを `from_status` / `to_status` と併用することで「何の遷移か」を 2 軸で表現可能になる(`event_type` で event 分類、`from_status` / `to_status` で具体遷移内容)
+> **`UserPlanLog.event_type` との設計上の対比**(2026-05-17 設計修正で明確化):
+> - `UserPlanLog.event_type` は `assigned` / `renewed` / `canceled` / `expired` の **4 値で意味的に必要**(プラン遷移は from/to だけでは表現できない、「割当」「延長」「キャンセル」「期限満了」を別 event として区別する必要がある)
+> - 一方 `UserStatusLog` は `from_status` → `to_status` の遷移だけで意味が完結する(invited → in_progress なら「オンボーディング完了」、in_progress → withdrawn なら「退会」と読み取れる)
+> - したがって `UserStatusLog` に「全レコード 1 値固定の event_type」を追加するのは過剰設計。**必要なときだけカラムを持つ**(Laravel 標準寄せ + 引き算)
 >
 > **Status 監査 vs Plan 監査を別テーブルで持つ理由**:
 > - **読み取り頻度の違い**: `UserStatusLog` は admin の「ユーザー詳細 → ステータス履歴」UI と Schedule Command の集計で頻繁に参照、`UserPlanLog` は「プラン延長履歴 / 卒業履歴」を見るときのみ
@@ -141,7 +135,6 @@ erDiagram
     USER_STATUS_LOGS {
         ulid id PK
         ulid user_id FK
-        string event_type "2026-05-16 追加、固定値 status_change(将来拡張可)"
         string from_status "v3: 4 値"
         string to_status "v3: 4 値"
         ulid changed_by_user_id "nullable"
@@ -182,7 +175,7 @@ erDiagram
 
 ### Service
 
-- **`UserStatusChangeService`** — `record(User $user, UserStatus $newStatus, ?User $changedBy, ?string $reason): UserStatusLog`、INSERT only(本 Feature 所有、各 Feature の Action から呼ばれる)。**内部で `event_type = UserStatusEventType::StatusChange` を自動挿入**(2026-05-16、呼出側は event_type を意識しない設計、`UserPlanLog` とフォーマット統一)。将来 `event_type` を増やす場合は本メソッドの引数追加か `recordEvent(User $user, UserStatusEventType $eventType, ...)` を新設して対応
+- **`UserStatusChangeService`** — `record(User $user, UserStatus $newStatus, ?User $changedBy, ?string $reason): UserStatusLog`、INSERT only(本 Feature 所有、各 Feature の Action から呼ばれる)。呼出時の `$user->status` を `from_status`、引数の `$newStatus` を `to_status` として `UserStatusLog` に INSERT する。`User.status` の UPDATE は呼出側責務(本 Service は INSERT のみで `DB::transaction` を持たない)。呼出側は record() を「`$user->status` が遷移前」の状態で呼ぶ契約を守る必要がある
 
 ### Policy
 

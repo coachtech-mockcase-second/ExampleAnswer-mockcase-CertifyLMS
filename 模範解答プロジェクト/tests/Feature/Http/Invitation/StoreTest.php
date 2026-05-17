@@ -211,7 +211,8 @@ class StoreTest extends TestCase
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $user->id,
             'changed_by_user_id' => $admin->id,
-            'status' => UserStatus::Invited->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::Invited->value,
             'changed_reason' => '新規招待',
         ]);
 

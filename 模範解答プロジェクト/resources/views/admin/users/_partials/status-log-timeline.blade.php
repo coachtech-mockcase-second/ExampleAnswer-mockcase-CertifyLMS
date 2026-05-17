@@ -1,7 +1,7 @@
 @php
     use App\Enums\UserStatus;
 
-    $statusBadge = fn (UserStatus $s) => match ($s) {
+    $statusBadgeVariant = fn (UserStatus $s) => match ($s) {
         UserStatus::InProgress => 'success',
         UserStatus::Invited => 'warning',
         UserStatus::Graduated => 'info',
@@ -34,6 +34,7 @@
                 @php
                     $actorName = $log->changedBy?->name ?? 'システム';
                     $isSystem = $log->changedBy === null;
+                    $isInitial = $log->from_status === $log->to_status;
                 @endphp
                 <li class="relative flex gap-4">
                     <div class="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-raised ring-2 ring-[var(--border-subtle)]">
@@ -41,9 +42,19 @@
                     </div>
                     <div class="min-w-0 flex-1 -mt-0.5">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <x-badge :variant="$statusBadge($log->status)" size="sm">
-                                {{ $log->status->label() }}
-                            </x-badge>
+                            @if ($isInitial)
+                                <x-badge :variant="$statusBadgeVariant($log->to_status)" size="sm">
+                                    {{ $log->to_status->label() }}（初期状態）
+                                </x-badge>
+                            @else
+                                <x-badge :variant="$statusBadgeVariant($log->from_status)" size="sm">
+                                    {{ $log->from_status->label() }}
+                                </x-badge>
+                                <x-icon name="arrow-right" class="w-3.5 h-3.5 text-ink-500" />
+                                <x-badge :variant="$statusBadgeVariant($log->to_status)" size="sm">
+                                    {{ $log->to_status->label() }}
+                                </x-badge>
+                            @endif
                             <span class="text-xs text-ink-500 font-mono tabular-nums">
                                 {{ $log->changed_at?->format('Y-m-d H:i') }}
                             </span>

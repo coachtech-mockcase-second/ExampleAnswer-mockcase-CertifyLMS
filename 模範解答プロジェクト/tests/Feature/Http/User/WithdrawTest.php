@@ -13,14 +13,12 @@ class WithdrawTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_withdraw_active_user(): void
+    public function test_admin_can_withdraw_in_progress_user(): void
     {
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->create(['email' => 'leaving@example.test']);
+        $target = User::factory()->inProgress()->create(['email' => 'leaving@example.test']);
 
-        $response = $this->actingAs($admin)->post(route('admin.users.withdraw', $target), [
-            'reason' => '利用規約違反',
-        ]);
+        $response = $this->actingAs($admin)->post(route('admin.users.withdraw', $target));
 
         $response->assertRedirect(route('admin.users.index'));
         $response->assertSessionHas('success');
@@ -29,11 +27,9 @@ class WithdrawTest extends TestCase
     public function test_renames_email_and_soft_deletes(): void
     {
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->create(['email' => 'leaving@example.test']);
+        $target = User::factory()->inProgress()->create(['email' => 'leaving@example.test']);
 
-        $this->actingAs($admin)->post(route('admin.users.withdraw', $target), [
-            'reason' => '利用規約違反',
-        ])->assertRedirect();
+        $this->actingAs($admin)->post(route('admin.users.withdraw', $target))->assertRedirect();
 
         $fresh = User::withTrashed()->find($target->id);
 
@@ -45,60 +41,70 @@ class WithdrawTest extends TestCase
     public function test_inserts_user_status_log_with_admin_as_changer(): void
     {
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->create();
+        $target = User::factory()->inProgress()->create();
 
-        $this->actingAs($admin)->post(route('admin.users.withdraw', $target), [
-            'reason' => 'コーチからの依頼',
-        ])->assertRedirect();
+        $this->actingAs($admin)->post(route('admin.users.withdraw', $target))->assertRedirect();
 
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $target->id,
             'changed_by_user_id' => $admin->id,
-            'status' => UserStatus::Withdrawn->value,
-            'changed_reason' => 'コーチからの依頼',
+            'from_status' => UserStatus::InProgress->value,
+            'to_status' => UserStatus::Withdrawn->value,
+            'changed_reason' => '管理者による退会',
         ]);
     }
 
-    public function test_admin_cannot_withdraw_themselves(): void
+    public function test_returns_409_for_already_withdrawn_user(): void
     {
         $admin = User::factory()->admin()->create();
+        $target = User::factory()->withdrawn()->create();
 
-        $response = $this->actingAs($admin)->post(route('admin.users.withdraw', $admin), [
-            'reason' => 'なんとなく',
-        ]);
+        $response = $this->actingAs($admin)->postJson(route('admin.users.withdraw', $target));
+
+        $response->assertStatus(409);
+    }
+
+    public function test_returns_409_for_last_remaining_admin_self_withdraw(): void
+    {
+        $admin = User::factory()->admin()->inProgress()->create();
+
+        $response = $this->actingAs($admin)->postJson(route('admin.users.withdraw', $admin));
+
+        $response->assertStatus(409);
+        $this->assertNotSoftDeleted($admin);
+        $this->assertSame(UserStatus::InProgress, $admin->fresh()->status);
+    }
+
+    public function test_coach_cannot_withdraw_user(): void
+    {
+        $coach = User::factory()->coach()->create();
+        $target = User::factory()->inProgress()->create();
+
+        $response = $this->actingAs($coach)->post(route('admin.users.withdraw', $target));
 
         $response->assertForbidden();
-        $this->assertDatabaseHas('users', [
-            'id' => $admin->id,
-            'deleted_at' => null,
-        ]);
     }
 
-    public function test_cannot_withdraw_invited_user(): void
+    public function test_student_cannot_withdraw_user(): void
     {
-        $admin = User::factory()->admin()->create();
-        $invited = User::factory()->invited()->create();
+        $student = User::factory()->student()->create();
+        $target = User::factory()->inProgress()->create();
 
-        $response = $this->actingAs($admin)->postJson(route('admin.users.withdraw', $invited), [
-            'reason' => 'テスト',
-        ]);
+        $response = $this->actingAs($student)->post(route('admin.users.withdraw', $target));
 
-        $response->assertStatus(422);
-        $this->assertNotSoftDeleted($invited);
+        $response->assertForbidden();
     }
 
-    public function test_reason_is_required(): void
+    public function test_html_request_redirects_back_with_flash_error_on_conflict(): void
     {
         $admin = User::factory()->admin()->create();
-        $target = User::factory()->create();
+        $target = User::factory()->withdrawn()->create();
 
         $response = $this->actingAs($admin)
             ->from(route('admin.users.show', $target))
-            ->post(route('admin.users.withdraw', $target), [
-                'reason' => '',
-            ]);
+            ->post(route('admin.users.withdraw', $target));
 
-        $response->assertSessionHasErrors('reason');
-        $this->assertNotSoftDeleted($target);
+        $response->assertRedirect(route('admin.users.show', $target));
+        $response->assertSessionHas('error');
     }
 }

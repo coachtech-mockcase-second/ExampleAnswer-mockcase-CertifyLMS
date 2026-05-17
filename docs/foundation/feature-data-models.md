@@ -76,25 +76,24 @@ User の status 遷移を INSERT only で記録する監査ログ。
 |---|---|---|
 | id | ULID | PK |
 | user_id | ULID FK | 対象 User |
-| event_type | string Enum | **2026-05-16 追加**、`UserStatusEventType`(現時点 `status_change` 1 値、将来拡張可)。`UserPlanLog.event_type` とフォーマット統一 |
 | from_status / to_status | string Enum (4 値) | 遷移前後 |
 | changed_by_user_id | ULID FK nullable | 実行者（Schedule Command 起動時は NULL） |
 | changed_reason | text nullable | 自由文（「管理者による退会」「オンボーディング完了」等） |
 | changed_at | timestamp | 遷移発生時刻 |
 
-INDEX: `(user_id, changed_at)` + `(event_type, changed_at)`(将来 event_type 拡張時のクエリ高速化)。
+INDEX: `(user_id, changed_at)`。
 
 **設計判断**:
 - INSERT only の append-only 監査パターン。User の現在 status は `users.status` が SSoT、本テーブルは履歴
 - `changed_by_user_id` を nullable にして Schedule Command（`users:graduate-expired`）からの自動遷移にも対応
 - `UserStatusChangeService::record()` を本 Feature 所有とし、auth / plan-management 等の各 Action から呼ばれる「横断 Service」配置。所有が本 Feature で、計算 Service マトリクスの考え方と整合
-- **2026-05-16 確定**: `event_type` カラムを追加し `UserPlanLog` とフォーマット統一。`UserStatusChangeService::record()` は内部で `event_type = StatusChange` を自動挿入し、呼出側は意識しない設計
+- **2026-05-17 設計修正**: イベント分類用の `event_type` カラムは持たない。`from_status` / `to_status` で遷移内容が完結するため、追加カラムは冗長(全レコード 1 値固定になる)。`UserPlanLog.event_type` が 4 値で意味的に必要なのとは対照的に、本テーブルは from/to で十分という引き算判断
 - v3 で `UpdateAction` / `UpdateRoleAction` を撤回したのは「admin が他者プロフィール / ロールを編集する動線を持たない」設計判断。代わりに「自分自身は [[settings-profile]] で管理」「ロール変更は招待でしか発生しない」と責務分離
 
 ### 適切性評価
-- ✅ **必要最低限**: `UserStatusLog` 1 テーブルで完結。冗長カラムなし
+- ✅ **必要最低限**: `UserStatusLog` 1 テーブルで完結。冗長カラムなし(2026-05-17 設計修正で event_type 撤回済)
 - ✅ **最適化**: 履歴を別テーブル化することで `users.status` の頻繁な参照と履歴閲覧クエリを分離。`UserStatusChangeService` を Feature 横断 Service として配置したことで、各 Feature の Action 内で散発的に INSERT する責務分散を回避
-- ✅ **フォーマット統一**(2026-05-16): `event_type` カラム追加により [[plan-management]] の `UserPlanLog` と同形式 (event_type + 状態スナップショット + 実行者 + 理由 + 発生時刻) に揃った。Pro 生レベルとして「監査ログは event_type ベースで分類する」を学べる
+- ✅ **引き算統一**(2026-05-17): `from_status` / `to_status` で遷移を表現できる場合は、`event_type` のような分類カラムを持たない。`UserPlanLog.event_type` (4 値で意味的に必要) と本テーブル (from/to で十分) との対比で、Pro 生レベルとして「**必要なときだけカラムを持つ**」設計判断を学べる
 - ❓ **疑問**: `UserStatusLog` の `deleted_at` カラム有無が design.md ER 図に明記されてない（`HasFactory` のみで `SoftDeletes` なし、と推測）。`timestamps` のみと書かれているので append-only 設計の意図と合致だが明示すると良い
 
 ---
@@ -247,8 +246,8 @@ status 遷移履歴。
 | カラム | 型 | 役割 |
 |---|---|---|
 | id / enrollment_id | ULID / ULID FK | 紐づけ |
-| event_type | Enum | `status_change`（v3 で `coach_change` 撤回） |
-| from_status / to_status | Enum nullable | 遷移前後 |
+| from_status | Enum nullable | 遷移前(初回登録時のみ NULL) |
+| to_status | Enum | 遷移後 |
 | changed_by_user_id | ULID FK nullable | 実行者（Schedule Command 時 NULL） |
 | changed_reason / changed_at | text / timestamp | 記録 |
 
@@ -261,8 +260,7 @@ status 遷移履歴。
 
 ### 適切性評価
 - ✅ **必要最低限**: 4 テーブル構成（enrollment / goals / notes / status_logs）は責務分離が綺麗。冗長テーブルなし
-- ✅ **最適化**: v3 で `EnrollmentStatusLog.event_type` から `coach_change` 撤回したのは「`assigned_coach_id` を持たない設計」と整合的（記録すべき遷移が status_change のみに収束）。INDEX `(status, exam_date)` は「試験日が近い未修了の Enrollment」抽出（FailExpiredCommand）に最適
-- ⚠️ **改善余地**: `EnrollmentStatusLog.event_type` を残す意義が薄くなった（全レコード `status_change` 固定）。今後拡張がないなら削除検討余地あり、ただし「将来的に `term_change` を追加する含み」として残すなら明示するべき。design.md にもその旨記載なし
+- ✅ **最適化**: 2026-05-17 設計修正で `EnrollmentStatusLog.event_type` カラムごと撤回(`from_status` / `to_status` で遷移を表現できるため冗長、`UserStatusLog` と同じ判断で引き算統一)。INDEX `(status, exam_date)` は「試験日が近い未修了の Enrollment」抽出（FailExpiredCommand）に最適
 - ❓ **疑問**: `EnrollmentStatusLog.from_status` が nullable と明記されているが、初回登録時の遷移（`null → learning`）を記録するか design.md からは追えない。spec 上は INSERT only の append-only で「登録時は記録なし」（StatusLog INSERT は Action 内で明示呼出のみ）と推察するが要確認
 
 ---
@@ -1045,7 +1043,7 @@ Stripe 決済レコード。
 | [[meeting-quota]] | `payments.amount` / `quantity` | 決済時の SKU 価格 / 数量 | MeetingQuotaPlan の `price` 改定後も、過去の決済記録は当時の金額(払い戻し時の正確性) |
 | [[meeting-quota]] | `meeting_quota_transactions.amount` | 取引時の付与 / 消費数量 | SKU 改定後も取引履歴の数量を固定 |
 | [[enrollment]] | `enrollment_status_logs.from_status` / `to_status` | 状態遷移前後の Enrollment.status | append-only 監査ログ。現状の `enrollments.status` が SSoT、本ログは履歴 |
-| [[user-management]] | `user_status_logs.from_status` / `to_status` / `event_type`(2026-05-16 追加) | 状態遷移前後の User.status + event 分類 | append-only 監査ログ、`UserPlanLog` とフォーマット統一 |
+| [[user-management]] | `user_status_logs.from_status` / `to_status` | 状態遷移前後の User.status | append-only 監査ログ、from/to で遷移内容を表現(event_type カラムは持たない、2026-05-17 設計修正) |
 | [[notification]] | `notifications.data`(JSON) | 通知発火時の関連エンティティ情報 | 関連エンティティが削除されても通知本文は読める(Laravel 標準パターン) |
 | [[chat]] | `chat_messages.body` / `chat_messages.sender_name`(あれば) | 送信時のメッセージ本文 / 送信者名 | 送信者退会後もメッセージが残る(本文は元々不変だが、送信者名の snapshot 採否は要検討) |
 
@@ -1093,7 +1091,7 @@ snapshot 採用判断は「UX 上 そのとき表示したい か / 最新を表
 | **CHECK 制約の不在** | notification（AdminAnnouncement.target_*） / meeting-quota（MeetingQuotaTransaction.related_*） | MySQL 8 の CHECK 制約活用余地あり、ただし MySQL 互換性とのトレードオフ |
 | **JSON path の検索効率** | notification（`NotifyMeetingReminderAction` の重複検査） | リマインダ件数規模次第でパフォーマンス影響、`meeting_reminder_logs` 補助テーブル案を検討 |
 | **`LastActivityService` の所有 Feature 確定** | analytics-export | 集計責務マトリクス整合的には learning に所有させるべき |
-| **冗長 event_type / カラム** | ✅ **対応済**(2026-05-16): UserStatusLog.event_type 追加で UserPlanLog とフォーマット統一 / learning/design.md に `duration_seconds` 冗長性正当化(集計クエリ高速化・clamp 物理表現・open セッション識別の 3 理由)を明記 / quiz-answering Attempt.deleted_at は P3-1 で別途撤回検討 | — |
+| **冗長 event_type / カラム** | ✅ **対応済**(2026-05-17 設計修正): UserStatusLog / EnrollmentStatusLog から event_type カラム撤回(from/to で遷移を表現するため冗長)。UserPlanLog.event_type は 4 値で意味的に必要なため保持し、3 テーブル間の差を「**必要なときだけ持つ**」原則で揃えた / learning/design.md に `duration_seconds` 冗長性正当化(集計クエリ高速化・clamp 物理表現・open セッション識別の 3 理由)を明記 / quiz-answering Attempt.deleted_at は P3-1 で別途撤回検討 | — |
 | **denormalize カラムの正当化** | ✅ **対応済**(2026-05-16、learning にプロトタイプ反映): learning/design.md の「`LearningSession.user_id` denormalize の正当化」セクションに INDEX 利用クエリパターン明記(StreakService 横断集計 / dashboard 総学習時間 / Schedule Command 残骸抽出 + `(user_id, started_at)` 複合 INDEX 設計)。mock-exam(`mock_exam_sessions.user_id`)・mentoring(`meetings.student_id`)も同じ判断軸で正当化される(複数 Enrollment 跨ぎの集計 + 複合 INDEX 利用)、必要に応じて各 design.md で同パターンを参照 | — |
 | **author / created_by 監査カラム不在** | mentoring（MeetingMemo.created_by_user_id 不在） | 将来拡張時の identification 困難リスク、design.md に追記推奨 |
 
@@ -1105,4 +1103,4 @@ snapshot 採用判断は「UX 上 そのとき表示したい か / 最新を表
 - **概念の独立性**: ✅ プラン期間（`User.plan_expires_at`）vs 資格修了（`Enrollment.passed_at`）/ グループチャット（`ChatMember` 中間テーブル）/ 8 通知種別の明示列挙 / `granted_initial` と `max_meetings` の二重カウント回避ルール等が DB に正しく表現
 - **集計責務マトリクス整合**: ✅ dashboard / notification / analytics-export はいずれも「他 Feature の Service を DI 消費」モデルが design.md に明文化、独自計算ロジックを持たないことが確認できる
 
-**総評**: v3 改修によりスキーマの過剰抽象が大幅に削減され、「実装する / しない」の線引きが明示的になっている。データモデルは UX 要件カバレッジを確保しつつ、必要最低限を維持。スナップショット哲学と UNIQUE 制約による堅牢性、append-only 監査と現在値スナップショットの分離設計が一貫しており、Pro 級の設計。改善余地は軽微な冗長カラム（denormalize の正当性、event_type の固定値化、author カラム不在）に留まり、致命的な構造問題は見当たらない。
+**総評**: v3 改修によりスキーマの過剰抽象が大幅に削減され、「実装する / しない」の線引きが明示的になっている。2026-05-17 設計修正で 3 監査ログテーブル間の event_type 扱いを「**必要なときだけ持つ**」原則で揃えた（UserPlanLog のみ event_type を保持、UserStatusLog / EnrollmentStatusLog は from/to で表現）。データモデルは UX 要件カバレッジを確保しつつ、必要最低限を維持。スナップショット哲学と UNIQUE 制約による堅牢性、append-only 監査と現在値スナップショットの分離設計が一貫しており、Pro 級の設計。改善余地は軽微な denormalize カラムや author カラム不在に留まり、致命的な構造問題は見当たらない。

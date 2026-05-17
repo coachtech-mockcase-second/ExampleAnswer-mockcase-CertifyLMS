@@ -81,19 +81,20 @@ final class OnboardAction
                 $attrs['meeting_url'] = $validated['meeting_url'];
             }
 
-            $user->forceFill($attrs)->save();
-
-            $invitation->forceFill([
-                'status' => InvitationStatus::Accepted,
-                'accepted_at' => $now,
-            ])->save();
-
+            // record() は遷移前 status を参照するため、status を変更する forceFill より前に呼ぶ
             $this->statusChanger->record(
                 $user,
                 UserStatus::InProgress,
                 $user,
                 'オンボーディング完了',
             );
+
+            $user->forceFill($attrs)->save();
+
+            $invitation->forceFill([
+                'status' => InvitationStatus::Accepted,
+                'accepted_at' => $now,
+            ])->save();
 
             // 面談クォータは受講生固有の消費対象。コーチは面談を提供する側のため初期付与しない。
             if ($user->role === UserRole::Student && $user->plan->default_meeting_quota > 0) {

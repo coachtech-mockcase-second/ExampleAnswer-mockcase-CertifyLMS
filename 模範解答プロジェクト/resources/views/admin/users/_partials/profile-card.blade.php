@@ -14,6 +14,12 @@
         UserStatus::Graduated => 'info',
         UserStatus::Withdrawn => 'gray',
     };
+
+    $isStudent = $user->role === UserRole::Student;
+    $isInProgress = $user->status === UserStatus::InProgress;
+    $isGraduated = $user->status === UserStatus::Graduated;
+    $canExtend = $isStudent && ($isInProgress || $isGraduated);
+    $canGrantQuota = $isStudent && $isInProgress;
 @endphp
 
 <div class="mt-4 bg-surface-raised border border-[var(--border-subtle)] rounded-2xl shadow-sm overflow-hidden">
@@ -65,23 +71,11 @@
 
         {{-- 右: 操作ボタン群 --}}
         @unless ($isWithdrawn)
-            <div class="flex flex-col gap-2 sm:items-end sm:min-w-[180px]">
-                <x-button data-modal-trigger="edit-profile-modal" variant="primary">
-                    <x-icon name="pencil" class="w-4 h-4" />
-                    プロフィール編集
-                </x-button>
-
-                @unless ($isSelf)
-                    <x-button data-modal-trigger="change-role-modal" variant="outline">
-                        <x-icon name="user-circle" class="w-4 h-4" />
-                        ロール変更
-                    </x-button>
-                @endunless
-
+            <div class="flex flex-col gap-2 sm:items-end sm:min-w-[200px]">
                 @if ($isInvited && $pendingInvitation)
                     <form method="POST" action="{{ route('admin.invitations.resend', $user) }}">
                         @csrf
-                        <x-button type="submit" variant="outline">
+                        <x-button type="submit" variant="primary">
                             <x-icon name="paper-airplane" class="w-4 h-4" />
                             招待を再送信
                         </x-button>
@@ -93,10 +87,24 @@
                     </x-button>
                 @endif
 
-                @if ($isActive && ! $isSelf)
+                @if ($canExtend)
+                    <x-button data-modal-trigger="extend-course-modal" variant="primary">
+                        <x-icon name="arrow-path" class="w-4 h-4" />
+                        プラン延長
+                    </x-button>
+                @endif
+
+                @if ($canGrantQuota)
+                    <x-button data-modal-trigger="grant-meeting-quota-modal" variant="outline">
+                        <x-icon name="plus-circle" class="w-4 h-4" />
+                        面談回数を付与
+                    </x-button>
+                @endif
+
+                @if (($isInProgress || $isGraduated) && ! $isSelf)
                     <x-button data-modal-trigger="withdraw-confirm-modal" variant="danger">
                         <x-icon name="user-minus" class="w-4 h-4" />
-                        退会処理
+                        強制退会
                     </x-button>
                 @endif
             </div>

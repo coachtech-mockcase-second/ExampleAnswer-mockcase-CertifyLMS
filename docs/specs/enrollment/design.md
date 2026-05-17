@@ -1,6 +1,7 @@
 # enrollment 設計
 
 > **v3 改修反映**: `assigned_coach_id` 削除、修了申請承認削除、`ReceiveCertificateAction` 追加、status 3 値、`coach_change` event_type 削除。
+> **2026-05-17 設計修正**: `EnrollmentStatusLog.event_type` カラムごと撤回（`from_status` / `to_status` で遷移を表現できるため冗長）。
 
 ## アーキテクチャ
 
@@ -43,11 +44,12 @@ enrollment_notes
 
 enrollment_status_logs (INSERT only)
 ├ id / enrollment_id FK
-├ event_type enum('status_change')  ← coach_change は削除
-├ from_status / to_status (EnrollmentStatus, nullable)
+├ from_status (EnrollmentStatus, nullable)  ← 初回登録時のみ NULL
+├ to_status (EnrollmentStatus)
 ├ changed_by_user_id ULID FK NULL
 ├ changed_reason / changed_at / created_at / updated_at
 INDEX (enrollment_id, changed_at)
+※ event_type カラムは持たない: from/to で遷移を表現するため冗長 (2026-05-17 設計修正)
 ```
 
 ## 主要 Action

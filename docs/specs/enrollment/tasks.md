@@ -4,7 +4,7 @@
 - [ ] `create_enrollments_table` (status 3 値、assigned_coach_id / completion_requested_at なし)
 - [ ] `create_enrollment_goals_table`
 - [ ] `create_enrollment_notes_table`
-- [ ] `create_enrollment_status_logs_table` (event_type='status_change' のみ)
+- [ ] `create_enrollment_status_logs_table` (from_status / to_status で遷移を表現、event_type カラムは持たない、2026-05-17 設計修正)
 - [ ] INDEX: `(user_id, certification_id)` UNIQUE / `(certification_id, status)` / `(status, exam_date)` / `(enrollment_id, changed_at)` on logs
 
 ## Enum / Model

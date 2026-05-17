@@ -21,9 +21,9 @@ class UserPolicyTest extends TestCase
 
         $this->assertTrue($policy->viewAny($admin));
         $this->assertTrue($policy->view($admin, $target));
-        $this->assertTrue($policy->update($admin, $target));
-        $this->assertTrue($policy->updateRole($admin, $target));
         $this->assertTrue($policy->withdraw($admin, $target));
+        $this->assertTrue($policy->extendCourse($admin, $target));
+        $this->assertTrue($policy->grantMeetingQuota($admin, $target));
     }
 
     public function test_coach_cannot_perform_user_management_operations(): void
@@ -34,9 +34,9 @@ class UserPolicyTest extends TestCase
 
         $this->assertFalse($policy->viewAny($coach));
         $this->assertFalse($policy->view($coach, $target));
-        $this->assertFalse($policy->update($coach, $target));
-        $this->assertFalse($policy->updateRole($coach, $target));
         $this->assertFalse($policy->withdraw($coach, $target));
+        $this->assertFalse($policy->extendCourse($coach, $target));
+        $this->assertFalse($policy->grantMeetingQuota($coach, $target));
     }
 
     public function test_student_cannot_perform_user_management_operations(): void
@@ -47,8 +47,8 @@ class UserPolicyTest extends TestCase
 
         $this->assertFalse($policy->viewAny($student));
         $this->assertFalse($policy->view($student, $target));
-        $this->assertFalse($policy->update($student, $target));
-        $this->assertFalse($policy->updateRole($student, $target));
         $this->assertFalse($policy->withdraw($student, $target));
+        $this->assertFalse($policy->extendCourse($student, $target));
+        $this->assertFalse($policy->grantMeetingQuota($student, $target));
     }
 }

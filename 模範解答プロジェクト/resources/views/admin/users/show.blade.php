@@ -4,11 +4,14 @@
 
 @php
     use App\Enums\InvitationStatus;
+    use App\Enums\UserRole;
     use App\Enums\UserStatus;
 
     $isWithdrawn = $user->status === UserStatus::Withdrawn;
     $isInvited = $user->status === UserStatus::Invited;
-    $isActive = $user->status === UserStatus::InProgress;
+    $isInProgress = $user->status === UserStatus::InProgress;
+    $isGraduated = $user->status === UserStatus::Graduated;
+    $isStudent = $user->role === UserRole::Student;
     $isSelf = $user->is(auth()->user());
     $pendingInvitation = $user->invitations->firstWhere('status', InvitationStatus::Pending);
 @endphp
@@ -24,10 +27,20 @@
         'user' => $user,
         'isWithdrawn' => $isWithdrawn,
         'isInvited' => $isInvited,
-        'isActive' => $isActive,
+        'isInProgress' => $isInProgress,
+        'isGraduated' => $isGraduated,
         'isSelf' => $isSelf,
         'pendingInvitation' => $pendingInvitation,
     ])
+
+    @if ($isStudent)
+        <div class="mt-6">
+            @include('admin.users._partials.plan-info-panel', [
+                'user' => $user,
+                'meetingsRemaining' => $meetingsRemaining,
+            ])
+        </div>
+    @endif
 
     <div class="mt-6 grid gap-6 lg:grid-cols-2">
         @include('admin.users._partials.enrollments-section', ['user' => $user])
@@ -40,14 +53,19 @@
 
     {{-- モーダル群 --}}
     @unless ($isWithdrawn)
-        @include('admin.users._modals.edit-profile-form', ['user' => $user])
-
-        @unless ($isSelf)
-            @include('admin.users._modals.change-role-form', ['user' => $user])
-        @endunless
-
-        @if ($isActive && ! $isSelf)
+        @if (($isInProgress || $isGraduated) && ! $isSelf)
             @include('admin.users._modals.withdraw-confirm', ['user' => $user])
+        @endif
+
+        @if ($isStudent && ($isInProgress || $isGraduated))
+            @include('admin.users._modals.extend-course', [
+                'user' => $user,
+                'plans' => $plans,
+            ])
+        @endif
+
+        @if ($isStudent && $isInProgress)
+            @include('admin.users._modals.grant-meeting-quota', ['user' => $user])
         @endif
 
         @if ($isInvited && $pendingInvitation)

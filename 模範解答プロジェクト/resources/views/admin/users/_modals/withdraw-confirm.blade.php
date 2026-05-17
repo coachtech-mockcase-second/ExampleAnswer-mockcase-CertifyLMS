@@ -14,16 +14,9 @@
             </div>
         </div>
 
-        <x-form.textarea
-            name="reason"
-            label="退会理由"
-            :value="old('reason')"
-            :required="true"
-            :rows="3"
-            :maxlength="200"
-            placeholder="例: 受講生からの依頼 / 利用規約違反 など"
-            hint="この理由は監査ログ(UserStatusLog)に保存されます。"
-        />
+        <p class="text-xs text-ink-500 leading-relaxed">
+            退会理由は「管理者による退会」としてステータス変更履歴に固定記録されます。
+        </p>
     </form>
 
     <x-slot:footer>

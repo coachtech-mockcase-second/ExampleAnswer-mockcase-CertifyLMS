@@ -595,6 +595,104 @@ URL `?tab=catalog` 形式で動作、active タブは `border-b-2 border-primary
 @endpush
 ```
 
+## ユーザー向け文言の規約（重要）
+
+Blade で **画面に描画される日本語テキスト** (`<p>` / `<dt>` / `<label>` / `<button>` 本文 / `<x-form.input :hint>` / モーダルの説明文 / `placeholder` / flash メッセージ / バリデーションメッセージ等) には、**DB スキーマやコードベース内部の機械可読な用語を露出させない**。受講生 / コーチ / 管理者の誰が読んでも、本 LMS の業務ドメイン語彙で自然に理解できる文言にする。
+
+`backend-types-and-docblocks.md` の「コードコメントで使わない構築側メタ情報」が **Claude / 開発者が読む PHP コメント** を対象にするのに対し、本ルールは **受講生・コーチ・管理者がブラウザで読むテキスト** を対象にする。**ユーザー画面に出る方が影響が大きいため、PHP コメントよりも厳しく適用する**。
+
+### 禁止される露出
+
+機械可読な内部用語をユーザー向けテキストに含めない:
+
+| カテゴリ | 禁止例 | 業務用語への置換 |
+|---|---|---|
+| **Model クラス名** | `UserStatusLog` / `UserPlanLog` / `MeetingQuotaTransaction` / `EnrollmentStatusLog` / `Enrollment` | ステータス変更履歴 / プラン履歴 / 面談回数履歴 / 受講登録 |
+| **DB テーブル名** | `user_status_logs` / `meeting_quota_transactions` / `enrollment_status_logs` | 同上 |
+| **Enum 値** (snake_case 機械値) | `admin_grant` / `granted_initial` / `status_change` / `renewed` / `assigned` | 管理者による付与 / 初期付与 / ステータス変更 / プラン延長 / プラン割当 |
+| **カラム名** | `granted_by_user_id` / `event_type` / `plan_expires_at` / `changed_by_user_id` | 操作者 / イベント種別 / プラン有効期限 / 操作者(変更者) |
+| **構築側ファイルパス** | `docs/specs/` / `.claude/rules/` / `app/Models/Foo.php` | (そもそも書かない) |
+| **改修フェーズ用語** | `v3 改修` / `2026-05-XX` / `Step N` / `Phase X` | (そもそも書かない、または「最新仕様で」等) |
+
+### 良例 / 悪例
+
+```blade
+{{-- ❌ 悪い(Model 名と Enum 機械値が露出) --}}
+<p class="text-sm text-ink-700">
+    トラブル補填等の目的で面談回数を手動付与します。
+    <span class="font-semibold">MeetingQuotaTransaction</span> に
+    <span class="font-mono">admin_grant</span> として記録されます。
+</p>
+
+{{-- ✅ 良い(業務用語のみ) --}}
+<p class="text-sm text-ink-700">
+    トラブル補填 / キャンペーン付与等の目的で、面談回数を手動付与します。
+    面談回数履歴に「管理者による付与」として記録され、操作者があなたとして残ります。
+</p>
+```
+
+```blade
+{{-- ❌ 悪い(Model 名が露出) --}}
+<p>退会理由は監査ログ（UserStatusLog）に記録されます。</p>
+
+{{-- ✅ 良い --}}
+<p>退会理由はステータス変更履歴に固定記録されます。</p>
+```
+
+```blade
+{{-- ❌ 悪い(Model 名 + 改修フェーズ用語) --}}
+<p>UserPlanLog に「v3 で追加された renewed イベント」として記録されます。</p>
+
+{{-- ✅ 良い --}}
+<p>プラン履歴に「プラン延長」として記録されます。</p>
+```
+
+### 適用範囲外（PHP コード文脈は OK）
+
+以下は **画面に描画されない** ため本ルールの対象外。`@php` ブロック / `@props` / Controller / Service と同じ「PHP コード文脈」として扱う:
+
+- `@php use App\Enums\MeetingQuotaTransactionType; @endphp` の import 文
+- `match ($type) { MeetingQuotaTransactionType::AdminGrant => 'success' }` の PHP マッチ式（**戻り値が `<x-badge>` の `variant` 等の machine 属性なら OK**、戻り値がユーザー画面に出る文字列なら label() 経由で日本語化）
+- `$user->plan_expires_at?->format('Y-m-d')` のプロパティアクセス（**レンダリングされるのは日付値、カラム名ではない**）
+- `data-modal-trigger="extend-course-modal"` 等の HTML 属性値（**画面に描画されない**）
+- HTML id / class 名（`id="grant-meeting-quota-form"`）
+- form の `name="amount"` 属性（HTTP リクエストキー、画面に出ない）
+
+判断軸: **「そのテキストはブラウザの画面に文字として描画されるか?」**
+- Yes → 業務用語必須
+- No (HTML 属性 / PHP 変数 / Enum value 経由でロジック判定する match 戻り値) → 機械値で OK
+
+### Enum を画面表示する場合
+
+Enum 値 (`$status->value` で得られる snake_case) を直接 echo してはいけない。**必ず `label()` メソッドで日本語化**してから描画する:
+
+```blade
+{{-- ❌ 悪い(snake_case が画面に出る) --}}
+{{ $status->value }}            {{-- in_progress --}}
+
+{{-- ✅ 良い(label() で日本語化) --}}
+{{ $status->label() }}          {{-- 受講中 --}}
+```
+
+Enum クラス側に `label(): string` を必ず実装する。`backend-models.md` の Enum 規約と整合。
+
+### 機械的チェック
+
+CI / 開発時の grep で機械検出可能:
+
+```bash
+# 各 Feature 実装後・モーダル追加後にローカルで確認推奨
+grep -rnE 'UserStatusLog|UserPlanLog|MeetingQuotaTransaction|EnrollmentStatusLog|admin_grant|granted_initial|status_change' resources/views/ \
+  | grep -v '@php\|use App\\Enums\|use App\\Models\|->cases()\|::class\|match \(' \
+  | grep -v 'id="\|name="\|data-\|class="'
+```
+
+検出結果が空でなければ、上記「禁止される露出」リストで業務用語に置換する。
+
+### ドメイン語彙の SSoT
+
+業務用語の整合は `docs/steering/product.md` の語彙(受講生 / コーチ / 管理者 / プラン / 招待 / 面談 / 修了証 / ステータス変更履歴 / プラン履歴 / 面談回数履歴 等)を SSoT とする。新規業務用語が必要になった場合は先に product.md に追加してから Blade に反映する。
+
 ## やってはいけないこと
 
 - Blade テンプレート内に複雑なロジック（if のネスト、計算）を書かない → Service / ViewModel に逃がす
@@ -604,3 +702,4 @@ URL `?tab=catalog` 形式で動作、active タブは `border-b-2 border-primary
 - 同じ utility class 組合せが 3 箇所以上で出たら **コンポーネント化する**（`<x-button>` / `<x-card>` 等）
 - インライン `style="..."` は使わない（特殊ケース・PDF レイアウトのみ許容）
 - Alpine.js / Livewire は使わない（[tech.md](../../docs/steering/tech.md) 規約）。インタラクションは素の JS（[frontend-javascript.md](./frontend-javascript.md)）で実装
+- **ユーザー向けテキストに DB / Model / Enum 機械値を露出しない**（本ドキュメント「ユーザー向け文言の規約」参照）

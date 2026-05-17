@@ -30,7 +30,7 @@
         <div>
             <h1 class="text-2xl font-bold text-ink-900">ユーザー管理</h1>
             <p class="text-sm text-ink-500 mt-1">
-                受講生 / コーチ / 管理者の招待・編集・退会を行います。
+                受講生 / コーチ / 管理者の招待・退会・プラン延長・面談付与を行います。
                 <span class="font-semibold text-ink-700">{{ $users->total() }} 名</span>
             </p>
         </div>
@@ -69,7 +69,7 @@
                 name="status"
                 class="text-sm py-2 px-3 rounded-md bg-white border border-ink-200 text-ink-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-colors"
             >
-                <option value="">全ステータス（退会済を除く）</option>
+                <option value="">全ステータス</option>
                 @foreach (UserStatus::cases() as $s)
                     <option value="{{ $s->value }}" @selected($status === $s->value)>{{ $s->label() }}</option>
                 @endforeach
@@ -113,7 +113,7 @@
                         <x-table.heading>名前 / メール</x-table.heading>
                         <x-table.heading>ロール</x-table.heading>
                         <x-table.heading>ステータス</x-table.heading>
-                        <x-table.heading>登録日</x-table.heading>
+                        <x-table.heading>プラン</x-table.heading>
                         <x-table.heading>最終ログイン</x-table.heading>
                         <x-table.heading class="text-right">操作</x-table.heading>
                     </x-table.row>
@@ -122,6 +122,11 @@
                 @foreach ($users as $u)
                     @php
                         $sb = $statusBadge($u->status);
+                        $planName = $u->plan?->name;
+                        $expiresAt = $u->plan_expires_at;
+                        $remainingDays = ($expiresAt instanceof \DateTimeInterface && $u->status !== UserStatus::Withdrawn)
+                            ? max(0, now()->startOfDay()->diffInDays($expiresAt->copy()->startOfDay(), false))
+                            : null;
                     @endphp
                     <x-table.row>
                         <x-table.cell>
@@ -147,9 +152,16 @@
                             </x-badge>
                         </x-table.cell>
                         <x-table.cell>
-                            <span class="text-xs text-ink-500 font-mono tabular-nums">
-                                {{ $u->created_at?->format('Y-m-d') }}
-                            </span>
+                            @if ($planName === null)
+                                <span class="text-xs text-ink-400">—</span>
+                            @else
+                                <div class="text-xs text-ink-700">{{ $planName }}</div>
+                                @if ($remainingDays !== null)
+                                    <div class="text-[11px] {{ $remainingDays <= 7 ? 'text-danger-700 font-semibold' : 'text-ink-500' }} font-mono tabular-nums">
+                                        残 {{ $remainingDays }} 日
+                                    </div>
+                                @endif
+                            @endif
                         </x-table.cell>
                         <x-table.cell>
                             <span class="text-xs text-ink-500 font-mono tabular-nums">

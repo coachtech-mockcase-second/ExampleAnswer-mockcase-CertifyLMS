@@ -13,15 +13,15 @@ return new class extends Migration
         Schema::create('user_status_logs', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->foreignUlid('user_id')->constrained()->restrictOnDelete();
+            $table->string('from_status');
+            $table->string('to_status');
             $table->foreignUlid('changed_by_user_id')->nullable()->constrained('users')->restrictOnDelete();
-            $table->string('status');
+            $table->text('changed_reason')->nullable();
             $table->timestamp('changed_at');
-            $table->string('changed_reason', 200)->nullable();
             $table->timestamps();
 
-            $table->index('user_id');
+            $table->index(['user_id', 'changed_at']);
             $table->index('changed_by_user_id');
-            $table->index('changed_at');
         });
     }
 

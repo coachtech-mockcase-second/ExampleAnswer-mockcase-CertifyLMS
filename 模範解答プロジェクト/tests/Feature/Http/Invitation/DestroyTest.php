@@ -66,7 +66,8 @@ class DestroyTest extends TestCase
         $this->assertDatabaseHas('user_status_logs', [
             'user_id' => $target->id,
             'changed_by_user_id' => $admin->id,
-            'status' => UserStatus::Withdrawn->value,
+            'from_status' => UserStatus::Invited->value,
+            'to_status' => UserStatus::Withdrawn->value,
             'changed_reason' => '招待取消',
         ]);
     }
