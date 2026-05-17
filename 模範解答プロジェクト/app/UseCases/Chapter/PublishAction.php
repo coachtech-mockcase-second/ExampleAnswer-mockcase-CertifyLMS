@@ -7,18 +7,22 @@ namespace App\UseCases\Chapter;
 use App\Enums\ContentStatus;
 use App\Exceptions\Content\ContentInvalidTransitionException;
 use App\Models\Chapter;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class PublishAction
+/**
+ * Chapter の公開ユースケース。Draft → Published の遷移のみ許可する。
+ */
+final class PublishAction
 {
-    public function __invoke(Chapter $chapter, User $actor): Chapter
+    /**
+     * @throws ContentInvalidTransitionException
+     */
+    public function __invoke(Chapter $chapter): Chapter
     {
         if ($chapter->status !== ContentStatus::Draft) {
-            throw new ContentInvalidTransitionException(
-                entity: 'Chapter',
-                from: $chapter->status,
-                to: ContentStatus::Published,
+            throw ContentInvalidTransitionException::forChapter(
+                $chapter->status,
+                ContentStatus::Published,
             );
         }
 

@@ -38,8 +38,14 @@ class CertificationCatalogController extends Controller
     {
         $this->authorize('view', $certification);
 
+        $isEnrolled = request()->user()
+            ->enrollments()
+            ->where('certification_id', $certification->id)
+            ->exists();
+
         return view('certifications.show', [
             'certification' => $action($certification),
+            'isEnrolled' => $isEnrolled,
         ]);
     }
 }

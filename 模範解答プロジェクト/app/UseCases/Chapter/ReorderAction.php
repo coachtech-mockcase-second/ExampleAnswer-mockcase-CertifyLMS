@@ -7,15 +7,19 @@ namespace App\UseCases\Chapter;
 use App\Exceptions\Content\ContentReorderInvalidException;
 use App\Models\Chapter;
 use App\Models\Part;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class ReorderAction
+/**
+ * Chapter の並び替えユースケース。Part 配下の全 Chapter ID 網羅性と重複なしを検証してから一括 UPDATE する。
+ */
+final class ReorderAction
 {
     /**
      * @param string[] $orderedIds
+     *
+     * @throws ContentReorderInvalidException
      */
-    public function __invoke(Part $part, User $actor, array $orderedIds): void
+    public function __invoke(Part $part, array $orderedIds): void
     {
         $existing = $part->chapters()->pluck('id')->all();
 

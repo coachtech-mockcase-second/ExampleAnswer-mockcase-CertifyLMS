@@ -27,6 +27,10 @@
             <div class="text-xs text-ink-500 font-mono mt-1 tabular-nums">order #{{ $section->order }}</div>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
+            <x-link-button href="{{ route('admin.sections.questions.index', $section) }}" variant="outline" size="sm">
+                <x-icon name="question-mark-circle" class="w-4 h-4" />
+                演習問題
+            </x-link-button>
             @if ($isDraft)
                 <x-button variant="primary" size="sm" data-modal-trigger="section-publish-modal">
                     <x-icon name="arrow-up-on-square" class="w-4 h-4" />

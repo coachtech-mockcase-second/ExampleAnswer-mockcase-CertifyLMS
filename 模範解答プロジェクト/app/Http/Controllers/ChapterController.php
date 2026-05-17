@@ -17,9 +17,12 @@ use App\UseCases\Chapter\StoreAction;
 use App\UseCases\Chapter\UnpublishAction;
 use App\UseCases\Chapter\UpdateAction;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/**
+ * Chapter 管理 Controller。
+ * Part 配下に紐付く CRUD + 状態遷移 + 並び替えを提供する。
+ */
 class ChapterController extends Controller
 {
     public function show(Chapter $chapter, ShowAction $action): View
@@ -33,20 +36,20 @@ class ChapterController extends Controller
 
     public function store(Part $part, StoreRequest $request, StoreAction $action): RedirectResponse
     {
-        $chapter = $action($part, $request->user(), $request->validated());
+        $chapter = $action($part, $request->validated());
 
         return redirect()
             ->route('admin.chapters.show', $chapter)
-            ->with('success', 'Chapter を作成しました。');
+            ->with('success', 'Chapterを作成しました。');
     }
 
     public function update(Chapter $chapter, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
-        $action($chapter, $request->user(), $request->validated());
+        $action($chapter, $request->validated());
 
         return redirect()
             ->route('admin.chapters.show', $chapter)
-            ->with('success', 'Chapter を更新しました。');
+            ->with('success', 'Chapterを更新しました。');
     }
 
     public function destroy(Chapter $chapter, DestroyAction $action): RedirectResponse
@@ -58,34 +61,34 @@ class ChapterController extends Controller
 
         return redirect()
             ->route('admin.parts.show', $partId)
-            ->with('success', 'Chapter を削除しました。');
+            ->with('success', 'Chapterを削除しました。');
     }
 
-    public function publish(Chapter $chapter, PublishAction $action, Request $request): RedirectResponse
+    public function publish(Chapter $chapter, PublishAction $action): RedirectResponse
     {
         $this->authorize('publish', $chapter);
 
-        $action($chapter, $request->user());
+        $action($chapter);
 
         return redirect()
             ->route('admin.chapters.show', $chapter)
-            ->with('success', 'Chapter を公開しました。');
+            ->with('success', 'Chapterを公開しました。');
     }
 
-    public function unpublish(Chapter $chapter, UnpublishAction $action, Request $request): RedirectResponse
+    public function unpublish(Chapter $chapter, UnpublishAction $action): RedirectResponse
     {
         $this->authorize('unpublish', $chapter);
 
-        $action($chapter, $request->user());
+        $action($chapter);
 
         return redirect()
             ->route('admin.chapters.show', $chapter)
-            ->with('success', 'Chapter を下書きに戻しました。');
+            ->with('success', 'Chapterを下書きに戻しました。');
     }
 
     public function reorder(Part $part, ReorderRequest $request, ReorderAction $action): RedirectResponse
     {
-        $action($part, $request->user(), $request->validated()['ids']);
+        $action($part, $request->validated()['ids']);
 
         return redirect()
             ->route('admin.parts.show', $part)

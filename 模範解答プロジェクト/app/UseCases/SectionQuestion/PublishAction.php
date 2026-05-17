@@ -2,24 +2,31 @@
 
 declare(strict_types=1);
 
-namespace App\UseCases\Question;
+namespace App\UseCases\SectionQuestion;
 
 use App\Enums\ContentStatus;
 use App\Exceptions\Content\ContentInvalidTransitionException;
 use App\Exceptions\Content\QuestionNotPublishableException;
-use App\Models\Question;
-use App\Models\User;
+use App\Models\SectionQuestion;
 use Illuminate\Support\Facades\DB;
 
-class PublishAction
+/**
+ * Section 紐づき問題の公開ユースケース。Draft → Published の遷移のみ許可する。
+ *
+ * 公開には選択肢が 2 件以上、かつ is_correct=true がちょうど 1 件存在する必要がある(整合性ガード)。
+ */
+final class PublishAction
 {
-    public function __invoke(Question $question, User $actor): Question
+    /**
+     * @throws ContentInvalidTransitionException
+     * @throws QuestionNotPublishableException
+     */
+    public function __invoke(SectionQuestion $question): SectionQuestion
     {
         if ($question->status !== ContentStatus::Draft) {
-            throw new ContentInvalidTransitionException(
-                entity: 'Question',
-                from: $question->status,
-                to: ContentStatus::Published,
+            throw ContentInvalidTransitionException::forSectionQuestion(
+                $question->status,
+                ContentStatus::Published,
             );
         }
 

@@ -7,18 +7,22 @@ namespace App\UseCases\Chapter;
 use App\Enums\ContentStatus;
 use App\Exceptions\Content\ContentInvalidTransitionException;
 use App\Models\Chapter;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class UnpublishAction
+/**
+ * Chapter の下書きへの巻き戻しユースケース。Published → Draft の遷移のみ許可する。
+ */
+final class UnpublishAction
 {
-    public function __invoke(Chapter $chapter, User $actor): Chapter
+    /**
+     * @throws ContentInvalidTransitionException
+     */
+    public function __invoke(Chapter $chapter): Chapter
     {
         if ($chapter->status !== ContentStatus::Published) {
-            throw new ContentInvalidTransitionException(
-                entity: 'Chapter',
-                from: $chapter->status,
-                to: ContentStatus::Draft,
+            throw ContentInvalidTransitionException::forChapter(
+                $chapter->status,
+                ContentStatus::Draft,
             );
         }
 

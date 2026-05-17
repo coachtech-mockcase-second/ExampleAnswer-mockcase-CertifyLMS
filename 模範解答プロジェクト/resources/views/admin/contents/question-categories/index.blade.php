@@ -1,26 +1,25 @@
 @extends('layouts.app')
 
-@section('title', '問題カテゴリマスタ — ' . $certification->name)
+@section('title', '出題分野マスタ — ' . $certification->name)
 
 @section('content')
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
         ['label' => '資格マスタ管理', 'href' => route('admin.certifications.index')],
         ['label' => $certification->name, 'href' => route('admin.certifications.show', $certification)],
-        ['label' => '問題管理', 'href' => route('admin.certifications.questions.index', $certification)],
-        ['label' => 'カテゴリマスタ'],
+        ['label' => '出題分野マスタ'],
     ]" />
 
     <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
         <div>
-            <h1 class="text-2xl font-bold text-ink-900">問題カテゴリマスタ</h1>
+            <h1 class="text-2xl font-bold text-ink-900">出題分野マスタ</h1>
             <p class="text-sm text-ink-500 mt-1">
-                資格内のカテゴリを管理します。Question 作成時の select 候補になります。
+                資格内の出題分野を管理します。演習問題・模擬試験問題の作成時の選択肢となります。
             </p>
         </div>
         <x-button variant="primary" data-modal-trigger="question-category-create-modal">
             <x-icon name="plus" class="w-4 h-4" />
-            新規カテゴリ
+            新規分野
         </x-button>
     </div>
 
@@ -59,7 +58,7 @@
                             <span class="text-xs text-ink-500 line-clamp-2 max-w-md">{{ $cat->description ?? '—' }}</span>
                         </x-table.cell>
                         <x-table.cell class="text-right">
-                            <span class="text-xs font-mono text-ink-700 tabular-nums">{{ $cat->questions_count ?? 0 }} 件</span>
+                            <span class="text-xs font-mono text-ink-700 tabular-nums">{{ $cat->section_questions_count ?? 0 }} 件</span>
                         </x-table.cell>
                         <x-table.cell class="text-right">
                             <x-button variant="ghost" size="sm" data-modal-trigger="question-category-edit-modal-{{ $cat->id }}">

@@ -1,5 +1,5 @@
 /**
- * Question 作成・編集フォームで「正答」ラジオに連動して
+ * 演習問題(SectionQuestion) 作成・編集フォームで「正答」ラジオに連動して
  * hidden の options[*][is_correct] を 1/0 に同期する。
  */
 function sync() {

@@ -8,6 +8,9 @@ use App\Models\Chapter;
 use App\Models\Part;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Chapter 新規作成リクエスト。親 Part 配下に紐付け、title / description を受け取る。
+ */
 class StoreRequest extends FormRequest
 {
     public function authorize(): bool
@@ -18,6 +21,9 @@ class StoreRequest extends FormRequest
             && ($this->user()?->can('create', [Chapter::class, $part]) ?? false);
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
     public function rules(): array
     {
         return [
@@ -26,6 +32,9 @@ class StoreRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [

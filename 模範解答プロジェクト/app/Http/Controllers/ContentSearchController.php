@@ -9,6 +9,10 @@ use App\Models\Certification;
 use App\UseCases\ContentSearch\SearchAction;
 use Illuminate\View\View;
 
+/**
+ * 受講生向け教材内 Section 全文検索 Controller。
+ * keyword と certification_id を受け取り、登録資格内の Published Section のみを返す。
+ */
 class ContentSearchController extends Controller
 {
     public function search(SearchRequest $request, SearchAction $action): View

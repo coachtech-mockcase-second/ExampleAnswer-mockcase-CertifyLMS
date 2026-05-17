@@ -6,7 +6,10 @@ namespace App\UseCases\Section;
 
 use App\Models\Section;
 
-class ShowAction
+/**
+ * Section 詳細取得ユースケース。親階層と画像メタデータを Eager Load する。
+ */
+final class ShowAction
 {
     public function __invoke(Section $section): Section
     {

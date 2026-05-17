@@ -10,6 +10,13 @@ use App\Models\Certification;
 use App\Models\Part;
 use App\Models\User;
 
+/**
+ * Part の認可ポリシー。
+ *
+ * - admin: 全資格配下を CRUD 可
+ * - coach: 担当資格(certification_coach_assignments)配下のみ CRUD 可
+ * - student: Published 状態のみ閲覧可
+ */
 class PartPolicy
 {
     public function viewAny(User $auth, Certification $certification): bool

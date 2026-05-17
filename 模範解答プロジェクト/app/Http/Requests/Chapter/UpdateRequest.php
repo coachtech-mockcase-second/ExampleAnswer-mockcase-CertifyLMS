@@ -7,6 +7,9 @@ namespace App\Http\Requests\Chapter;
 use App\Models\Chapter;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Chapter 更新リクエスト。title / description のみ更新可、status は別エンドポイントで遷移する。
+ */
 class UpdateRequest extends FormRequest
 {
     public function authorize(): bool
@@ -17,6 +20,9 @@ class UpdateRequest extends FormRequest
             && ($this->user()?->can('update', $chapter) ?? false);
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
     public function rules(): array
     {
         return [
@@ -25,6 +31,9 @@ class UpdateRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [

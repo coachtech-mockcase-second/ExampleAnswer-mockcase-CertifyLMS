@@ -7,15 +7,21 @@ namespace App\UseCases\Part;
 use App\Exceptions\Content\ContentReorderInvalidException;
 use App\Models\Certification;
 use App\Models\Part;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class ReorderAction
+/**
+ * Part の並び替えユースケース。
+ *
+ * 渡された順序 ID 配列が当該資格配下の全 Part を網羅し、重複なく対応することを検証してから一括 UPDATE する。
+ */
+final class ReorderAction
 {
     /**
      * @param string[] $orderedIds Part ID を表示順に並べた配列
+     *
+     * @throws ContentReorderInvalidException
      */
-    public function __invoke(Certification $certification, User $actor, array $orderedIds): void
+    public function __invoke(Certification $certification, array $orderedIds): void
     {
         $existing = $certification->parts()->pluck('id')->all();
 

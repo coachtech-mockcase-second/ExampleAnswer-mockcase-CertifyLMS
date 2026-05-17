@@ -19,9 +19,9 @@ use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlanStatusController;
 use App\Http\Controllers\QuestionCategoryController;
-use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionImageController;
+use App\Http\Controllers\SectionQuestionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -61,10 +61,6 @@ Route::middleware('auth')->group(function () {
     // 修了証配信(graduated 受講生でも DL 可、active-learning 非適用)
     Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
         ->name('certificates.download');
-
-    // 教材検索
-    Route::get('contents/search', [ContentSearchController::class, 'search'])
-        ->name('contents.search');
 });
 
 // ============================================================
@@ -76,6 +72,10 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
         ->name('certifications.index');
     Route::get('certifications/{certification}', [CertificationCatalogController::class, 'show'])
         ->name('certifications.show');
+
+    // 教材検索(登録資格内の Published Section を全文検索)
+    Route::get('contents/search', [ContentSearchController::class, 'search'])
+        ->name('contents.search');
 });
 
 // ============================================================
@@ -146,7 +146,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 // admin + コーチ共有ルート(教材管理: コーチは担当資格のみ Policy で絞り込み)
 // ============================================================
 Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function () {
-    // 教材管理 — Part(章): 一覧 / 新規作成 / 並び替え
+    // 教材管理 — Part: 一覧 / 新規作成 / 並び替え
     Route::get('certifications/{certification}/parts', [PartController::class, 'index'])
         ->name('admin.certifications.parts.index');
     Route::post('certifications/{certification}/parts', [PartController::class, 'store'])
@@ -154,7 +154,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::patch('certifications/{certification}/parts/reorder', [PartController::class, 'reorder'])
         ->name('admin.certifications.parts.reorder');
 
-    // 教材管理 — Part: 詳細 / 更新 / 削除 / 公開遷移 + 配下 Chapter 操作
+    // 教材管理 — Part: 詳細 / 更新 / 削除 / 公開遷移 + 配下 Chapter の作成・並び替え
     Route::get('parts/{part}', [PartController::class, 'show'])->name('admin.parts.show');
     Route::patch('parts/{part}', [PartController::class, 'update'])->name('admin.parts.update');
     Route::delete('parts/{part}', [PartController::class, 'destroy'])->name('admin.parts.destroy');
@@ -164,7 +164,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::patch('parts/{part}/chapters/reorder', [ChapterController::class, 'reorder'])
         ->name('admin.parts.chapters.reorder');
 
-    // 教材管理 — Chapter(節): 詳細 / 更新 / 削除 / 公開遷移 + 配下 Section 操作
+    // 教材管理 — Chapter: 詳細 / 更新 / 削除 / 公開遷移 + 配下 Section の作成・並び替え
     Route::get('chapters/{chapter}', [ChapterController::class, 'show'])->name('admin.chapters.show');
     Route::patch('chapters/{chapter}', [ChapterController::class, 'update'])->name('admin.chapters.update');
     Route::delete('chapters/{chapter}', [ChapterController::class, 'destroy'])->name('admin.chapters.destroy');
@@ -175,7 +175,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::patch('chapters/{chapter}/sections/reorder', [SectionController::class, 'reorder'])
         ->name('admin.chapters.sections.reorder');
 
-    // 教材管理 — Section(本文): 詳細 / 更新 / 削除 / 公開遷移 / Markdown プレビュー / 画像アップロード
+    // 教材管理 — Section: 詳細 / 更新 / 削除 / 公開遷移 / Markdown プレビュー / 画像アップロード
     Route::get('sections/{section}', [SectionController::class, 'show'])->name('admin.sections.show');
     Route::patch('sections/{section}', [SectionController::class, 'update'])->name('admin.sections.update');
     Route::delete('sections/{section}', [SectionController::class, 'destroy'])->name('admin.sections.destroy');
@@ -189,7 +189,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::delete('section-images/{image}', [SectionImageController::class, 'destroy'])
         ->name('admin.section-images.destroy');
 
-    // 演習管理 — QuestionCategory(問題分類マスタ)
+    // 演習管理 — 出題分野マスタ
     Route::get('certifications/{certification}/question-categories', [QuestionCategoryController::class, 'index'])
         ->name('admin.certifications.question-categories.index');
     Route::post('certifications/{certification}/question-categories', [QuestionCategoryController::class, 'store'])
@@ -199,20 +199,23 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::delete('question-categories/{category}', [QuestionCategoryController::class, 'destroy'])
         ->name('admin.question-categories.destroy');
 
-    // 演習管理 — Question(問題): 一覧 / 作成 / 詳細・編集 / 公開遷移
-    Route::get('certifications/{certification}/questions', [QuestionController::class, 'index'])
-        ->name('admin.certifications.questions.index');
-    Route::get('certifications/{certification}/questions/create', [QuestionController::class, 'create'])
-        ->name('admin.certifications.questions.create');
-    Route::post('certifications/{certification}/questions', [QuestionController::class, 'store'])
-        ->name('admin.certifications.questions.store');
-    Route::get('questions/{question}', [QuestionController::class, 'show'])->name('admin.questions.show');
-    Route::patch('questions/{question}', [QuestionController::class, 'update'])->name('admin.questions.update');
-    Route::delete('questions/{question}', [QuestionController::class, 'destroy'])->name('admin.questions.destroy');
-    Route::post('questions/{question}/publish', [QuestionController::class, 'publish'])
-        ->name('admin.questions.publish');
-    Route::post('questions/{question}/unpublish', [QuestionController::class, 'unpublish'])
-        ->name('admin.questions.unpublish');
+    // 演習管理 — Section 紐づき演習問題: 一覧 / 作成 / 詳細・編集 / 公開遷移(Section 経由でのみアクセス)
+    Route::get('sections/{section}/questions', [SectionQuestionController::class, 'index'])
+        ->name('admin.sections.questions.index');
+    Route::get('sections/{section}/questions/create', [SectionQuestionController::class, 'create'])
+        ->name('admin.sections.questions.create');
+    Route::post('sections/{section}/questions', [SectionQuestionController::class, 'store'])
+        ->name('admin.sections.questions.store');
+    Route::get('section-questions/{sectionQuestion}', [SectionQuestionController::class, 'show'])
+        ->name('admin.section-questions.show');
+    Route::patch('section-questions/{sectionQuestion}', [SectionQuestionController::class, 'update'])
+        ->name('admin.section-questions.update');
+    Route::delete('section-questions/{sectionQuestion}', [SectionQuestionController::class, 'destroy'])
+        ->name('admin.section-questions.destroy');
+    Route::post('section-questions/{sectionQuestion}/publish', [SectionQuestionController::class, 'publish'])
+        ->name('admin.section-questions.publish');
+    Route::post('section-questions/{sectionQuestion}/unpublish', [SectionQuestionController::class, 'unpublish'])
+        ->name('admin.section-questions.unpublish');
 });
 
 // ============================================================

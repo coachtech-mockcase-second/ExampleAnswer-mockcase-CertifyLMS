@@ -6,7 +6,10 @@ namespace App\UseCases\Chapter;
 
 use App\Models\Chapter;
 
-class ShowAction
+/**
+ * Chapter 詳細取得ユースケース。親 Part / Certification と配下 Section を Eager Load する。
+ */
+final class ShowAction
 {
     public function __invoke(Chapter $chapter): Chapter
     {

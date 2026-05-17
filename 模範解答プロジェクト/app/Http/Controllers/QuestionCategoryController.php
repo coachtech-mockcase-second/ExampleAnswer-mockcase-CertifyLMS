@@ -15,6 +15,10 @@ use App\UseCases\QuestionCategory\UpdateAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
+/**
+ * 出題分野マスタ管理 Controller。
+ * 演習問題(SectionQuestion) と模試問題(MockExamQuestion) の両系統から参照される共有マスタの CRUD を担う。
+ */
 class QuestionCategoryController extends Controller
 {
     public function index(Certification $certification, IndexAction $action): View
@@ -29,20 +33,20 @@ class QuestionCategoryController extends Controller
 
     public function store(Certification $certification, StoreRequest $request, StoreAction $action): RedirectResponse
     {
-        $action($certification, $request->user(), $request->validated());
+        $action($certification, $request->validated());
 
         return redirect()
             ->route('admin.certifications.question-categories.index', $certification)
-            ->with('success', 'カテゴリを作成しました。');
+            ->with('success', '出題分野を作成しました。');
     }
 
     public function update(QuestionCategory $category, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
-        $action($category, $request->user(), $request->validated());
+        $action($category, $request->validated());
 
         return redirect()
             ->route('admin.certifications.question-categories.index', $category->certification_id)
-            ->with('success', 'カテゴリを更新しました。');
+            ->with('success', '出題分野を更新しました。');
     }
 
     public function destroy(QuestionCategory $category, DestroyAction $action): RedirectResponse
@@ -54,6 +58,6 @@ class QuestionCategoryController extends Controller
 
         return redirect()
             ->route('admin.certifications.question-categories.index', $certificationId)
-            ->with('success', 'カテゴリを削除しました。');
+            ->with('success', '出題分野を削除しました。');
     }
 }

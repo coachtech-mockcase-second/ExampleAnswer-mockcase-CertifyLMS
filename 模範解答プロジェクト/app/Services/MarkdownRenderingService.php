@@ -14,7 +14,14 @@ use League\CommonMark\Node\NodeIterator;
 use League\CommonMark\Parser\MarkdownParser;
 use League\CommonMark\Renderer\HtmlRenderer;
 
-class MarkdownRenderingService
+/**
+ * Section 本文(Markdown)の安全なレンダリングと検索結果用スニペット抽出を提供する Service。
+ *
+ * 危険タグ(`<script>` / `<iframe>` / `<object>` 等)を `html_input=strip` で除去し、
+ * `<img>` の src を `/storage/section-images/` または `https://` に限定、
+ * 外部リンクには `rel="nofollow noopener noreferrer" target="_blank"` を付与する(XSS / リダイレクト悪用対策)。
+ */
+final class MarkdownRenderingService
 {
     private readonly MarkdownConverter $converter;
 
@@ -62,6 +69,9 @@ class MarkdownRenderingService
         return $renderer->renderDocument($document)->getContent();
     }
 
+    /**
+     * 検索ヒット箇所の前後 padding 文字分を切り出し、両端に「…」(省略記号)を付ける。
+     */
     public function extractSnippet(string $body, string $keyword, int $padding = 80): string
     {
         if ($keyword === '') {

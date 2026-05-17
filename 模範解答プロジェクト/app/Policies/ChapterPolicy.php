@@ -11,6 +11,13 @@ use App\Models\Chapter;
 use App\Models\Part;
 use App\Models\User;
 
+/**
+ * Chapter の認可ポリシー。
+ *
+ * - admin: 全資格配下を CRUD 可
+ * - coach: 担当資格配下のみ CRUD 可
+ * - student: Published 状態のみ閲覧可
+ */
 class ChapterPolicy
 {
     public function viewAny(User $auth, Part $part): bool

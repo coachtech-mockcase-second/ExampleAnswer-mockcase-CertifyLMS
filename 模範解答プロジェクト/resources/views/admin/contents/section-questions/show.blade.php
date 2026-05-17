@@ -1,19 +1,20 @@
 @extends('layouts.app')
 
-@section('title', '問題詳細')
+@section('title', '演習問題詳細')
 
 @php
     use App\Enums\ContentStatus;
-    use App\Enums\QuestionDifficulty;
     $isDraft = $question->status === ContentStatus::Draft;
+    $certification = $question->section->chapter->part->certification;
 @endphp
 
 @section('content')
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
         ['label' => '資格マスタ管理', 'href' => route('admin.certifications.index')],
-        ['label' => $question->certification->name, 'href' => route('admin.certifications.show', $question->certification)],
-        ['label' => '問題管理', 'href' => route('admin.certifications.questions.index', $question->certification)],
+        ['label' => $certification->name, 'href' => route('admin.certifications.show', $certification)],
+        ['label' => $question->section->title, 'href' => route('admin.sections.show', $question->section)],
+        ['label' => '演習問題', 'href' => route('admin.sections.questions.index', $question->section)],
         ['label' => '問題詳細'],
     ]" />
 
@@ -22,8 +23,7 @@
             <h1 class="text-2xl font-bold text-ink-900 line-clamp-2">{{ \Illuminate\Support\Str::limit($question->body, 80) }}</h1>
             <div class="mt-2 flex items-center gap-2">
                 @include('admin.contents._partials.status-pill', ['status' => $question->status])
-                <x-badge variant="info" size="sm">{{ $question->difficulty->label() }}</x-badge>
-                <span class="text-xs text-ink-500">カテゴリ: {{ $question->category?->name ?? '—' }}</span>
+                <span class="text-xs text-ink-500">分野: {{ $question->category?->name ?? '—' }}</span>
             </div>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
@@ -45,7 +45,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.questions.update', $question) }}" class="mt-6 space-y-6">
+    <form method="POST" action="{{ route('admin.section-questions.update', $question) }}" class="mt-6 space-y-6">
         @csrf
         @method('PATCH')
 
@@ -69,31 +69,15 @@
                     :error="$errors->first('explanation')"
                     :maxlength="5000"
                 />
-                <div class="grid gap-4 sm:grid-cols-2">
-                    @include('admin.contents.questions._partials.category-select', [
-                        'categories' => $categories,
-                        'selected' => old('category_id', $question->category_id),
-                    ])
-                    <x-form.select
-                        name="difficulty"
-                        label="難易度"
-                        :options="collect(QuestionDifficulty::cases())->mapWithKeys(fn ($d) => [$d->value => $d->label()])->toArray()"
-                        :value="old('difficulty', $question->difficulty->value)"
-                        :error="$errors->first('difficulty')"
-                        :required="true"
-                    />
-                </div>
-                <x-form.input
-                    name="section_id"
-                    label="紐づき Section ID (任意、空欄なら mock-exam 専用)"
-                    :value="old('section_id', $question->section_id)"
-                    :error="$errors->first('section_id')"
-                />
+                @include('admin.contents.section-questions._partials.category-select', [
+                    'categories' => $categories,
+                    'selected' => old('category_id', $question->category_id),
+                ])
             </div>
         </x-card>
 
         <x-card padding="md">
-            @include('admin.contents.questions._partials.option-fieldset', [
+            @include('admin.contents.section-questions._partials.option-fieldset', [
                 'options' => old('options', $question->options->map(fn ($o) => [
                     'body' => $o->body,
                     'is_correct' => $o->is_correct,
@@ -102,7 +86,7 @@
         </x-card>
 
         <div class="flex justify-end gap-2">
-            <x-link-button href="{{ route('admin.certifications.questions.index', $question->certification) }}" variant="ghost">一覧へ戻る</x-link-button>
+            <x-link-button href="{{ route('admin.sections.questions.index', $question->section) }}" variant="ghost">一覧へ戻る</x-link-button>
             <x-button type="submit" variant="primary">保存</x-button>
         </div>
     </form>
@@ -110,22 +94,22 @@
     @if ($isDraft)
         @include('admin.contents._modals.publish-confirm', [
             'id' => 'question-publish-modal',
-            'title' => '問題を公開しますか？',
+            'title' => '演習問題を公開しますか？',
             'description' => '公開には選択肢 2 件以上 + 正答 1 件が必要です。',
-            'action' => route('admin.questions.publish', $question),
+            'action' => route('admin.section-questions.publish', $question),
         ])
         @include('admin.contents._modals.delete-confirm', [
             'id' => 'question-delete-modal',
-            'title' => '問題を削除しますか？',
-            'description' => '問題を SoftDelete します。mock-exam で参照中の場合は削除できません。',
-            'action' => route('admin.questions.destroy', $question),
+            'title' => '演習問題を削除しますか？',
+            'description' => '演習問題を SoftDelete します。受講生の解答履歴は保持されます。',
+            'action' => route('admin.section-questions.destroy', $question),
         ])
     @else
         @include('admin.contents._modals.publish-confirm', [
             'id' => 'question-unpublish-modal',
-            'title' => '問題を下書きに戻しますか？',
+            'title' => '演習問題を下書きに戻しますか？',
             'description' => '下書きに戻すと受講生からは非表示になります。',
-            'action' => route('admin.questions.unpublish', $question),
+            'action' => route('admin.section-questions.unpublish', $question),
             'buttonLabel' => '下書きに戻す',
             'buttonVariant' => 'secondary',
         ])

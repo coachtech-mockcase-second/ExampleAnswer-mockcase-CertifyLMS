@@ -10,6 +10,9 @@ use App\Models\Section;
 use App\Models\SectionImage;
 use App\Models\User;
 
+/**
+ * 教材内画像(SectionImage) の認可ポリシー。コーチは担当資格配下のセクション、admin は全資格でアップロード / 削除可。
+ */
 class SectionImagePolicy
 {
     public function create(User $auth, Section $section): bool

@@ -9,12 +9,40 @@
         ['label' => $certification->name],
     ]" />
 
-    <div class="mt-4">
-        <div class="flex items-center gap-3 flex-wrap">
-            <h1 class="text-2xl font-bold text-ink-900">{{ $certification->name }}</h1>
-            <x-badge variant="info" size="md">{{ $certification->category?->name ?? '—' }}</x-badge>
-            <x-badge variant="gray" size="md">{{ $certification->difficulty->label() }}</x-badge>
+    <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0">
+            <div class="flex items-center gap-3 flex-wrap">
+                <h1 class="text-2xl font-bold text-ink-900">{{ $certification->name }}</h1>
+                <x-badge variant="info" size="md">{{ $certification->category?->name ?? '—' }}</x-badge>
+                <x-badge variant="gray" size="md">{{ $certification->difficulty->label() }}</x-badge>
+                @if ($isEnrolled)
+                    <x-badge variant="success" size="md">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
+                        受講中
+                    </x-badge>
+                @endif
+            </div>
         </div>
+
+        @if (Route::has('enrollments.store'))
+            <div class="shrink-0">
+                @if ($isEnrolled)
+                    <x-button variant="outline" :disabled="true">
+                        <x-icon name="check-circle" class="w-4 h-4" />
+                        受講登録済み
+                    </x-button>
+                @else
+                    <form method="POST" action="{{ route('enrollments.store') }}">
+                        @csrf
+                        <input type="hidden" name="certification_id" value="{{ $certification->id }}">
+                        <x-button type="submit" variant="primary">
+                            <x-icon name="plus" class="w-4 h-4" />
+                            この資格を受講登録する
+                        </x-button>
+                    </form>
+                @endif
+            </div>
+        @endif
     </div>
 
     <div class="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr]">

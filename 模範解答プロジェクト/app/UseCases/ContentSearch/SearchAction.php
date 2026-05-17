@@ -11,7 +11,16 @@ use App\Services\MarkdownRenderingService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as PaginatorImpl;
 
-class SearchAction
+/**
+ * 受講生向け教材内 Section 全文検索ユースケース。
+ *
+ * 検索結果は以下の条件で絞り込む(cascade visibility):
+ * - 受講生が `enrollments` で登録済の資格内
+ * - Section / 親 Chapter / 親 Part がすべて Published 状態
+ * - 親 Certification が SoftDelete されていない
+ * 空キーワード / 未登録資格指定時は結果ゼロ件のレスポンスを返し、不要な検索クエリを発行しない。
+ */
+final class SearchAction
 {
     public function __construct(private readonly MarkdownRenderingService $markdown) {}
 

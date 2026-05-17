@@ -7,18 +7,24 @@ namespace App\UseCases\Part;
 use App\Enums\ContentStatus;
 use App\Models\Certification;
 use App\Models\Part;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class StoreAction
+/**
+ * Part の新規作成ユースケース。同一資格配下の MAX(order)+1 を採番し、status=Draft 固定で INSERT する。
+ */
+final class StoreAction
 {
-    public function __invoke(Certification $certification, User $actor, array $validated): Part
+    /**
+     * @param array{title: string, description?: ?string} $validated
+     */
+    public function __invoke(Certification $certification, array $validated): Part
     {
         return DB::transaction(function () use ($certification, $validated) {
             $maxOrder = $certification->parts()->lockForUpdate()->max('order') ?? 0;
 
             return $certification->parts()->create([
-                ...$validated,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
                 'status' => ContentStatus::Draft->value,
                 'order' => $maxOrder + 1,
                 'published_at' => null,

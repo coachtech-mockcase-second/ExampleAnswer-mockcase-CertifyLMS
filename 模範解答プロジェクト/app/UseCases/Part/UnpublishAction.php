@@ -7,18 +7,22 @@ namespace App\UseCases\Part;
 use App\Enums\ContentStatus;
 use App\Exceptions\Content\ContentInvalidTransitionException;
 use App\Models\Part;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class UnpublishAction
+/**
+ * Part の下書きへの巻き戻しユースケース。Published → Draft の遷移のみ許可する。
+ */
+final class UnpublishAction
 {
-    public function __invoke(Part $part, User $actor): Part
+    /**
+     * @throws ContentInvalidTransitionException
+     */
+    public function __invoke(Part $part): Part
     {
         if ($part->status !== ContentStatus::Published) {
-            throw new ContentInvalidTransitionException(
-                entity: 'Part',
-                from: $part->status,
-                to: ContentStatus::Draft,
+            throw ContentInvalidTransitionException::forPart(
+                $part->status,
+                ContentStatus::Draft,
             );
         }
 

@@ -44,9 +44,9 @@
                 <x-icon name="book-open" class="w-4 h-4" />
                 教材階層
             </x-link-button>
-            <x-link-button href="{{ route('admin.certifications.questions.index', $certification) }}" variant="outline" size="sm">
-                <x-icon name="question-mark-circle" class="w-4 h-4" />
-                問題管理
+            <x-link-button href="{{ route('admin.certifications.question-categories.index', $certification) }}" variant="outline" size="sm">
+                <x-icon name="tag" class="w-4 h-4" />
+                出題分野マスタ
             </x-link-button>
             <x-link-button href="{{ route('admin.certifications.edit', $certification) }}" variant="outline" size="sm">
                 <x-icon name="pencil" class="w-4 h-4" />

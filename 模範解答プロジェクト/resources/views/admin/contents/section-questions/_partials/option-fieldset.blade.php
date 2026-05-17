@@ -27,6 +27,7 @@
                     <span class="text-xs text-ink-600">正答</span>
                 </label>
                 <input type="hidden" name="options[{{ $idx }}][is_correct]" value="{{ ($opt['is_correct'] ?? false) ? 1 : 0 }}" data-correct-hidden>
+                <input type="hidden" name="options[{{ $idx }}][order]" value="{{ $idx }}">
                 <textarea
                     name="options[{{ $idx }}][body]"
                     rows="2"

@@ -20,9 +20,12 @@ use App\UseCases\Section\UnpublishAction;
 use App\UseCases\Section\UpdateAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/**
+ * Section 管理 Controller。
+ * Chapter 配下に紐付く CRUD + 状態遷移 + 並び替え + Markdown プレビュー API を提供する。
+ */
 class SectionController extends Controller
 {
     public function show(Section $section, ShowAction $action): View
@@ -36,20 +39,20 @@ class SectionController extends Controller
 
     public function store(Chapter $chapter, StoreRequest $request, StoreAction $action): RedirectResponse
     {
-        $section = $action($chapter, $request->user(), $request->validated());
+        $section = $action($chapter, $request->validated());
 
         return redirect()
             ->route('admin.sections.show', $section)
-            ->with('success', 'Section を作成しました。');
+            ->with('success', 'Sectionを作成しました。');
     }
 
     public function update(Section $section, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
-        $action($section, $request->user(), $request->validated());
+        $action($section, $request->validated());
 
         return redirect()
             ->route('admin.sections.show', $section)
-            ->with('success', 'Section を更新しました。');
+            ->with('success', 'Sectionを更新しました。');
     }
 
     public function destroy(Section $section, DestroyAction $action): RedirectResponse
@@ -61,34 +64,34 @@ class SectionController extends Controller
 
         return redirect()
             ->route('admin.chapters.show', $chapterId)
-            ->with('success', 'Section を削除しました。');
+            ->with('success', 'Sectionを削除しました。');
     }
 
-    public function publish(Section $section, PublishAction $action, Request $request): RedirectResponse
+    public function publish(Section $section, PublishAction $action): RedirectResponse
     {
         $this->authorize('publish', $section);
 
-        $action($section, $request->user());
+        $action($section);
 
         return redirect()
             ->route('admin.sections.show', $section)
-            ->with('success', 'Section を公開しました。');
+            ->with('success', 'Sectionを公開しました。');
     }
 
-    public function unpublish(Section $section, UnpublishAction $action, Request $request): RedirectResponse
+    public function unpublish(Section $section, UnpublishAction $action): RedirectResponse
     {
         $this->authorize('unpublish', $section);
 
-        $action($section, $request->user());
+        $action($section);
 
         return redirect()
             ->route('admin.sections.show', $section)
-            ->with('success', 'Section を下書きに戻しました。');
+            ->with('success', 'Sectionを下書きに戻しました。');
     }
 
     public function reorder(Chapter $chapter, ReorderRequest $request, ReorderAction $action): RedirectResponse
     {
-        $action($chapter, $request->user(), $request->validated()['ids']);
+        $action($chapter, $request->validated()['ids']);
 
         return redirect()
             ->route('admin.chapters.show', $chapter)
@@ -97,6 +100,8 @@ class SectionController extends Controller
 
     public function preview(Section $section, PreviewRequest $request, PreviewAction $action): JsonResponse
     {
+        $this->authorize('preview', $section);
+
         $html = $action($section, $request->validated()['body']);
 
         return response()->json(['html' => $html]);

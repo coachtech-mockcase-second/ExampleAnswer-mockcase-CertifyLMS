@@ -8,6 +8,9 @@ use App\Models\Section;
 use App\Models\SectionImage;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * 教材内画像のアップロードリクエスト。png / jpg / jpeg / webp の 2MB 以下に制限する。
+ */
 class StoreRequest extends FormRequest
 {
     public function authorize(): bool
@@ -18,6 +21,9 @@ class StoreRequest extends FormRequest
             && ($this->user()?->can('create', [SectionImage::class, $section]) ?? false);
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
     public function rules(): array
     {
         return [
@@ -25,6 +31,9 @@ class StoreRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [

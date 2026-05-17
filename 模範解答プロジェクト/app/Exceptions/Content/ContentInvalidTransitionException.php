@@ -7,21 +7,46 @@ namespace App\Exceptions\Content;
 use App\Enums\ContentStatus;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
-class ContentInvalidTransitionException extends ConflictHttpException
+/**
+ * 教材階層・Section 紐づき問題の公開状態遷移(Draft ⇄ Published)が許可されない条件下で試行された場合に throw される。
+ *
+ * 利用先: Part / Chapter / Section / SectionQuestion の PublishAction / UnpublishAction。
+ * Entity ごとの static ファクトリ(forPart / forChapter / forSection / forSectionQuestion)を経由して呼出側からはメッセージ文字列を渡さない。
+ */
+final class ContentInvalidTransitionException extends ConflictHttpException
 {
-    public function __construct(
-        public readonly string $entity,
-        public readonly ContentStatus $from,
-        public readonly ContentStatus $to,
-        ?\Throwable $previous = null,
-    ) {
-        $message = sprintf(
-            '%sの現在の状態（%s）からはこの操作（%s）を行えません。',
-            $entity,
+    public static function forPart(ContentStatus $from, ContentStatus $to): self
+    {
+        return self::build('Part', $from, $to);
+    }
+
+    public static function forChapter(ContentStatus $from, ContentStatus $to): self
+    {
+        return self::build('Chapter', $from, $to);
+    }
+
+    public static function forSection(ContentStatus $from, ContentStatus $to): self
+    {
+        return self::build('Section', $from, $to);
+    }
+
+    public static function forSectionQuestion(ContentStatus $from, ContentStatus $to): self
+    {
+        return self::build('演習問題', $from, $to);
+    }
+
+    private static function build(string $entityLabel, ContentStatus $from, ContentStatus $to): self
+    {
+        return new self(sprintf(
+            '%sの現在の状態(%s)から%sへの遷移は許可されていません。',
+            $entityLabel,
             $from->label(),
             $to->label(),
-        );
+        ));
+    }
 
-        parent::__construct($message, $previous);
+    private function __construct(string $message)
+    {
+        parent::__construct($message);
     }
 }

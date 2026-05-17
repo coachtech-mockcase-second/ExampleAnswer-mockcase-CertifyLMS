@@ -8,6 +8,9 @@ use App\Models\Certification;
 use App\Models\Part;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Part 並び替えリクエスト。配下 Part の ID 配列を表示順に受け取る。
+ */
 class ReorderRequest extends FormRequest
 {
     public function authorize(): bool
@@ -18,6 +21,9 @@ class ReorderRequest extends FormRequest
             && ($this->user()?->can('reorder', [Part::class, $certification]) ?? false);
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
     public function rules(): array
     {
         return [
@@ -26,6 +32,9 @@ class ReorderRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [

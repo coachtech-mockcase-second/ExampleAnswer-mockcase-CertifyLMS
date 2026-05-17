@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ContentStatus;
-use App\Enums\QuestionDifficulty;
+use Database\Factories\SectionQuestionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,17 +14,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Question extends Model
+/**
+ * Section に紐づく演習問題を表す Model。
+ *
+ * 関連: Section(親、必須) / QuestionCategory(出題分野マスタ) / SectionQuestionOption(選択肢)
+ * scope: published / ofSection(string) / byCategory(?string) / ordered
+ * 資格(Certification)への参照は section から chapter → part → certification と辿る(直接の certification_id カラムは持たない)。
+ */
+class SectionQuestion extends Model
 {
+    /** @use HasFactory<SectionQuestionFactory> */
     use HasFactory, HasUlids, SoftDeletes;
 
     protected $fillable = [
-        'certification_id',
         'section_id',
         'category_id',
         'body',
         'explanation',
-        'difficulty',
         'order',
         'status',
         'published_at',
@@ -32,29 +38,32 @@ class Question extends Model
 
     protected $casts = [
         'status' => ContentStatus::class,
-        'difficulty' => QuestionDifficulty::class,
         'order' => 'integer',
         'published_at' => 'datetime',
     ];
 
-    public function certification(): BelongsTo
-    {
-        return $this->belongsTo(Certification::class);
-    }
-
+    /**
+     * @return BelongsTo<Section, $this>
+     */
     public function section(): BelongsTo
     {
         return $this->belongsTo(Section::class);
     }
 
+    /**
+     * @return BelongsTo<QuestionCategory, $this>
+     */
     public function category(): BelongsTo
     {
         return $this->belongsTo(QuestionCategory::class, 'category_id');
     }
 
+    /**
+     * @return HasMany<SectionQuestionOption, $this>
+     */
     public function options(): HasMany
     {
-        return $this->hasMany(QuestionOption::class);
+        return $this->hasMany(SectionQuestionOption::class);
     }
 
     public function scopePublished(Builder $query): Builder
@@ -62,18 +71,9 @@ class Question extends Model
         return $query->where('status', ContentStatus::Published->value);
     }
 
-    public function scopeBySection(Builder $query, ?string $sectionId): Builder
+    public function scopeOfSection(Builder $query, string $sectionId): Builder
     {
-        if ($sectionId === null || $sectionId === '') {
-            return $query;
-        }
-
         return $query->where('section_id', $sectionId);
-    }
-
-    public function scopeStandalone(Builder $query): Builder
-    {
-        return $query->whereNull('section_id');
     }
 
     public function scopeByCategory(Builder $query, ?string $categoryId): Builder
@@ -85,12 +85,8 @@ class Question extends Model
         return $query->where('category_id', $categoryId);
     }
 
-    public function scopeDifficulty(Builder $query, ?QuestionDifficulty $difficulty): Builder
+    public function scopeOrdered(Builder $query): Builder
     {
-        if ($difficulty === null) {
-            return $query;
-        }
-
-        return $query->where('difficulty', $difficulty->value);
+        return $query->orderBy('order');
     }
 }

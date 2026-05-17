@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Http\QuestionCategory;
 
 use App\Models\Certification;
-use App\Models\Question;
 use App\Models\QuestionCategory;
+use App\Models\SectionQuestion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\ContentTestHelpers;
@@ -66,12 +66,13 @@ class CrudTest extends TestCase
         $this->assertSame(2, QuestionCategory::where('slug', 'tech')->count());
     }
 
-    public function test_destroy_blocked_if_questions_exist(): void
+    public function test_destroy_blocked_if_section_questions_exist(): void
     {
         $admin = User::factory()->admin()->create();
         $cert = Certification::factory()->published()->create();
+        [, , $section] = $this->makePartChain($cert);
         $category = QuestionCategory::factory()->forCertification($cert)->create();
-        Question::factory()->forCertification($cert)->forCategory($category)->create();
+        SectionQuestion::factory()->forSection($section)->forCategory($category)->create();
 
         $this->actingAs($admin)
             ->deleteJson(route('admin.question-categories.destroy', $category))

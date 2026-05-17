@@ -118,14 +118,6 @@ class Certification extends Model
     }
 
     /**
-     * @return HasMany<Question, $this>
-     */
-    public function questions(): HasMany
-    {
-        return $this->hasMany(Question::class);
-    }
-
-    /**
      * @return HasMany<QuestionCategory, $this>
      */
     public function questionCategories(): HasMany

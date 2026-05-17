@@ -18,9 +18,12 @@ use App\UseCases\Part\StoreAction;
 use App\UseCases\Part\UnpublishAction;
 use App\UseCases\Part\UpdateAction;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/**
+ * Part 管理 Controller。
+ * 教材階層の最上位として資格マスタ配下に紐付く CRUD + 状態遷移 + 並び替えを提供する。
+ */
 class PartController extends Controller
 {
     public function index(Certification $certification, IndexAction $action): View
@@ -44,20 +47,20 @@ class PartController extends Controller
 
     public function store(Certification $certification, StoreRequest $request, StoreAction $action): RedirectResponse
     {
-        $part = $action($certification, $request->user(), $request->validated());
+        $part = $action($certification, $request->validated());
 
         return redirect()
             ->route('admin.parts.show', $part)
-            ->with('success', 'Part を作成しました。');
+            ->with('success', 'Partを作成しました。');
     }
 
     public function update(Part $part, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
-        $action($part, $request->user(), $request->validated());
+        $action($part, $request->validated());
 
         return redirect()
             ->route('admin.parts.show', $part)
-            ->with('success', 'Part を更新しました。');
+            ->with('success', 'Partを更新しました。');
     }
 
     public function destroy(Part $part, DestroyAction $action): RedirectResponse
@@ -68,34 +71,34 @@ class PartController extends Controller
 
         return redirect()
             ->route('admin.certifications.parts.index', $part->certification_id)
-            ->with('success', 'Part を削除しました。');
+            ->with('success', 'Partを削除しました。');
     }
 
-    public function publish(Part $part, PublishAction $action, Request $request): RedirectResponse
+    public function publish(Part $part, PublishAction $action): RedirectResponse
     {
         $this->authorize('publish', $part);
 
-        $action($part, $request->user());
+        $action($part);
 
         return redirect()
             ->route('admin.parts.show', $part)
-            ->with('success', 'Part を公開しました。');
+            ->with('success', 'Partを公開しました。');
     }
 
-    public function unpublish(Part $part, UnpublishAction $action, Request $request): RedirectResponse
+    public function unpublish(Part $part, UnpublishAction $action): RedirectResponse
     {
         $this->authorize('unpublish', $part);
 
-        $action($part, $request->user());
+        $action($part);
 
         return redirect()
             ->route('admin.parts.show', $part)
-            ->with('success', 'Part を下書きに戻しました。');
+            ->with('success', 'Partを下書きに戻しました。');
     }
 
     public function reorder(Certification $certification, ReorderRequest $request, ReorderAction $action): RedirectResponse
     {
-        $action($certification, $request->user(), $request->validated()['ids']);
+        $action($certification, $request->validated()['ids']);
 
         return redirect()
             ->route('admin.certifications.parts.index', $certification)

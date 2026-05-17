@@ -4,24 +4,24 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\Question;
-use App\Models\QuestionOption;
+use App\Models\SectionQuestion;
+use App\Models\SectionQuestionOption;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<QuestionOption>
+ * @extends Factory<SectionQuestionOption>
  */
-class QuestionOptionFactory extends Factory
+class SectionQuestionOptionFactory extends Factory
 {
-    protected $model = QuestionOption::class;
+    protected $model = SectionQuestionOption::class;
 
     public function definition(): array
     {
         return [
-            'question_id' => Question::factory(),
+            'section_question_id' => SectionQuestion::factory(),
             'body' => fake()->sentence(4),
             'is_correct' => false,
-            'order' => fake()->numberBetween(1, 6),
+            'order' => fake()->numberBetween(0, 5),
         ];
     }
 

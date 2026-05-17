@@ -11,10 +11,10 @@ use App\Models\Chapter;
 use App\Models\Invitation;
 use App\Models\MeetingQuotaPlan;
 use App\Models\Part;
-use App\Models\Question;
 use App\Models\QuestionCategory;
 use App\Models\Section;
 use App\Models\SectionImage;
+use App\Models\SectionQuestion;
 use App\Models\User;
 use App\Policies\CertificatePolicy;
 use App\Policies\CertificationCategoryPolicy;
@@ -25,9 +25,9 @@ use App\Policies\MeetingQuotaPlanPolicy;
 use App\Policies\MeetingQuotaPolicy;
 use App\Policies\PartPolicy;
 use App\Policies\QuestionCategoryPolicy;
-use App\Policies\QuestionPolicy;
 use App\Policies\SectionImagePolicy;
 use App\Policies\SectionPolicy;
+use App\Policies\SectionQuestionPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
@@ -49,7 +49,7 @@ class AuthServiceProvider extends ServiceProvider
         Chapter::class => ChapterPolicy::class,
         Section::class => SectionPolicy::class,
         SectionImage::class => SectionImagePolicy::class,
-        Question::class => QuestionPolicy::class,
+        SectionQuestion::class => SectionQuestionPolicy::class,
         QuestionCategory::class => QuestionCategoryPolicy::class,
         MeetingQuotaPlan::class => MeetingQuotaPlanPolicy::class,
     ];

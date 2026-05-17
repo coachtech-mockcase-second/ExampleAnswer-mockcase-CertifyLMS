@@ -6,7 +6,10 @@ namespace App\UseCases\Part;
 
 use App\Models\Part;
 
-class ShowAction
+/**
+ * Part 詳細取得ユースケース。Certification と Chapter を Eager Load する。
+ */
+final class ShowAction
 {
     public function __invoke(Part $part): Part
     {

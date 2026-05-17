@@ -8,7 +8,13 @@ use App\Models\SectionImage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-class DestroyAction
+/**
+ * 教材内画像の削除ユースケース。
+ *
+ * DB 側を SoftDelete してから commit 後に Storage 上の実ファイルを削除する。
+ * トランザクション ROLLBACK 時には Storage 削除をスキップし、不可逆な実ファイル削除を防ぐ。
+ */
+final class DestroyAction
 {
     public function __invoke(SectionImage $image): void
     {

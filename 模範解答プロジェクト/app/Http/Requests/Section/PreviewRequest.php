@@ -7,6 +7,9 @@ namespace App\Http\Requests\Section;
 use App\Models\Section;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Section 編集中の Markdown プレビュー API リクエスト。MarkdownRenderingService で HTML 化されたサニタイズ済み出力を返却する。
+ */
 class PreviewRequest extends FormRequest
 {
     public function authorize(): bool
@@ -17,6 +20,9 @@ class PreviewRequest extends FormRequest
             && ($this->user()?->can('preview', $section) ?? false);
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
     public function rules(): array
     {
         return [

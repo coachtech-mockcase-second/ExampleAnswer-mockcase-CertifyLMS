@@ -11,6 +11,13 @@ use App\Models\Chapter;
 use App\Models\Section;
 use App\Models\User;
 
+/**
+ * Section の認可ポリシー。
+ *
+ * - admin: 全資格配下を CRUD 可
+ * - coach: 担当資格配下のみ CRUD 可、Draft 状態の view も可
+ * - student: Section / Chapter / Part が全て Published 状態のときのみ閲覧可(cascade visibility)
+ */
 class SectionPolicy
 {
     public function viewAny(User $auth, Chapter $chapter): bool
