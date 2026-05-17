@@ -4,128 +4,162 @@
     <meta charset="UTF-8">
     <title>修了証 — {{ $certificate->serial_no }}</title>
     <style>
-        @page {
-            size: A4 portrait;
-            margin: 18mm;
-        }
         body {
-            font-family: 'IPAGothic', 'Noto Sans JP', sans-serif;
             color: #0F2E2A;
-            margin: 0;
-            padding: 0;
+            font-size: 11pt;
         }
-        .frame {
-            border: 2pt solid #0D9488;
-            border-radius: 2pt;
-            padding: 28pt 28pt 24pt 28pt;
-            position: relative;
-            min-height: 220mm;
+        .frame-outer {
+            border: 1.5pt solid #0D9488;
+            padding: 10pt;
         }
-        .frame::after {
-            content: '';
-            position: absolute;
-            top: 6pt;
-            left: 6pt;
-            right: 6pt;
-            bottom: 6pt;
+        .frame-inner {
             border: 0.5pt solid #5EEAD4;
-            border-radius: 1pt;
-            pointer-events: none;
+            padding: 18pt 22pt 16pt 22pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .brand {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #0F2E2A;
+        }
+        .brand-lms {
+            color: #0F766E;
+            font-weight: normal;
+        }
+        .serial {
+            text-align: right;
+            font-size: 9pt;
+            color: #6B8783;
         }
         .title {
             text-align: center;
-            margin-top: 28pt;
+            margin-top: 24pt;
+            padding: 10pt 0;
             font-size: 36pt;
             font-weight: bold;
             color: #0F2E2A;
-            letter-spacing: -0.01em;
+            border-top: 1pt solid #0D9488;
+            border-bottom: 1pt solid #0D9488;
         }
-        .recipient-name {
+        .intro {
             text-align: center;
-            margin-top: 36pt;
+            margin-top: 22pt;
+            font-size: 10pt;
+            color: #466662;
+        }
+        .recipient {
+            text-align: center;
+            margin-top: 6pt;
             font-size: 26pt;
             font-weight: bold;
             color: #0F2E2A;
-            padding-bottom: 6pt;
-            border-bottom: 1.5pt solid #5EEAD4;
-            width: 80%;
-            margin-left: auto;
-            margin-right: auto;
+        }
+        .recipient-line {
+            margin: 6pt auto 0 auto;
+            height: 1.5pt;
+            background-color: #2DD4BF;
+            width: 50%;
         }
         .statement {
             text-align: center;
-            margin-top: 22pt;
+            margin-top: 20pt;
             font-size: 12pt;
             line-height: 1.9;
-            color: #1F3D38;
-            padding: 0 14pt;
+            color: #2C4A45;
         }
-        .cert-meta {
-            margin-top: 32pt;
-            display: table;
-            width: 100%;
+        .cert-name {
+            text-align: center;
+            margin-top: 14pt;
+            font-size: 14pt;
+            font-weight: bold;
+            color: #0F2E2A;
         }
-        .cert-meta-cell {
-            display: table-cell;
-            font-size: 10pt;
-            color: #5E4D72;
-            vertical-align: top;
-            padding-bottom: 12pt;
+        .meta {
+            margin-top: 28pt;
         }
-        .cert-meta-cell .ml {
-            display: block;
+        .meta td {
+            padding: 0 6pt;
+        }
+        .meta-label {
             font-size: 8pt;
             color: #6B8783;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            margin-bottom: 2pt;
+            padding-bottom: 3pt;
         }
-        .cert-meta-cell .val {
-            font-size: 11pt;
+        .meta-value {
+            font-size: 12pt;
+            font-weight: bold;
             color: #0F2E2A;
-            font-weight: 600;
         }
-        .cert-meta-cell.right {
+        .meta-right {
             text-align: right;
         }
-        .issuer {
-            margin-top: 32pt;
+        .seal-row {
+            margin-top: 28pt;
+        }
+        .seal-cell {
             text-align: center;
-            padding-top: 12pt;
-            border-top: 1pt solid #DEEEEB;
+        }
+        .seal {
+            background-color: #0D9488;
+            color: #FFFFFF;
+            padding: 8pt 24pt;
             font-size: 12pt;
-            color: #0F766E;
-            font-weight: 600;
+            font-weight: bold;
+        }
+        .issuer-note {
+            margin-top: 6pt;
+            text-align: center;
+            font-size: 8pt;
+            color: #6B8783;
         }
     </style>
 </head>
 <body>
-    <div class="frame">
+<div class="frame-outer">
+    <div class="frame-inner">
+        <table>
+            <tr>
+                <td class="brand">Certify <span class="brand-lms">LMS</span></td>
+                <td class="serial">SERIAL: {{ $certificate->serial_no }}</td>
+            </tr>
+        </table>
+
         <div class="title">修了証</div>
 
-        <div class="recipient-name">{{ $certificate->user->name }}</div>
+        <div class="intro">この証は、下記のとおり修了したことを証する</div>
+        <div class="recipient">{{ $certificate->user->name }}</div>
+        <div class="recipient-line"></div>
 
         <div class="statement">上記の者は、本資格の所定の課程を修了したことを証する</div>
 
-        <div class="cert-meta">
-            <div class="cert-meta-cell">
-                <span class="ml">資格名</span>
-                <span class="val">{{ $certificate->certification->name }}</span>
-            </div>
-            <div class="cert-meta-cell right">
-                <span class="ml">発行日</span>
-                <span class="val">{{ $certificate->issued_at?->format('Y 年 n 月 j 日') }}</span>
-            </div>
-        </div>
+        <div class="cert-name">{{ $certificate->certification->name }}</div>
 
-        <div class="cert-meta">
-            <div class="cert-meta-cell">
-                <span class="ml">証書番号</span>
-                <span class="val" style="font-family: monospace; letter-spacing: 0.04em;">{{ $certificate->serial_no }}</span>
-            </div>
-        </div>
+        <table class="meta">
+            <tr>
+                <td>
+                    <div class="meta-label">発行日</div>
+                    <div class="meta-value">{{ $certificate->issued_at?->format('Y 年 n 月 j 日') }}</div>
+                </td>
+                <td class="meta-right">
+                    <div class="meta-label">証書番号</div>
+                    <div class="meta-value">{{ $certificate->serial_no }}</div>
+                </td>
+            </tr>
+        </table>
 
-        <div class="issuer">Certify LMS</div>
+        <table class="seal-row">
+            <tr>
+                <td class="seal-cell">
+                    <span class="seal">Certify LMS</span>
+                </td>
+            </tr>
+        </table>
+
+        <div class="issuer-note">Issued by Certify LMS</div>
     </div>
+</div>
 </body>
 </html>

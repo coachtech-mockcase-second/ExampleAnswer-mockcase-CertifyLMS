@@ -15,7 +15,8 @@
                             <div class="text-xs text-ink-500 font-mono">{{ number_format($image->size_bytes / 1024, 1) }} KB</div>
                         </div>
                     </div>
-                    <form method="POST" action="{{ route('admin.section-images.destroy', $image) }}">
+                    <form method="POST" action="{{ route('admin.section-images.destroy', $image) }}"
+                          onsubmit="return confirm('この画像を削除しますか？\n本文 (Markdown) 内の参照は自動では削除されません。');">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="text-danger-600 hover:text-danger-700 text-xs">

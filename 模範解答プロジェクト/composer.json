@@ -6,7 +6,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.1",
-        "barryvdh/laravel-dompdf": "^3.1",
         "blade-ui-kit/blade-heroicons": "^2.7",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/fortify": "^1.36",
@@ -14,6 +13,7 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "league/commonmark": "^2.8",
+        "mpdf/mpdf": "^8.3",
         "stripe/stripe-php": "^20.1"
     },
     "require-dev": {
