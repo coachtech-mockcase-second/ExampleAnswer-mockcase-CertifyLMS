@@ -7,7 +7,6 @@ namespace App\Providers;
 use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\CertificationCategory;
-use App\Models\CertificationCoachAssignment;
 use App\Models\Chapter;
 use App\Models\Invitation;
 use App\Models\MeetingQuotaPlan;
@@ -19,7 +18,6 @@ use App\Models\SectionImage;
 use App\Models\User;
 use App\Policies\CertificatePolicy;
 use App\Policies\CertificationCategoryPolicy;
-use App\Policies\CertificationCoachAssignmentPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ChapterPolicy;
 use App\Policies\InvitationPolicy;
@@ -46,7 +44,6 @@ class AuthServiceProvider extends ServiceProvider
         User::class => UserPolicy::class,
         Certification::class => CertificationPolicy::class,
         CertificationCategory::class => CertificationCategoryPolicy::class,
-        CertificationCoachAssignment::class => CertificationCoachAssignmentPolicy::class,
         Certificate::class => CertificatePolicy::class,
         Part::class => PartPolicy::class,
         Chapter::class => ChapterPolicy::class,

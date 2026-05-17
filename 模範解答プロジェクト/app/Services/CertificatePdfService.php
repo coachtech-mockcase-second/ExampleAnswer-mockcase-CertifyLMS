@@ -10,19 +10,18 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * 修了証 PDF を Blade テンプレートからレンダリングし、Storage(private) に保存する Service。
- * PDF 生成失敗時は IssueAction 側で try-catch + Storage rollback されることを前提に、本 Service 自体は副作用のロールバックを持たない。
+ * 修了証 PDF を Blade テンプレート（`certificates/pdf.blade.php`）から DomPDF でレンダリングし、
+ * Storage(private) の `certificates/{ulid}.pdf` パスに保存する Service。
  *
- * `final` 不採用: IssueActionTest で `Mockery::mock(CertificatePdfService::class)` を使うため（Mockery は final クラスを mock できない）。
- * Service 共通の `final` 規約は `backend-types-and-docblocks.md` で「Mockery でテストする場合は不採用可」の例外を許容。
+ * `final` 不採用: `IssueAction` のテストで `Mockery::mock(CertificatePdfService::class)` するため
+ * （Mockery は final クラスを mock できない業界慣習に従う）。
  *
- * @see IssueAction::__invoke()
+ * PDF 生成失敗時の Storage rollback は呼出側（`IssueAction`）の try-catch で行うため、本 Service は副作用ロールバックを持たない。
+ *
+ * @see IssueAction
  */
 class CertificatePdfService
 {
-    /**
-     * Certificate に対応する PDF を Blade テンプレートから生成し、Storage(private) に保存する。
-     */
     public function generate(Certificate $certificate): void
     {
         $certificate->loadMissing(['user', 'certification.category', 'enrollment']);

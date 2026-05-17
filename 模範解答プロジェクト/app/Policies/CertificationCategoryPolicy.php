@@ -8,6 +8,9 @@ use App\Enums\UserRole;
 use App\Models\CertificationCategory;
 use App\Models\User;
 
+/**
+ * 資格分類マスタの認可ルール。admin のみ全操作可能。
+ */
 class CertificationCategoryPolicy
 {
     public function viewAny(User $auth): bool

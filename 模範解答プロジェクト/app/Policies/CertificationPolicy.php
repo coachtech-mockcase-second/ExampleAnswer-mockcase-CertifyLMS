@@ -9,6 +9,10 @@ use App\Enums\UserRole;
 use App\Models\Certification;
 use App\Models\User;
 
+/**
+ * 資格マスタの認可ルール。admin は全件 / coach は担当資格のみ / student は公開済のみ。
+ * 担当コーチ割当（attachCoach / detachCoach）も本 Policy 内に集約する。
+ */
 class CertificationPolicy
 {
     public function viewAny(User $auth): bool
@@ -18,12 +22,12 @@ class CertificationPolicy
 
     public function view(User $auth, Certification $certification): bool
     {
-        if ($auth->role === UserRole::Admin) {
-            return true;
-        }
-
-        return $certification->status === CertificationStatus::Published
-            && $certification->deleted_at === null;
+        return match ($auth->role) {
+            UserRole::Admin => true,
+            UserRole::Coach => $certification->coaches->contains('id', $auth->id),
+            UserRole::Student => $certification->status === CertificationStatus::Published
+                && $certification->deleted_at === null,
+        };
     }
 
     public function create(User $auth): bool
@@ -46,12 +50,22 @@ class CertificationPolicy
         return $auth->role === UserRole::Admin;
     }
 
+    public function unpublish(User $auth, Certification $certification): bool
+    {
+        return $auth->role === UserRole::Admin;
+    }
+
     public function archive(User $auth, Certification $certification): bool
     {
         return $auth->role === UserRole::Admin;
     }
 
-    public function unarchive(User $auth, Certification $certification): bool
+    public function attachCoach(User $auth, Certification $certification): bool
+    {
+        return $auth->role === UserRole::Admin;
+    }
+
+    public function detachCoach(User $auth, Certification $certification): bool
     {
         return $auth->role === UserRole::Admin;
     }

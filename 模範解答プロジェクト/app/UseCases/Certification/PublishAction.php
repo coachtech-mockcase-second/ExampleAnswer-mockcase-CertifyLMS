@@ -10,15 +10,19 @@ use App\Models\Certification;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-class PublishAction
+/**
+ * 資格マスタを公開（draft → published）するユースケース。
+ * 公開済 / アーカイブ済からの遷移は不正で CertificationInvalidTransitionException（409）。
+ */
+final class PublishAction
 {
+    /**
+     * @throws CertificationInvalidTransitionException 下書き以外からの呼出
+     */
     public function __invoke(Certification $certification, User $admin): Certification
     {
         if ($certification->status !== CertificationStatus::Draft) {
-            throw new CertificationInvalidTransitionException(
-                from: $certification->status,
-                to: CertificationStatus::Published,
-            );
+            throw CertificationInvalidTransitionException::forPublish();
         }
 
         return DB::transaction(function () use ($certification, $admin) {

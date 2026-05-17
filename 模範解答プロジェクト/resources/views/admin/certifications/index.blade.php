@@ -42,7 +42,7 @@
                     type="search"
                     name="keyword"
                     value="{{ $keyword }}"
-                    placeholder="コード・名称で検索"
+                    placeholder="資格名で検索"
                     maxlength="100"
                     class="w-full text-sm py-2 pl-9 pr-3 rounded-md bg-white border border-ink-200 placeholder:text-ink-400 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-colors"
                 >
@@ -113,7 +113,7 @@
             <x-table>
                 <x-slot:head>
                     <x-table.row>
-                        <x-table.heading>コード / 名称</x-table.heading>
+                        <x-table.heading>資格名</x-table.heading>
                         <x-table.heading>カテゴリ</x-table.heading>
                         <x-table.heading>難易度</x-table.heading>
                         <x-table.heading>ステータス</x-table.heading>
@@ -129,7 +129,6 @@
                         <x-table.cell>
                             <a href="{{ route('admin.certifications.show', $cert) }}" class="block group">
                                 <div class="text-sm font-semibold text-ink-900 group-hover:text-primary-700 transition-colors">{{ $cert->name }}</div>
-                                <div class="text-xs text-ink-500 font-mono">{{ $cert->code }}</div>
                             </a>
                         </x-table.cell>
                         <x-table.cell>

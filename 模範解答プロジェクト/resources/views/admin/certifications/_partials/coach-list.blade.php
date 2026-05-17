@@ -27,7 +27,7 @@
                             <div class="text-xs text-ink-500 font-mono truncate">{{ $coach->email }}</div>
                         </div>
                     </div>
-                    <form method="POST" action="{{ route('admin.certifications.coaches.destroy', [$certification, $coach]) }}" class="shrink-0">
+                    <form method="POST" action="{{ route('admin.certifications.coaches.detach', ['certification' => $certification, 'coach' => $coach]) }}" class="shrink-0">
                         @csrf
                         @method('DELETE')
                         <x-button type="submit" variant="ghost" size="sm">

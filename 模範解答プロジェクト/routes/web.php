@@ -58,21 +58,24 @@ Route::middleware('auth')->group(function () {
     Route::view('/notifications', 'placeholders.coming-soon', ['feature' => 'notification'])
         ->name('notifications.index');
 
-    // 資格カタログ(受講生視点の閲覧)
-    Route::get('certifications', [CertificationCatalogController::class, 'index'])
-        ->name('certifications.index');
-    Route::get('certifications/{certification}', [CertificationCatalogController::class, 'show'])
-        ->name('certifications.show');
-
-    // 修了証配信
-    Route::get('certificates/{certificate}', [CertificateController::class, 'show'])
-        ->name('certificates.show');
+    // 修了証配信(graduated 受講生でも DL 可、active-learning 非適用)
     Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
         ->name('certificates.download');
 
     // 教材検索
     Route::get('contents/search', [ContentSearchController::class, 'search'])
         ->name('contents.search');
+});
+
+// ============================================================
+// 受講生専用ルート(受講中ステータスのみ通過、卒業ステータスはロック)
+// ============================================================
+Route::middleware(['auth', 'role:student', 'active-learning'])->group(function () {
+    // 資格カタログ(受講生視点の閲覧)
+    Route::get('certifications', [CertificationCatalogController::class, 'index'])
+        ->name('certifications.index');
+    Route::get('certifications/{certification}', [CertificationCatalogController::class, 'show'])
+        ->name('certifications.show');
 });
 
 // ============================================================
@@ -110,16 +113,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->names('admin.certifications');
     Route::post('certifications/{certification}/publish', [CertificationController::class, 'publish'])
         ->name('admin.certifications.publish');
+    Route::post('certifications/{certification}/unpublish', [CertificationController::class, 'unpublish'])
+        ->name('admin.certifications.unpublish');
     Route::post('certifications/{certification}/archive', [CertificationController::class, 'archive'])
         ->name('admin.certifications.archive');
-    Route::post('certifications/{certification}/unarchive', [CertificationController::class, 'unarchive'])
-        ->name('admin.certifications.unarchive');
 
     // 担当コーチ割当(資格 ↔ コーチ)
-    Route::post('certifications/{certification}/coaches', [CertificationCoachAssignmentController::class, 'store'])
-        ->name('admin.certifications.coaches.store');
-    Route::delete('certifications/{certification}/coaches/{user}', [CertificationCoachAssignmentController::class, 'destroy'])
-        ->name('admin.certifications.coaches.destroy');
+    Route::post('certifications/{certification}/coaches/{coach}', [CertificationCoachAssignmentController::class, 'attach'])
+        ->name('admin.certifications.coaches.attach');
+    Route::delete('certifications/{certification}/coaches/{coach}', [CertificationCoachAssignmentController::class, 'detach'])
+        ->name('admin.certifications.coaches.detach');
 
     // カテゴリ管理(資格分類マスタ)
     Route::resource('certification-categories', CertificationCategoryController::class)

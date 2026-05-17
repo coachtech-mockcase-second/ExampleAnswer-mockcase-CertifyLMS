@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Models;
 
 use App\Models\Certification;
+use App\Models\CertificationCoachAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -28,25 +29,26 @@ class CertificationScopesTest extends TestCase
 
     public function test_scope_assigned_to_returns_only_coach_assigned_certifications(): void
     {
+        $admin = User::factory()->admin()->create();
         $coach = User::factory()->coach()->create();
         $otherCoach = User::factory()->coach()->create();
 
         $assigned = Certification::factory()->published()->create();
-        $assigned->coaches()->syncWithoutDetaching([
-            $coach->id => [
-                'id' => (string) Str::ulid(),
-                'assigned_by_user_id' => User::factory()->admin()->create()->id,
-                'assigned_at' => now(),
-            ],
+        CertificationCoachAssignment::create([
+            'id' => (string) Str::ulid(),
+            'certification_id' => $assigned->id,
+            'user_id' => $coach->id,
+            'assigned_by_user_id' => $admin->id,
+            'assigned_at' => now(),
         ]);
 
         $notAssigned = Certification::factory()->published()->create();
-        $notAssigned->coaches()->syncWithoutDetaching([
-            $otherCoach->id => [
-                'id' => (string) Str::ulid(),
-                'assigned_by_user_id' => User::factory()->admin()->create()->id,
-                'assigned_at' => now(),
-            ],
+        CertificationCoachAssignment::create([
+            'id' => (string) Str::ulid(),
+            'certification_id' => $notAssigned->id,
+            'user_id' => $otherCoach->id,
+            'assigned_by_user_id' => $admin->id,
+            'assigned_at' => now(),
         ]);
 
         $results = Certification::query()->assignedTo($coach)->get();
@@ -55,19 +57,19 @@ class CertificationScopesTest extends TestCase
         $this->assertTrue($results->first()->is($assigned));
     }
 
-    public function test_scope_keyword_matches_code_or_name(): void
+    public function test_scope_keyword_matches_name_only(): void
     {
-        Certification::factory()->draft()->create(['code' => 'CERT-AAA111', 'name' => 'Foo Certificate']);
-        Certification::factory()->draft()->create(['code' => 'CERT-BBB222', 'name' => 'Bar Certificate']);
-        Certification::factory()->draft()->create(['code' => 'CERT-CCC333', 'name' => 'Baz Foundation']);
+        $foo = Certification::factory()->draft()->create(['name' => 'Foo Certificate']);
+        Certification::factory()->draft()->create(['name' => 'Bar Certificate']);
+        $baz = Certification::factory()->draft()->create(['name' => 'Baz Foundation']);
 
-        $byCode = Certification::query()->keyword('AAA')->get();
-        $this->assertCount(1, $byCode);
-        $this->assertSame('CERT-AAA111', $byCode->first()->code);
+        $byFoo = Certification::query()->keyword('Foo')->get();
+        $this->assertCount(1, $byFoo);
+        $this->assertTrue($byFoo->first()->is($foo));
 
-        $byName = Certification::query()->keyword('Foundation')->get();
-        $this->assertCount(1, $byName);
-        $this->assertSame('CERT-CCC333', $byName->first()->code);
+        $byFoundation = Certification::query()->keyword('Foundation')->get();
+        $this->assertCount(1, $byFoundation);
+        $this->assertTrue($byFoundation->first()->is($baz));
 
         $empty = Certification::query()->keyword(null)->get();
         $this->assertCount(3, $empty);

@@ -14,6 +14,9 @@ use App\UseCases\CertificationCategory\UpdateAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
+/**
+ * admin 用の資格分類マスタ管理画面 Controller。モーダル UI からの CRUD を提供する。
+ */
 class CertificationCategoryController extends Controller
 {
     public function index(IndexAction $action): View

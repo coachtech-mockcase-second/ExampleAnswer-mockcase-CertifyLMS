@@ -15,16 +15,19 @@ return new class extends Migration
             $table->foreignUlid('certification_id')
                 ->constrained('certifications')
                 ->cascadeOnDelete();
-            $table->foreignUlid('coach_user_id')
+            $table->foreignUlid('user_id')
                 ->constrained('users')
                 ->restrictOnDelete();
             $table->foreignUlid('assigned_by_user_id')
                 ->constrained('users')
                 ->restrictOnDelete();
             $table->timestamp('assigned_at');
+            $table->timestamp('unassigned_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
-            $table->unique(['certification_id', 'coach_user_id'], 'cert_coach_assign_uq');
+            $table->unique(['certification_id', 'user_id'], 'cert_coach_assign_uq');
+            $table->index('deleted_at');
         });
     }
 

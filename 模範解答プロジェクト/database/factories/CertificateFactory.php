@@ -26,19 +26,9 @@ class CertificateFactory extends Factory
             'enrollment_id' => Enrollment::factory()->passed(),
             'certification_id' => Certification::factory()->published(),
             'serial_no' => 'CT-'.now()->format('Ym').'-'.Str::upper(Str::random(5)),
-            'issued_at' => now(),
             'pdf_path' => 'certificates/'.Str::ulid().'.pdf',
-            'issued_by_user_id' => User::factory()->admin(),
+            'issued_at' => now(),
         ];
-    }
-
-    public function configure(): static
-    {
-        return $this->afterMaking(function (Certificate $certificate) {
-            //
-        })->afterCreating(function (Certificate $certificate) {
-            //
-        });
     }
 
     public function withSerial(string $serialNo): static
@@ -53,5 +43,14 @@ class CertificateFactory extends Factory
                 'serial_no' => 'CT-'.now()->format('Ym').'-'.str_pad((string) ($sequence->index + 1), 5, '0', STR_PAD_LEFT),
             ],
         ));
+    }
+
+    public function forEnrollment(Enrollment $enrollment): static
+    {
+        return $this->state(fn () => [
+            'user_id' => $enrollment->user_id,
+            'enrollment_id' => $enrollment->id,
+            'certification_id' => $enrollment->certification_id,
+        ]);
     }
 }

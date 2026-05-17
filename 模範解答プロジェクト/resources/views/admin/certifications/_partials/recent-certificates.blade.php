@@ -23,7 +23,9 @@
                     </div>
                     <div class="text-right shrink-0">
                         <div class="text-xs text-ink-500 font-mono tabular-nums">{{ $cert->issued_at?->format('Y-m-d') }}</div>
-                        <a href="{{ route('certificates.show', $cert) }}" class="text-xs text-primary-700 font-semibold hover:underline">詳細 →</a>
+                        <a href="{{ route('certificates.download', $cert) }}" class="text-xs text-primary-700 font-semibold hover:underline">
+                            PDF をダウンロード
+                        </a>
                     </div>
                 </li>
             @endforeach

@@ -33,6 +33,11 @@ class CertificationCategoryFactory extends Factory
         ];
     }
 
+    public function withSlug(string $slug): static
+    {
+        return $this->state(fn () => ['slug' => $slug]);
+    }
+
     public function tech(): static
     {
         return $this->state(fn () => [

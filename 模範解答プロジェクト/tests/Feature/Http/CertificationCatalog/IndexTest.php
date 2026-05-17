@@ -30,24 +30,31 @@ class IndexTest extends TestCase
         $response->assertDontSee('Archived Cert');
     }
 
-    public function test_coach_can_view_catalog(): void
+    public function test_graduated_student_is_forbidden(): void
     {
-        $coach = User::factory()->coach()->create();
-        Certification::factory()->published()->create();
+        $student = User::factory()->student()->graduated()->create();
 
-        $response = $this->actingAs($coach)->get(route('certifications.index'));
+        $response = $this->actingAs($student)->get(route('certifications.index'));
 
-        $response->assertOk();
+        $response->assertForbidden();
     }
 
-    public function test_admin_can_view_catalog(): void
+    public function test_admin_is_forbidden_on_student_catalog(): void
     {
         $admin = User::factory()->admin()->create();
-        Certification::factory()->published()->create();
 
         $response = $this->actingAs($admin)->get(route('certifications.index'));
 
-        $response->assertOk();
+        $response->assertForbidden();
+    }
+
+    public function test_coach_is_forbidden_on_student_catalog(): void
+    {
+        $coach = User::factory()->coach()->create();
+
+        $response = $this->actingAs($coach)->get(route('certifications.index'));
+
+        $response->assertForbidden();
     }
 
     public function test_enrolled_tab_only_shows_student_own_enrolled_certifications(): void

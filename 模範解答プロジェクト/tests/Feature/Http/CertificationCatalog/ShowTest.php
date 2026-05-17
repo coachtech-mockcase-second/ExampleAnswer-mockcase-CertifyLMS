@@ -44,13 +44,23 @@ class ShowTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_admin_can_view_draft_certification(): void
+    public function test_graduated_student_is_forbidden_by_middleware(): void
+    {
+        $student = User::factory()->student()->graduated()->create();
+        $cert = Certification::factory()->published()->create();
+
+        $response = $this->actingAs($student)->get(route('certifications.show', $cert));
+
+        $response->assertForbidden();
+    }
+
+    public function test_admin_is_forbidden_on_student_catalog_show(): void
     {
         $admin = User::factory()->admin()->create();
-        $cert = Certification::factory()->draft()->create();
+        $cert = Certification::factory()->published()->create();
 
         $response = $this->actingAs($admin)->get(route('certifications.show', $cert));
 
-        $response->assertOk();
+        $response->assertForbidden();
     }
 }

@@ -11,6 +11,10 @@ use App\UseCases\CertificationCatalog\IndexAction;
 use App\UseCases\CertificationCatalog\ShowAction;
 use Illuminate\View\View;
 
+/**
+ * 受講生向けの資格カタログ Controller。一覧（カタログ / 受講中タブ）と詳細を提供する。
+ * `auth + role:student + active-learning` Middleware 配下で動作し、graduated 受講生はアクセス不可。
+ */
 class CertificationCatalogController extends Controller
 {
     public function index(IndexRequest $request, IndexAction $action): View

@@ -4,49 +4,63 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Database\Factories\CertificateFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * 受講生の修了証を表す Model。受講生が修了達成後に自己発火で発行される。
+ * 1 Enrollment につき 1 Certificate（`enrollment_id` UNIQUE）。SoftDelete 不採用（修了証は永続データ）。
+ *
+ * 関連: User(受講生) / Enrollment(発行元の受講登録) / Certification(資格)
+ * scope: issuedThisMonth(当月発行分のみ)
+ */
 class Certificate extends Model
 {
-    use HasFactory, HasUlids, SoftDeletes;
+    /** @use HasFactory<CertificateFactory> */
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'user_id',
         'enrollment_id',
         'certification_id',
         'serial_no',
-        'issued_at',
         'pdf_path',
-        'issued_by_user_id',
+        'issued_at',
     ];
 
     protected $casts = [
         'issued_at' => 'datetime',
     ];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<Enrollment, $this>
+     */
     public function enrollment(): BelongsTo
     {
         return $this->belongsTo(Enrollment::class);
     }
 
+    /**
+     * 修了証は永続データだが資格マスタ自体は SoftDelete されうるため、`withTrashed()` で削除済資格も解決可能にする。
+     * これがないと資格削除後に PDF DL 経路で `certification` が null になり、Coach 認可判定が破綻する。
+     *
+     * @return BelongsTo<Certification, $this>
+     */
     public function certification(): BelongsTo
     {
-        return $this->belongsTo(Certification::class);
-    }
-
-    public function issuedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'issued_by_user_id');
+        return $this->belongsTo(Certification::class)->withTrashed();
     }
 
     public function scopeIssuedThisMonth(Builder $query): Builder

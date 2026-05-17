@@ -19,11 +19,14 @@ use App\UseCases\Certification\IndexAction;
 use App\UseCases\Certification\PublishAction;
 use App\UseCases\Certification\ShowAction;
 use App\UseCases\Certification\StoreAction;
-use App\UseCases\Certification\UnarchiveAction;
+use App\UseCases\Certification\UnpublishAction;
 use App\UseCases\Certification\UpdateAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
+/**
+ * admin 用の資格マスタ管理画面 Controller。CRUD と公開状態遷移（publish / unpublish / archive）を提供する。
+ */
 class CertificationController extends Controller
 {
     public function index(IndexRequest $request, IndexAction $action): View
@@ -121,6 +124,17 @@ class CertificationController extends Controller
             ->with('success', '資格マスタを公開しました。');
     }
 
+    public function unpublish(Certification $certification, UnpublishAction $action): RedirectResponse
+    {
+        $this->authorize('unpublish', $certification);
+
+        $action($certification, request()->user());
+
+        return redirect()
+            ->route('admin.certifications.show', $certification)
+            ->with('success', '資格マスタの公開を停止しました。');
+    }
+
     public function archive(Certification $certification, ArchiveAction $action): RedirectResponse
     {
         $this->authorize('archive', $certification);
@@ -130,16 +144,5 @@ class CertificationController extends Controller
         return redirect()
             ->route('admin.certifications.show', $certification)
             ->with('success', '資格マスタをアーカイブしました。');
-    }
-
-    public function unarchive(Certification $certification, UnarchiveAction $action): RedirectResponse
-    {
-        $this->authorize('unarchive', $certification);
-
-        $action($certification, request()->user());
-
-        return redirect()
-            ->route('admin.certifications.show', $certification)
-            ->with('success', '資格マスタを下書きへ戻しました。');
     }
 }

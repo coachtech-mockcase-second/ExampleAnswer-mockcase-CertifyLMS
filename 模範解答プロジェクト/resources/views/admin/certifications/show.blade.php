@@ -37,7 +37,6 @@
                     {{ $certification->status->label() }}
                 </x-badge>
             </div>
-            <div class="text-xs text-ink-500 font-mono mt-1">{{ $certification->code }}</div>
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
@@ -64,14 +63,13 @@
                     削除
                 </x-button>
             @elseif ($isPublished)
+                <x-button variant="outline" size="sm" data-modal-trigger="unpublish-confirm-modal">
+                    <x-icon name="arrow-uturn-down" class="w-4 h-4" />
+                    公開停止
+                </x-button>
                 <x-button variant="outline" size="sm" data-modal-trigger="archive-confirm-modal">
                     <x-icon name="archive-box-arrow-down" class="w-4 h-4" />
                     アーカイブ
-                </x-button>
-            @elseif ($isArchived)
-                <x-button variant="outline" size="sm" data-modal-trigger="unarchive-confirm-modal">
-                    <x-icon name="arrow-uturn-left" class="w-4 h-4" />
-                    下書きへ戻す
                 </x-button>
             @endif
         </div>
@@ -115,22 +113,20 @@
 
     @if ($isPublished)
         @include('admin.certifications._modals.transition-confirm', [
+            'id' => 'unpublish-confirm-modal',
+            'title' => '公開を停止しますか？',
+            'description' => '下書き状態に戻り、受講生カタログから非表示になります（既存受講生の学習継続には影響しません）。再度公開するには別途「公開」操作が必要です。',
+            'action' => route('admin.certifications.unpublish', $certification),
+            'buttonLabel' => '公開停止',
+            'buttonVariant' => 'outline',
+        ])
+
+        @include('admin.certifications._modals.transition-confirm', [
             'id' => 'archive-confirm-modal',
             'title' => '資格をアーカイブしますか？',
             'description' => 'アーカイブ後はカタログから非表示になり、新規受講登録ができなくなります（既存受講生の学習継続には影響しません）。',
             'action' => route('admin.certifications.archive', $certification),
             'buttonLabel' => 'アーカイブする',
-            'buttonVariant' => 'outline',
-        ])
-    @endif
-
-    @if ($isArchived)
-        @include('admin.certifications._modals.transition-confirm', [
-            'id' => 'unarchive-confirm-modal',
-            'title' => '下書きへ戻しますか？',
-            'description' => '再度公開するには別途「公開」操作が必要です。',
-            'action' => route('admin.certifications.unarchive', $certification),
-            'buttonLabel' => '下書きへ戻す',
             'buttonVariant' => 'outline',
         ])
     @endif

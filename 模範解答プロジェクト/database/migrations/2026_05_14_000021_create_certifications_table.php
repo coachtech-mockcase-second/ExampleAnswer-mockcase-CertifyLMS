@@ -12,17 +12,12 @@ return new class extends Migration
     {
         Schema::create('certifications', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->string('code', 50)->unique();
+            $table->string('name', 100);
             $table->foreignUlid('category_id')
                 ->constrained('certification_categories')
                 ->restrictOnDelete();
-            $table->string('name', 100);
-            $table->string('slug', 120)->unique();
-            $table->text('description')->nullable();
             $table->string('difficulty', 20);
-            $table->unsignedTinyInteger('passing_score');
-            $table->unsignedInteger('total_questions');
-            $table->unsignedInteger('exam_duration_minutes');
+            $table->text('description')->nullable();
             $table->string('status', 20)->default('draft');
             $table->foreignUlid('created_by_user_id')
                 ->constrained('users')

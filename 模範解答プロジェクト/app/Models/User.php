@@ -111,6 +111,11 @@ class User extends Authenticatable
     }
 
     /**
+     * 担当コーチとして割り当てられている資格一覧（active 行のみ）。
+     *
+     * BelongsToMany は Pivot Model の SoftDeletes グローバルスコープを pivot join 句に自動適用しないため、
+     * `deleted_at IS NULL` と `unassigned_at IS NULL` を両方明示する必要がある。
+     *
      * @return BelongsToMany<Certification, $this>
      */
     public function assignedCertifications(): BelongsToMany
@@ -118,12 +123,14 @@ class User extends Authenticatable
         return $this->belongsToMany(
             Certification::class,
             'certification_coach_assignments',
-            'coach_user_id',
+            'user_id',
             'certification_id',
         )
             ->using(CertificationCoachAssignment::class)
-            ->withPivot(['id', 'assigned_by_user_id', 'assigned_at'])
-            ->withTimestamps();
+            ->withPivot(['id', 'assigned_by_user_id', 'assigned_at', 'unassigned_at'])
+            ->withTimestamps()
+            ->wherePivotNull('deleted_at')
+            ->wherePivot('unassigned_at', null);
     }
 
     /**

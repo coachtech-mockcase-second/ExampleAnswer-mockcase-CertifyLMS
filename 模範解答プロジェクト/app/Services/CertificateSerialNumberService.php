@@ -6,13 +6,13 @@ namespace App\Services;
 
 use App\Models\Certificate;
 
-class CertificateSerialNumberService
+/**
+ * 修了証の証書番号（`CT-{YYYYMM}-{NNNNN}` 形式）を採番する Service。
+ * 当月内の最大連番に FOR UPDATE ロックを掛け、競合下でも UNIQUE 違反しないように同期する。
+ * トランザクション境界は呼出側（`Certificate\IssueAction` の `DB::transaction`）に委譲する。
+ */
+final class CertificateSerialNumberService
 {
-    /**
-     * `CT-{YYYYMM}-{NNNNN}` 形式の serial_no を採番する。
-     * 当月内最大連番に FOR UPDATE ロックを掛け、競合下でも UNIQUE 違反しないように同期する。
-     * トランザクション境界は呼出側（IssueAction の DB::transaction）に委譲する。
-     */
     public function generate(): string
     {
         $yyyymm = now()->format('Ym');

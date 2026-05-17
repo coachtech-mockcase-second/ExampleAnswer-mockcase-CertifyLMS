@@ -7,8 +7,14 @@ namespace App\UseCases\CertificationCategory;
 use App\Models\CertificationCategory;
 use Illuminate\Support\Facades\DB;
 
-class StoreAction
+/**
+ * 資格分類マスタを新規作成するユースケース。
+ */
+final class StoreAction
 {
+    /**
+     * @param  array{name: string, slug: string, sort_order?: int|null}  $validated
+     */
     public function __invoke(array $validated): CertificationCategory
     {
         return DB::transaction(fn () => CertificationCategory::create([

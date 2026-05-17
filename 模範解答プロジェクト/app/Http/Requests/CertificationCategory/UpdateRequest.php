@@ -7,6 +7,9 @@ namespace App\Http\Requests\CertificationCategory;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * 資格分類マスタ更新リクエスト。`slug` の UNIQUE は自身を除外する。
+ */
 class UpdateRequest extends FormRequest
 {
     public function authorize(): bool
@@ -14,6 +17,9 @@ class UpdateRequest extends FormRequest
         return $this->user()?->can('update', $this->route('category')) ?? false;
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
     public function rules(): array
     {
         $categoryId = $this->route('category')?->id;
@@ -30,6 +36,9 @@ class UpdateRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [

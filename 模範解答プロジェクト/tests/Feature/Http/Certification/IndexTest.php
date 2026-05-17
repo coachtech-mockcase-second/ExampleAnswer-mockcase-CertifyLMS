@@ -40,17 +40,17 @@ class IndexTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_keyword_filter_matches_code_or_name(): void
+    public function test_keyword_filter_matches_name_only(): void
     {
         $admin = User::factory()->admin()->create();
-        Certification::factory()->published()->create(['code' => 'CERT-AAA111', 'name' => 'TOEIC Test']);
-        Certification::factory()->published()->create(['code' => 'CERT-BBB222', 'name' => 'PMP Certification']);
+        Certification::factory()->published()->create(['name' => 'TOEIC Listening']);
+        Certification::factory()->published()->create(['name' => 'PMP Certification']);
 
         $response = $this->actingAs($admin)->get(route('admin.certifications.index', ['keyword' => 'TOEIC']));
 
         $response->assertOk();
-        $response->assertSee('CERT-AAA111');
-        $response->assertDontSee('CERT-BBB222');
+        $response->assertSee('TOEIC Listening');
+        $response->assertDontSee('PMP Certification');
     }
 
     public function test_status_filter_returns_only_matching_status(): void

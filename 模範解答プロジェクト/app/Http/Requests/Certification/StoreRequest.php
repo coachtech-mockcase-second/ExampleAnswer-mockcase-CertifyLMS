@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Certification;
 
+use App\Enums\CertificationDifficulty;
 use App\Models\Certification;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
+/**
+ * 資格マスタ新規作成リクエスト。admin が資格名・カテゴリ・難易度・説明の 4 項目を入力する。
+ */
 class StoreRequest extends FormRequest
 {
     public function authorize(): bool
@@ -14,33 +19,29 @@ class StoreRequest extends FormRequest
         return $this->user()?->can('create', Certification::class) ?? false;
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:50', 'unique:certifications,code'],
-            'category_id' => ['required', 'ulid', 'exists:certification_categories,id'],
             'name' => ['required', 'string', 'max:100'],
-            'slug' => ['required', 'string', 'max:120', 'unique:certifications,slug'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'difficulty' => ['required', 'in:beginner,intermediate,advanced,expert'],
-            'passing_score' => ['required', 'integer', 'min:1', 'max:100'],
-            'total_questions' => ['required', 'integer', 'min:1'],
-            'exam_duration_minutes' => ['required', 'integer', 'min:1'],
+            'category_id' => ['required', 'ulid', 'exists:certification_categories,id'],
+            'difficulty' => ['required', Rule::enum(CertificationDifficulty::class)],
+            'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [
-            'code' => '資格コード',
-            'category_id' => 'カテゴリ',
             'name' => '資格名',
-            'slug' => 'スラッグ',
-            'description' => '説明',
+            'category_id' => 'カテゴリ',
             'difficulty' => '難易度',
-            'passing_score' => '合格点',
-            'total_questions' => '総問題数',
-            'exam_duration_minutes' => '試験時間（分）',
+            'description' => '説明',
         ];
     }
 }

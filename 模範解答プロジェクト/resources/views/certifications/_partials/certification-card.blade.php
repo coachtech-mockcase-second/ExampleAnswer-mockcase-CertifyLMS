@@ -3,7 +3,9 @@
         <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
                 <div class="text-base font-semibold text-ink-900 group-hover:text-primary-700 transition-colors truncate">{{ $certification->name }}</div>
-                <div class="text-xs text-ink-500 font-mono mt-1">{{ $certification->code }}</div>
+                @if ($certification->category?->name)
+                    <div class="text-xs text-ink-500 mt-1">{{ $certification->category->name }}</div>
+                @endif
             </div>
             @if ($isEnrolled)
                 <x-badge variant="success" size="sm">
@@ -14,23 +16,13 @@
         </div>
 
         <div class="mt-3 flex items-center gap-2 flex-wrap">
-            <x-badge variant="info" size="sm">{{ $certification->category?->name ?? '—' }}</x-badge>
             <x-badge variant="gray" size="sm">{{ $certification->difficulty->label() }}</x-badge>
         </div>
 
-        <div class="mt-4 grid grid-cols-3 gap-3 border-t border-[var(--border-subtle)] pt-4 text-center">
-            <div>
-                <div class="text-[10px] uppercase tracking-wider text-ink-500 font-semibold">合格点</div>
-                <div class="mt-1 text-sm font-semibold text-ink-900 tabular-nums">{{ $certification->passing_score }}%</div>
-            </div>
-            <div>
-                <div class="text-[10px] uppercase tracking-wider text-ink-500 font-semibold">問題数</div>
-                <div class="mt-1 text-sm font-semibold text-ink-900 tabular-nums">{{ $certification->total_questions }}</div>
-            </div>
-            <div>
-                <div class="text-[10px] uppercase tracking-wider text-ink-500 font-semibold">時間</div>
-                <div class="mt-1 text-sm font-semibold text-ink-900 tabular-nums">{{ $certification->exam_duration_minutes }}分</div>
-            </div>
-        </div>
+        @if ($certification->description)
+            <p class="mt-4 text-sm text-ink-700 leading-relaxed line-clamp-3 border-t border-[var(--border-subtle)] pt-4">
+                {{ $certification->description }}
+            </p>
+        @endif
     </x-card>
 </a>

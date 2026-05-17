@@ -6,7 +6,10 @@ namespace App\UseCases\CertificationCatalog;
 
 use App\Models\Certification;
 
-class ShowAction
+/**
+ * 受講生向け資格詳細を取得するユースケース。
+ */
+final class ShowAction
 {
     public function __invoke(Certification $certification): Certification
     {

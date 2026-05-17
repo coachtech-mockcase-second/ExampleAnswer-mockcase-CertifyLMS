@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\UseCases\Certificate;
 
 use App\Enums\EnrollmentStatus;
-use App\Exceptions\Certification\CertificatePdfGenerationFailedException;
+use App\Exceptions\Certification\CertificateAlreadyIssuedException;
+use App\Exceptions\Certification\CertificateGenerationFailedException;
 use App\Exceptions\Certification\EnrollmentNotPassedException;
 use App\Models\Certificate;
 use App\Models\Enrollment;
-use App\Models\User;
 use App\Services\CertificatePdfService;
 use App\UseCases\Certificate\IssueAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,36 +34,33 @@ class IssueActionTest extends TestCase
         Storage::fake('private');
         Carbon::setTestNow(Carbon::parse('2026-05-14 10:00:00'));
 
-        $admin = User::factory()->admin()->create();
         $enrollment = Enrollment::factory()->passed()->create();
 
         $action = $this->app->make(IssueAction::class);
-        $certificate = $action($enrollment, $admin);
+        $certificate = $action($enrollment);
 
         $this->assertNotNull($certificate);
         $this->assertSame('CT-202605-00001', $certificate->serial_no);
         $this->assertSame($enrollment->user_id, $certificate->user_id);
         $this->assertSame($enrollment->id, $certificate->enrollment_id);
-        $this->assertSame($admin->id, $certificate->issued_by_user_id);
+        $this->assertSame($enrollment->certification_id, $certificate->certification_id);
         $this->assertDatabaseHas('certificates', ['id' => $certificate->id]);
         Storage::disk('private')->assertExists($certificate->pdf_path);
     }
 
     public function test_throws_when_enrollment_not_passed(): void
     {
-        $admin = User::factory()->admin()->create();
         $enrollment = Enrollment::factory()->learning()->create();
 
         $action = $this->app->make(IssueAction::class);
 
         $this->expectException(EnrollmentNotPassedException::class);
 
-        $action($enrollment, $admin);
+        $action($enrollment);
     }
 
     public function test_throws_when_passed_status_but_passed_at_is_null(): void
     {
-        $admin = User::factory()->admin()->create();
         $enrollment = Enrollment::factory()->create([
             'status' => EnrollmentStatus::Passed->value,
             'passed_at' => null,
@@ -73,66 +70,76 @@ class IssueActionTest extends TestCase
 
         $this->expectException(EnrollmentNotPassedException::class);
 
-        $action($enrollment, $admin);
+        $action($enrollment);
     }
 
-    public function test_is_idempotent_on_repeated_call(): void
+    public function test_throws_already_issued_on_duplicate_enrollment_call(): void
     {
         Storage::fake('private');
 
-        $admin = User::factory()->admin()->create();
         $enrollment = Enrollment::factory()->passed()->create();
 
         $action = $this->app->make(IssueAction::class);
-        $first = $action($enrollment, $admin);
-        $second = $action($enrollment, $admin);
+        $action($enrollment);
 
-        $this->assertTrue($first->is($second));
+        $this->expectException(CertificateAlreadyIssuedException::class);
+
+        $action($enrollment);
+    }
+
+    public function test_only_one_certificate_remains_after_duplicate_call_attempt(): void
+    {
+        Storage::fake('private');
+
+        $enrollment = Enrollment::factory()->passed()->create();
+
+        $action = $this->app->make(IssueAction::class);
+        $action($enrollment);
+
+        try {
+            $action($enrollment);
+        } catch (CertificateAlreadyIssuedException $e) {
+            // expected
+        }
+
         $this->assertSame(1, Certificate::query()->where('enrollment_id', $enrollment->id)->count());
-    }
-
-    public function test_does_not_regenerate_pdf_on_idempotent_call(): void
-    {
-        Storage::fake('private');
-
-        $admin = User::factory()->admin()->create();
-        $enrollment = Enrollment::factory()->passed()->create();
-
-        $pdfMock = Mockery::mock(CertificatePdfService::class);
-        $pdfMock->shouldReceive('generate')->once();
-        $this->app->instance(CertificatePdfService::class, $pdfMock);
-
-        $action = $this->app->make(IssueAction::class);
-        $action($enrollment, $admin);
-        $action($enrollment, $admin);
-
-        $this->addToAssertionCount(1);
     }
 
     public function test_rolls_back_certificate_and_deletes_pdf_on_pdf_generation_failure(): void
     {
         Storage::fake('private');
 
-        $admin = User::factory()->admin()->create();
         $enrollment = Enrollment::factory()->passed()->create();
 
-        // PDF 生成が例外を投げるようモック（P1-8 検証、2026-05-16）
         $pdfMock = Mockery::mock(CertificatePdfService::class);
         $pdfMock->shouldReceive('generate')->once()->andThrow(new \RuntimeException('forced PDF failure'));
         $this->app->instance(CertificatePdfService::class, $pdfMock);
 
-        $this->expectException(CertificatePdfGenerationFailedException::class);
+        $this->expectException(CertificateGenerationFailedException::class);
 
         try {
             $action = $this->app->make(IssueAction::class);
-            $action($enrollment, $admin);
+            $action($enrollment);
         } finally {
-            // Certificate INSERT が DB::transaction で ROLLBACK されている
+            // PDF 生成失敗時の Storage 保険削除を兼ねた挙動: DB は ROLLBACK で巻き戻り、Storage も orphan ファイルを残さない
             $this->assertSame(0, Certificate::query()->where('enrollment_id', $enrollment->id)->count());
-            // Storage に部分書き込みされた可能性のある PDF も削除されている（Storage::fake では assertMissing で検証）
-            // pdf_path は ROLLBACK 後参照不可なので glob で確認
             $remaining = Storage::disk('private')->allFiles('certificates');
             $this->assertEmpty($remaining, 'PDF orphan file should be cleaned up on rollback');
         }
+    }
+
+    public function test_pdf_content_does_not_contain_certification_code_label(): void
+    {
+        Storage::fake('private');
+
+        $enrollment = Enrollment::factory()->passed()->create();
+
+        $action = $this->app->make(IssueAction::class);
+        $certificate = $action($enrollment);
+
+        $pdfBinary = Storage::disk('private')->get($certificate->pdf_path);
+        $this->assertNotEmpty($pdfBinary);
+        // PDF テンプレに「資格コード」項目を出力しないことを binary 探索で確認(spec REQ-068 の 7 要素のみ構成を担保)
+        $this->assertStringNotContainsString('資格コード', (string) $pdfBinary);
     }
 }

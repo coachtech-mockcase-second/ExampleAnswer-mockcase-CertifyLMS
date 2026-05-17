@@ -9,13 +9,21 @@ use App\Models\Certification;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
-class IndexAction
+/**
+ * 受講生向け資格カタログの一覧を取得するユースケース。
+ *
+ * 戻り値:
+ * - `catalog`: 公開中の全資格（カテゴリ / 難易度フィルタ適用後）
+ * - `enrolled`: 受講生が登録済の資格（catalog の部分集合）
+ * - `enrolled_ids`: 受講登録済資格 ID（カード上の「受講中」バッジ判定用）
+ */
+final class IndexAction
 {
     /**
-     * @param array{category_id?: string|null, difficulty?: string|null, tab?: string|null} $filter
-     *
-     * @return array{catalog: Collection, enrolled: Collection, enrolled_ids: \Illuminate\Support\Collection}
+     * @param  array{category_id?: string|null, difficulty?: string|null, tab?: string|null}  $filter
+     * @return array{catalog: Collection<int, Certification>, enrolled: Collection<int, Certification>, enrolled_ids: SupportCollection<int, string>}
      */
     public function __invoke(User $student, array $filter): array
     {

@@ -6,10 +6,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * 資格 × 担当コーチの割当を表す Pivot Model。
+ * 解除時は `unassigned_at` を now() に設定 + SoftDelete することで、過去の担当履歴を残しつつ active 行だけ参照可能にする。
+ *
+ * Active 行の取得は `Certification::coaches()` の `wherePivot('unassigned_at', null)` 経由。
+ */
 class CertificationCoachAssignment extends Pivot
 {
-    use HasUlids;
+    use HasUlids, SoftDeletes;
 
     public $incrementing = false;
 
@@ -19,12 +26,14 @@ class CertificationCoachAssignment extends Pivot
 
     protected $fillable = [
         'certification_id',
-        'coach_user_id',
+        'user_id',
         'assigned_by_user_id',
         'assigned_at',
+        'unassigned_at',
     ];
 
     protected $casts = [
         'assigned_at' => 'datetime',
+        'unassigned_at' => 'datetime',
     ];
 }

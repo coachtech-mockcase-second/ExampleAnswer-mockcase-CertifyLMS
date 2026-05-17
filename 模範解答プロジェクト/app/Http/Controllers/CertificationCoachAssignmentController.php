@@ -4,32 +4,33 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\CertificationCoachAssignment\StoreRequest;
 use App\Models\Certification;
-use App\Models\CertificationCoachAssignment;
 use App\Models\User;
-use App\UseCases\CertificationCoachAssignment\DestroyAction;
-use App\UseCases\CertificationCoachAssignment\StoreAction;
+use App\UseCases\CertificationCoachAssignment\AttachAction;
+use App\UseCases\CertificationCoachAssignment\DetachAction;
 use Illuminate\Http\RedirectResponse;
 
+/**
+ * admin 用の担当コーチ割当 Controller。資格 × コーチ の attach / detach を URL パラメータベースで提供する。
+ */
 class CertificationCoachAssignmentController extends Controller
 {
-    public function store(Certification $certification, StoreRequest $request, StoreAction $action): RedirectResponse
+    public function attach(Certification $certification, User $coach, AttachAction $action): RedirectResponse
     {
-        $coach = User::findOrFail($request->validated('coach_user_id'));
+        $this->authorize('attachCoach', $certification);
 
-        $action($certification, $coach, $request->user());
+        $action($certification, $coach, request()->user());
 
         return redirect()
             ->route('admin.certifications.show', $certification)
             ->with('success', '担当コーチを追加しました。');
     }
 
-    public function destroy(Certification $certification, User $user, DestroyAction $action): RedirectResponse
+    public function detach(Certification $certification, User $coach, DetachAction $action): RedirectResponse
     {
-        $this->authorize('delete', CertificationCoachAssignment::class);
+        $this->authorize('detachCoach', $certification);
 
-        $action($certification, $user);
+        $action($certification, $coach, request()->user());
 
         return redirect()
             ->route('admin.certifications.show', $certification)

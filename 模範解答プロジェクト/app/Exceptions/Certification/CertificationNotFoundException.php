@@ -6,12 +6,13 @@ namespace App\Exceptions\Certification;
 
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-class CertificationNotFoundException extends NotFoundHttpException
+/**
+ * 資格マスタが見つからない際の例外（HTTP 404）。
+ */
+final class CertificationNotFoundException extends NotFoundHttpException
 {
-    public function __construct(
-        string $message = '資格が見つかりません。',
-        ?\Throwable $previous = null,
-    ) {
-        parent::__construct($message, $previous);
+    public function __construct(?\Throwable $previous = null)
+    {
+        parent::__construct('資格が見つかりません。', $previous);
     }
 }

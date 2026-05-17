@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Policies;
 
 use App\Models\Certification;
+use App\Models\CertificationCoachAssignment;
 use App\Models\User;
 use App\Policies\CertificationPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CertificationPolicyTest extends TestCase
@@ -26,11 +28,13 @@ class CertificationPolicyTest extends TestCase
         $this->assertTrue($policy->update($admin, $cert));
         $this->assertTrue($policy->delete($admin, $cert));
         $this->assertTrue($policy->publish($admin, $cert));
+        $this->assertTrue($policy->unpublish($admin, $cert));
         $this->assertTrue($policy->archive($admin, $cert));
-        $this->assertTrue($policy->unarchive($admin, $cert));
+        $this->assertTrue($policy->attachCoach($admin, $cert));
+        $this->assertTrue($policy->detachCoach($admin, $cert));
     }
 
-    public function test_admin_can_view_draft_and_archived_certifications(): void
+    public function test_admin_can_view_any_status_certification(): void
     {
         $admin = User::factory()->admin()->create();
         $policy = new CertificationPolicy;
@@ -40,40 +44,47 @@ class CertificationPolicyTest extends TestCase
         $this->assertTrue($policy->view($admin, Certification::factory()->published()->create()));
     }
 
-    public function test_coach_and_student_can_only_view_published_certifications(): void
+    public function test_coach_can_view_only_assigned_certification(): void
     {
+        $admin = User::factory()->admin()->create();
         $coach = User::factory()->coach()->create();
+        $assignedCert = Certification::factory()->published()->create();
+        $otherCert = Certification::factory()->published()->create();
+
+        CertificationCoachAssignment::create([
+            'id' => (string) Str::ulid(),
+            'certification_id' => $assignedCert->id,
+            'user_id' => $coach->id,
+            'assigned_by_user_id' => $admin->id,
+            'assigned_at' => now(),
+        ]);
+
+        $assignedCert->load('coaches');
+        $otherCert->load('coaches');
+
+        $policy = new CertificationPolicy;
+
+        $this->assertTrue($policy->view($coach, $assignedCert));
+        $this->assertFalse($policy->view($coach, $otherCert));
+        $this->assertFalse($policy->viewAny($coach));
+        $this->assertFalse($policy->create($coach));
+        $this->assertFalse($policy->update($coach, $assignedCert));
+        $this->assertFalse($policy->attachCoach($coach, $assignedCert));
+    }
+
+    public function test_student_can_view_only_published_and_non_deleted(): void
+    {
         $student = User::factory()->student()->create();
-        $draft = Certification::factory()->draft()->create();
         $published = Certification::factory()->published()->create();
+        $draft = Certification::factory()->draft()->create();
         $archived = Certification::factory()->archived()->create();
         $policy = new CertificationPolicy;
 
-        $this->assertFalse($policy->view($coach, $draft));
-        $this->assertFalse($policy->view($coach, $archived));
-        $this->assertTrue($policy->view($coach, $published));
-
+        $this->assertTrue($policy->view($student, $published));
         $this->assertFalse($policy->view($student, $draft));
         $this->assertFalse($policy->view($student, $archived));
-        $this->assertTrue($policy->view($student, $published));
-    }
-
-    public function test_coach_and_student_cannot_perform_admin_operations(): void
-    {
-        $coach = User::factory()->coach()->create();
-        $student = User::factory()->student()->create();
-        $cert = Certification::factory()->draft()->create();
-        $policy = new CertificationPolicy;
-
-        $this->assertFalse($policy->viewAny($coach));
-        $this->assertFalse($policy->create($coach));
-        $this->assertFalse($policy->update($coach, $cert));
-        $this->assertFalse($policy->delete($coach, $cert));
-        $this->assertFalse($policy->publish($coach, $cert));
-
         $this->assertFalse($policy->viewAny($student));
         $this->assertFalse($policy->create($student));
-        $this->assertFalse($policy->update($student, $cert));
-        $this->assertFalse($policy->delete($student, $cert));
+        $this->assertFalse($policy->update($student, $published));
     }
 }

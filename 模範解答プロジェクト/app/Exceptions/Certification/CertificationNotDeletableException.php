@@ -6,12 +6,14 @@ namespace App\Exceptions\Certification;
 
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
-class CertificationNotDeletableException extends ConflictHttpException
+/**
+ * 削除条件を満たさない資格マスタを削除しようとした際の例外（HTTP 409）。
+ * `Certification\DestroyAction` が「下書き状態のみ削除可」のドメインルールから throw する。
+ */
+final class CertificationNotDeletableException extends ConflictHttpException
 {
-    public function __construct(
-        string $message = '公開中またはアーカイブ済の資格は削除できません。先にアーカイブから再下書き化してください。',
-        ?\Throwable $previous = null,
-    ) {
-        parent::__construct($message, $previous);
+    public function __construct(?\Throwable $previous = null)
+    {
+        parent::__construct('下書き状態の資格のみ削除できます。', $previous);
     }
 }

@@ -18,19 +18,14 @@ class UpdateTest extends TestCase
         $admin = User::factory()->admin()->create();
         $cert = Certification::factory()->draft()->create([
             'name' => 'Old Name',
-            'passing_score' => 50,
+            'difficulty' => 'beginner',
         ]);
 
         $payload = [
-            'code' => $cert->code,
-            'category_id' => $cert->category_id,
             'name' => 'New Name',
-            'slug' => $cert->slug,
-            'description' => $cert->description,
-            'difficulty' => $cert->difficulty->value,
-            'passing_score' => 70,
-            'total_questions' => $cert->total_questions,
-            'exam_duration_minutes' => $cert->exam_duration_minutes,
+            'category_id' => $cert->category_id,
+            'difficulty' => 'advanced',
+            'description' => '更新後の説明',
         ];
 
         $response = $this->actingAs($admin)->put(route('admin.certifications.update', $cert), $payload);
@@ -39,7 +34,8 @@ class UpdateTest extends TestCase
         $this->assertDatabaseHas('certifications', [
             'id' => $cert->id,
             'name' => 'New Name',
-            'passing_score' => 70,
+            'difficulty' => 'advanced',
+            'description' => '更新後の説明',
             'updated_by_user_id' => $admin->id,
         ]);
     }
@@ -50,16 +46,11 @@ class UpdateTest extends TestCase
         $cert = Certification::factory()->published()->create();
 
         $payload = [
-            'code' => $cert->code,
-            'category_id' => $cert->category_id,
             'name' => $cert->name,
-            'slug' => $cert->slug,
-            'description' => $cert->description,
+            'category_id' => $cert->category_id,
             'difficulty' => $cert->difficulty->value,
-            'passing_score' => $cert->passing_score,
-            'total_questions' => $cert->total_questions,
-            'exam_duration_minutes' => $cert->exam_duration_minutes,
-            'status' => 'draft', // 攻撃: 状態を勝手に変更しようとする
+            'description' => $cert->description,
+            'status' => 'draft',
         ];
 
         $this->actingAs($admin)->put(route('admin.certifications.update', $cert), $payload);
@@ -73,14 +64,9 @@ class UpdateTest extends TestCase
         $cert = Certification::factory()->draft()->create();
 
         $response = $this->actingAs($coach)->put(route('admin.certifications.update', $cert), [
-            'code' => $cert->code,
-            'category_id' => $cert->category_id,
             'name' => 'Hack',
-            'slug' => $cert->slug,
+            'category_id' => $cert->category_id,
             'difficulty' => $cert->difficulty->value,
-            'passing_score' => 60,
-            'total_questions' => 80,
-            'exam_duration_minutes' => 150,
         ]);
 
         $response->assertForbidden();
