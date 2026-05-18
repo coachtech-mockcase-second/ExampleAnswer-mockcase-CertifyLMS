@@ -17,8 +17,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * Section に紐づく演習問題を表す Model。
  *
- * 関連: Section(親、必須) / QuestionCategory(出題分野マスタ) / SectionQuestionOption(選択肢)
- * scope: published / ofSection(string) / byCategory(?string) / ordered
+ * 関連: Section(親、必須) / QuestionCategory(出題分野マスタ) / SectionQuestionOption(選択肢) /
+ *      SectionQuestionAnswer(個別解答ログ) / SectionQuestionAttempt(受講生別累計サマリ)
+ * scope: published / ofSection(string) / byCategory(?string) / ordered / visibleForStudent
  * 資格(Certification)への参照は section から chapter → part → certification と辿る(直接の certification_id カラムは持たない)。
  */
 class SectionQuestion extends Model
@@ -66,9 +67,37 @@ class SectionQuestion extends Model
         return $this->hasMany(SectionQuestionOption::class);
     }
 
+    /**
+     * @return HasMany<SectionQuestionAnswer, $this>
+     */
+    public function sectionQuestionAnswers(): HasMany
+    {
+        return $this->hasMany(SectionQuestionAnswer::class);
+    }
+
+    /**
+     * @return HasMany<SectionQuestionAttempt, $this>
+     */
+    public function sectionQuestionAttempts(): HasMany
+    {
+        return $this->hasMany(SectionQuestionAttempt::class);
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', ContentStatus::Published->value);
+    }
+
+    /**
+     * 受講生に出題可能な SectionQuestion を絞り込む。
+     * 自身が Published かつ親 Section / Chapter / Part も Published で、いずれも SoftDelete されていない場合のみ。
+     */
+    public function scopeVisibleForStudent(Builder $query): Builder
+    {
+        return $query->where('status', ContentStatus::Published->value)
+            ->whereHas('section', fn (Builder $q) => $q->where('status', ContentStatus::Published->value)
+                ->whereHas('chapter', fn (Builder $q2) => $q2->where('status', ContentStatus::Published->value)
+                    ->whereHas('part', fn (Builder $q3) => $q3->where('status', ContentStatus::Published->value))));
     }
 
     public function scopeOfSection(Builder $query, string $sectionId): Builder

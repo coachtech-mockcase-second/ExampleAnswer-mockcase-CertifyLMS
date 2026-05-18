@@ -15,12 +15,17 @@ use App\Models\Invitation;
 use App\Models\LearningHourTarget;
 use App\Models\LearningSession;
 use App\Models\MeetingQuotaPlan;
+use App\Models\MockExam;
+use App\Models\MockExamQuestion;
+use App\Models\MockExamSession;
 use App\Models\Part;
 use App\Models\QuestionCategory;
 use App\Models\Section;
 use App\Models\SectionImage;
 use App\Models\SectionProgress;
 use App\Models\SectionQuestion;
+use App\Models\SectionQuestionAnswer;
+use App\Models\SectionQuestionAttempt;
 use App\Models\User;
 use App\Policies\CertificatePolicy;
 use App\Policies\CertificationCategoryPolicy;
@@ -35,15 +40,22 @@ use App\Policies\LearningHourTargetPolicy;
 use App\Policies\LearningSessionPolicy;
 use App\Policies\MeetingQuotaPlanPolicy;
 use App\Policies\MeetingQuotaPolicy;
+use App\Policies\MockExamPolicy;
+use App\Policies\MockExamQuestionPolicy;
+use App\Policies\MockExamSessionPolicy;
 use App\Policies\PartPolicy;
 use App\Policies\PartViewPolicy;
 use App\Policies\QuestionCategoryPolicy;
 use App\Policies\SectionImagePolicy;
 use App\Policies\SectionPolicy;
 use App\Policies\SectionProgressPolicy;
+use App\Policies\SectionQuestionAnswerPolicy;
+use App\Policies\SectionQuestionAttemptPolicy;
 use App\Policies\SectionQuestionPolicy;
+use App\Policies\SectionQuizPolicy;
 use App\Policies\SectionViewPolicy;
 use App\Policies\UserPolicy;
+use App\Policies\WeakDrillPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -67,12 +79,17 @@ class AuthServiceProvider extends ServiceProvider
         SectionQuestion::class => SectionQuestionPolicy::class,
         QuestionCategory::class => QuestionCategoryPolicy::class,
         MeetingQuotaPlan::class => MeetingQuotaPlanPolicy::class,
+        MockExam::class => MockExamPolicy::class,
+        MockExamQuestion::class => MockExamQuestionPolicy::class,
+        MockExamSession::class => MockExamSessionPolicy::class,
         Enrollment::class => EnrollmentPolicy::class,
         EnrollmentGoal::class => EnrollmentGoalPolicy::class,
         EnrollmentNote::class => EnrollmentNotePolicy::class,
         SectionProgress::class => SectionProgressPolicy::class,
         LearningSession::class => LearningSessionPolicy::class,
         LearningHourTarget::class => LearningHourTargetPolicy::class,
+        SectionQuestionAnswer::class => SectionQuestionAnswerPolicy::class,
+        SectionQuestionAttempt::class => SectionQuestionAttemptPolicy::class,
     ];
 
     /**
@@ -89,5 +106,12 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('learning.part.view', [PartViewPolicy::class, 'view']);
         Gate::define('learning.chapter.view', [ChapterViewPolicy::class, 'view']);
         Gate::define('learning.section.view', [SectionViewPolicy::class, 'view']);
+
+        // Section 紐づき問題演習 / 苦手分野ドリル / 解答送信用 Gate。
+        // Section / Enrollment / SectionQuestion へ auto-bind されている既存 Policy と
+        // 衝突しないよう、別 ability 名で登録する。
+        Gate::define('quiz.section.view', [SectionQuizPolicy::class, 'view']);
+        Gate::define('quiz.weak-drill.view', [WeakDrillPolicy::class, 'view']);
+        Gate::define('quiz.answer.create', [SectionQuestionAnswerPolicy::class, 'create']);
     }
 }

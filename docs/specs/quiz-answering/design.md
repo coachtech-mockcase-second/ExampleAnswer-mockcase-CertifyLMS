@@ -675,7 +675,6 @@ public function store(SectionQuestion $question, StoreRequest $request): Redirec
 ```php
 namespace App\Services;
 
-use App\DTOs\SectionQuestionScoreSummary;
 use App\Models\Enrollment;
 use App\Models\Section;
 use App\Models\User;
@@ -713,26 +712,28 @@ final class SectionQuestionScoreService
 }
 ```
 
-### DTO
+### 値オブジェクト
 
-`app/DTOs/SectionQuestionScoreSummary.php`:
+`app/Services/SectionQuestionScoreSummary.php` (戻り値の値オブジェクト。Service と同じ `App\Services` 名前空間に同居):
 
 ```php
-namespace App\DTOs;
+namespace App\Services;
 
 use Carbon\Carbon;
 
 final readonly class SectionQuestionScoreSummary
 {
     public function __construct(
-        public int $attempt_count,
-        public ?int $best_score,
-        public ?int $latest_score,
-        public ?Carbon $latest_answered_at,
-        public ?float $accuracy_rate,
+        public int $attemptCount,
+        public ?int $bestScore,
+        public ?int $latestScore,
+        public ?Carbon $latestAnsweredAt,
+        public ?float $accuracyRate,
     ) {}
 }
 ```
+
+> 同様に `SectionQuestionAttemptStatsService` の戻り値 `StatsSummary` / `CategoryStats` も `App\Services` 名前空間に同居させる。専用ディレクトリ(`app/DTOs/` 等)は採用しない。
 
 ### [[learning]] との連携
 
@@ -746,5 +747,5 @@ final readonly class SectionQuestionScoreSummary
 
 | 要件 ID | 実装ポイント |
 |---|---|
-| REQ-quiz-answering-180〜183 | `App\Services\SectionQuestionScoreService` + `App\DTOs\SectionQuestionScoreSummary` |
+| REQ-quiz-answering-180〜183 | `App\Services\SectionQuestionScoreService` + `App\Services\SectionQuestionScoreSummary` |
 | REQ-quiz-answering-185 | `views/learning/sections/_partials/section-quiz-link.blade.php` (or Component) |

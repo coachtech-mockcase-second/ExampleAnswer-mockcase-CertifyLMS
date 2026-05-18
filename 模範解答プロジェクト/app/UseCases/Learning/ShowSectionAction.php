@@ -9,6 +9,7 @@ use App\Models\Section;
 use App\Models\SectionProgress;
 use App\Models\User;
 use App\Services\MarkdownRenderingService;
+use App\Services\SectionQuestionScoreService;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -21,6 +22,7 @@ final class ShowSectionAction
 {
     public function __construct(
         private readonly MarkdownRenderingService $markdown,
+        private readonly SectionQuestionScoreService $scoreService,
     ) {}
 
     /**
@@ -65,6 +67,11 @@ final class ShowSectionAction
                 ->exists();
         }
 
+        $hasSectionQuestions = $section->questions()->exists();
+        $sectionQuizSummary = $hasSectionQuestions
+            ? $this->scoreService->summarize($student, $section)
+            : null;
+
         return [
             'section' => $section,
             'chapter' => $chapter,
@@ -74,7 +81,8 @@ final class ShowSectionAction
             'completed' => $completed,
             'prevSection' => $prevSection,
             'nextSection' => $nextSection,
-            'hasSectionQuestions' => $section->questions()->exists(),
+            'hasSectionQuestions' => $hasSectionQuestions,
+            'sectionQuizSummary' => $sectionQuizSummary,
         ];
     }
 }

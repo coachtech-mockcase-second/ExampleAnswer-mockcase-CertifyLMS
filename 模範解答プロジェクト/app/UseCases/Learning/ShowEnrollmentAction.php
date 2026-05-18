@@ -8,17 +8,16 @@ use App\Enums\ContentStatus;
 use App\Models\Enrollment;
 use App\Services\LearningHourTargetService;
 use App\Services\ProgressService;
+use App\Services\SectionQuestionScoreService;
 use App\Services\StreakService;
 
 /**
  * /learning/enrollments/{enrollment} (2 階層目、教材 Part 一覧) のデータを準備する Action。
  *
- * 教材タブと演習問題タブの 2 タブで構成され、URL クエリ `?tab=` で切替。
- * - contents (default): Part 一覧 + 進捗ゲージ + ストリーク + 学習時間目標サマリ
- * - quizzes: 同 Part → Chapter → Section 階層に各 Section の演習問題リンク + スコアサマリ
- *
- * 演習問題タブのスコアサマリは Section 紐づき問題演習側の Service が未実装でも UI が破綻しないよう、
- * 教材タブ側では空 array を返し、問題演習機能の実装後に SectionQuestionScoreService::batchSummarize を呼ぶ。
+ * 共通サマリカード(進捗ゲージ / ストリーク / 学習時間目標)はタブの外で常に表示する。
+ * タブは教材 / 演習問題の 2 タブで切替:
+ * - contents (default): Part → Chapter → Section の階層一覧 + Section 読了状況
+ * - quizzes: Section 別演習スコア一覧 + タブ内右上に 苦手分野ドリル / 解答履歴 / 問題別サマリへの動線
  */
 final class ShowEnrollmentAction
 {
@@ -26,6 +25,7 @@ final class ShowEnrollmentAction
         private readonly ProgressService $progressService,
         private readonly StreakService $streakService,
         private readonly LearningHourTargetService $hourTargetService,
+        private readonly SectionQuestionScoreService $scoreService,
     ) {}
 
     /**
@@ -56,6 +56,10 @@ final class ShowEnrollmentAction
             ->pluck('section_id')
             ->all();
 
+        $quizScoreSummaries = $tab === 'quizzes'
+            ? $this->scoreService->batchSummarize($enrollment->user, $enrollment)
+            : collect();
+
         return [
             'enrollment' => $enrollment,
             'parts' => $parts,
@@ -64,7 +68,7 @@ final class ShowEnrollmentAction
             'progress' => $this->progressService->summarize($enrollment),
             'streak' => $this->streakService->calculate($enrollment->user),
             'hourTargetSummary' => $this->hourTargetService->compute($enrollment),
-            'quizScoreSummaries' => [],
+            'quizScoreSummaries' => $quizScoreSummaries,
         ];
     }
 }

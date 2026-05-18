@@ -53,6 +53,14 @@ class QuestionCategory extends Model
         return $this->hasMany(SectionQuestion::class, 'category_id');
     }
 
+    /**
+     * @return HasMany<MockExamQuestion, $this>
+     */
+    public function mockExamQuestions(): HasMany
+    {
+        return $this->hasMany(MockExamQuestion::class, 'category_id');
+    }
+
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderByDesc('created_at');

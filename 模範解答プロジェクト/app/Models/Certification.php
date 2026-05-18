@@ -125,6 +125,14 @@ class Certification extends Model
         return $this->hasMany(QuestionCategory::class);
     }
 
+    /**
+     * @return HasMany<MockExam, $this>
+     */
+    public function mockExams(): HasMany
+    {
+        return $this->hasMany(MockExam::class);
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', CertificationStatus::Published->value);

@@ -199,7 +199,7 @@ final class ContentSeeder extends Seeder
             ->state(['title' => '第1章 セキュリティ基礎', 'order' => 1])
             ->create();
 
-        Section::factory()
+        $section = Section::factory()
             ->forChapter($chapter)
             ->published()
             ->state([
@@ -208,6 +208,62 @@ final class ContentSeeder extends Seeder
                 'order' => 1,
             ])
             ->create();
+
+        $this->seedQuestionsForOyojohoSection($section, $categories['security']);
+    }
+
+    private function seedQuestionsForOyojohoSection(Section $section, QuestionCategory $category): void
+    {
+        $q1 = SectionQuestion::factory()
+            ->forSection($section)
+            ->forCategory($category)
+            ->published()
+            ->state([
+                'body' => '共通鍵暗号方式の特徴として正しいものはどれか?',
+                'explanation' => '共通鍵暗号は暗号化と復号で同じ鍵を使うため、公開鍵暗号より高速ですが鍵の共有が課題になります。デジタル署名には用いません。',
+                'order' => 0,
+            ])
+            ->create();
+        $this->seedOptions($q1, [
+            ['body' => '暗号化と復号で同じ鍵を使い処理が高速', 'is_correct' => true],
+            ['body' => '公開鍵と秘密鍵のペアで成り立つ', 'is_correct' => false],
+            ['body' => '一方向性のため復号できない', 'is_correct' => false],
+            ['body' => 'デジタル署名に直接使われる', 'is_correct' => false],
+        ]);
+
+        $q2 = SectionQuestion::factory()
+            ->forSection($section)
+            ->forCategory($category)
+            ->published()
+            ->state([
+                'body' => 'デジタル署名の検証に使う鍵はどれか?',
+                'explanation' => 'デジタル署名は送信者の秘密鍵で署名し、受信者は送信者の公開鍵を使って検証します。',
+                'order' => 1,
+            ])
+            ->create();
+        $this->seedOptions($q2, [
+            ['body' => '送信者の秘密鍵', 'is_correct' => false],
+            ['body' => '送信者の公開鍵', 'is_correct' => true],
+            ['body' => '受信者の秘密鍵', 'is_correct' => false],
+            ['body' => '共通鍵', 'is_correct' => false],
+        ]);
+
+        $q3 = SectionQuestion::factory()
+            ->forSection($section)
+            ->forCategory($category)
+            ->published()
+            ->state([
+                'body' => 'SHA-256 のようなハッシュ関数の主な用途はどれか?',
+                'explanation' => 'ハッシュ関数は一方向性と衝突耐性を持ち、メッセージダイジェスト生成や改ざん検知に使われます。可逆暗号ではないため復号や鍵交換には用いません。',
+                'order' => 2,
+            ])
+            ->create();
+        $this->seedOptions($q3, [
+            ['body' => 'データの暗号化と復号', 'is_correct' => false],
+            ['body' => 'メッセージダイジェスト生成と改ざん検知', 'is_correct' => true],
+            ['body' => '通信路上で鍵を交換する', 'is_correct' => false],
+            ['body' => 'パスワードを平文で保存する', 'is_correct' => false],
+        ]);
     }
 
     private function seedQuestionsForSection1(Section $section, QuestionCategory $category): void
@@ -218,7 +274,7 @@ final class ContentSeeder extends Seeder
             ->published()
             ->state([
                 'body' => '10 進数 25 を 2 進数で表現するとどれか?',
-                'explanation' => '25 = 16 + 8 + 1 = 2^4 + 2^3 + 2^0 = 11001',
+                'explanation' => "25 = 16 + 8 + 1 = 2^4 + 2^3 + 2^0\n\nしたがって 2 進数表現は 11001 になります。",
                 'order' => 0,
             ])
             ->create();
@@ -232,10 +288,10 @@ final class ContentSeeder extends Seeder
         $q2 = SectionQuestion::factory()
             ->forSection($section)
             ->forCategory($category)
-            ->draft()
+            ->published()
             ->state([
                 'body' => '16 進数 0xFF を 10 進数で表現するとどれか?',
-                'explanation' => '0xFF = 15 * 16 + 15 = 255',
+                'explanation' => "0xFF = 15 × 16 + 15 = 240 + 15 = 255\n\n16 進数 1 桁は 4 ビットに相当するため、2 桁では 8 ビット (1 バイト) の最大値 255 を表します。",
                 'order' => 1,
             ])
             ->create();
@@ -245,25 +301,93 @@ final class ContentSeeder extends Seeder
             ['body' => '127', 'is_correct' => false],
             ['body' => '128', 'is_correct' => false],
         ]);
+
+        $q3 = SectionQuestion::factory()
+            ->forSection($section)
+            ->forCategory($category)
+            ->published()
+            ->state([
+                'body' => '2 進数 1101 と 1011 の論理和 (OR) はどれか?',
+                'explanation' => "ビット毎に OR を取ります:\n  1101\n  1011\n  ----\n  1111\n\nいずれかのビットが 1 ならば結果は 1 になります。",
+                'order' => 2,
+            ])
+            ->create();
+        $this->seedOptions($q3, [
+            ['body' => '1001', 'is_correct' => false],
+            ['body' => '0110', 'is_correct' => false],
+            ['body' => '1111', 'is_correct' => true],
+            ['body' => '1110', 'is_correct' => false],
+        ]);
+
+        $q4 = SectionQuestion::factory()
+            ->forSection($section)
+            ->forCategory($category)
+            ->published()
+            ->state([
+                'body' => '8 ビットの 2 の補数表現で -5 はどれか?',
+                'explanation' => "5 は 2 進数で 00000101。各ビットを反転して 11111010、これに 1 を足すと 11111011。\n2 の補数表現での -5 は 11111011 になります。",
+                'order' => 3,
+            ])
+            ->create();
+        $this->seedOptions($q4, [
+            ['body' => '11111011', 'is_correct' => true],
+            ['body' => '11111010', 'is_correct' => false],
+            ['body' => '10000101', 'is_correct' => false],
+            ['body' => '00000101', 'is_correct' => false],
+        ]);
     }
 
     private function seedQuestionsForSection3(Section $section, QuestionCategory $category): void
     {
-        $q = SectionQuestion::factory()
+        $q1 = SectionQuestion::factory()
             ->forSection($section)
             ->forCategory($category)
             ->published()
             ->state([
                 'body' => '計算量が O(n^2) のアルゴリズムはどれか?',
-                'explanation' => 'バブルソートは隣接要素を順次比較するため O(n^2)。ハッシュ検索は O(1)、二分探索は O(log n)。',
+                'explanation' => "バブルソートは隣接要素を順次比較するため最悪・平均ともに O(n^2)。\nハッシュ検索は O(1)、二分探索は O(log n)、スタック push は O(1) です。",
                 'order' => 0,
             ])
             ->create();
-        $this->seedOptions($q, [
+        $this->seedOptions($q1, [
             ['body' => 'バブルソート', 'is_correct' => true],
             ['body' => 'ハッシュテーブルへの単純検索', 'is_correct' => false],
             ['body' => '二分探索', 'is_correct' => false],
             ['body' => 'スタックへの push 操作', 'is_correct' => false],
+        ]);
+
+        $q2 = SectionQuestion::factory()
+            ->forSection($section)
+            ->forCategory($category)
+            ->published()
+            ->state([
+                'body' => '二分探索が前提とする条件はどれか?',
+                'explanation' => '二分探索は対象データが整列されている必要があります。整列されていない場合は線形探索 O(n) を使うか、先にソート O(n log n) する必要があります。',
+                'order' => 1,
+            ])
+            ->create();
+        $this->seedOptions($q2, [
+            ['body' => 'データが整列されていること', 'is_correct' => true],
+            ['body' => 'データが整数のみであること', 'is_correct' => false],
+            ['body' => 'データ件数が偶数であること', 'is_correct' => false],
+            ['body' => 'メモリにすべて載っていること', 'is_correct' => false],
+        ]);
+
+        $q3 = SectionQuestion::factory()
+            ->forSection($section)
+            ->forCategory($category)
+            ->published()
+            ->state([
+                'body' => 'スタックの動作モデルとして正しいものはどれか?',
+                'explanation' => 'スタックは LIFO (Last In First Out) で、push で要素を積み、pop で最後に積んだ要素を取り出します。FIFO はキュー、優先度ありはプライオリティキュー、ランダムは配列が該当します。',
+                'order' => 2,
+            ])
+            ->create();
+        $this->seedOptions($q3, [
+            ['body' => 'FIFO — 先に入れたものを先に取り出す', 'is_correct' => false],
+            ['body' => 'LIFO — 後に入れたものを先に取り出す', 'is_correct' => true],
+            ['body' => '優先度の高いものから取り出す', 'is_correct' => false],
+            ['body' => 'ランダムに取り出す', 'is_correct' => false],
         ]);
     }
 

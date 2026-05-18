@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    {{-- 進捗ゲージ / ストリーク / 学習時間目標サマリ --}}
+    {{-- 進捗ゲージ / ストリーク / 学習時間目標サマリ(教材閲覧・演習問題の両方で共通の俯瞰指標) --}}
     <div class="mt-6 grid gap-4 lg:grid-cols-3">
         <x-card padding="md" shadow="sm">
             <x-slot:header>進捗</x-slot:header>

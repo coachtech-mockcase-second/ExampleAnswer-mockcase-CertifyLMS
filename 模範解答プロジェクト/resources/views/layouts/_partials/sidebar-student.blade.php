@@ -2,11 +2,11 @@
     <x-nav.sidebar class="flex-1">
         <x-nav.item route="dashboard.index" icon="home" label="ダッシュボード" />
 
-        <x-nav.section title="学習" :routes="['certifications.index', 'enrollments.index', 'learning.index', 'mock-exams.index']" />
+        <x-nav.section title="学習" :routes="['certifications.index', 'enrollments.index', 'learning.index', 'quiz.sections.show', 'quiz.sections.question', 'quiz.sections.result', 'quiz.drills.index', 'quiz.drills.category', 'quiz.drills.question', 'quiz.drills.result', 'quiz.history.index', 'quiz.stats.index', 'mock-exam.fallback.index', 'mock-exam.catalog.index', 'mock-exam.catalog.show', 'mock-exam-sessions.index', 'mock-exam-sessions.show']" />
         <x-nav.item route="certifications.index" icon="magnifying-glass" label="資格カタログ" />
         <x-nav.item route="enrollments.index" icon="clipboard-document-list" label="受講中資格" />
         <x-nav.item route="learning.index" icon="book-open" label="教材・演習" />
-        <x-nav.item route="mock-exams.index" icon="clipboard-document-check" label="模試" :badge="$sidebarBadges['unfinishedMockExams'] ?? 0" />
+        <x-nav.item route="mock-exam.fallback.index" icon="clipboard-document-check" label="模試" :badge="$sidebarBadges['unfinishedMockExams'] ?? 0" />
 
         <x-nav.section title="相談" :routes="['chat.index', 'qa-board.index', 'ai-chat.index', 'meetings.index']" />
         <x-nav.item route="chat.index" icon="chat-bubble-left-right" label="chat (コーチへ)" :badge="$sidebarBadges['unattendedChat'] ?? 0" />

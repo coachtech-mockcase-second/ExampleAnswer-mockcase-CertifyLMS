@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AdminEnrollmentController;
+use App\Http\Controllers\AdminMockExamSessionController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CertificateController;
@@ -21,17 +22,29 @@ use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
 use App\Http\Controllers\MeetingQuotaPlanController;
 use App\Http\Controllers\MeetingQuotaPlanStatusController;
+use App\Http\Controllers\MockExamAnswerController;
+use App\Http\Controllers\MockExamCatalogController;
+use App\Http\Controllers\MockExamController;
+use App\Http\Controllers\MockExamQuestionController;
+use App\Http\Controllers\MockExamSessionController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlanStatusController;
 use App\Http\Controllers\QuestionCategoryController;
+use App\Http\Controllers\QuizHistoryController;
+use App\Http\Controllers\QuizStatsController;
 use App\Http\Controllers\ReceiveCertificateController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionImageController;
 use App\Http\Controllers\SectionProgressController;
+use App\Http\Controllers\SectionQuestionAnswerController;
 use App\Http\Controllers\SectionQuestionController;
+use App\Http\Controllers\SectionQuizController;
+use App\Http\Controllers\SectionQuizResultController;
 use App\Http\Controllers\Settings\SettingsDefaultEnrollmentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WeakDrillController;
+use App\Http\Controllers\WeakDrillResultController;
 use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -296,6 +309,40 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::delete('question-categories/{category}', [QuestionCategoryController::class, 'destroy'])
         ->name('admin.question-categories.destroy');
 
+    // 模試管理 — 模試マスタ CRUD + 公開状態遷移 + 並び順
+    Route::put('mock-exams/reorder', [MockExamController::class, 'reorder'])->name('admin.mock-exams.reorder');
+    Route::resource('mock-exams', MockExamController::class)
+        ->parameters(['mock-exams' => 'mockExam'])
+        ->names('admin.mock-exams');
+    Route::post('mock-exams/{mockExam}/publish', [MockExamController::class, 'publish'])
+        ->name('admin.mock-exams.publish');
+    Route::post('mock-exams/{mockExam}/unpublish', [MockExamController::class, 'unpublish'])
+        ->name('admin.mock-exams.unpublish');
+
+    // 模試管理 — 模試問題 CRUD(模試マスタの子リソース、shallow)
+    Route::put('mock-exams/{mockExam}/questions/reorder', [MockExamQuestionController::class, 'reorder'])
+        ->name('admin.mock-exams.questions.reorder');
+    Route::get('mock-exams/{mockExam}/questions', [MockExamQuestionController::class, 'index'])
+        ->name('admin.mock-exams.questions.index');
+    Route::get('mock-exams/{mockExam}/questions/create', [MockExamQuestionController::class, 'create'])
+        ->name('admin.mock-exams.questions.create');
+    Route::post('mock-exams/{mockExam}/questions', [MockExamQuestionController::class, 'store'])
+        ->name('admin.mock-exams.questions.store');
+    Route::get('mock-exam-questions/{question}', [MockExamQuestionController::class, 'show'])
+        ->name('admin.mock-exam-questions.show');
+    Route::get('mock-exam-questions/{question}/edit', [MockExamQuestionController::class, 'edit'])
+        ->name('admin.mock-exam-questions.edit');
+    Route::put('mock-exam-questions/{question}', [MockExamQuestionController::class, 'update'])
+        ->name('admin.mock-exam-questions.update');
+    Route::delete('mock-exam-questions/{question}', [MockExamQuestionController::class, 'destroy'])
+        ->name('admin.mock-exam-questions.destroy');
+
+    // 模試管理 — 受講生セッション閲覧(coach は担当資格のみ)
+    Route::get('mock-exam-sessions', [AdminMockExamSessionController::class, 'index'])
+        ->name('admin.mock-exam-sessions.index');
+    Route::get('mock-exam-sessions/{session}', [AdminMockExamSessionController::class, 'show'])
+        ->name('admin.mock-exam-sessions.show');
+
     // 演習管理 — Section 紐づき演習問題: 一覧 / 作成 / 詳細・編集 / 公開遷移(Section 経由でのみアクセス)
     Route::get('sections/{section}/questions', [SectionQuestionController::class, 'index'])
         ->name('admin.sections.questions.index');
@@ -314,6 +361,90 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::post('section-questions/{sectionQuestion}/unpublish', [SectionQuestionController::class, 'unpublish'])
         ->name('admin.section-questions.unpublish');
 });
+
+// ============================================================
+// 受講生専用ルート — 模試カタログ(/learning 配下に集約、default 資格は middleware で解決)
+// ============================================================
+Route::middleware(['auth', 'role:student', 'active-learning'])
+    ->prefix('learning/enrollments/{enrollment}')
+    ->name('mock-exam.')
+    ->group(function () {
+        Route::get('mock-exams', [MockExamCatalogController::class, 'index'])->name('catalog.index');
+        Route::get('mock-exams/{mockExam}', [MockExamCatalogController::class, 'show'])->name('catalog.show');
+        Route::post('mock-exams/{mockExam}/sessions', [MockExamSessionController::class, 'store'])
+            ->name('sessions.store');
+    });
+
+// /mock-exams 直接アクセスは default 資格へ自動 redirect(default 未設定で複数 Enrollment 時のみフォールバック画面)
+Route::middleware(['auth', 'role:student', 'active-learning'])->group(function () {
+    Route::get('mock-exams', function () {
+        // ここに到達した = default 未設定 + 残存 Enrollment が 0 件 or 2+ 件
+        $user = auth()->user();
+        $enrollments = $user
+            ?->enrollments()
+            ->whereIn('status', [
+                \App\Enums\EnrollmentStatus::Learning->value,
+                \App\Enums\EnrollmentStatus::Passed->value,
+            ])
+            ->with('certification')
+            ->get();
+
+        return view('mock-exams.empty-state', [
+            'enrollments' => $enrollments ?? collect(),
+        ]);
+    })
+        ->middleware('resolve-default-enrollment:mock-exam.catalog.index')
+        ->name('mock-exam.fallback.index');
+
+    // 受験セッション操作群(セッション ID 直接参照、enrollment 不要)
+    Route::get('mock-exam-sessions', [MockExamSessionController::class, 'index'])->name('mock-exam-sessions.index');
+    Route::get('mock-exam-sessions/{session}', [MockExamSessionController::class, 'show'])
+        ->name('mock-exam-sessions.show');
+    Route::post('mock-exam-sessions/{session}/start', [MockExamSessionController::class, 'start'])
+        ->name('mock-exam-sessions.start');
+    Route::post('mock-exam-sessions/{session}/submit', [MockExamSessionController::class, 'submit'])
+        ->name('mock-exam-sessions.submit');
+    Route::delete('mock-exam-sessions/{session}', [MockExamSessionController::class, 'destroy'])
+        ->name('mock-exam-sessions.destroy');
+    Route::patch('mock-exam-sessions/{session}/answers', [MockExamAnswerController::class, 'update'])
+        ->name('mock-exam-sessions.answers.update');
+});
+
+// ============================================================
+// 受講生専用ルート — Section 紐づき問題演習 / 苦手分野ドリル / 解答履歴
+// ============================================================
+Route::middleware(['auth', 'role:student', 'active-learning'])
+    ->prefix('quiz')
+    ->name('quiz.')
+    ->group(function () {
+        // Section 経路
+        Route::get('sections/{section}', [SectionQuizController::class, 'show'])
+            ->name('sections.show');
+        Route::get('sections/{section}/questions/{question}', [SectionQuizController::class, 'showQuestion'])
+            ->name('sections.question');
+        Route::get('sections/{section}/questions/{question}/result/{answer}', [SectionQuizResultController::class, 'show'])
+            ->name('sections.result');
+
+        // 苦手分野ドリル経路
+        Route::get('drills/{enrollment}', [WeakDrillController::class, 'index'])
+            ->name('drills.index');
+        Route::get('drills/{enrollment}/categories/{questionCategory}', [WeakDrillController::class, 'showCategory'])
+            ->name('drills.category');
+        Route::get('drills/{enrollment}/categories/{questionCategory}/questions/{question}', [WeakDrillController::class, 'showQuestion'])
+            ->name('drills.question');
+        Route::get('drills/{enrollment}/categories/{questionCategory}/questions/{question}/result/{answer}', [WeakDrillResultController::class, 'show'])
+            ->name('drills.result');
+
+        // 解答送信(両経路共通エンドポイント、source 値で結果画面を分岐)
+        Route::post('questions/{question}/answer', [SectionQuestionAnswerController::class, 'store'])
+            ->name('answers.store');
+
+        // 履歴・サマリ
+        Route::get('history/{enrollment}', [QuizHistoryController::class, 'index'])
+            ->name('history.index');
+        Route::get('stats/{enrollment}', [QuizStatsController::class, 'index'])
+            ->name('stats.index');
+    });
 
 // ============================================================
 // 受講生専用ルート(受講中=in_progress のみ通過)

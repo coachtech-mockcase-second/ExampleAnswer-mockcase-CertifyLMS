@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
             EnrollmentSeeder::class,
             ContentSeeder::class,
             LearningSeeder::class,
+            QuizAnsweringSeeder::class,
+            MockExamSeeder::class,
         ]);
     }
 }

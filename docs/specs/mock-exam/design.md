@@ -167,10 +167,9 @@ sequenceDiagram
     participant SubA as SubmitAction
     participant GrA as GradeAction
     participant TJS as TermJudgementService
-    participant Notif as NotifyMockExamGradedAction
     participant DB
 
-    Note over Student: E-3 明示提出のみ auto-submit なし
+    Note over Student: 明示提出のみ、auto-submit なし
     Student->>MESC: POST /mock-exam-sessions/{session}/submit
     MESC->>SubA: __invoke session
     SubA->>DB: SELECT FOR UPDATE
@@ -186,10 +185,9 @@ sequenceDiagram
     GrA->>DB: UPDATE mock_exam_sessions SET<br/>status=Graded graded_at=now total_correct score_percentage pass
     SubA->>TJS: recalculate enrollment
     SubA->>DB: COMMIT
-    SubA->>Notif: DB::afterCommit NotifyMockExamGradedAction
-    Notif->>DB: INSERT notifications user type=MockExamGraded
     SubA-->>MESC: MockExamSession
     MESC-->>Student: redirect result blade
+    Note over Student: 受講生は採点結果画面で即時フィードバックを受ける(通知 dispatch は本 Feature 外)
 ```
 
 ### 6. 結果閲覧 + 苦手分野ドリル導線
@@ -440,12 +438,11 @@ class SubmitAction
     public function __construct(
         private GradeAction $grade,
         private TermJudgementService $termJudgement,
-        private NotifyMockExamGradedAction $notify,
     ) {}
 
     public function __invoke(MockExamSession $session): MockExamSession
     {
-        $result = DB::transaction(function () use ($session) {
+        return DB::transaction(function () use ($session) {
             $session = MockExamSession::lockForUpdate()->findOrFail($session->id);
             if ($session->status !== Status::InProgress) throw new MockExamSessionNotInProgressException();
 
@@ -455,8 +452,7 @@ class SubmitAction
             $this->termJudgement->recalculate($session->enrollment);
             return $session;
         });
-        DB::afterCommit(fn () => ($this->notify)($result));
-        return $result;
+        // 通知 dispatch は本 Feature 外。受講生は Controller の redirect で結果画面に遷移
     }
 }
 

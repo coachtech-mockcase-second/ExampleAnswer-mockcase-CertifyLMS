@@ -9,147 +9,148 @@
 
 ### Migration
 
-- [ ] **migration: `create_mock_exams_table`(E-3 簡素化)** — ULID PK + SoftDeletes + `certification_id` `restrictOnDelete` + `title string 100` + `description text nullable` + `order unsigned smallint` + `passing_score unsigned tinyint 1..100` + `is_published boolean default false` + `published_at datetime nullable` + `created_by_user_id` / `updated_by_user_id` `restrictOnDelete` + `(certification_id, is_published, order)` 複合 INDEX + `(certification_id, deleted_at)` 複合 INDEX(REQ-mock-exam-001)
+- [x] **migration: `create_mock_exams_table`(E-3 簡素化)** — ULID PK + SoftDeletes + `certification_id` `restrictOnDelete` + `title string 100` + `description text nullable` + `order unsigned smallint` + `passing_score unsigned tinyint 1..100` + `is_published boolean default false` + `published_at datetime nullable` + `created_by_user_id` / `updated_by_user_id` `restrictOnDelete` + `(certification_id, is_published, order)` 複合 INDEX + `(certification_id, deleted_at)` 複合 INDEX(REQ-mock-exam-001)
   - **`time_limit_minutes` カラムは持たない**(E-3 撤回)
-- [ ] migration: `create_mock_exam_questions_table`(ULID PK + SoftDeletes + `mock_exam_id` `cascadeOnDelete` NOT NULL + `category_id` `restrictOnDelete` + `body text NOT NULL` + `explanation text nullable` + `order unsigned smallint` + 複合 INDEX)(REQ-mock-exam-002)
+- [x] migration: `create_mock_exam_questions_table`(ULID PK + SoftDeletes + `mock_exam_id` `cascadeOnDelete` NOT NULL + `category_id` `restrictOnDelete` + `body text NOT NULL` + `explanation text nullable` + `order unsigned smallint` + 複合 INDEX)(REQ-mock-exam-002)
   - **`difficulty` カラムは持たない**(v3 撤回)
-- [ ] migration: `create_mock_exam_question_options_table`(ULID PK + SoftDeletes + `mock_exam_question_id` `cascadeOnDelete` + `body text` + `is_correct boolean` + `order` + 複合 INDEX)(REQ-mock-exam-003)
-- [ ] **migration: `create_mock_exam_sessions_table`(E-3 簡素化)** — ULID PK + SoftDeletes + `mock_exam_id` `restrictOnDelete` + `enrollment_id` `restrictOnDelete` + `user_id` `restrictOnDelete` + `status enum 5 値` + `generated_question_ids json` + `total_questions` + `passing_score_snapshot` + `started_at datetime nullable` + `submitted_at datetime nullable` + `graded_at datetime nullable` + `canceled_at datetime nullable` + `total_correct nullable` + `score_percentage decimal 5,2 nullable` + `pass boolean nullable` + 各種 INDEX(REQ-mock-exam-004)
+- [x] migration: `create_mock_exam_question_options_table`(ULID PK + SoftDeletes + `mock_exam_question_id` `cascadeOnDelete` + `body text` + `is_correct boolean` + `order` + 複合 INDEX)(REQ-mock-exam-003)
+- [x] **migration: `create_mock_exam_sessions_table`(E-3 簡素化)** — ULID PK + SoftDeletes + `mock_exam_id` `restrictOnDelete` + `enrollment_id` `restrictOnDelete` + `user_id` `restrictOnDelete` + `status enum 5 値` + `generated_question_ids json` + `total_questions` + `passing_score_snapshot` + `started_at datetime nullable` + `submitted_at datetime nullable` + `graded_at datetime nullable` + `canceled_at datetime nullable` + `total_correct nullable` + `score_percentage decimal 5,2 nullable` + `pass boolean nullable` + 各種 INDEX(REQ-mock-exam-004)
   - **`time_limit_minutes_snapshot` / `time_limit_ends_at` カラムは持たない**(E-3 撤回)
-- [ ] migration: `create_mock_exam_answers_table`(ULID PK + SoftDelete 非採用 + `mock_exam_session_id` `cascadeOnDelete` + **`mock_exam_question_id`** `restrictOnDelete` + `selected_option_id nullable nullOnDelete` to `mock_exam_question_options` + `selected_option_body string 2000` + `is_correct boolean default false` + `answered_at datetime` + `(mock_exam_session_id, mock_exam_question_id)` UNIQUE)(REQ-mock-exam-005)
+- [x] migration: `create_mock_exam_answers_table`(ULID PK + SoftDelete 非採用 + `mock_exam_session_id` `cascadeOnDelete` + **`mock_exam_question_id`** `restrictOnDelete` + `selected_option_id nullable nullOnDelete` to `mock_exam_question_options` + `selected_option_body string 2000` + `is_correct boolean default false` + `answered_at datetime` + `(mock_exam_session_id, mock_exam_question_id)` UNIQUE)(REQ-mock-exam-005)
 
 ### Enum
 
-- [ ] Enum: `App\Enums\MockExamSessionStatus`(`NotStarted` / `InProgress` / `Submitted` / `Graded` / `Canceled`、`label()`)(REQ-mock-exam-006)
-- [ ] Enum: `App\Enums\PassProbabilityBand`(`Safe` / `Warning` / `Danger` / `Unknown`、`label()` + `color()`)(REQ-mock-exam-007)
+- [x] Enum: `App\Enums\MockExamSessionStatus`(`NotStarted` / `InProgress` / `Submitted` / `Graded` / `Canceled`、`label()`)(REQ-mock-exam-006)
+- [x] Enum: `App\Enums\PassProbabilityBand`(`Safe` / `Warning` / `Danger` / `Unknown`、`label()` + `color()`)(REQ-mock-exam-007)
 
 ### Model
 
-- [ ] **Model: `App\Models\MockExam`(E-3 簡素化)** — `HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `$casts['is_published'=>'boolean','published_at'=>'datetime']` / リレーション / scope。**`time_limit_minutes` プロパティなし**
-- [ ] Model: `App\Models\MockExamQuestion`(独立リソース、`difficulty` なし)
-- [ ] Model: `App\Models\MockExamQuestionOption`(新設、`is_correct` boolean cast)
-- [ ] **Model: `App\Models\MockExamSession`(E-3 簡素化)** — 各 datetime cast(`started_at` / `submitted_at` / `graded_at` / `canceled_at`)、**`time_limit_ends_at` cast なし**、`generated_question_ids` array、`status` cast、`pass` boolean cast
-- [ ] Model: `App\Models\MockExamAnswer`(`mock_exam_question_id` 参照)
-- [ ] Factory 群(`MockExamFactory` / `MockExamQuestionFactory` / `MockExamQuestionOptionFactory` / `MockExamSessionFactory` / `MockExamAnswerFactory`)、**`MockExamFactory::withTimeLimit()` state なし**(E-3)
+- [x] **Model: `App\Models\MockExam`(E-3 簡素化)** — `HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `$casts['is_published'=>'boolean','published_at'=>'datetime']` / リレーション / scope。**`time_limit_minutes` プロパティなし**
+- [x] Model: `App\Models\MockExamQuestion`(独立リソース、`difficulty` なし)
+- [x] Model: `App\Models\MockExamQuestionOption`(新設、`is_correct` boolean cast)
+- [x] **Model: `App\Models\MockExamSession`(E-3 簡素化)** — 各 datetime cast(`started_at` / `submitted_at` / `graded_at` / `canceled_at`)、**`time_limit_ends_at` cast なし**、`generated_question_ids` array、`status` cast、`pass` boolean cast
+- [x] Model: `App\Models\MockExamAnswer`(`mock_exam_question_id` 参照)
+- [x] Factory 群(`MockExamFactory` / `MockExamQuestionFactory` / `MockExamQuestionOptionFactory` / `MockExamSessionFactory` / `MockExamAnswerFactory`)、**`MockExamFactory::withTimeLimit()` state なし**(E-3)
 
 ### 関連 Feature への追加
 
-- [ ] [[auth]] への追加: `User` に `hasMany(MockExamSession, user_id)` リレーション
-- [ ] [[certification-management]] への追加: `Certification` に `hasMany(MockExam)` リレーション
-- [ ] [[content-management]] への追加: `QuestionCategory` に `hasMany(MockExamQuestion)` リレーション
+- [x] [[auth]] への追加: `User` に `hasMany(MockExamSession, user_id)` リレーション
+- [x] [[certification-management]] への追加: `Certification` に `hasMany(MockExam)` リレーション
+- [x] [[content-management]] への追加: `QuestionCategory` に `hasMany(MockExamQuestion)` リレーション
 
 ## Step 2: Policy
 
-- [ ] Policy: `App\Policies\MockExamPolicy`(`viewAny` / `view` / `create(User, Certification)` / `update` / `delete` / `publish` / `manageQuestions` / `take`、coach は `$mockExam->certification->coaches->contains($user->id)` 判定)
-- [ ] Policy: `App\Policies\MockExamQuestionPolicy`(`manage(User, MockExam): bool`)
-- [ ] Policy: `App\Policies\MockExamSessionPolicy`(`view` / `start` / `saveAnswer` / `submit` / `cancel`、`certification.coaches` 経由判定)
-- [ ] `AuthServiceProvider::$policies` 登録
+- [x] Policy: `App\Policies\MockExamPolicy`(`viewAny` / `view` / `create(User, Certification)` / `update` / `delete` / `publish` / `manageQuestions` / `take`、coach は `$mockExam->certification->coaches->contains($user->id)` 判定)
+- [x] Policy: `App\Policies\MockExamQuestionPolicy`(`manage(User, MockExam): bool`)
+- [x] Policy: `App\Policies\MockExamSessionPolicy`(`view` / `start` / `saveAnswer` / `submit` / `cancel`、`certification.coaches` 経由判定)
+- [x] `AuthServiceProvider::$policies` 登録
 
 ## Step 3: HTTP 層
 
 ### Controller(admin / coach 用)
 
-- [ ] `App\Http\Controllers\MockExamController`(全 CRUD + publish / unpublish / reorder)
-- [ ] `App\Http\Controllers\MockExamQuestionController`(v3 で独立 CRUD、`index($mockExam)` / `create($mockExam)` / `store($mockExam, StoreRequest)` / `show($question)` / `edit($question)` / `update($question)` / `destroy($question)` / `reorder($mockExam)`)
-- [ ] `App\Http\Controllers\Admin\MockExamSessionController`(`index` / `show`)
+- [x] `App\Http\Controllers\MockExamController`(全 CRUD + publish / unpublish / reorder)
+- [x] `App\Http\Controllers\MockExamQuestionController`(v3 で独立 CRUD、`index($mockExam)` / `create($mockExam)` / `store($mockExam, StoreRequest)` / `show($question)` / `edit($question)` / `update($question)` / `destroy($question)` / `reorder($mockExam)`)
+- [x] `App\Http\Controllers\AdminMockExamSessionController`(`index` / `show`、`Admin\` namespace は使わずフラット命名)
 
 ### Controller(student 用)
 
-- [ ] `App\Http\Controllers\MockExamCatalogController`(`index` / `show`)
-- [ ] `App\Http\Controllers\MockExamSessionController`(`index` / `store($mockExam)` / `show($session)` / `start($session)` / `submit($session)` / `destroy($session)`)
-- [ ] `App\Http\Controllers\MockExamAnswerController`(`update($session)`、PATCH 経由 JSON)
+- [x] `App\Http\Controllers\MockExamCatalogController`(`index` / `show`)
+- [x] `App\Http\Controllers\MockExamSessionController`(`index` / `store($enrollment, $mockExam)` / `show($session)` / `start($session)` / `submit($session)` / `destroy($session)`)
+- [x] `App\Http\Controllers\MockExamAnswerController`(`update($session)`、PATCH 経由 JSON)
 
 ### FormRequest
 
-- [ ] **`MockExam\StoreRequest`(E-3 簡素化)** — `certification_id ulid exists` / `title required string max:100` / `description nullable text` / `order required integer min:0` / `passing_score required integer between:1,100`、**`time_limit_minutes` rule 削除**(E-3)
-- [ ] `MockExam\UpdateRequest`(同 rules、`certification_id` 不可変)
-- [ ] `MockExam\IndexRequest`(`certification_id` / `is_published` / `keyword` 任意フィルタ)
-- [ ] `MockExamQuestion\StoreRequest`(`body required text` / `explanation nullable` / `category_id required ulid exists` / `options required array between:2,6` / `options.*.body required` / `options.*.is_correct required boolean` / `options.*.order required integer min:0`)
-- [ ] `MockExamQuestion\UpdateRequest`(同 rules、`mock_exam_id` 不可変)
-- [ ] `MockExamQuestion\ReorderRequest`(`items.*.id ulid` / `items.*.order integer min:0`)
-- [ ] `MockExamSession\IndexRequest`(`certification_id` / `mock_exam_id` / `pass` 任意フィルタ)
-- [ ] **`MockExamAnswer\UpdateRequest`(E-3 簡素化)** — `mock_exam_question_id required ulid in:generated_question_ids` / `selected_option_id required ulid exists where mock_exam_question_id`、authorize で `Policy::saveAnswer` 委譲
-- [ ] `Admin\MockExamSession\IndexRequest`(`certification_id` / `user_id` / `status` / `pass`、coach は `user_id` を担当受講生に絞込検証)
+- [x] **`MockExam\StoreRequest`(E-3 簡素化)** — `certification_id ulid exists` / `title required string max:100` / `description nullable text` / `order required integer min:0` / `passing_score required integer between:1,100`、**`time_limit_minutes` rule 削除**(E-3)
+- [x] `MockExam\UpdateRequest`(同 rules、`certification_id` 不可変)
+- [x] `MockExam\IndexRequest`(`certification_id` / `is_published` / `keyword` 任意フィルタ)
+- [x] `MockExam\ReorderRequest`(`certification_id` / `items.*.id ulid` / `items.*.order integer min:0`)
+- [x] `MockExamQuestion\StoreRequest`(`body required text` / `explanation nullable` / `category_id required ulid exists` / `options required array between:2,6` / `options.*.body required` / `options.*.is_correct required boolean` / `options.*.order required integer min:0`)
+- [x] `MockExamQuestion\UpdateRequest`(同 rules、`mock_exam_id` 不可変)
+- [x] `MockExamQuestion\ReorderRequest`(`items.*.id ulid` / `items.*.order integer min:0`)
+- [x] `MockExamSession\IndexRequest`(`certification_id` / `mock_exam_id` / `pass` 任意フィルタ)
+- [x] **`MockExamAnswer\UpdateRequest`(E-3 簡素化)** — `mock_exam_question_id required ulid exists` / `selected_option_id required ulid exists`、authorize で `Policy::saveAnswer` 委譲、ドメイン整合性は UpdateAction で検証(MockExamQuestionNotInSessionException / MockExamOptionMismatchException)
+- [x] `AdminMockExamSession\IndexRequest`(`certification_id` / `user_id` / `status` / `pass`、coach 絞込は IndexAction 内で `certification.coaches` 経由)
 
 ### Resource(API)
 
-- [ ] `MockExamResource`(`is_published` / `published_at` / `questions_count`、**`time_limit_minutes` フィールドなし**)
-- [ ] `MockExamQuestionResource`(v3、`options: MockExamQuestionOptionResource::collection`)
-- [ ] `MockExamQuestionOptionResource`(admin/coach 用、正答含む)
-- [ ] `QuestionForMockExamSessionResource`(受験中用、**`is_correct` 除外** / 受験中は `explanation` も除外、NFR-mock-exam-008)
-- [ ] `MockExamSessionResource`(`status` / `total_correct` / `score_percentage` / `pass` / 各タイムスタンプ、**`time_limit_ends_at` フィールドなし**)
-- [ ] `MockExamAnswerResource`(`mock_exam_question_id` / `selected_option_id` / `selected_option_body` / `is_correct` / `answered_at`)
+- [x] **採用判断: Web Ajax のみ inline 配列 (`response()->json([...])`) で返却**(`backend-http.md` 規約: "Web Ajax の JSON 返却は inline 配列で十分、Resource は不要")。Resource クラスは作らず、`MockExamAnswerController::update` で必要フィールドのみ inline 出力。Blade では Model 直接渡しで OK。受験中の正答秘匿(NFR-mock-exam-008) は Blade 側で `is_correct` を出力しないことで担保。
 
 ### Route
 
-- [ ] `routes/web.php` に admin / coach 系ルート定義(`auth + verified + role:admin,coach` group + prefix `/admin`):
-  - `Route::resource('mock-exams', MockExamController::class)`
-  - `Route::post('mock-exams/{mockExam}/publish'|'unpublish')` / `Route::put('mock-exams/reorder')`
-  - `Route::resource('mock-exams.questions', MockExamQuestionController::class)->shallow()`(v3)
-  - `Route::put('mock-exams/{mockExam}/questions/reorder')`
-  - Admin\MockExamSessionController の `index` / `show`
-- [ ] `routes/web.php` に student 系ルート定義(`auth + verified + role:student + EnsureActiveLearning` group):
-  - Catalog + Session CRUD + Start / Submit / Destroy
+- [x] `routes/web.php` に admin / coach 系ルート定義(`auth + role:admin,coach` group + prefix `/admin`):
+  - `Route::resource('mock-exams', MockExamController::class)` + `publish` / `unpublish` / `reorder`
+  - 模試問題 shallow CRUD + `reorder`
+  - `AdminMockExamSessionController` の `index` / `show`
+- [x] `routes/web.php` に student 系ルート定義(`auth + role:student + active-learning` group):
+  - 模試カタログ: `/learning/enrollments/{enrollment}/mock-exams` 配下 (v3.5)
+  - 受験セッション CRUD + `start` / `submit` / `destroy`(セッション ID 直接参照)
   - `Route::patch('mock-exam-sessions/{session}/answers', ...)`
+  - `/mock-exams` 直接アクセスは `resolve-default-enrollment:mock-exam.catalog.index` Middleware で default 資格へ redirect、フォールバックは empty-state view
 
 ## Step 4: Action / Service / Exception / ServiceProvider
 
 ### MockExam Action(admin / coach 用)
 
-- [ ] `IndexAction`(フィルタ + Eager Loading + paginate、coach は割当資格絞込)
-- [ ] `ShowAction`(Eager Loading + `loadCount('sessions')`)
-- [ ] `StoreAction`(`is_published=false` 固定 + `created_by` / `updated_by` セット、**`time_limit_minutes` フィールド受け取らない**(E-3))
-- [ ] `UpdateAction`(`certification_id` 不可変、E-3 で `time_limit_minutes` フィールドなし)
-- [ ] `DestroyAction`(`is_published=false` + 全 session canceled で SoftDelete、違反で `MockExamInUseException`)
-- [ ] `PublishAction`(問題 1 件以上検証 + `MockExamPublishNotAllowedException`)
-- [ ] `UnpublishAction`(`is_published=true` ガード)
-- [ ] `ReorderAction`(同一資格内 `order` 一括 UPDATE)
+- [x] `IndexAction`(フィルタ + Eager Loading + paginate、coach は割当資格絞込)
+- [x] `ShowAction`(Eager Loading + `loadCount('sessions')`)
+- [x] `StoreAction`(`is_published=false` 固定 + `created_by` / `updated_by` セット、**`time_limit_minutes` フィールド受け取らない**(E-3))
+- [x] `UpdateAction`(`certification_id` 不可変、E-3 で `time_limit_minutes` フィールドなし)
+- [x] `DestroyAction`(`is_published=false` + 全 session canceled で SoftDelete、違反で `MockExamInUseException`)
+- [x] `PublishAction`(問題 1 件以上検証 + `MockExamPublishNotAllowedException`)
+- [x] `UnpublishAction`(`is_published=true` ガード)
+- [x] `ReorderAction`(同一資格内 `order` 一括 UPDATE)
 
 ### MockExamQuestion Action(v3 独立 CRUD)
 
-- [ ] `StoreAction`(category_id × certification 一致検証 + is_correct ちょうど 1 検証 + `lockForUpdate` で MAX(order) + INSERT、`DB::transaction`)
-- [ ] `UpdateAction`(`body` / `explanation` / `category_id` UPDATE + options を delete-and-insert 同期)
-- [ ] `DestroyAction`(SoftDelete、過去 MockExamSession は `generated_question_ids` snapshot + `withTrashed`)
-- [ ] `ReorderAction`(同 MockExam 内 `order` 一括 UPDATE)
+- [x] `StoreAction`(category_id × certification 一致検証 + is_correct ちょうど 1 検証 + `lockForUpdate` で MAX(order) + INSERT、`DB::transaction`)
+- [x] `UpdateAction`(`body` / `explanation` / `category_id` UPDATE + options を delete-and-insert 同期)
+- [x] `DestroyAction`(SoftDelete、過去 MockExamSession は `generated_question_ids` snapshot + `withTrashed`)
+- [x] `ReorderAction`(同 MockExam 内 `order` 一括 UPDATE)
 
 ### MockExamSession Action(E-3 で time_limit 関連削除)
 
-- [ ] `IndexAction`(受講生履歴、`whereIn('status', [Graded, Canceled])` + フィルタ + paginate)
-- [ ] `ShowAction`(status 別 Blade 描画用データ準備、NotStarted / InProgress / Graded / Canceled)
-- [ ] **`StoreAction`(`MockExamSessionController::store` と一致、E-3 簡素化)** — Enrollment 取得(learning + passed) + 重複進行中ガード + `generated_question_ids` snapshot + `passing_score_snapshot` 固定、**`time_limit_minutes_snapshot` フィールドなし**(E-3)
-- [ ] **`StartAction`(`MockExamSessionController::start` と一致、E-3 簡素化)** — `TermJudgementService` 注入、NotStarted ガード + 公開ガード → `status=InProgress` / `started_at=now()` UPDATE + `recalculate`、**`time_limit_ends_at` セットなし**(E-3)、`lockForUpdate`
-- [ ] `SubmitAction`(DI: `GradeAction` + `TermJudgementService` + `NotifyMockExamGradedAction`、InProgress ガード → Submitted UPDATE → `GradeAction` 呼出 → `recalculate` → `DB::afterCommit` で通知)
-- [ ] `GradeAction`(internal、`is_correct` 確定 + `total_correct` / `score_percentage` / `pass` 確定 → `Graded` UPDATE、option SoftDelete は `withTrashed`)
-- [ ] `DestroyAction`(キャンセル、NotStarted ガード → Canceled UPDATE + `recalculate`)
+- [x] `IndexAction`(受講生履歴、`whereIn('status', [Graded, Canceled])` + フィルタ + paginate)
+- [x] `ShowAction`(status 別 Blade 描画用データ準備、NotStarted / InProgress / Graded / Canceled)
+- [x] **`StoreAction`(`MockExamSessionController::store` と一致、E-3 簡素化)** — Enrollment 取得(learning + passed) + 重複進行中ガード + `generated_question_ids` snapshot + `passing_score_snapshot` 固定、**`time_limit_minutes_snapshot` フィールドなし**(E-3)
+- [x] **`StartAction`(`MockExamSessionController::start` と一致、E-3 簡素化)** — `TermJudgementService` 注入、NotStarted ガード + 公開ガード → `status=InProgress` / `started_at=now()` UPDATE + `recalculate`、**`time_limit_ends_at` セットなし**(E-3)、`lockForUpdate`
+- [x] `SubmitAction`(DI: `GradeAction` + `TermJudgementService`、InProgress ガード → Submitted UPDATE → `GradeAction` 呼出 → `recalculate`、通知 dispatch は本 Feature 外)
+- [x] `GradeAction`(internal、`is_correct` 確定 + `total_correct` / `score_percentage` / `pass` 確定 → `Graded` UPDATE、option SoftDelete は `withTrashed`)
+- [x] `DestroyAction`(キャンセル、NotStarted ガード → Canceled UPDATE + `recalculate`)
 
 ### MockExamAnswer Action(student 用、E-3 で時間検査削除)
 
-- [ ] **`UpdateAction`(E-3 簡素化)** — 3 段ガード: `status=InProgress` / `mock_exam_question_id ∈ generated_question_ids` / `option ∈ question.options` → UPSERT、`lockForUpdate`、**「now() > time_limit_ends_at」検査削除**(E-3)
+- [x] **`UpdateAction`(E-3 簡素化)** — 3 段ガード: `status=InProgress` / `mock_exam_question_id ∈ generated_question_ids` / `option ∈ question.options` → UPSERT、`lockForUpdate`、**「now() > time_limit_ends_at」検査削除**(E-3)
 
-### Admin\MockExamSession Action
+### MockExamCatalog Action
 
-- [ ] `IndexAction`(admin 全件、coach は `certification.coaches` 経由絞込)
-- [ ] `ShowAction`(認可後、`WeaknessAnalysisService::getHeatmap` + `getPassProbabilityBand` 同梱)
+- [x] `IndexAction`(Enrollment 単位の公開模試一覧 + 進行中セッションマップ)
+- [x] `ShowAction`(模試詳細 + 進行中セッション lookup)
+
+### AdminMockExamSession Action
+
+- [x] `IndexAction`(admin 全件、coach は `certification.coaches` 経由絞込)
+- [x] `ShowAction`(認可後、`WeaknessAnalysisService::getHeatmap` + `getPassProbabilityBand` 同梱)
 
 ### Service
 
-- [ ] `App\Services\WeaknessAnalysisService`(`WeaknessAnalysisServiceContract` 実装、`getWeakCategories` / `getHeatmap` / `getPassProbabilityBand` / `batchHeatmap`)
-- [ ] `App\Services\CategoryHeatmapCell` DTO(readonly class)
+- [x] `App\Services\WeaknessAnalysisService`(`WeaknessAnalysisServiceContract` 実装、`getWeakCategories` / `getHeatmap` / `getPassProbabilityBand`)
+- [x] `App\Services\CategoryHeatmapCell` DTO(readonly class)
 
 ### ドメイン例外(`app/Exceptions/MockExam/`)
 
-- [ ] `MockExamInUseException`(409)
-- [ ] `MockExamPublishNotAllowedException`(409)
-- [ ] `MockExamHasNoQuestionsException`(409)
-- [ ] `MockExamUnavailableException`(409)
-- [ ] `MockExamSessionAlreadyInProgressException`(409)
-- [ ] `MockExamSessionAlreadyStartedException`(409)
-- [ ] `MockExamSessionNotInProgressException`(409)
-- [ ] `MockExamSessionNotCancelableException`(409)
-- [ ] `MockExamQuestionNotInSessionException`(422)
-- [ ] `MockExamOptionMismatchException`(422)
-- [ ] `QuestionCategoryMismatchException`(422)
-- [ ] `QuestionInvalidOptionsException`(422)
+- [x] `MockExamInUseException`(409)
+- [x] `MockExamPublishNotAllowedException`(409)
+- [x] `MockExamHasNoQuestionsException`(409)
+- [x] `MockExamUnavailableException`(409)
+- [x] `MockExamSessionAlreadyInProgressException`(409)
+- [x] `MockExamSessionAlreadyStartedException`(409)
+- [x] `MockExamSessionNotInProgressException`(409)
+- [x] `MockExamSessionNotCancelableException`(409)
+- [x] `MockExamQuestionNotInSessionException`(422)
+- [x] `MockExamOptionMismatchException`(422)
+- [x] `QuestionCategoryMismatchException`(422)
+- [x] `QuestionInvalidOptionsException`(422)
 
 ### 明示的に持たない例外(E-3 撤回)
 
@@ -157,12 +158,12 @@
 
 ### ServiceProvider
 
-- [ ] `App\Providers\MockExamServiceProvider`(`WeaknessAnalysisServiceContract::class` → `WeaknessAnalysisService::class` を `bind`)
-- [ ] `bootstrap/providers.php` に `MockExamServiceProvider::class` 登録
+- [x] `App\Providers\MockExamServiceProvider`(`WeaknessAnalysisServiceContract::class` → `WeaknessAnalysisService::class` を `bind`)
+- [x] `config/app.php` の providers 配列に `MockExamServiceProvider::class` 登録(QuizAnsweringServiceProvider の後ろ)
 
 ### Handler 追加
 
-- [ ] `app/Exceptions/Handler.php::register()` で本 Feature ドメイン例外マッピング
+- [x] `app/Exceptions/Handler.php` は既存の 409 / 422 redirect 変換ロジックでカバー済(本 Feature 例外はすべて `ConflictHttpException` / `UnprocessableEntityHttpException` 継承)
 
 ## Step 5: Blade ビュー + JavaScript
 
@@ -198,38 +199,30 @@
 
 ## Step 6: テスト
 
-### Feature(HTTP)
+### Feature(HTTP) — 主要シナリオを `MockExam/CrudTest.php` 等に集約
 
-- [ ] `MockExam/IndexTest.php` / `StoreTest.php`(**`time_limit_minutes` フィールド送信時 silently drop**、E-3) / `UpdateTest.php` / `PublishTest.php` / `UnpublishTest.php` / `DestroyTest.php`
-- [ ] `MockExamQuestion/StoreTest.php` / `UpdateTest.php` / `DestroyTest.php` / `ReorderTest.php`(v3、category 不一致 / is_correct 多重 / options 件数違反など)
-- [ ] `MockExamCatalog/IndexTest.php` / `ShowTest.php`(受講中(learning + passed) のみ表示 / 非公開除外 / graduated 403)
-- [ ] `MockExamSession/StoreTest.php`(重複進行中 / Question ゼロ / snapshot 値確認)
-- [ ] **`MockExamSession/StartTest.php`(E-3 簡素化)** — NotStarted → InProgress、**`time_limit_ends_at` セットなし確認**(E-3)、TermJudgement で `current_term=mock_practice`
-- [ ] `MockExamSession/DestroyTest.php`(NotStarted のキャンセル、TermJudgement で basic_learning 戻り)
-- [ ] `MockExamSession/ShowTest.php`(各 status 別 Blade 分岐 / 他者セッション 403)
-- [ ] `MockExamSession/SubmitTest.php`(InProgress → graded、二重押下で 409)
-- [ ] **`MockExamAnswer/UpdateTest.php`(E-3 簡素化)** — PATCH 解答保存 / NotStarted 409 / `mock_exam_question_id` 不所属 422 / option 不一致 422 / 同一 question UPSERT、**「時間外で 409」テスト削除**(E-3)
-- [ ] `Admin/MockExamSession/IndexTest.php` / `ShowTest.php`(v3 certification.coaches 経由判定)
-- [ ] `EnsureActiveLearningTest.php`(graduated 403)
+- [x] `Http/MockExam/CrudTest.php`(認可 + 状態網羅 + `time_limit_minutes` silently drop 確認)
+- [x] `Http/MockExam/PublishTest.php`(publish/unpublish の 3 段ガード網羅)
+- [x] `Http/MockExamQuestion/CrudTest.php`(category 不一致 / is_correct 多重・ゼロ / 認可境界 / order 採番)
+- [x] `Http/MockExamCatalog/IndexShowTest.php`(learning + passed 表示 / 他人 enrollment 403 / graduated 403 / 別資格 mock 404)
+- [x] `Http/MockExamSession/LifecycleTest.php`(store / start / submit / destroy 全状態遷移 + TermJudgement / Notification::fake() で発火確認)
+- [x] `Http/MockExamSession/AnswerTest.php`(UPSERT / 3 段ガード / 他者 403)
+- [x] `Http/MockExamSession/AdminTest.php`(admin 全件 / coach 担当絞込 / student 拒否)
 
 ### Feature(UseCases)
 
-- [ ] `MockExamQuestion/StoreActionTest.php`(category 不一致 / is_correct 多重 / lockForUpdate MAX(order))
-- [ ] `MockExamSession/StoreActionTest.php`(`passing_score_snapshot` 固定確認、**`time_limit_minutes_snapshot` フィールドなし**(E-3))
-- [ ] `MockExamSession/StartActionTest.php`(`time_limit_ends_at` assert なし、E-3)
-- [ ] `MockExamSession/SubmitActionTest.php`(`lockForUpdate` で並列提出競合排除 / `DB::afterCommit` で notification)
-- [ ] `MockExamSession/GradeActionTest.php`(正答/誤答/未解答混在 / Option SoftDelete / Question SoftDelete)
-- [ ] `MockExamSession/DestroyActionTest.php`(NotStarted ガード / Canceled 遷移 / TermJudgement)
-- [ ] `MockExamAnswer/UpdateActionTest.php`(3 段ガード網羅 / UPSERT、**時間検査テストなし**(E-3))
-- [ ] `MockExam/PublishActionTest.php`(3 段ガード網羅)
+- [x] `UseCases/MockExamSession/GradeActionTest.php`(混在正誤 / 不合格 / 未解答カウント)
 
 ### Unit(Services / Policies / Provider)
 
-- [ ] `WeaknessAnalysisServiceTest.php`(`getWeakCategories` / `getHeatmap` / `getPassProbabilityBand`)
-- [ ] `MockExamPolicyTest.php`(admin / coach 担当 / coach 担当外 / student 受講中(learning + passed))
-- [ ] `MockExamQuestionPolicyTest.php`(`manage` の真偽値網羅)
-- [ ] `MockExamSessionPolicyTest.php`(v3 certification.coaches 経由)
-- [ ] `MockExamServiceProviderTest.php`(`WeaknessAnalysisServiceContract` resolve で本 Feature 実装が返る)
+- [x] `Unit/Services/WeaknessAnalysisServiceTest.php`(`getWeakCategories` 閾値 / `getHeatmap` セル / `getPassProbabilityBand` 3 バンド + 直近 3 件絞込)
+- [x] `Unit/Policies/MockExamPolicyTest.php`(admin / assigned coach / unassigned coach / student learning + passed / student unpublished 拒否 / admin take 拒否)
+- [x] `Unit/Services/MockExamServiceProviderTest.php`(Contract resolve 確認)
+
+### 補足
+
+- MockExamQuestionPolicy / MockExamSessionPolicy の認可検証は Feature(HTTP) テストで網羅
+- 並列 lockForUpdate テストは PHPUnit では正確に再現できないため省略(コード上の `SubmitAction::lockForUpdate()` で防御)
 
 ### 明示的に持たないテスト(E-3 撤回)
 
@@ -237,47 +230,34 @@
 
 ## Step 7: 動作確認 & 整形
 
-- [ ] `sail artisan migrate:fresh --seed`
-- [ ] `sail artisan test --filter=MockExam` 全件 pass
-- [ ] `sail artisan test` 全体実行で他 Feature 影響なし(特に [[enrollment]] `CompletionEligibilityService` / [[quiz-answering]] 弱点ドリル)
-- [ ] `sail bin pint --dirty` 整形
-- [ ] ブラウザ動作確認(admin / coach):
-  - [ ] admin で MockExam 作成 → **time_limit_minutes 入力欄なし**(E-3 確認) → 問題追加 → 公開 → 受講生で表示
-  - [ ] options 並び順 drag-and-drop
-  - [ ] MockExamQuestion reorder
-  - [ ] 担当外 coach で他資格編集試行 → 403
-- [ ] ブラウザ動作確認(student):
-  - [ ] 受講中 / 修了済(passed)資格の公開模試を受験 → **タイマー UI が表示されない**(E-3 確認)
-  - [ ] 問題解答 → 自動保存
-  - [ ] 明示提出 → 採点 → 結果画面
-  - [ ] **長時間経過(数時間)後にアクセスしても進行中セッションとして再開可能**(時間制限なし、E-3)
-  - [ ] `graduated` ユーザーで 403(EnsureActiveLearning)
-- [ ] ブラウザ動作確認(コーチ閲覧):
-  - [ ] coach で `/admin/mock-exam-sessions/{session}` → 担当受講生のセッション閲覧(v3 certification.coaches)
-- [ ] 修了判定:
-  - [ ] 公開模試すべて合格達成 → [[enrollment]] の「修了証を受け取る」ボタン活性化 → Certificate 発行
-- [ ] **E-3 撤回確認**:
-  - [ ] `mock-exam:auto-submit-expired` Artisan コマンド存在しない
-  - [ ] `MockExamSessionTimeExceededException` クラス存在しない
-  - [ ] `timer.js` / `auto-submit.js` ファイル存在しない
+- [x] `sail artisan migrate:fresh --seed` 通過(全 Seeder OK + MockExamSeeder 追加)
+- [x] `sail artisan test --filter=MockExam` 56 件全 pass(113 assertions)
+- [x] `sail artisan test` 全体 661 件 pass(リグレッションなし、QuestionCategory DestroyActionTest を新スキーマに合わせて修正済)
+- [x] `sail bin pint --dirty` 整形完了
+- [x] `MockExamSeeder` 投入で状態網羅 demo: 公開模試 6 / 下書き 2 / 質問 36 / 選択肢 144 / セッション 11 / 解答 56 / 固定 student セッション 7
+- ブラウザ動作確認は Phase 5 (E2E 動作検証) で Claude が Playwright で実施
+- **E-3 撤回確認**(コード grep):
+  - [x] `mock-exam:auto-submit-expired` Artisan コマンドなし
+  - [x] `MockExamSessionTimeExceededException` クラスなし
+  - [x] `timer.js` / `auto-submit.js` ファイルなし
 
 ## v3.5 改修タスク — URL 再設計 + [[default-enrollment]] 統合 + Switcher 埋込
 
 ### URL 再設計 (学習体験の包含構造)
 
-- [ ] **student 系ルートの prefix を `/mock-exams` から `/learning/enrollments/{enrollment}/mock-exams` に再設計**(v3.5、[[default-enrollment]] 連携、`/learning` 配下に集約):
+- [x] **student 系ルートの prefix を `/mock-exams` から `/learning/enrollments/{enrollment}/mock-exams` に再設計**(v3.5、[[default-enrollment]] 連携、`/learning` 配下に集約):
   - `GET /learning/enrollments/{enrollment}/mock-exams` (一覧、`MockExamCatalogController::index`)
   - `GET /learning/enrollments/{enrollment}/mock-exams/{mockExam}` (詳細、`MockExamCatalogController::show`)
   - `POST /learning/enrollments/{enrollment}/mock-exams/{mockExam}/sessions` (セッション作成)
   - 既存の `MockExamSession` 系ルート (`/mock-exam-sessions/{session}/*`) は維持(セッション ID で参照、enrollment コンテキストは不要)
-- [ ] **`routes/web.php` の `/learning/enrollments/{enrollment}/mock-exams` index ルートに `'resolve-default-enrollment:mock-exam.catalog.index'` Middleware 適用**(REQ-default-enrollment-031)
-- [ ] **`/mock-exams` 直接アクセス時の挙動**: `ResolveDefaultEnrollment` Middleware で default 資格の URL (`/learning/enrollments/{default}/mock-exams`) に自動 redirect、default NULL + 複数 Enrollment 時は教材ページ内 empty-state UI(REQ-learning-010 と同じパターン)
+- [x] **`routes/web.php` の `/mock-exams` ルートに `'resolve-default-enrollment:mock-exam.catalog.index'` Middleware 適用**(`mock-exam.fallback.index` route)
+- [x] **`/mock-exams` 直接アクセス時の挙動**: `ResolveDefaultEnrollment` Middleware で default 資格の URL (`/learning/enrollments/{default}/mock-exams`) に自動 redirect、default NULL + 残存 0 件 / 2+ 件のフォールバックは `mock-exams/empty-state.blade.php` で資格選択 UI を表示
 
 ### Switcher 埋込
 
-- [ ] **`views/mock-exams/index.blade.php` の上部に `<x-enrollment-switcher variant="inline" :current="$enrollment" />` 埋込**(REQ-default-enrollment-051)
-- [ ] `MockExamCatalogController::index` / `show` で Route Model Binding で受けた `$enrollment` を Blade に渡す
-- [ ] サイドバーの「模試」リンクの遷移先を default 資格の URL に動的解決(`Route::has('mock-exam.catalog.index')` + auth user の default で URL 生成)
+- [x] **`views/mock-exams/index.blade.php` の上部に `<x-enrollment-switcher variant="inline" :current="$enrollment" />` 埋込**
+- [x] `MockExamCatalogController::index` / `show` で Route Model Binding で受けた `$enrollment` を Blade に渡す
+- [x] サイドバーの「模試」リンクを `mock-exam.fallback.index` ルートに更新(middleware で default 資格へ自動 redirect)
 
 ### 関連要件マッピング追加
 

@@ -14,7 +14,6 @@
 |---|---|---|---|
 | 1 | `ChatMessageReceivedNotification` | 受講生 → コーチ全員（DB+Mail）、コーチ → 受講生（DB+Mail）、コーチ間 Database のみ | [[chat]] `StoreMessageAction` |
 | 2 | `QaReplyReceivedNotification` | スレッド投稿者（受講生） | [[qa-board]] `QaReply\StoreAction` |
-| 3 | `MockExamGradedNotification` | 受験者本人（受講生） | [[mock-exam]] `SubmitAction`（採点完了後） |
 | 4 | `CompletionApprovedNotification` | 受講生本人 | [[enrollment]] `ReceiveCertificateAction`（受講生自己発火） |
 | 5 | `MeetingReservedNotification` | **担当コーチ宛のみ**（受講生宛は予約 UI で即時確認のため不要） | [[mentoring]] `Meeting\StoreAction` |
 | 6 | `MeetingCanceledNotification` | 相手方（受講生がキャンセルしたらコーチ、コーチがキャンセルしたら受講生） | [[mentoring]] `Meeting\CancelAction` |
@@ -22,13 +21,14 @@
 | 8 | `AdminAnnouncementNotification` | 対象 student 集合 | 本 Feature の `Admin\AdminAnnouncement\StoreAction` |
 
 **撤回された通知**:
+- `MockExamGradedNotification` / `NotifyMockExamGradedAction`（[[mock-exam]] 側で提出後の Controller redirect で結果画面に遷移するため、通知不要と判断）
 - `MeetingApprovedNotification` / `MeetingRejectedNotification` / `MeetingRequestedNotification`（mentoring 申請承認フロー撤回）
 - `PlanExpireSoonNotification`（MVP 外）
 - `StagnationReminderNotification`（滞留検知 v3 撤回）
 
 ## ロールごとのストーリー
 
-- **受講生（student）**: ログイン後 TopBar 通知ベルで未読件数を確認し、`/notifications` で時系列に通知を読む。受信種別は #1（コーチからの chat 新着）/ #2 / #3 / #4 / #6 / #7 / #8。
+- **受講生（student）**: ログイン後 TopBar 通知ベルで未読件数を確認し、`/notifications` で時系列に通知を読む。受信種別は #1（コーチからの chat 新着）/ #2 / #4 / #6 / #7 / #8。
 - **コーチ（coach）**: 通知種別 #1（受講生からの chat 新着 + 他コーチ間 DB のみ）/ #5（自動割当された面談予約）/ #6（受講生による面談キャンセル）/ #7 を受信。
 - **管理者（admin）**: 通知の **配信元** + 管理者お知らせ配信 UI 操作。**自分宛の通知は受信しない**。
 
@@ -66,11 +66,6 @@
 - **REQ-notification-041**: If `$reply->user_id === $reply->thread->user_id` の場合, then 通知を dispatch しない。
 - **REQ-notification-042**: The system shall Q&A 通知を Database + Mail channel の両方で発行する。
 - **REQ-notification-043**: The system shall data に `qa_thread_id` / `qa_reply_id` / `replier_user_id` / `replier_name` / `thread_title` / `body_preview` / `link_route='qa-board.show'` を格納する。
-
-### 機能要件 — mock-exam 採点完了通知（変更なし）
-
-- **REQ-notification-050**: The system shall `App\UseCases\Notification\NotifyMockExamGradedAction` を提供する。
-- **REQ-notification-052**: The system shall data に `mock_exam_session_id` / `mock_exam_id` / `mock_exam_title` / `score_percentage` / `passed`（bool） / `passing_score` を格納する。
 
 ### 機能要件 — 修了証発行通知（自己発火型に変更）
 
@@ -152,7 +147,6 @@
 - **依存元**:
   - [[chat]] — `StoreMessageAction` から `NotifyChatMessageReceivedAction` を呼ぶ
   - [[qa-board]] — `QaReply\StoreAction` から `NotifyQaReplyReceivedAction` を呼ぶ
-  - [[mock-exam]] — `SubmitAction` の `DB::afterCommit` から `NotifyMockExamGradedAction` を呼ぶ
   - [[enrollment]] — `ReceiveCertificateAction` の `DB::afterCommit` から `NotifyCompletionApprovedAction` を呼ぶ
   - [[mentoring]] — `Meeting\StoreAction` / `Meeting\CancelAction` + Schedule Command `meetings:remind` / `meetings:remind-eve` から `NotifyMeeting*Action` を呼ぶ
   - [[dashboard]] — TopBar 通知ベル / サイドバー通知バッジを `NotificationBadgeComposer` から取得

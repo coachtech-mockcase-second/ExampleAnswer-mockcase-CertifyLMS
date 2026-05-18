@@ -24,7 +24,6 @@
 
 - [ ] `App\Notifications\ChatMessageReceivedNotification`(コンストラクタ `ChatMessage $message, bool $mailEnabled = true`、**v3 で `$mailEnabled` 追加**(コーチ間は false))(REQ-notification-030)
 - [ ] `App\Notifications\QaReplyReceivedNotification`(REQ-notification-040)
-- [ ] `App\Notifications\MockExamGradedNotification`(REQ-notification-050)
 - [ ] **`App\Notifications\CompletionApprovedNotification`(v3 で発火元変更)** — コンストラクタ `Enrollment $enrollment, Certificate $certificate`、Mail 本文に `route('certificates.download', $certificate)` 含む(REQ-notification-060)
 - [ ] **`App\Notifications\MeetingReservedNotification`(v3 新規、コーチ宛のみ)** — コンストラクタ `Meeting $meeting`、Mail 本文に `scheduled_at` + 受講生名 + `topic` + `meeting_url_snapshot`(REQ-notification-070)
 - [ ] `App\Notifications\MeetingCanceledNotification`(コンストラクタ `Meeting $meeting, User $actor`、actor で文面分岐)(REQ-notification-071)
@@ -60,7 +59,6 @@
 
 - [ ] **`NotifyChatMessageReceivedAction`(v3 で双方向化)** — sender role で相手方解決、受講生→全コーチ DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ **Database のみ**、担当コーチ未割当 skip、`graduated/withdrawn` skip(REQ-notification-030〜033)
 - [ ] `NotifyQaReplyReceivedAction`(自己回答 skip)(REQ-notification-040)
-- [ ] `NotifyMockExamGradedAction`(受験者通知)(REQ-notification-050)
 - [ ] **`NotifyCompletionApprovedAction`(v3 で発火元変更)** — 受講生通知、シグネチャ `__invoke(Enrollment, Certificate)`、**[[enrollment]] の `ReceiveCertificateAction` から呼ばれる**(旧 `ApproveCompletionAction` ではない)(REQ-notification-060)
 - [ ] **`NotifyMeetingReservedAction`(v3 新規)** — コーチ宛のみ dispatch、受講生宛は発火しない(REQ-notification-070)
 - [ ] `NotifyMeetingCanceledAction`(actor で相手方解決)(REQ-notification-071)
@@ -121,7 +119,6 @@
 
 - [ ] [[chat]] `App\UseCases\Chat\StoreMessageAction` の `DB::afterCommit` 内に `app(NotifyChatMessageReceivedAction::class)($message)` を組み込む(sender role 判定は Notify*Action 側で実施、双方向通知)
 - [ ] [[qa-board]] `App\UseCases\QaReply\StoreAction` に `app(NotifyQaReplyReceivedAction::class)($reply)` 組込
-- [ ] [[mock-exam]] `App\UseCases\MockExamSession\SubmitAction` の `DB::afterCommit` に `app(NotifyMockExamGradedAction::class)($session)` 組込
 - [ ] **[[enrollment]] `App\UseCases\Enrollment\ReceiveCertificateAction`(v3 新規)** に `NotifyCompletionApprovedAction` を DI、`DB::afterCommit` 内で `($this->notify)($enrollment, $certificate)` を呼出
 - [ ] **[[mentoring]] `App\UseCases\Meeting\ReserveAction`(v3 新規)** に `NotifyMeetingReservedAction` を DI、`DB::afterCommit` 内で `($this->notify)($meeting)` を呼出(**コーチ宛のみ**)
 - [ ] [[mentoring]] `App\UseCases\Meeting\CancelAction` 内に `app(NotifyMeetingCanceledAction::class)($meeting, $actor)` 組込
@@ -154,7 +151,6 @@
 
 - [ ] **`NotifyChatMessageReceivedActionTest`(v3)** — 受講生→コーチ全員 DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ DB only / コーチ未割当 skip / withdrawn skip / graduated skip
 - [ ] `NotifyQaReplyReceivedActionTest`(自己回答 skip)
-- [ ] `NotifyMockExamGradedActionTest`(受験者通知)
 - [ ] **`NotifyCompletionApprovedActionTest`(v3 発火元変更)** — `ReceiveCertificateAction` 経由で発火 / Mail 内 DL URL 含有 / withdrawn / graduated skip
 - [ ] **`NotifyMeetingReservedActionTest`(v3 新規)** — コーチ宛 dispatch のみ、受講生宛は発火しない / scheduled_at + 受講生名 + topic + meeting_url_snapshot 含有
 - [ ] `NotifyMeetingCanceledActionTest`(student キャンセル → coach 通知 / coach キャンセル → student 通知)
@@ -182,7 +178,7 @@
 
 ## Step 12.5: Factory + Seeder
 
-- [ ] **Seeder 不要**: 本 Feature の `DatabaseNotification` 行は他 Feature(`enrollment`, `mentoring`, `chat`, `qa-board`, `mock-exam`)の Action 実行時に副作用として INSERT されるため、専用 Seeder は提供しない(`structure.md` Seeder 規約「④ 集計・読み取り専用系」分類)
+- [ ] **Seeder 不要**: 本 Feature の `DatabaseNotification` 行は他 Feature(`enrollment`, `mentoring`, `chat`, `qa-board`)の Action 実行時に副作用として INSERT されるため、専用 Seeder は提供しない(`structure.md` Seeder 規約「④ 集計・読み取り専用系」分類)
 - [ ] ただし TopBar ベル / 通知一覧画面の動作確認には **既読・未読・各種通知タイプの混在** が必要。これは他 Feature の Seeder(`ChatSeeder` / `MentoringSeeder` / `EnrollmentSeeder` 等)が Action 経由で通知を発火することで自動的に揃う想定
 
 ## Step 13: 動作確認 & 整形
@@ -196,7 +192,6 @@
   - [ ] 受講生で面談予約 → **コーチ宛のみ**に DB + Mail、受講生宛は **0 件**(予約 UI で即時確認のため)
   - [ ] 受講生で面談キャンセル → コーチに DB + Mail
   - [ ] コーチで面談キャンセル → 受講生に DB + Mail
-  - [ ] mock-exam 採点完了 → 受験者に DB + Mail
   - [ ] admin で全 InProgress 受講生宛にお知らせ配信 → 各受講生に DB + Mail
   - [ ] 通知行クリック → 既読化 + 関連画面遷移
   - [ ] 「全件既読」一括既読化

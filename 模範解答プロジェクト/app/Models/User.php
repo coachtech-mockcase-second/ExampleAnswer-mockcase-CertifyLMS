@@ -186,6 +186,32 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<SectionQuestionAnswer, $this>
+     */
+    public function sectionQuestionAnswers(): HasMany
+    {
+        return $this->hasMany(SectionQuestionAnswer::class);
+    }
+
+    /**
+     * @return HasMany<SectionQuestionAttempt, $this>
+     */
+    public function sectionQuestionAttempts(): HasMany
+    {
+        return $this->hasMany(SectionQuestionAttempt::class);
+    }
+
+    /**
+     * 受講生本人の模試受験セッション。enrollment_id 経由で取得可能だが非正規化された user_id を直接参照する。
+     *
+     * @return HasMany<MockExamSession, $this>
+     */
+    public function mockExamSessions(): HasMany
+    {
+        return $this->hasMany(MockExamSession::class, 'user_id');
+    }
+
+    /**
      * Laravel フレームワーク側のシグナル(`Illuminate\Foundation\Auth\User::sendPasswordResetNotification($token)`)
      * との LSP 整合のため、引数に型宣言を付与しない(親クラスが parameter type なしで宣言しているため)。
      *

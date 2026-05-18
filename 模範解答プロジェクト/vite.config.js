@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/js/content-management/image-uploader.js',
                 'resources/js/content-management/option-correct.js',
                 'resources/js/content-management/reorder.js',
+                'resources/js/mock-exam/answer-autosave.js',
             ],
             refresh: true,
         }),

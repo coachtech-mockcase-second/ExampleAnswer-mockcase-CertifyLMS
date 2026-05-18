@@ -132,10 +132,30 @@
                     <p class="mt-1 text-[11px] leading-snug text-ink-700">
                         このセクションに紐づく演習問題があります。読み終えたあとに挑戦しましょう。
                     </p>
+                    @isset($sectionQuizSummary)
+                        <dl class="mt-3 grid grid-cols-3 gap-1 text-center">
+                            <div>
+                                <dt class="text-[9px] uppercase tracking-wider text-ink-500">挑戦</dt>
+                                <dd class="mt-0.5 text-sm font-bold tabular-nums text-ink-900">{{ $sectionQuizSummary->attemptCount }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[9px] uppercase tracking-wider text-ink-500">最高</dt>
+                                <dd class="mt-0.5 text-sm font-bold tabular-nums text-success-700">{{ $sectionQuizSummary->bestScore !== null ? $sectionQuizSummary->bestScore : '—' }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[9px] uppercase tracking-wider text-ink-500">最新</dt>
+                                <dd class="mt-0.5 text-sm font-bold tabular-nums text-primary-700">{{ $sectionQuizSummary->latestScore !== null ? $sectionQuizSummary->latestScore : '—' }}</dd>
+                            </div>
+                        </dl>
+                    @endisset
                     <div class="mt-3">
-                        <x-button variant="primary" disabled class="w-full justify-center">
+                        <x-link-button
+                            :href="route('quiz.sections.show', $section)"
+                            variant="primary"
+                            class="w-full justify-center"
+                        >
                             問題演習へ
-                        </x-button>
+                        </x-link-button>
                     </div>
                 </div>
             @endif
