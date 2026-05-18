@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AdminChatRoomController;
 use App\Http\Controllers\AdminEnrollmentController;
 use App\Http\Controllers\AdminMockExamSessionController;
 use App\Http\Controllers\Auth\OnboardingController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\CertificationCategoryController;
 use App\Http\Controllers\CertificationCoachAssignmentController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChapterController;
+use App\Http\Controllers\ChatRoomController;
 use App\Http\Controllers\ContentSearchController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentGoalController;
@@ -474,6 +476,36 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
 Route::middleware('auth')->group(function () {
     Route::get('meetings/{meeting}', [MeetingController::class, 'show'])->name('meetings.show');
     Route::post('meetings/{meeting}/cancel', [MeetingController::class, 'cancel'])->name('meetings.cancel');
+});
+
+// ============================================================
+// 受講生・コーチ共有 — chat (グループルーム閲覧 / メッセージ送信)
+// ============================================================
+Route::middleware(['auth', 'role:student,coach', 'active-learning'])->group(function () {
+    Route::get('chat-rooms', [ChatRoomController::class, 'index'])
+        ->name('chat.index');
+    Route::get('chat-rooms/{room}', [ChatRoomController::class, 'show'])
+        ->name('chat.show');
+    Route::post('chat-rooms/{room}/messages', [ChatRoomController::class, 'storeMessage'])
+        ->name('chat.storeMessage');
+});
+
+// ============================================================
+// コーチ専用 — chat 未読あり一覧
+// ============================================================
+Route::middleware(['auth', 'role:coach', 'active-learning'])->group(function () {
+    Route::get('coach/chat-rooms', [ChatRoomController::class, 'indexAsCoach'])
+        ->name('coach.chat.index');
+});
+
+// ============================================================
+// 管理者専用 — chat 監査閲覧
+// ============================================================
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('chat-rooms', [AdminChatRoomController::class, 'index'])
+        ->name('admin.chat-rooms.index');
+    Route::get('chat-rooms/{room}', [AdminChatRoomController::class, 'show'])
+        ->name('admin.chat-rooms.show');
 });
 
 // ============================================================

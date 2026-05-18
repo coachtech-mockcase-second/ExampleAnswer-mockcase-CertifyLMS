@@ -2,6 +2,7 @@
 
 > **v3 改修反映**: `assigned_coach_id` 削除、修了申請承認削除、`ReceiveCertificateAction` 追加、status 3 値、`coach_change` event_type 削除。
 > **2026-05-17 設計修正**: `EnrollmentStatusLog.event_type` カラムごと撤回（`from_status` / `to_status` で遷移を表現できるため冗長）。
+> **2026-05-18 [[chat]] E-3 連携**: `Enrollment\StoreAction` が `DB::transaction()` 内で `ChatRoom::create` + `ChatMemberSyncService::syncForRoom` を呼び、受講登録と同一トランザクションで `ChatRoom` + 全 `ChatMember` を eager 生成する。依存方向は enrollment → chat（constructor injection で `ChatMemberSyncService` を受ける）。REQ-enrollment-016 / REQ-chat-003 対応。
 
 ## アーキテクチャ
 
@@ -165,6 +166,77 @@ public function isEligible(Enrollment $enrollment): bool
 - `tests/Feature/UseCases/Enrollment/ReceiveCertificateActionTest.php`: eligible 検証 + status 遷移 + Certificate 発行 + 通知発火
 - `tests/Feature/Commands/FailExpiredCommandTest.php`
 - `tests/Unit/Services/CompletionEligibilityServiceTest.php` / `TermJudgementServiceTest.php`
+
+## [[chat]] 連携 (E-3 ChatRoom + ChatMember eager 生成)
+
+`Enrollment\StoreAction` は **`DB::transaction()` 内で** [[chat]] の `ChatRoom` + `ChatMember` 集合を eager 生成する。同一トランザクションで実行することで、chat 側の lazy 生成ロジック / `chat.storeFirstMessage` ルート / `StoreFirstMessageAction` ラッパー / `Policy::sendMessageForEnrollment` をすべて撤回でき、UX 動線（受講登録直後から `/chat-rooms` 一覧にルーム表示）も自然に成立する。
+
+### 連携箇所
+
+| Action | 呼出 | タイミング |
+|---|---|---|
+| `Enrollment\StoreAction` | `ChatRoom::create(['enrollment_id' => $enrollment->id])` → `ChatMemberSyncService::syncForRoom($room)` | 受講登録 INSERT 直後（同一 `DB::transaction()` 内、`EnrollmentStatusLog` INSERT より後、コミット前）|
+
+### Action 連携サンプル
+
+```php
+namespace App\UseCases\Enrollment;
+
+use App\Models\Enrollment;
+use App\Models\ChatRoom;
+use App\Models\User;
+use App\Services\ChatMemberSyncService;
+use App\Services\DefaultEnrollmentService;
+use Illuminate\Support\Facades\DB;
+
+final class StoreAction
+{
+    public function __construct(
+        private readonly ChatMemberSyncService $chatMemberSync,
+        private readonly DefaultEnrollmentService $defaultEnrollmentResolver,
+    ) {}
+
+    public function __invoke(User $user, array $validated): Enrollment
+    {
+        return DB::transaction(function () use ($user, $validated) {
+            $enrollment = Enrollment::create([
+                'user_id' => $user->id,
+                'certification_id' => $validated['certification_id'],
+                'exam_date' => $validated['exam_date'] ?? null,
+                'status' => EnrollmentStatus::Learning,
+                'current_term' => TermType::BasicLearning,
+            ]);
+
+            EnrollmentStatusLog::create([
+                'enrollment_id' => $enrollment->id,
+                'from_status' => null,
+                'to_status' => EnrollmentStatus::Learning,
+                'changed_by_user_id' => $user->id,
+                'changed_reason' => '新規登録',
+            ]);
+
+            // E-3: ChatRoom + ChatMember を同一トランザクションで eager 生成
+            $room = ChatRoom::create(['enrollment_id' => $enrollment->id]);
+            $this->chatMemberSync->syncForRoom($room);
+
+            // [[default-enrollment]] 連携
+            $this->defaultEnrollmentResolver->resolveAfterCreate($user, $enrollment);
+
+            return $enrollment;
+        });
+    }
+}
+```
+
+### 依存方向
+
+enrollment → chat（本 Feature が依存元）。`ChatMemberSyncService` は constructor injection で受ける（`backend-usecases.md` 規約準拠、`app()` ヘルパは不採用）。chat 側の `StoreMessageAction` は逆に enrollment に依存せず、`ChatRoom` 確定のシグネチャに統一されている（[[chat]] design.md 参照）。
+
+### コーチ未割当の Enrollment 作成
+
+受講登録時に対象資格の `certification_coach_assignments` が 0 件の場合、`ChatMemberSyncService::syncForRoom` は受講生のみを `ChatMember` に INSERT する。後で `CoachAssignment\AttachAction` が `CertificationCoachAttached` イベントを発火すると、chat 側の `SyncChatMembersOnCoachAssignmentChanged` Listener が `ChatMemberSyncService::syncForCertification` を呼び出し、該当資格の全 `ChatRoom` にコーチを差分追加する。
+
+---
 
 ## [[default-enrollment]] 連携 (v3 cross-cutting infrastructure)
 

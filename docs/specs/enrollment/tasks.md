@@ -43,6 +43,8 @@
 - [x] `EnrollmentGoal\StoreAction` / `UpdateAction` / `DestroyAction` / `MarkAchievedAction` / `UnmarkAchievedAction`
 - [x] `EnrollmentNote\StoreAction` / `UpdateAction` / `DestroyAction`
 - [ ] **`Enrollment\StoreAction` / `FailAction` / `ResumeAction` / `ReceiveCertificateAction` への [[default-enrollment]] 連携追加** — `DefaultEnrollmentService $resolver` を constructor injection、StoreAction 内で `$resolver->resolveAfterCreate($user, $newEnrollment)` 呼出、状態遷移 Action 内で `$resolver->resolveAfterStatusChange($user, $changedEnrollment)` 呼出(REQ-default-enrollment-018, REQ-default-enrollment-019)
+- [ ] **`Enrollment\StoreAction` への [[chat]] E-3 連携追加** — `ChatMemberSyncService $chatMemberSync` を constructor injection、同一 `DB::transaction()` 内で `$enrollment` 作成直後に `ChatRoom::create(['enrollment_id' => $enrollment->id])` + `$chatMemberSync->syncForRoom($room)` を呼ぶ(REQ-enrollment-016, REQ-chat-003、設計: enrollment/design.md「[[chat]] 連携」セクション)
+- [ ] **`tests/Feature/Http/EnrollmentControllerTest.php` に E-3 検証ケース追加** — `POST /enrollments` 成功で `chat_rooms` に `enrollment_id` 一致行 / `chat_members` に受講生 + 担当コーチ集合（コーチ 0 件なら受講生のみ）が INSERT されることを `assertDatabaseHas` で確認
 
 ## Schedule Command
 - [x] `App\Console\Commands\FailExpiredEnrollmentsCommand` (`enrollments:fail-expired`、daily 00:00)

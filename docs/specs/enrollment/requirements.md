@@ -36,6 +36,7 @@
 - **REQ-enrollment-013**: If `exam_date` が指定された場合かつ当日以前の場合, then the system shall バリデーションエラー（HTTP 422）を返す。`exam_date` 未指定（NULL）も許容する。
 - **REQ-enrollment-014**: When 受講登録が成功した直後, the system shall `EnrollmentStatusLog` に `to_status = learning` / `changed_reason = '新規登録'` を 1 件 INSERT する。担当コーチの自動設定は行わない（資格 × N コーチ N:N、`certification_coach_assignments` 経由）。
 - **REQ-enrollment-015**: When 受講生のログインユーザーが `User.status != UserStatus::InProgress` の場合, the system shall 受講登録を `EnsureActiveLearning` Middleware（[[auth]] 所有）でブロックし、HTTP 403 を返す（`graduated` ユーザーはプラン機能利用不可）。
+- **REQ-enrollment-016**: When 受講登録が成功した際, the system shall **同一 `DB::transaction()`** で [[chat]] の `ChatRoom`（`enrollment_id` = 新規 Enrollment.id）を INSERT し、当該資格の担当コーチ全員 + 受講生本人を `ChatMemberSyncService::syncForRoom($room)` 経由で `ChatMember` に eager 生成する（E-3、担当コーチ 0 件の場合は受講生のみ INSERT、後の `certification_coach_assignments` 追加時に [[chat]] の `SyncChatMembersOnCoachAssignmentChanged` Listener が差分追加する）。本要件は [[chat]] REQ-chat-003 と対応。
 
 ### 機能要件 — admin の Enrollment 運用
 

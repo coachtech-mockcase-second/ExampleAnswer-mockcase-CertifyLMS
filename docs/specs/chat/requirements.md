@@ -1,14 +1,15 @@
 # chat 要件定義
 
-> **v3 改修反映**（2026-05-16）+ **E-2 添付削除**:
+> **v3 改修反映**（2026-05-16）+ **E-2 添付削除** + **E-3 ChatRoom eager 生成**（2026-05-18）:
 > - 1on1 → **1 資格 1 グループルーム**(受講生 + 担当資格コーチ全員)、`ChatMember` 中間テーブル新設、`ChatRoom.status` 削除
 > - **Pusher Broadcasting** によるリアルタイム配信、未読バッジは `ChatMember.last_read_at` で個人別管理
 > - **添付ファイル機能を完全撤回**(`chat_attachments` テーブル / `ChatAttachment` Model / Storage private / signed URL すべて削除)。短期相談用途のため、画像 / ファイル共有は qa-board / 教材本文 / 面談メモへ誘導
+> - **`Enrollment` 作成と同一トランザクションで `ChatRoom` + 全 `ChatMember` を eager 生成**(E-3、旧「初回送信時 lazy 生成」を撤回)。受講登録直後から `/chat-rooms` 一覧にルームが表示される。`StoreFirstMessageAction` ラッパー / `chat.storeFirstMessage` ルート / `StoreFirstMessageRequest` / `sendMessageForEnrollment` Policy / `StoreMessageAction(ChatRoom|Enrollment)` union 引数分岐をすべて撤回し、`StoreMessageAction(User, ChatRoom, array)` シグネチャに統一。
 > - `EnsureActiveLearning` Middleware 連動(`graduated` ユーザーは chat 利用不可)
 
 ## 概要
 
-受講生と **担当資格コーチ集合** が **資格単位の 1 グループルームで非同期 + リアルタイムにメッセージをやり取りする** Feature。1 Enrollment あたり 1 ChatRoom、参加者は `ChatMember` 中間テーブルで管理。**テキスト本文のみ**(添付ファイル非対応)。状態管理は持たず、Pusher Broadcasting で新着メッセージを当事者に即時 push、未読バッジは個人別の `last_read_at` で集計する。
+受講生と **担当資格コーチ集合** が **資格単位の 1 グループルームで非同期 + リアルタイムにメッセージをやり取りする** Feature。1 Enrollment あたり 1 ChatRoom、参加者は `ChatMember` 中間テーブルで管理し、**`Enrollment` 作成と同一トランザクション内で eager 生成**する(E-3)。**テキスト本文のみ**(添付ファイル非対応)。状態管理は持たず、Pusher Broadcasting で新着メッセージを当事者に即時 push、未読バッジは個人別の `last_read_at` で集計する。
 
 ## ロールごとのストーリー
 
@@ -22,9 +23,9 @@
 
 - **REQ-chat-001**: The system shall ULID 主キー / SoftDeletes を備えた `chat_rooms` テーブルを提供し、`enrollment_id`(FK, UNIQUE) / `last_message_at`(datetime, nullable) / timestamps / `deleted_at` を保持する。**`status` カラムは持たない**。
 - **REQ-chat-002**: The system shall ULID 主キー / SoftDeletes を備えた `chat_members` テーブル(新設)を提供し、`chat_room_id`(FK, cascadeOnDelete)/ `user_id`(FK)/ `last_read_at`(datetime, nullable)/ `joined_at`(datetime, NOT NULL)/ timestamps / `deleted_at` を保持する。`(chat_room_id, user_id)` UNIQUE。
-- **REQ-chat-003**: When 受講生が初回メッセージを送信した際, the system shall 送信処理と同一トランザクション内で (1) `ChatRoom` が未存在なら作成、(2) **当該 `Enrollment.certification` の担当コーチ集合全員 + 受講生本人** の `ChatMember` を一括 INSERT(既存メンバーは skip)、(3) `ChatMessage` を INSERT、を実行する。
-- **REQ-chat-004**: When 受講生が担当コーチ未割当の `Enrollment`(`certification.coaches` 0 件)に対してメッセージ送信を試みた場合, the system shall HTTP 422 で拒否し「担当コーチが割り当てられていません」エラーメッセージを返す。
-- **REQ-chat-005**: When 担当コーチ集合の変更(`certification_coach_assignments` 追加 / 削除)が発生した際, the system shall 本 Feature の Event Listener で対応する全 ChatRoom の `ChatMember` を同期する。
+- **REQ-chat-003**: When `Enrollment` が作成された際(`Enrollment\StoreAction` 内、E-3 eager 生成), the system shall **同一 `DB::transaction()`** で (1) `ChatRoom` を INSERT(`enrollment_id` = 新規 Enrollment.id)、(2) **受講生本人 + 当該 `Enrollment.certification` の担当コーチ集合全員** の `ChatMember` を `ChatMemberSyncService::syncForRoom($room)` で一括 INSERT(担当コーチ 0 件の場合は受講生のみ)、を実行する。**初回送信時の lazy 生成ロジックは持たない**。
+- **REQ-chat-004**: When 受講生が担当コーチ未割当(`ChatRoom.members` にコーチが 0 件)のルームに対してメッセージ送信を試みた場合, the system shall HTTP 422 で拒否し「担当コーチが割り当てられていません」エラーメッセージを返す(ルーム自体は eager 生成済みのため `ChatMember.user_id = sender` は存在する、判定は `ChatRoom->enrollment->certification->coaches` の有無で行う)。
+- **REQ-chat-005**: When 担当コーチ集合の変更(`certification_coach_assignments` 追加 / 削除)が発生した際, the system shall 本 Feature の Event Listener で対応する全 ChatRoom の `ChatMember` を同期する(E-3 eager 生成時にコーチ未割当だったルームへの後追い追加もこの経路で吸収)。
 
 ### 機能要件 — ChatMessage 送受信(テキストのみ、E-2 で添付撤回)
 
@@ -63,20 +64,22 @@
 
 - **REQ-chat-060**: The system shall `ChatRoomPolicy::view($user, $room)` を以下で判定する: `admin` は常に true / `coach` / `student` は `ChatMember::where('chat_room_id', $room->id)->where('user_id', $user->id)->whereNull('deleted_at')->exists()`。
 - **REQ-chat-061**: The system shall `ChatRoomPolicy::sendMessage($user, $room)` を以下で判定する: `admin` は false / `coach` / `student` は `view` と同条件かつ `$room->enrollment->certification->coaches->count() > 0`(担当コーチ存在)。
+- **REQ-chat-062**: The system shall `ChatRoomPolicy` に **`sendMessageForEnrollment` メソッドを提供しない**(E-3 で `chat.storeFirstMessage` ルートと共に撤回、すべての送信は `chat.storeMessage` 経由で `sendMessage($user, $room)` に集約される)。
 - **REQ-chat-063**: When 受講生またはコーチが `User.status != UserStatus::InProgress` の場合, then the system shall `EnsureActiveLearning` Middleware で 403 を返す(`graduated` ユーザーは chat 利用不可)。
 
 ### 機能要件 — 通知連動
 
 - **REQ-chat-070**: When 受講生がメッセージを送信した場合, the system shall [[notification]] の `NotifyChatMessageReceivedAction($message)` を `DB::afterCommit()` で呼び、**担当コーチ全員** へ Database + Mail channel で通知発火する。
 - **REQ-chat-071**: When コーチがメッセージを送信した場合, the system shall [[notification]] の `NotifyChatMessageReceivedAction($message)` を呼び、**受講生本人** へ Database + Mail channel で通知発火する。他のコーチへの通知は **Database のみ**。
-- **REQ-chat-072**: The system shall `NotifyChatMessageReceivedAction` 内で送信者 role + ChatMember 全員を解決し、Pusher Broadcasting と DB 通知 / Mail 通知の発火を一元管理する。
+- **REQ-chat-072**: The system shall `NotifyChatMessageReceivedAction` 内で送信者 role + ChatMember 全員を解決し、**DB 通知 / Mail 通知の発火を一元管理する**。Pusher Broadcasting(新着メッセージの当事者への即時 push)は本 Action の責務外で、`StoreMessageAction` が `ChatMessageSent` Event を `DB::afterCommit()` 内で別経路 dispatch する(REQ-chat-040 参照)。
 
 ### 非機能要件
 
-- **NFR-chat-001**: The system shall メッセージ送信 / ChatMember 作成 / Pusher ブロードキャスト dispatch / 通知 dispatch を同一 `DB::transaction()` 内で実行し、いずれかの失敗で全体ロールバックする(Pusher 配信は `DB::afterCommit()` で行う)。
+- **NFR-chat-001**: The system shall メッセージ送信 / 送信者 `last_read_at` 更新 / Broadcast dispatch / 通知 dispatch を同一 `DB::transaction()` 内で実行し、いずれかの失敗で全体ロールバックする(Pusher 配信 / 通知発火は `DB::afterCommit()` で行う)。ChatMember 作成は **[[enrollment]] 側の `StoreAction` トランザクション**で eager に行われ、本 Feature 側ではコーチ集合変更時の差分同期(`ChatMemberSyncService::syncForCertification`)のみを担う。
 - **NFR-chat-002**: The system shall 一覧 / 詳細クエリで Eager Loading(`with(['enrollment.certification', 'enrollment.user', 'members.user', 'latestMessage'])`)を使用し N+1 を回避する。
 - **NFR-chat-003**: The system shall `chat_rooms.last_message_at` を denormalize で保持し、`chat_messages` 作成時に Model `booted` フックで UPDATE する。
 - **NFR-chat-004**: The system shall `(enrollment_id)` UNIQUE / `(chat_room_id, created_at)` 複合 INDEX / `(chat_member.user_id, last_read_at)` 複合 INDEX / `(chat_room_id, user_id)` UNIQUE INDEX を備える。
+- **NFR-chat-005**: 欠番(旧「signed URL 短期有効化」要件、E-2 添付撤回に伴い不要)。
 - **NFR-chat-006**: The system shall ドメイン例外を `app/Exceptions/Chat/` 配下に配置する(`CertificationCoachNotAssignedForChatException` のみ)。
 - **NFR-chat-007**: The system shall Blade を共通コンポーネント API のみで構成する。
 - **NFR-chat-008**: The system shall アクセシビリティ要件を満たし、メッセージ送信フォームに `aria-label`、未読バッジに `aria-label="未読 N 件"`、リアルタイム追加メッセージは `aria-live="polite"` で読み上げ可能とする。
@@ -90,7 +93,7 @@
 - **ピン留め / リアクション / ハイライト** — スコープ外
 - **メッセージ編集 / 削除** — 学習相談の改竄防止 + admin 監査の信頼性
 - **複数受講生グループチャット** — 1 Enrollment = 1 受講生 + N コーチ固定
-- **コーチ → 受講生の chat 開始** — 初回送信は受講生のみ
+- **コーチ → 受講生の chat 開始** — ChatRoom は受講登録時に eager 生成され、初回送信側は受講生 / コーチどちらでも可。ただし受講生側で「初めての送信ハードル」が下がるよう、UI は受講生 chat 画面に「コーチに質問する」CTA をデフォルトで強調する
 - **既読マーク表示**(相手側の last_read_at を公開する仕様) — 未読バッジは自分側のみ集計
 - **音声 / ビデオ通話** — [[mentoring]] と同様、スコープ外
 
@@ -98,8 +101,8 @@
 
 - **依存先**:
   - [[auth]] — `User` モデル / ロール / `auth` ガード / `EnsureActiveLearning` Middleware
-  - [[enrollment]] — `Enrollment.user_id` / `Enrollment.certification_id` の参照
-  - [[certification-management]] — `Certification.coaches` リレーション(`certification_coach_assignments` 経由)
+  - [[enrollment]] — `Enrollment.user_id` / `Enrollment.certification_id` の参照、および **`Enrollment\StoreAction` 内で `ChatMemberSyncService::syncForRoom` を呼ぶ連携**(E-3 eager 生成、依存方向は enrollment → chat)
+  - [[certification-management]] — `Certification.coaches` リレーション(`certification_coach_assignments` 経由)、および `CertificationCoachAttached` / `CertificationCoachDetached` Event(本 Feature の `SyncChatMembersOnCoachAssignmentChanged` Listener が購読)
 - **依存元**:
   - [[notification]] — `NotifyChatMessageReceivedAction` の被呼び出し元
   - [[dashboard]] — coach Dashboard の「未読 chat 件数」表示

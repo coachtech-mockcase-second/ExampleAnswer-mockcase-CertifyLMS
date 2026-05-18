@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\ChatMember;
+use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -17,4 +19,14 @@ use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
+});
+
+// chat-room の Private チャネル購読は、対象 ChatRoom の ChatMember であることを必須とする。
+// admin はそもそも当事者ではないため subscribe 不可(管理画面は HTTP 越しに監査参照する)。
+Broadcast::channel('chat-room.{chatRoomId}', function (User $user, string $chatRoomId): bool {
+    return ChatMember::query()
+        ->where('chat_room_id', $chatRoomId)
+        ->where('user_id', $user->id)
+        ->whereNull('deleted_at')
+        ->exists();
 });

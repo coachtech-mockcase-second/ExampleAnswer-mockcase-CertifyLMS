@@ -2,6 +2,7 @@
 
 > 1 タスク = 1 コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
 > **v3 改修反映**: `CompletionApprovedNotification` 発火元変更 / `MeetingRequested/Approved/Rejected` 撤回 / `MeetingReserved` 新規(コーチ宛のみ) / chat 双方向通知 / `StagnationReminder` 撤回 / `PlanExpireSoon` 撤回。
+> **2026-05-18 UX 改修**: 通知ベルクリック時の UI を ドロップダウン → 通知パネル(右側 Sheet) に変更。`Notification\DropdownAction` → `PanelAction`、`_partials/dropdown.blade.php` → `_partials/notification-panel.blade.php`、ルート `notifications.dropdown` → `notifications.panel`、テストは `DropdownTest` → `PanelTest`、`realtime.js` は Sheet open 時 DOM prepend に拡張。
 > 関連要件 ID は `requirements.md` の `REQ-notification-NNN` / `NFR-notification-NNN` を参照。
 > コマンドはすべて `sail` プレフィックス。
 
@@ -46,10 +47,10 @@
 
 ## Step 5: HTTP 層
 
-- [ ] `App\Http\Controllers\NotificationController`(`index` / `dropdown` / `markAsRead` / `markAllAsRead`)
+- [ ] `App\Http\Controllers\NotificationController`(`index` / `panel` / `markAsRead` / `markAllAsRead`)
 - [ ] `App\Http\Controllers\Admin\AdminAnnouncementController`(`index` / `create` / `store` / `show`)
 - [ ] `routes/web.php`:
-  - `auth` group: `notifications.index` / `notifications.dropdown` / `notifications.markAsRead` / `notifications.markAllAsRead`
+  - `auth` group: `notifications.index` / `notifications.panel` / `notifications.markAsRead` / `notifications.markAllAsRead`
   - `auth + role:admin` group: `Route::resource('announcements')->only(['index', 'create', 'store', 'show'])`
 - [ ] `routes/channels.php`: `Broadcast::channel('notifications.{userId}', fn (User $user, $userId) => (string) $user->id === $userId)`
 
@@ -75,7 +76,7 @@
 - [ ] `Notification\IndexAction`(tab フィルタ + paginate)
 - [ ] `Notification\MarkAsReadAction`
 - [ ] `Notification\MarkAllAsReadAction`
-- [ ] `Notification\DropdownAction`(最近 5 件 + 未読件数)
+- [ ] `Notification\PanelAction`(最新 20 件 + tab フィルタ(全件 / 未読) + 未読件数、Sheet 内容取得用、`IndexAction` とロジック共有)
 
 ### 管理者お知らせ Action 群
 
@@ -94,10 +95,12 @@
 - [ ] `AppServiceProvider::boot()` に Composer 登録
 - [ ] `views/notifications/index.blade.php`(`<x-tabs>` で 全件 / 未読切替、行クリックで markAsRead + 遷移、「全件既読」ボタン)
 - [ ] `views/notifications/_partials/notification-row.blade.php`(種別アイコン + タイトル + プレビュー + 経過時間 + 未読バッジ)
-- [ ] `views/notifications/_partials/dropdown.blade.php`(最近 5 件 + 「すべての通知」リンク)
+- [ ] `views/notifications/_partials/notification-panel.blade.php`(**右側 Sheet スライドオーバー**、Alpine.js `x-data="notificationPanel()"` で `open` / `tab` / `items` / `loading` 管理、Tailwind `transition-transform translate-x-full → translate-x-0` でスライドイン、ESC / 外側クリックで close、ヘッダ: 全件/未読タブ + 全件既読ボタン、ボディ: 最新 20 件、フッター: 「すべての通知を見る →」リンク、デスクトップ 400-480px / モバイル全幅)
+- [ ] `resources/js/notification/notification-panel.js`(Alpine.js コンポーネント定義: open/tab/items 管理 + タブ切替 `GET /notifications/panel?tab=...` fetch + 行クリック既読化 + 遷移前 close + `notification-panel:toggle` イベント受信)
 - [ ] `views/admin/announcements/index.blade.php` / `create.blade.php` / `show.blade.php`
 - [ ] `views/admin/announcements/_partials/target-fields.blade.php`(target_type ラジオで表示切替、素の JS)
-- [ ] `views/layouts/_partials/topbar.blade.php` への通知ベル追記
+- [ ] `views/layouts/_partials/topbar.blade.php` への通知ベル追記(ベルボタンに `@click="$dispatch('notification-panel:toggle')"`、未読バッジ重ね)
+- [ ] `views/layouts/app.blade.php` への `@include('notifications._partials.notification-panel')` マウント(全認証ページから利用可能に)
 - [ ] `views/layouts/_partials/sidebar-{admin,coach,student}.blade.php` の「通知」`<x-nav.item>` に `:badge="$notificationBadge['count']"` 追記
 - [ ] `resources/js/admin/announcement-form.js`(target_type ラジオ change で表示切替)
 
@@ -137,7 +140,7 @@
 
 - [ ] `.env.example` に `BROADCAST_DRIVER=pusher` / `PUSHER_APP_*`(Wave 0b で整備済前提)
 - [ ] 全 8 個の Notification クラスに `broadcastOn(): PrivateChannel("notifications.{$notifiable->id}")` + `broadcastWith()` 実装
-- [ ] `resources/js/notification/realtime.js`(Echo subscribe + バッジ +1 + ドロップダウン先頭追加)
+- [ ] `resources/js/notification/realtime.js`(Echo subscribe + TopBar / サイドバーバッジ +1、**通知パネルが open 状態であれば `notification-panel.js` の Alpine ストアに新規行を prepend**、閉じていればバッジのみ更新)
 - [ ] `resources/js/app.js` から `realtime.js` import + `<meta name="auth-user-id" content="{{ auth()->id() }}">` を `layouts/app.blade.php` に追加
 
 ## Step 12: テスト
@@ -164,7 +167,7 @@
 
 ### 通知一覧 / 管理者お知らせ HTTP(`tests/Feature/Http/Notification/`、`Admin/AdminAnnouncement/`)
 
-- [ ] `Notification/{Index,MarkAsRead,MarkAllAsRead,Dropdown}Test.php`
+- [ ] `Notification/{Index,MarkAsRead,MarkAllAsRead,Panel}Test.php`(`PanelTest`: tab フィルタ別件数 / 自分宛のみ取得 / 認可)
 - [ ] `Admin/AdminAnnouncement/{Index,Store,Show}Test.php`(target_type 別配信件数 / 不整合 422 / target Not Found)
 
 ### Schedule Command(`tests/Feature/Console/Notification/`)
@@ -196,9 +199,15 @@
   - [ ] 通知行クリック → 既読化 + 関連画面遷移
   - [ ] 「全件既読」一括既読化
   - [ ] サイドバー「通知」バッジ件数連動更新
+  - [ ] TopBar ベルクリックで通知パネル(Sheet)が右からスライドイン、ESC / 外側クリック / フッターリンク遷移で close
+  - [ ] パネル内タブ切替(全件 / 未読)で内容差し替え(`GET /notifications/panel?tab=...` fetch)
+  - [ ] パネル内行クリックで既読化 + 該当画面遷移 + パネル自動 close
+  - [ ] パネル内「全件既読」ボタンで全件既読化
+  - [ ] パネル内フッター「すべての通知を見る →」リンクで `/notifications` フルページへ遷移
+  - [ ] モバイル幅(< sm)でパネルが全幅 Sheet 表示
 - [ ] Schedule Command 手動実行:
   - [ ] `sail artisan notifications:send-meeting-reminders --window=eve` → 翌日 Reserved 面談に対し受講生 + コーチ両方に「面談リマインド(前日)」追加
   - [ ] 2 回目実行で重複しない
   - [ ] `--window=one_hour_before` → +55..65min 範囲 Meeting に対し両方に「面談リマインド(1h 前)」
 - [ ] Pusher リアルタイム配信 動作確認(`BROADCAST_DRIVER=pusher`):
-  - [ ] Tab A で受講生、Tab B でコーチが chat 送信 → Tab A の TopBar ベルバッジ +1 + ドロップダウン先頭に行追加(リロード不要)
+  - [ ] Tab A で受講生、Tab B でコーチが chat 送信 → Tab A の TopBar ベルバッジ +1、**通知パネル open 中なら先頭に行 prepend**(リロード不要)、閉じていればバッジのみ更新

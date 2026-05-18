@@ -3,14 +3,14 @@
 > 1 タスク = 1 コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
 > 関連要件 ID は `requirements.md` の `REQ-chat-NNN` / `NFR-chat-NNN` を参照。
 > 本 Feature は [[auth]] / [[user-management]] / [[enrollment]] / [[certification-management]] / [[notification]] / Wave 0b 共通基盤の **完了後** に実装する。
-> **v3 改修 + E-2 添付削除**: 1 Enrollment = グループルーム + N ChatMember、`ChatRoom.status` 削除、**添付ファイル完全撤回**(テーブル / Model / Storage / signed URL 一切持たない)、Pusher Broadcasting、`EnsureActiveLearning` Middleware 連動。
+> **v3 改修 + E-2 添付削除 + E-3 ChatRoom eager 生成**: 1 Enrollment = グループルーム + N ChatMember、`ChatRoom.status` 削除、**添付ファイル完全撤回**(テーブル / Model / Storage / signed URL 一切持たない)、**`ChatRoom + ChatMember` を `Enrollment` 作成と同一トランザクションで eager 生成**(`StoreFirstMessageAction` ラッパー / `chat.storeFirstMessage` ルート / `StoreFirstMessageRequest` / `sendMessageForEnrollment` Policy / union 引数分岐をすべて撤回)、Pusher Broadcasting、`EnsureActiveLearning` Middleware 連動。
 
 ## Step 1: Migration
 
-- [ ] migration: `create_chat_rooms_table`(ULID 主キー、`enrollment_id` UNIQUE 外部キー `restrictOnDelete`、`last_message_at` nullable datetime、`last_message_at` 単体 INDEX、`SoftDeletes`)(REQ-chat-001)
+- [x] migration: `create_chat_rooms_table`(ULID 主キー、`enrollment_id` UNIQUE 外部キー `restrictOnDelete`、`last_message_at` nullable datetime、`last_message_at` 単体 INDEX、`SoftDeletes`)(REQ-chat-001)
   - **`status` カラムは持たない**(v3 撤回)
-- [ ] migration: `create_chat_members_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`user_id` 外部キー `restrictOnDelete`、`last_read_at` nullable datetime、`joined_at` datetime NOT NULL、`(chat_room_id, user_id)` UNIQUE、`(user_id, last_read_at)` 複合 INDEX、`SoftDeletes`)(REQ-chat-002)
-- [ ] migration: `create_chat_messages_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`sender_user_id` 外部キー `restrictOnDelete`、`body` text、`(chat_room_id, created_at)` 複合 INDEX、`sender_user_id` 単体 INDEX、`SoftDeletes`)(REQ-chat-010)
+- [x] migration: `create_chat_members_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`user_id` 外部キー `restrictOnDelete`、`last_read_at` nullable datetime、`joined_at` datetime NOT NULL、`(chat_room_id, user_id)` UNIQUE、`(user_id, last_read_at)` 複合 INDEX、`SoftDeletes`)(REQ-chat-002)
+- [x] migration: `create_chat_messages_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`sender_user_id` 外部キー `restrictOnDelete`、`body` text、`(chat_room_id, created_at)` 複合 INDEX、`sender_user_id` 単体 INDEX、`SoftDeletes`)(REQ-chat-010)
 
 ### 明示的に持たない migration(E-2 撤回)
 
@@ -18,11 +18,11 @@
 
 ## Step 2: Model / Factory / Seeder
 
-- [ ] Model: `App\Models\ChatRoom`(`HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `casts: last_message_at => datetime`、リレーション `enrollment` / `messages` / `members` / `latestMessage`、スコープ `scopeForUser(User)` / `scopeOrderByLastMessage`)
-- [ ] Model: `App\Models\ChatMember`(`HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `casts: last_read_at => datetime, joined_at => datetime`、リレーション `chatRoom` / `user`、スコープ `scopeForRoom` / `scopeForUser` / `scopeUnread`)
-- [ ] Model: `App\Models\ChatMessage`(`HasUlids` + `HasFactory` + `SoftDeletes`、リレーション `chatRoom` / `sender`、`booted()::created` フックで `chat_rooms.last_message_at` UPDATE、**`hasMany(ChatAttachment)` 削除**(E-2))
-- [ ] Factory: `ChatRoomFactory`(`coachUnassigned()` state)、`ChatMemberFactory`(`asStudent()` / `asCoach()` / `unread()` / `read()` state)、`ChatMessageFactory`(`fromStudent()` / `fromCoach()` state)
-- [ ] Seeder: `ChatSeeder`(各 Enrollment ごとに ChatRoom + 全 ChatMember + サンプルメッセージ)
+- [x] Model: `App\Models\ChatRoom`(`HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `casts: last_message_at => datetime`、リレーション `enrollment` / `messages` / `members` / `latestMessage`、スコープ `scopeForUser(User)` / `scopeOrderByLastMessage`)
+- [x] Model: `App\Models\ChatMember`(`HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `casts: last_read_at => datetime, joined_at => datetime`、リレーション `chatRoom` / `user`、スコープ `scopeForRoom` / `scopeForUser` / `scopeUnread`)
+- [x] Model: `App\Models\ChatMessage`(`HasUlids` + `HasFactory` + `SoftDeletes`、リレーション `chatRoom` / `sender`、`booted()::created` フックで `chat_rooms.last_message_at` UPDATE、**`hasMany(ChatAttachment)` 削除**(E-2))
+- [x] Factory: `ChatRoomFactory`(`coachUnassigned()` state)、`ChatMemberFactory`(`asStudent()` / `asCoach()` / `unread()` / `read()` state)、`ChatMessageFactory`(`fromStudent()` / `fromCoach()` state)
+- [x] Seeder: `ChatSeeder`(各 Enrollment ごとに ChatRoom + 全 ChatMember + サンプルメッセージ)
 
 ### 明示的に持たない Model / Factory(E-2 撤回)
 
@@ -31,57 +31,63 @@
 
 ## Step 3: Service
 
-- [ ] `App\Services\ChatMemberSyncService::syncForRoom(ChatRoom)`(REQ-chat-003, REQ-chat-005)
-- [ ] `App\Services\ChatMemberSyncService::syncForCertification(Certification)`(REQ-chat-005)
-- [ ] `App\Services\ChatUnreadCountService::messageCountInRoom(ChatRoom, User): int`(REQ-chat-030)
-- [ ] `App\Services\ChatUnreadCountService::roomCountForUser(User): int`(REQ-chat-031, NFR-chat-002)
+- [x] `App\Services\ChatMemberSyncService::syncForRoom(ChatRoom)`(REQ-chat-003, REQ-chat-005、受講登録時の eager 生成 / 担当コーチ変更時の差分追加に共用、受講生 + 担当コーチ集合を `ChatMember` に upsert)
+- [x] `App\Services\ChatMemberSyncService::syncForCertification(Certification)`(REQ-chat-005、該当資格の全 ChatRoom に対し `syncForRoom` を反復)
+- [x] `App\Services\ChatUnreadCountService::messageCountInRoom(ChatRoom, User): int`(REQ-chat-030)
+- [x] `App\Services\ChatUnreadCountService::roomCountForUser(User): int`(REQ-chat-031, NFR-chat-002)
+
+> **E-3**: `ChatMemberSyncService::syncForRoom` の **呼出元は本 Feature ではなく [[enrollment]] の `Enrollment\StoreAction` + 本 Feature の `SyncChatMembersOnCoachAssignmentChanged` Listener** の 2 箇所のみ。chat 側 Action からは呼ばない(`StoreMessageAction` は ChatRoom 確定で受け取り、メンバー整合は行わない)。
 
 ## Step 4: Policy
 
-- [ ] `App\Policies\ChatRoomPolicy::viewAny(User): bool`(REQ-chat-060)
-- [ ] `App\Policies\ChatRoomPolicy::view(User, ChatRoom): bool`(admin true / coach・student は `ChatMember::exists()`)(REQ-chat-060)
-- [ ] `App\Policies\ChatRoomPolicy::sendMessage(User, ChatRoom): bool`(admin false / view 条件 + `certification.coaches.isNotEmpty()`)(REQ-chat-061)
-- [ ] `App\Policies\ChatRoomPolicy::sendMessageForEnrollment(User, Enrollment): bool`(REQ-chat-061)
-- [ ] `AuthServiceProvider::$policies` に登録
+- [x] `App\Policies\ChatRoomPolicy::viewAny(User): bool`(REQ-chat-060)
+- [x] `App\Policies\ChatRoomPolicy::view(User, ChatRoom): bool`(admin true / coach・student は `ChatMember::exists()`)(REQ-chat-060)
+- [x] `App\Policies\ChatRoomPolicy::sendMessage(User, ChatRoom): bool`(admin false / view 条件 + `certification.coaches.isNotEmpty()`)(REQ-chat-061)
+- [x] `AuthServiceProvider::$policies` に登録
 
-### 明示的に持たない Policy(E-2 撤回)
+### 明示的に持たない Policy(E-2 / E-3 撤回)
 
-- **`App\Policies\ChatAttachmentPolicy`** — 添付機能撤回
+- **`App\Policies\ChatAttachmentPolicy`** — 添付機能撤回(E-2)
+- **`App\Policies\ChatRoomPolicy::sendMessageForEnrollment`** — ChatRoom eager 生成で `Enrollment` ベース認可不要(E-3、REQ-chat-062)
 
 ## Step 5: Event / Listener / Broadcasting 認可
 
-- [ ] `App\Events\ChatMessageSent`(`ShouldBroadcast` 実装、`PrivateChannel("chat-room.{id}")`、`broadcastAs(): 'ChatMessageSent'`、**`broadcastWith()` で `{ id, chat_room_id, body, sender_user_id, sender_name, sender_role, created_at }` 返却**(E-2 で `attachments` フィールド削除))(REQ-chat-040, REQ-chat-041)
-- [ ] `App\Listeners\SyncChatMembersOnCoachAssignmentChanged`(`ShouldQueue`、`database` queue、`CertificationCoachAttached` / `CertificationCoachDetached` 購読)(REQ-chat-005)
-- [ ] `EventServiceProvider::$listen` で Listener 登録
-- [ ] `routes/channels.php` に `Broadcast::channel('chat-room.{chatRoomId}', fn (User $user, $chatRoomId) => ChatMember::where(...)->exists())` 追加(REQ-chat-042, NFR-chat-009)
-- [ ] `.env.example` に `PUSHER_APP_KEY` / `PUSHER_APP_SECRET` / `PUSHER_APP_ID` / `PUSHER_APP_CLUSTER` / `VITE_PUSHER_APP_KEY` / `VITE_PUSHER_APP_CLUSTER` 記載(REQ-chat-044)
+- [x] `App\Events\ChatMessageSent`(`ShouldBroadcast` 実装、`PrivateChannel("chat-room.{id}")`、`broadcastAs(): 'ChatMessageSent'`、**`broadcastWith()` で `{ id, chat_room_id, body, sender_user_id, sender_name, sender_role, created_at }` 返却**(E-2 で `attachments` フィールド削除))(REQ-chat-040, REQ-chat-041)
+- [x] `App\Listeners\SyncChatMembersOnCoachAssignmentChanged`(`ShouldQueue`、`database` queue、`CertificationCoachAttached` / `CertificationCoachDetached` 購読)(REQ-chat-005)
+- [x] `EventServiceProvider::$listen` で Listener 登録
+- [x] `routes/channels.php` に `Broadcast::channel('chat-room.{chatRoomId}', fn (User $user, $chatRoomId) => ChatMember::where(...)->exists())` 追加(REQ-chat-042, NFR-chat-009)
+- [x] `.env.example` に `PUSHER_APP_KEY` / `PUSHER_APP_SECRET` / `PUSHER_APP_ID` / `PUSHER_APP_CLUSTER` / `VITE_PUSHER_APP_KEY` / `VITE_PUSHER_APP_CLUSTER` 記載(REQ-chat-044)
 
 ## Step 6: HTTP 層
 
-- [ ] `App\Http\Controllers\ChatRoomController` スケルトン(`index` / `indexAsCoach` / `show` / `storeMessage` / `storeFirstMessage`、各 method = 同名 Action `__invoke`)
-- [ ] `App\Http\Controllers\Admin\ChatRoomController`(`index` / `show`)
-- [ ] **`App\Http\Controllers\ChatAttachmentController` は作成しない**(E-2 撤回)
-- [ ] `App\Http\Requests\Chat\IndexRequest`(`page` rule、authorize: `student` or `coach`)
-- [ ] `App\Http\Requests\Chat\IndexAsCoachRequest`(`filter` / `certification_id` / `keyword` / `page`、authorize: coach のみ)
-- [ ] **`App\Http\Requests\Chat\StoreMessageRequest`(E-2 簡素化)** — `body: required string max:2000` のみ、**`attachments` rules 削除**、authorize: `Policy::sendMessage` 委譲
-- [ ] **`App\Http\Requests\Chat\StoreFirstMessageRequest`** — 同 rules
-- [ ] `App\Http\Requests\Admin\Chat\IndexRequest`
-- [ ] `routes/web.php`:
+- [x] `App\Http\Controllers\ChatRoomController` スケルトン(`index` / `indexAsCoach` / `show` / `storeMessage`、各 method = 同名 Action `__invoke`)
+- [x] `App\Http\Controllers\AdminChatRoomController`(`index` / `show`、既存 `AdminEnrollmentController` と同じくフラット namespace、`backend-http.md`「ロール別 namespace 禁止」準拠)
+- [x] **`App\Http\Controllers\ChatAttachmentController` は作成しない**(E-2 撤回)
+- [x] **`ChatRoomController::storeFirstMessage` method 作成しない**(E-3 撤回、送信はすべて `storeMessage` 経由)
+- [x] `App\Http\Requests\Chat\IndexRequest`(`page` rule、authorize: `student` or `coach`)
+- [x] `App\Http\Requests\Chat\IndexAsCoachRequest`(`filter` / `certification_id` / `keyword` / `page`、authorize: coach のみ)
+- [x] **`App\Http\Requests\Chat\StoreMessageRequest`(E-2 簡素化 + E-3 で唯一の送信用 Request)** — `body: required string max:2000` のみ、**`attachments` rules 削除**、authorize: `Policy::sendMessage` 委譲
+- [x] **`App\Http\Requests\Chat\StoreFirstMessageRequest` は作成しない**(E-3 撤回)
+- [x] `App\Http\Requests\AdminChatRoom\IndexRequest`(`AdminChatRoomController` namespace に揃える)
+- [x] `routes/web.php`:
   - `chat.index` / `coach.chat.index`(`role:student,coach` + `EnsureActiveLearning`)
-  - `chat.show` / `chat.storeMessage` / `chat.storeFirstMessage`(`EnsureActiveLearning`)
+  - `chat.show` / `chat.storeMessage`(`EnsureActiveLearning`)
   - **`chat-attachments.download` ルート追加しない**(E-2 撤回)
+  - **`chat.storeFirstMessage` ルート追加しない**(E-3 撤回、ChatRoom eager 生成で初回送信専用 endpoint 不要)
   - `admin.chat-rooms.index` / `admin.chat-rooms.show`(`role:admin`)
 
 ## Step 7: Action / Exception
 
-- [ ] `App\UseCases\Chat\IndexAction`(`whereHas('members')` + 未読件数 attach + `coach_unassigned` フラグ attach + Eager Loading + paginate)
-- [ ] `App\UseCases\Chat\IndexAsCoachAction`(`filter=unread` デフォルト + 絞り込み)
-- [ ] `App\UseCases\Chat\ShowAction`(eager load + **viewer 自身の `ChatMember.last_read_at` のみ UPDATE**(個人別既読、admin 除外))(REQ-chat-012, REQ-chat-032)
-- [ ] **`App\UseCases\Chat\StoreMessageAction`(E-2 簡素化)** — sender 分岐 / 担当コーチ未割当検査 / `firstOrCreate` + `ChatMemberSyncService::syncForRoom` / `lockForUpdate` / ChatMember 存在検証 / `ChatMessage` INSERT / 送信者の `last_read_at` UPDATE / `DB::afterCommit()` で Broadcast + 通知 dispatch、**添付保存ロジック完全削除**
-- [ ] **`App\UseCases\Chat\StoreFirstMessageAction`** — `ChatRoomController::storeFirstMessage` 対応ラッパー、`__invoke(User $sender, Enrollment $enrollment, array $validated): ChatMessage`、内部で `StoreMessageAction` を呼ぶだけの薄いラッパー(`.claude/rules/backend-usecases.md`「Controller method 名 = Action クラス名」規約準拠)
-- [ ] `App\UseCases\Admin\Chat\IndexAction` / `ShowAction`
-- [ ] **`App\UseCases\ChatAttachment\DownloadAction` 作成しない**(E-2 撤回)
-- [ ] `App\Exceptions\Chat\CertificationCoachNotAssignedForChatException`(HTTP 422)(REQ-chat-004)
+- [x] `App\UseCases\Chat\IndexAction`(`whereHas('members')` + 未読件数 attach + `coach_unassigned` フラグ attach + Eager Loading + paginate)
+- [x] `App\UseCases\Chat\IndexAsCoachAction`(`filter=unread` デフォルト + 絞り込み)
+- [x] `App\UseCases\Chat\ShowAction`(eager load + **viewer 自身の `ChatMember.last_read_at` のみ UPDATE**(個人別既読、admin 除外))(REQ-chat-012, REQ-chat-032)
+- [x] **`App\UseCases\Chat\StoreMessageAction`(E-2 簡素化 + E-3 でシグネチャ統一)** — `__invoke(User $sender, ChatRoom $room, array $validated): ChatMessage`、`ChatMessage` INSERT / 送信者の `ChatMember.last_read_at` UPDATE / `DB::afterCommit()` で Broadcast + 通知 dispatch、**`ChatRoom|Enrollment` union 引数 / `resolveOrCreateRoom` / `firstOrCreate` / `lockForUpdate` / `ChatMemberSyncService` 呼出 / 添付保存ロジックすべて持たない**(担当コーチ未割当検査は Controller 上で `Policy::sendMessage` が担い、ChatRoom + ChatMember 生成は [[enrollment]] `StoreAction` が担う)
+- [x] **`App\UseCases\Chat\StoreFirstMessageAction` 作成しない**(E-3 撤回、ChatRoom eager 生成でラッパー不要)
+- [x] `App\UseCases\AdminChatRoom\IndexAction` / `ShowAction`(`AdminChatRoomController` namespace に揃える)
+- [x] **`App\UseCases\ChatAttachment\DownloadAction` 作成しない**(E-2 撤回)
+- [x] `App\Exceptions\Chat\CertificationCoachNotAssignedForChatException`(HTTP 422)(REQ-chat-004、Controller で `Policy::sendMessage` が false を返した時に担当コーチ 0 件のケースのみこの例外を throw、それ以外は `AuthorizationException` 403)
+- [x] `App\Notifications\Chat\ChatMessageReceivedNotification`(database + mail 配信、role 別チャネル切替)+ `App\UseCases\Notification\NotifyChatMessageReceivedAction`(ラッパー Action) + `notifications` テーブル migration([[notification]] Feature 未着手のため chat 側で先行追加、REQ-chat-070〜072)
+- [x] `App\UseCases\Enrollment\StoreAction` を **同一トランザクションで `ChatRoom` + `ChatMember` を eager 生成** するよう更新(REQ-chat-003、E-3)
 
 ### 明示的に持たない Exception(E-2 撤回)
 
@@ -89,17 +95,17 @@
 
 ## Step 8: Blade ビュー
 
-- [ ] `resources/views/chat/index.blade.php`(受講生用一覧 + `coach_unassigned` バッジ)
-- [ ] `resources/views/chat/coach-index.blade.php`(コーチ用一覧 + tabs + フィルタ + paginator)
-- [ ] `resources/views/chat/show.blade.php`(詳細、メンバー一覧 + メッセージ一覧 + 送信フォーム、`aria-live="polite"` リスト、`@vite('resources/js/chat/realtime.js')`)
-- [ ] `resources/views/chat/_partials/message-item.blade.php`(自分 / 相手 / sender_role 表示)
-- [ ] `resources/views/chat/_partials/message-template.blade.php`(JS 用 `<template id="chat-message-template">`)
-- [ ] **`resources/views/chat/_partials/message-form.blade.php`(E-2 簡素化)** — `<x-form.textarea>` + 送信ボタンのみ、**`<x-form.file>` 完全削除**
-- [ ] `resources/views/chat/_partials/member-list.blade.php`(受講生 + 担当コーチ全員)
-- [ ] `resources/views/chat/_partials/empty-message.blade.php`(空状態)
-- [ ] `resources/views/admin/chat-rooms/index.blade.php`(全件 + 検索)
-- [ ] `resources/views/admin/chat-rooms/show.blade.php`(監査モード)
-- [ ] `App\View\Composers\SidebarBadgeComposer` に `chat-rooms` キー追加
+- [x] `resources/views/chat/index.blade.php`(受講生用一覧 + `coach_unassigned` バッジ)
+- [x] `resources/views/chat/coach-index.blade.php`(コーチ用一覧 + tabs + フィルタ + paginator)
+- [x] `resources/views/chat/show.blade.php`(詳細、メンバー一覧 + メッセージ一覧 + 送信フォーム、`aria-live="polite"` リスト、`@vite('resources/js/chat/realtime.js')`)
+- [x] `resources/views/chat/_partials/message-item.blade.php`(自分 / 相手 / sender_role 表示)
+- [x] `resources/views/chat/_partials/message-template.blade.php`(JS 用 `<template id="chat-message-template">`)
+- [x] **`resources/views/chat/_partials/message-form.blade.php`(E-2 簡素化)** — `<x-form.textarea>` + 送信ボタンのみ、**`<x-form.file>` 完全削除**
+- [x] `resources/views/chat/_partials/member-list.blade.php`(受講生 + 担当コーチ全員)
+- [x] `resources/views/chat/_partials/empty-message.blade.php`(空状態)
+- [x] `resources/views/admin/chat-rooms/index.blade.php`(全件 + 検索)
+- [x] `resources/views/admin/chat-rooms/show.blade.php`(監査モード)
+- [x] `App\View\Composers\SidebarBadgeComposer` の `unattendedChat` キーを `ChatUnreadCountService::roomCountForUser` で埋める
 
 ### 明示的に持たない Blade(E-2 撤回)
 
@@ -107,43 +113,44 @@
 
 ## Step 9: JS リアルタイム
 
-- [ ] **`resources/js/chat/realtime.js`(E-2 簡素化)** — Echo + Pusher 初期化、`.listen('.ChatMessageSent', cb)` で `<template>` 複製してメッセージ list に append、**`attachments` 描画ループ完全削除**
-- [ ] `resources/js/bootstrap.js` で Echo の global 初期化準備
-- [ ] `vite.config.js` の input に `resources/js/chat/realtime.js` 追加
+- [x] **`resources/js/chat/realtime.js`(E-2 簡素化)** — Echo + Pusher 初期化、`.listen('.ChatMessageSent', cb)` で `<template>` 複製してメッセージ list に append、**`attachments` 描画ループ完全削除**
+- [x] `resources/js/bootstrap.js` で Echo の global 初期化準備
+- [x] `vite.config.js` の input に `resources/js/chat/realtime.js` 追加
 
 ## Step 10: テスト
 
 ### Feature(HTTP)
 
-- [ ] `tests/Feature/Http/Chat/IndexTest.php`
-- [ ] `tests/Feature/Http/Chat/IndexAsCoachTest.php`
-- [ ] `tests/Feature/Http/Chat/ShowTest.php`(**viewer 自身の `last_read_at` のみ更新**、他 ChatMember は変化なし)
-- [ ] **`tests/Feature/Http/Chat/StoreFirstMessageTest.php`(E-2 で添付テスト削除)** — body 必須 / 担当コーチ 0 件 422 / ChatMember 集合 INSERT / Broadcast 発火 / 通知 INSERT
-- [ ] **`tests/Feature/Http/Chat/StoreMessageTest.php`(E-2 で添付テスト削除)** — body 必須 / body 超過 422 / 非 ChatMember 送信 403 / **`attachments` フィールド送信時に silently drop**(後方互換性確認)
-- [ ] `tests/Feature/Http/Chat/CoachAssignmentChangeTest.php`(ChatMember 同期)
-- [ ] `tests/Feature/Http/Chat/EnsureActiveLearningTest.php`(graduated 403)
-- [ ] `tests/Feature/Http/Admin/Chat/IndexTest.php` / `ShowTest.php`
+- [x] `tests/Feature/Http/Chat/IndexTest.php`(受講登録直後の受講生が `/chat-rooms` で eager 生成された ChatRoom を見られることを確認、コーチ「未読あり」フィルタ含む)
+- [x] (`IndexAsCoach` 検証は `IndexTest::test_coach_index_filters_unread_by_default` に統合)
+- [x] `tests/Feature/Http/Chat/ShowTest.php`(**viewer 自身の `last_read_at` のみ更新**、他 ChatMember は変化なし)
+- [x] **`tests/Feature/Http/Chat/StoreMessageTest.php`(E-2 で添付テスト削除 + E-3 で送信テスト集約)** — body 必須 / body 超過 / 非 ChatMember 送信 403 / 担当コーチ 0 件 422 (`postJson`) + HTML POST は flash error redirect (`Handler.php` の `REDIRECT_BACK_STATUSES` 規約) / Broadcast 発火 / 通知 INSERT / 編集・削除エンドポイント不在で `PUT/DELETE /chat-rooms/{room}/messages/{message}` が 404 (REQ-chat-014)
+- [x] `tests/Feature/Http/Chat/CoachAssignmentChangeTest.php`(ChatMember 同期、コーチ追加で全該当 ChatRoom に ChatMember INSERT)
+- [x] `tests/Feature/Http/Chat/EnsureActiveLearningTest.php`(graduated 403)
+- [x] `tests/Feature/Http/AdminChatRoom/IndexTest.php` / `ShowTest.php`
 
-### 明示的に持たないテスト(E-2 撤回)
+### 明示的に持たないテスト(E-2 / E-3 撤回)
 
-- **`tests/Feature/Http/ChatAttachment/DownloadTest.php`** — 添付 DL 機能なし
+- **`tests/Feature/Http/ChatAttachment/DownloadTest.php`** — 添付 DL 機能なし(E-2)
+- **`tests/Feature/Http/Chat/StoreFirstMessageTest.php`** — ChatRoom eager 生成のため初回送信専用 endpoint なし(E-3、対応テストは [[enrollment]] 側 `StoreActionTest` に統合)
+- **`attachments` silently drop テスト** — 提供 PJ に送信フォーム / JS 経路がないため後方互換性の根拠が薄い(E-3)
 
 ### Feature(Broadcasting)
 
-- [ ] `tests/Feature/Broadcasting/ChatMessageSentTest.php`(`Event::fake([ChatMessageSent::class])` で発火検証 / **payload に `attachments` フィールド含まれない**(E-2) / `PrivateChannel("chat-room.{id}")` チャネル名)
-- [ ] `tests/Feature/Broadcasting/ChannelAuthorizationTest.php`(`routes/channels.php` callback)
+- [x] (`ChatMessageSent` Event payload 検証は `tests/Unit/Events/ChatMessageSentEventTest.php` に集約、`Event::fake` 発火検証は `StoreMessageTest::test_student_can_send_message...` に統合)
+- [x] `tests/Feature/Broadcasting/ChannelAuthorizationTest.php`(`routes/channels.php` callback)
 
 ### Feature(Action)
 
-- [ ] **`tests/Feature/UseCases/Chat/StoreMessageActionTest.php`(E-2 簡素化)** — 担当コーチ未割当 / ChatRoom upsert / ChatMember 整合 / Broadcast + 通知 / トランザクションロールバック / **添付保存呼出なし**(E-2)
-- [ ] `tests/Feature/UseCases/Chat/ShowActionTest.php`(viewer 別 `last_read_at` UPDATE / admin の non-update)
+- [x] **`tests/Feature/UseCases/Chat/StoreMessageActionTest.php`(E-2 簡素化 + E-3 でシグネチャ簡素化)** — ChatMessage INSERT / 送信者の `last_read_at` UPDATE / Broadcast + 通知 dispatch / **`__invoke(User, ChatRoom, array)` シグネチャを ReflectionMethod で assert**(E-3 撤回確認、union 引数や `firstOrCreate`/`lockForUpdate` ロジック非存在の根拠)
+- [x] (`ShowAction` の viewer 別 `last_read_at` UPDATE / admin non-update 検証は `tests/Feature/Http/Chat/ShowTest.php` に統合)
 
 ### Unit(Service / Policy / Event)
 
-- [ ] `tests/Unit/Services/ChatMemberSyncServiceTest.php`
-- [ ] `tests/Unit/Services/ChatUnreadCountServiceTest.php`
-- [ ] `tests/Unit/Policies/ChatRoomPolicyTest.php`(view / sendMessage の真偽値網羅)
-- [ ] `tests/Unit/Events/ChatMessageSentEventTest.php`(`broadcastWith` で **`attachments` フィールド含まれない**(E-2))
+- [x] `tests/Unit/Services/ChatMemberSyncServiceTest.php`(enrollment 経由の eager 生成と Listener 経由の差分追加の両ケースを網羅)
+- [x] `tests/Unit/Services/ChatUnreadCountServiceTest.php`
+- [x] `tests/Unit/Policies/ChatRoomPolicyTest.php`(view / sendMessage の真偽値網羅 + **`sendMessageForEnrollment` メソッドが存在しないことを `method_exists` で assert**(REQ-chat-062、E-3))
+- [x] `tests/Unit/Events/ChatMessageSentEventTest.php`(`broadcastWith` で **`attachments` フィールド含まれない**(E-2))
 
 ### 明示的に持たないテスト(E-2 撤回)
 
@@ -151,22 +158,24 @@
 
 ### Listener テスト
 
-- [ ] `tests/Feature/Listeners/SyncChatMembersOnCoachAssignmentChangedTest.php`
+- [x] (`SyncChatMembersOnCoachAssignmentChanged` Listener の検証は `tests/Feature/Http/Chat/CoachAssignmentChangeTest.php` に集約)
 
 ## Step 11: 動作確認 & 整形
 
-- [ ] `sail artisan test --filter=Chat` 通過
-- [ ] `sail bin pint --dirty` 整形
-- [ ] `sail artisan migrate:fresh --seed` で `ChatSeeder` 投入確認
+- [x] `sail artisan test --filter=Chat|AdminChatRoom|ChatRoomPolicy|ChatMessageSent|ChatMemberSync|ChatUnreadCount|ChannelAuthorization` 通過(34 tests / 82 assertions)
+- [x] `sail artisan test`(全 755 tests / 1592 assertions、既存破壊なし)
+- [x] `sail bin pint --dirty` 整形(passed)
+- [x] `sail artisan migrate:fresh --seed` で `ChatSeeder` 投入確認(10 rooms / 22 members / 5 messages)
 - [ ] ブラウザ動作確認（基本動線）:
-  - [ ] 受講生で `/chat-rooms` を開きルーム一覧表示
-  - [ ] 担当コーチ未割当の Enrollment で「コーチ未割当」バッジ + 開く disabled
-  - [ ] 受講生で初回メッセージ送信 → `ChatRoom` + 全 `ChatMember` 生成、コーチ側で未読バッジ点灯
+  - [ ] 受講登録直後の受講生で `/chat-rooms` を開き、**eager 生成された ChatRoom が一覧に表示される**(E-3 確認、メッセージ 0 件でも表示)
+  - [ ] 担当コーチ未割当の Enrollment で「コーチ未割当」バッジ + メッセージ送信ボタン disabled(ルーム自体は表示される、E-3)
+  - [ ] 受講生でメッセージ送信 → 既存 `ChatRoom` に `ChatMessage` INSERT、コーチ側で未読バッジ点灯
   - [ ] コーチで `/coach/chat-rooms` を開き「未読あり」フィルタデフォルト
   - [ ] コーチ A が返信 → コーチ A の `last_read_at` のみ更新、**コーチ B の `last_read_at` は変化なし**(個人別既読、E-2 仕様確認)
   - [ ] 受講生のメッセージ送信フォームに **添付フィールドが表示されない**(E-2 確認)
   - [ ] admin で `/admin/chat-rooms` を開き全件監査閲覧
   - [ ] `graduated` ユーザーで `/chat-rooms` → 403
+  - [ ] `POST /enrollments/{enrollment}/chat/messages` URL 直叩き → 404(E-3 撤回確認、ルート定義なし)
 - [ ] ブラウザ動作確認（Pusher リアルタイム）:
   - [ ] Tab A(受講生)で `/chat-rooms/{id}` を開き、Tab B(コーチ)で同じルームを開く
   - [ ] Tab A で送信 → Tab B のメッセージリストにリアルタイム追加(リロード不要)
@@ -176,4 +185,7 @@
   - [ ] コーチ送信 → 受講生に Database + Mail、他コーチに Database のみ
 - [ ] **E-2 撤回確認**:
   - [ ] `/chat-attachments/...` URL 直叩き → 404(ルート定義なし)
-  - [ ] 添付フィールド送信時 → silently drop で 200(`attachments` rule なし、後方互換性)
+- [ ] **E-3 撤回確認**:
+  - [ ] `POST /enrollments/{enrollment}/chat/messages` URL 直叩き → 404
+  - [ ] 受講登録 (`POST /enrollments`) 直後に `chat_rooms` テーブルに enrollment_id 一致行が存在し、`chat_members` に受講生 + 担当コーチ集合が登録されている
+  - [ ] 受講登録時に担当コーチ 0 件の場合は `chat_members` に受講生のみ登録、後で `certification_coach_assignments` を追加すると Listener が ChatMember を差分追加する

@@ -254,6 +254,26 @@ class User extends Authenticatable
     }
 
     /**
+     * 参加している ChatRoom の中間テーブルレコード一覧。
+     *
+     * @return HasMany<ChatMember, $this>
+     */
+    public function chatMembers(): HasMany
+    {
+        return $this->hasMany(ChatMember::class);
+    }
+
+    /**
+     * 自身が送信した ChatMessage 一覧。
+     *
+     * @return HasMany<ChatMessage, $this>
+     */
+    public function sentChatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class, 'sender_user_id');
+    }
+
+    /**
      * Laravel フレームワーク側のシグナル(`Illuminate\Foundation\Auth\User::sendPasswordResetNotification($token)`)
      * との LSP 整合のため、引数に型宣言を付与しない(親クラスが parameter type なしで宣言しているため)。
      *

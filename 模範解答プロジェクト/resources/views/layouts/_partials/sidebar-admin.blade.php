@@ -11,6 +11,9 @@
     <x-nav.item route="admin.mock-exams.index" icon="clipboard-document-check" label="模試マスタ管理" />
     <x-nav.item route="admin.mock-exam-sessions.index" icon="chart-pie" label="受験セッション閲覧" />
 
+    <x-nav.section title="監査" :routes="['admin.chat-rooms.index']" />
+    <x-nav.item route="admin.chat-rooms.index" icon="chat-bubble-left-right" label="chat 監査" />
+
     <x-nav.section title="分析" :routes="['admin.stats.index']" />
     <x-nav.item route="admin.stats.index" icon="chart-bar" label="運用統計" />
 

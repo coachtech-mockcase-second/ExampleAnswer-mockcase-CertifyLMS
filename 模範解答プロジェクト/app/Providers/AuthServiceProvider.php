@@ -8,6 +8,7 @@ use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\CertificationCategory;
 use App\Models\Chapter;
+use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\EnrollmentGoal;
 use App\Models\EnrollmentNote;
@@ -34,6 +35,7 @@ use App\Policies\CertificationCategoryPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ChapterPolicy;
 use App\Policies\ChapterViewPolicy;
+use App\Policies\ChatRoomPolicy;
 use App\Policies\CoachAvailabilityPolicy;
 use App\Policies\EnrollmentGoalPolicy;
 use App\Policies\EnrollmentNotePolicy;
@@ -78,6 +80,7 @@ class AuthServiceProvider extends ServiceProvider
         Certificate::class => CertificatePolicy::class,
         Part::class => PartPolicy::class,
         Chapter::class => ChapterPolicy::class,
+        ChatRoom::class => ChatRoomPolicy::class,
         Section::class => SectionPolicy::class,
         SectionImage::class => SectionImagePolicy::class,
         SectionQuestion::class => SectionQuestionPolicy::class,

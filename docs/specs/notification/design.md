@@ -6,6 +6,11 @@
 > - **新規**: `MeetingReservedNotification`(自動予約完了通知、コーチ宛のみ)
 > - chat 通知の **双方向化**(受講生→全コーチ、コーチ→受講生 + 他コーチ Database のみ)
 > - admin 宛通知は引き続き不採用(運用情報は [[dashboard]] 集約)
+>
+> **2026-05-18 UX 改修**:
+> - TopBar ベルクリック時の UI を「ドロップダウン(最近 5 件)」→ **「通知パネル(右側 Sheet スライドオーバー、20 件 + タブ + バルク既読)」** に変更(Linear / Slack / Stripe 等の業界標準パターン準拠)
+> - `/notifications` フルページは併存(サイドバー「通知」ナビ / Sheet フッターリンクから到達)
+> - `NotificationController::dropdown` → `panel`、`Notification\DropdownAction` → `PanelAction`、`_partials/dropdown.blade.php` → `_partials/notification-panel.blade.php`、route 名 `notifications.dropdown` → `notifications.panel`
 
 ## アーキテクチャ概要
 
@@ -61,7 +66,7 @@ flowchart LR
         BroadcastChan["BroadcastChannel(Pusher)"]
     end
     subgraph Receivers["受信者"]
-        UI["TopBar 通知ベル / /notifications"]
+        UI["通知パネル(Sheet) / /notifications / バッジ"]
         InboxMail["メール受信箱"]
         PusherClient["Pusher WebSocket クライアント"]
     end
@@ -285,6 +290,58 @@ class NotifyMeetingReminderAction
 
 (変更なし、既存通り `AdminAnnouncementController` + `AdminAnnouncement\StoreAction`)
 
+### UI 表面: 通知パネル(Sheet) / フルページ / バッジ
+
+通知の閲覧表面は 3 つ。**通知パネル(Sheet)** を主表面とし、深掘り用の **フルページ** とバッジ表示を補助とする。
+
+| # | 表面 | 用途 | 実装 |
+|---|---|---|---|
+| 1 | **通知パネル(右側 Sheet)** | 主表面。学習中のチラ見・素早い既読化(全利用シーンの ~80%) | `views/notifications/_partials/notification-panel.blade.php` + `resources/js/notification/notification-panel.js`(Alpine.js + Tailwind `transition-transform`) |
+| 2 | `/notifications` フルページ | 深掘り / 履歴閲覧 / URL 共有 / モバイル長文閲覧 | `views/notifications/index.blade.php`(既設) |
+| 3 | TopBar / サイドバーバッジ | 未読件数の常時可視化 | `NotificationBadgeComposer` + `topbar.blade.php` / `sidebar-*.blade.php` |
+
+**通知パネル(Sheet)の仕様**:
+
+- **幅**: デスクトップ 400-480px / モバイル(< sm) 全幅
+- **開閉**: TopBar ベルクリックで toggle、ESC キー / 外側クリック / フッターリンク遷移で close
+- **状態管理**: Alpine.js `x-data="notificationPanel()"` で `open` / `tab` / `items` / `loading` をクライアント側保持
+- **タブ**: 全件 / 未読 (切替時に `GET /notifications/panel?tab=...` で内容 fetch)
+- **行構成**: 種別アイコン + タイトル + プレビュー + 経過時間 + 未読ドット
+- **行クリック**: `POST /notifications/{id}/read` → Sheet close → `data.link_route` 遷移
+- **ヘッダ**: 「全件」/「未読」の 2 タブ + 「全件既読」ボタン
+- **フッター**: 「すべての通知を見る →」リンク (→ `route('notifications.index')`)
+- **リアルタイム**: `realtime.js` が Pusher broadcast 受信時、Sheet open であれば先頭に prepend、バッジは常に +1
+
+**Sheet 内容取得エンドポイント** (`NotificationController::panel`):
+
+- リクエスト: `GET /notifications/panel?tab=all|unread`
+- レスポンス: 最新 20 件 + 未読件数を含む JSON(または Blade partial render、実装時に確定)
+- 認可: `auth` middleware(自分宛の通知のみ取得、`auth()->user()->notifications()` ベース)
+
+```mermaid
+sequenceDiagram
+    participant User as 受信者
+    participant Bell as TopBar ベル
+    participant Panel as 通知パネル(Sheet)
+    participant API as NotificationController::panel
+    participant Pusher as Pusher Echo
+
+    User->>Bell: クリック
+    Bell->>Panel: $dispatch('notification-panel:toggle')
+    Panel->>API: GET /notifications/panel?tab=all
+    API-->>Panel: 最新 20 件 + 未読件数
+    Note over Panel: 右からスライドイン
+
+    User->>Panel: 行クリック
+    Panel->>API: POST /notifications/{id}/read
+    Panel->>Panel: close()
+    Panel->>User: data.link_route へ遷移
+
+    Pusher-->>Panel: broadcast 受信(open 時)
+    Panel->>Panel: items.unshift(notification)
+    Pusher-->>Bell: バッジ +1(常時)
+```
+
 ## 関連要件マッピング
 
 | 要件 ID | 実装ポイント |
@@ -300,8 +357,9 @@ class NotifyMeetingReminderAction
 | REQ-notification-072〜074 | `NotifyMeetingReminderAction` + `SendMeetingRemindersCommand` |
 | REQ-notification-075 | 各 `MeetingRequested/Approved/Rejected` 関連を **持たない**(v3 撤回) |
 | REQ-notification-080〜089 | `Admin\AdminAnnouncementController` + `StoreAction` |
-| REQ-notification-090〜094 | `NotificationController::index/markAsRead/markAllAsRead` |
-| REQ-notification-100〜103 | `NotificationBadgeComposer` + `topbar.blade.php` ベル |
+| REQ-notification-090〜094 | `NotificationController::index/markAsRead/markAllAsRead` + `views/notifications/index.blade.php` |
+| REQ-notification-100〜102 | `NotificationBadgeComposer` + `topbar.blade.php` / `sidebar-*.blade.php` バッジ |
+| REQ-notification-103〜106 | `NotificationController::panel` + `_partials/notification-panel.blade.php` (Sheet) + `notification-panel.js` (Alpine 制御) + `realtime.js` (Pusher 受信時 DOM 同期) |
 | REQ-notification-120〜124 | 各 Notification の `broadcastOn` / `broadcastWith` + `routes/channels.php` + `realtime.js` |
 | NFR-notification-001 | 各 Action の `DB::transaction()` |
 | NFR-notification-007 | `NotifyMeetingReminderAction` の重複検査 |
@@ -331,7 +389,7 @@ class NotifyMeetingReminderAction
 
 ### Feature(HTTP)
 
-- `Notification/{Index,MarkAsRead,MarkAllAsRead,Dropdown}Test.php`
+- `Notification/{Index,MarkAsRead,MarkAllAsRead,Panel}Test.php`
 - `Admin/AdminAnnouncement/{Index,Store,Show}Test.php`
 
 ### Schedule Command

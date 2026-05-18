@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Events\CertificationCoachAttached;
+use App\Events\CertificationCoachDetached;
+use App\Listeners\SyncChatMembersOnCoachAssignmentChanged;
 use App\Listeners\UpdateLastLoginAt;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Registered;
@@ -24,6 +27,12 @@ class EventServiceProvider extends ServiceProvider
         ],
         Login::class => [
             UpdateLastLoginAt::class,
+        ],
+        CertificationCoachAttached::class => [
+            SyncChatMembersOnCoachAssignmentChanged::class,
+        ],
+        CertificationCoachDetached::class => [
+            SyncChatMembersOnCoachAssignmentChanged::class,
         ],
     ];
 

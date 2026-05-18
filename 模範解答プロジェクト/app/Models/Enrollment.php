@@ -125,6 +125,16 @@ class Enrollment extends Model
     }
 
     /**
+     * 受講登録に紐づく chat ルーム(1 Enrollment = 1 ChatRoom、受講登録時に eager 生成される)。
+     *
+     * @return HasOne<ChatRoom, $this>
+     */
+    public function chatRoom(): HasOne
+    {
+        return $this->hasOne(ChatRoom::class);
+    }
+
+    /**
      * @return HasMany<SectionProgress, $this>
      */
     public function sectionProgresses(): HasMany

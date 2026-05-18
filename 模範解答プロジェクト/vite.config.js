@@ -13,6 +13,7 @@ export default defineConfig({
                 'resources/js/content-management/reorder.js',
                 'resources/js/mock-exam/answer-autosave.js',
                 'resources/js/mentoring/slot-picker.js',
+                'resources/js/chat/realtime.js',
             ],
             refresh: true,
         }),

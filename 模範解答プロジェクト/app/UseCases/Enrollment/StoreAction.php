@@ -9,8 +9,10 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\TermType;
 use App\Exceptions\Enrollment\EnrollmentAlreadyEnrolledException;
 use App\Models\Certification;
+use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\User;
+use App\Services\ChatMemberSyncService;
 use App\Services\DefaultEnrollmentService;
 use App\Services\EnrollmentStatusChangeService;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +36,7 @@ final class StoreAction
     public function __construct(
         private readonly EnrollmentStatusChangeService $statusChanger,
         private readonly DefaultEnrollmentService $defaultEnrollmentService,
+        private readonly ChatMemberSyncService $chatMemberSync,
     ) {}
 
     /**
@@ -81,6 +84,13 @@ final class StoreAction
             );
 
             $this->defaultEnrollmentService->resolveAfterCreate($student, $enrollment);
+
+            $chatRoom = ChatRoom::create([
+                'enrollment_id' => $enrollment->id,
+                'last_message_at' => null,
+            ]);
+            $chatRoom->setRelation('enrollment', $enrollment->setRelation('certification', $certification));
+            $this->chatMemberSync->syncForRoom($chatRoom);
 
             return $enrollment;
         });
