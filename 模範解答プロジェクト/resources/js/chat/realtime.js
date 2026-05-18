@@ -73,7 +73,32 @@ function formatDateTime(iso) {
     return `${m}月${d}日 ${hh}:${mm}`;
 }
 
+function initComposerKeybindings() {
+    // Cmd+Enter (mac) / Ctrl+Enter (Windows / Linux) で送信、単独 Enter は改行 (textarea のデフォルト挙動を維持)。
+    const textarea = document.querySelector('textarea[data-chat-composer]');
+    if (!textarea) {
+        return;
+    }
+    const form = textarea.closest('form');
+    if (!form) {
+        return;
+    }
+
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    initComposerKeybindings();
+
     if (!window.Echo || !window.chatRoomId) {
         return;
     }

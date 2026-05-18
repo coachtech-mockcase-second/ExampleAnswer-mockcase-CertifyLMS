@@ -10,8 +10,9 @@
         name="body"
         rows="2"
         maxlength="2000"
-        placeholder="メッセージを入力... (Shift + Enter で改行、Enter で送信)"
+        placeholder="メッセージを入力... (Enter で改行 / ⌘ + Enter または Ctrl + Enter で送信)"
         aria-label="メッセージ本文"
+        data-chat-composer
         required
     />
 
