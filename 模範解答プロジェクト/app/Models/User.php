@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -209,6 +210,47 @@ class User extends Authenticatable
     public function mockExamSessions(): HasMany
     {
         return $this->hasMany(MockExamSession::class, 'user_id');
+    }
+
+    /**
+     * コーチとして担当する面談予約。受講生の予約に対し自動割当された Meeting のみが入る。
+     *
+     * @return HasMany<Meeting, $this>
+     */
+    public function meetingsAsCoach(): HasMany
+    {
+        return $this->hasMany(Meeting::class, 'coach_id');
+    }
+
+    /**
+     * 受講生本人の面談予約。enrollment 経由で取得可能だが非正規化された student_id を直接参照する。
+     *
+     * @return HasMany<Meeting, $this>
+     */
+    public function meetingsAsStudent(): HasMany
+    {
+        return $this->hasMany(Meeting::class, 'student_id');
+    }
+
+    /**
+     * コーチが [[settings-profile]] で登録した面談可能時間枠。曜日 × 時刻の繰り返し枠で表現される。
+     *
+     * @return HasMany<CoachAvailability, $this>
+     */
+    public function coachAvailabilities(): HasMany
+    {
+        return $this->hasMany(CoachAvailability::class, 'coach_id');
+    }
+
+    /**
+     * コーチの Google Calendar OAuth 認証情報(1 コーチ : 1 認証情報)。連携解除時は SoftDelete されるため、
+     * このリレーション経由で取得した行が NULL or trashed なら未連携と判定する。
+     *
+     * @return HasOne<CoachGoogleCredential, $this>
+     */
+    public function googleCredential(): HasOne
+    {
+        return $this->hasOne(CoachGoogleCredential::class, 'coach_id');
     }
 
     /**

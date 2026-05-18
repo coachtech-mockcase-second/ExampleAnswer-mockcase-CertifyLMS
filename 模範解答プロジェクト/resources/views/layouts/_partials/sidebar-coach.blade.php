@@ -13,7 +13,8 @@
     <x-nav.item route="coach.qa-board.index" icon="question-mark-circle" label="質問対応" :badge="$sidebarBadges['pendingQuestions'] ?? 0" />
     <x-nav.item route="coach.meetings.index" icon="calendar-days" label="面談管理" :badge="$sidebarBadges['todayMeetings'] ?? 0" />
 
-    <x-nav.section title="共通" :routes="['notifications.index', 'settings.profile.edit']" />
+    <x-nav.section title="共通" :routes="['notifications.index', 'settings.profile.edit', 'settings.google-calendar.index']" />
     <x-nav.item route="notifications.index" icon="bell" label="通知" :badge="$sidebarBadges['notifications'] ?? 0" />
     <x-nav.item route="settings.profile.edit" icon="cog-6-tooth" label="設定" />
+    <x-nav.item route="settings.google-calendar.index" icon="calendar-days" label="Googleカレンダー連携" />
 </x-nav.sidebar>

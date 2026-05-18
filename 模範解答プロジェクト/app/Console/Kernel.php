@@ -25,6 +25,9 @@ class Kernel extends ConsoleKernel
 
         // 滞留 open 学習セッションを max_session_seconds で強制クローズ(ブラウザ閉じ / PC スリープ等の保険)
         $schedule->command('learning:close-stale-sessions')->dailyAt('01:00')->withoutOverlapping(5);
+
+        // 終了時刻超過の reserved 面談を completed に自動遷移(15 分間隔でリアルタイム性確保)
+        $schedule->command('meetings:auto-complete')->cron('*/15 * * * *')->withoutOverlapping(5);
     }
 
     /**

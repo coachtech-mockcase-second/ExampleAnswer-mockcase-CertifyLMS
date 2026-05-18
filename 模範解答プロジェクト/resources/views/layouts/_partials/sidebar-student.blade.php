@@ -8,11 +8,11 @@
         <x-nav.item route="learning.index" icon="book-open" label="教材・演習" />
         <x-nav.item route="mock-exam.fallback.index" icon="clipboard-document-check" label="模試" :badge="$sidebarBadges['unfinishedMockExams'] ?? 0" />
 
-        <x-nav.section title="相談" :routes="['chat.index', 'qa-board.index', 'ai-chat.index', 'meetings.index']" />
+        <x-nav.section title="相談" :routes="['chat.index', 'qa-board.index', 'ai-chat.index', 'meetings.index', 'meetings.fallback.create', 'meetings.create', 'meetings.show']" />
         <x-nav.item route="chat.index" icon="chat-bubble-left-right" label="chat (コーチへ)" :badge="$sidebarBadges['unattendedChat'] ?? 0" />
         <x-nav.item route="qa-board.index" icon="question-mark-circle" label="質問掲示板" />
         <x-nav.item route="ai-chat.index" icon="sparkles" label="AI 相談" />
-        <x-nav.item route="meetings.index" icon="calendar-days" label="面談予約" />
+        <x-nav.item route="meetings.fallback.create" icon="calendar-days" label="面談予約" />
 
         <x-nav.section title="共通" :routes="['notifications.index', 'settings.profile.edit']" />
         <x-nav.item route="notifications.index" icon="bell" label="通知" :badge="$sidebarBadges['notifications'] ?? 0" />
@@ -26,6 +26,9 @@
             // 各 Feature の `{feature}.enrollments.show` ルートが存在すればそれを使い、無ければ受講登録管理画面に戻す。
             $sidebarTargetRoute = collect([
                 'learning.*' => 'learning.enrollments.show',
+                'meetings.create' => 'meetings.create',
+                'meetings.availability' => 'meetings.create',
+                'meetings.store' => 'meetings.create',
             ])->reduce(function (?string $carry, string $route, string $pattern): ?string {
                 if ($carry !== null) {
                     return $carry;

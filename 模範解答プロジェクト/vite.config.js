@@ -12,6 +12,7 @@ export default defineConfig({
                 'resources/js/content-management/option-correct.js',
                 'resources/js/content-management/reorder.js',
                 'resources/js/mock-exam/answer-autosave.js',
+                'resources/js/mentoring/slot-picker.js',
             ],
             refresh: true,
         }),

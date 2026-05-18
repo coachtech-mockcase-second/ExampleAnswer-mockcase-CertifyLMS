@@ -18,6 +18,7 @@ use App\Http\Controllers\EnrollmentGoalController;
 use App\Http\Controllers\EnrollmentNoteController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LearningHourTargetController;
+use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
 use App\Http\Controllers\MeetingQuotaPlanController;
@@ -41,6 +42,7 @@ use App\Http\Controllers\SectionQuestionAnswerController;
 use App\Http\Controllers\SectionQuestionController;
 use App\Http\Controllers\SectionQuizController;
 use App\Http\Controllers\SectionQuizResultController;
+use App\Http\Controllers\Settings\CoachGoogleCredentialController;
 use App\Http\Controllers\Settings\SettingsDefaultEnrollmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeakDrillController;
@@ -445,6 +447,52 @@ Route::middleware(['auth', 'role:student', 'active-learning'])
         Route::get('stats/{enrollment}', [QuizStatsController::class, 'index'])
             ->name('stats.index');
     });
+
+// ============================================================
+// 受講生専用ルート — 面談予約 (履歴一覧は資格横断 / 予約画面は default 資格に解決)
+// ============================================================
+Route::middleware(['auth', 'role:student', 'active-learning'])->group(function () {
+    // 履歴一覧: 資格横断、Switcher 適用なし
+    Route::get('meetings', [MeetingController::class, 'index'])->name('meetings.index');
+
+    // 予約画面エントリ: default 資格があれば canonical URL へ redirect、無ければ empty-state 表示
+    Route::get('meetings/create', [MeetingController::class, 'createFallback'])
+        ->middleware('resolve-default-enrollment:meetings.create')
+        ->name('meetings.fallback.create');
+
+    // 予約画面 canonical: URL に Enrollment を含む
+    Route::prefix('enrollments/{enrollment}')->group(function () {
+        Route::get('meetings/create', [MeetingController::class, 'create'])->name('meetings.create');
+        Route::get('meetings/availability', [MeetingController::class, 'fetchAvailability'])->name('meetings.availability');
+        Route::post('meetings', [MeetingController::class, 'store'])->name('meetings.store');
+    });
+});
+
+// ============================================================
+// 当事者共通ルート — 面談予約の詳細 / キャンセル
+// ============================================================
+Route::middleware('auth')->group(function () {
+    Route::get('meetings/{meeting}', [MeetingController::class, 'show'])->name('meetings.show');
+    Route::post('meetings/{meeting}/cancel', [MeetingController::class, 'cancel'])->name('meetings.cancel');
+});
+
+// ============================================================
+// コーチ専用ルート — 面談管理 / メモ記録
+// ============================================================
+Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')->group(function () {
+    Route::get('meetings', [MeetingController::class, 'indexAsCoach'])->name('meetings.index');
+    Route::put('meetings/{meeting}/memo', [MeetingController::class, 'upsertMemo'])->name('meetings.memo');
+});
+
+// ============================================================
+// コーチ専用ルート — Google カレンダー連携
+// ============================================================
+Route::middleware(['auth', 'role:coach'])->prefix('settings/google-calendar')->name('settings.google-calendar.')->group(function () {
+    Route::get('/', [CoachGoogleCredentialController::class, 'index'])->name('index');
+    Route::get('connect', [CoachGoogleCredentialController::class, 'redirect'])->name('redirect');
+    Route::get('callback', [CoachGoogleCredentialController::class, 'callback'])->name('callback');
+    Route::delete('/', [CoachGoogleCredentialController::class, 'destroy'])->name('destroy');
+});
 
 // ============================================================
 // 受講生専用ルート(受講中=in_progress のみ通過)

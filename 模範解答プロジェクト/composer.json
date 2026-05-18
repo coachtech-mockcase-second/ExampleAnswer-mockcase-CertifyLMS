@@ -7,6 +7,7 @@
     "require": {
         "php": "^8.1",
         "blade-ui-kit/blade-heroicons": "^2.7",
+        "google/apiclient": "^2.19",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^10.10",

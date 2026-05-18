@@ -12,8 +12,10 @@ use App\Models\Enrollment;
 use App\Models\EnrollmentGoal;
 use App\Models\EnrollmentNote;
 use App\Models\Invitation;
+use App\Models\CoachAvailability;
 use App\Models\LearningHourTarget;
 use App\Models\LearningSession;
+use App\Models\Meeting;
 use App\Models\MeetingQuotaPlan;
 use App\Models\MockExam;
 use App\Models\MockExamQuestion;
@@ -32,12 +34,14 @@ use App\Policies\CertificationCategoryPolicy;
 use App\Policies\CertificationPolicy;
 use App\Policies\ChapterPolicy;
 use App\Policies\ChapterViewPolicy;
+use App\Policies\CoachAvailabilityPolicy;
 use App\Policies\EnrollmentGoalPolicy;
 use App\Policies\EnrollmentNotePolicy;
 use App\Policies\EnrollmentPolicy;
 use App\Policies\InvitationPolicy;
 use App\Policies\LearningHourTargetPolicy;
 use App\Policies\LearningSessionPolicy;
+use App\Policies\MeetingPolicy;
 use App\Policies\MeetingQuotaPlanPolicy;
 use App\Policies\MeetingQuotaPolicy;
 use App\Policies\MockExamPolicy;
@@ -90,6 +94,8 @@ class AuthServiceProvider extends ServiceProvider
         LearningHourTarget::class => LearningHourTargetPolicy::class,
         SectionQuestionAnswer::class => SectionQuestionAnswerPolicy::class,
         SectionQuestionAttempt::class => SectionQuestionAttemptPolicy::class,
+        Meeting::class => MeetingPolicy::class,
+        CoachAvailability::class => CoachAvailabilityPolicy::class,
     ];
 
     /**

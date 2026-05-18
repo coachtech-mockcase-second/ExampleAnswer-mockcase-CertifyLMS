@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             CertificationCategorySeeder::class,
             CertificationSeeder::class,
             EnrollmentSeeder::class,
+            MentoringSeeder::class,
             ContentSeeder::class,
             LearningSeeder::class,
             QuizAnsweringSeeder::class,

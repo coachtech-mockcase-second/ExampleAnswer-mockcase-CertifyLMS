@@ -39,11 +39,11 @@ class CertificatePdfService
 
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_left' => 22,
-            'margin_right' => 22,
-            'margin_top' => 22,
-            'margin_bottom' => 22,
+            'format' => 'A4-L',
+            'margin_left' => 18,
+            'margin_right' => 18,
+            'margin_top' => 14,
+            'margin_bottom' => 14,
             'default_font' => 'sun-exta',
             'tempDir' => $tempDir,
         ]);
