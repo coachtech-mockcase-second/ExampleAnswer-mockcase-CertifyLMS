@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureActiveLearning;
 use App\Http\Middleware\EnsureUserRole;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\ResolveDefaultEnrollment;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
@@ -93,6 +94,7 @@ class Kernel extends HttpKernel
         'guest' => RedirectIfAuthenticated::class,
         'password.confirm' => RequirePassword::class,
         'precognitive' => HandlePrecognitiveRequests::class,
+        'resolve-default-enrollment' => ResolveDefaultEnrollment::class,
         'role' => EnsureUserRole::class,
         'signed' => ValidateSignature::class,
         'stripe.signature' => VerifyStripeSignature::class,

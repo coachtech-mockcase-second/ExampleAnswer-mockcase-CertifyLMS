@@ -169,7 +169,35 @@ paths:
 └─────────────────────────────────┘
 ```
 
-`受講中資格`(`/enrollments`)は登録管理(個人目標 / 修了証受領 / 受講解除 / 状態遷移履歴)の入口。資格を選んで教材を読む動線は別 Feature [[learning]] の `/learning` 配下が提供する(資格カードから Part → Chapter → Section への深掘り)。**両者は責務分離**(管理 vs 学習動線)で、受講生サイドバーには両方を独立した item として並べる。
+`受講中資格`(`/enrollments`)は登録管理(個人目標 / 修了証受領 / 受講解除 / 状態遷移履歴 + **デフォルト資格選択 UI**)の入口。資格を選んで教材を読む動線は別 Feature [[learning]] の `/learning` 配下が提供する(資格カードから Part → Chapter → Section への深掘り)。**両者は責務分離**(管理 vs 学習動線)で、受講生サイドバーには両方を独立した item として並べる。
+
+### サイドバー下部の Switcher 常設 + 各画面 inline Switcher (v3.5、[[default-enrollment]] 統合)
+
+学生のサイドバーには共通メニューの下に **`<x-enrollment-switcher variant="sidebar">` を常設**する。`users.default_enrollment_id` で永続化された「現在のデフォルト資格」を表示し、dropdown でグローバルに資格を切替できる(2 アクション: 行クリック=単発切替、「デフォルト」バッジクリック=デフォルト変更+切替、ifield-lms 流)。
+
+```
+┌─────────────────────────────────┐
+│ ダッシュボード         [home]    │ → dashboard.index
+├─────────────────────────────────┤
+│ 学習                            │
+│ 資格カタログ ...                │
+│ 受講中資格 ...                  │
+│ 教材 ...                        │ → 内部で resolve-default-enrollment Middleware が default に解決
+│ 模試 ...                        │ → 同上、/learning/enrollments/{default}/mock-exams へ
+├─────────────────────────────────┤
+│ 相談                            │
+│ chat / 質問掲示板 / AI / 面談予約│
+├─────────────────────────────────┤
+│ 共通                            │
+│ 通知 / 設定                     │
+├─────────────────────────────────┤
+│ 現在: 〇〇試験 ▼                 │ ← v3.5 新規、<x-enrollment-switcher variant="sidebar">
+└─────────────────────────────────┘
+```
+
+加えて、**`learning` / `mock-exam` / `mentoring` 予約画面** の 2 階層目以降の上部に `<x-enrollment-switcher variant="inline">` を埋込み、画面文脈に近い切替動線を提供する。`quiz-answering` / `dashboard` / `qa-board` / `ai-chat` / `chat` / `mentoring 履歴一覧` ではインライン Switcher は持たず、サイドバー Switcher のみで完結する(画面内ロジックで資格選択が完結するため)。
+
+Component 詳細は [[default-enrollment]] spec を参照。
 
 ### サイドバー実装規約
 

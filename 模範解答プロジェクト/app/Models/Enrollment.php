@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * で参照する。修了は受講生「修了証を受け取る」自己発火で即時 passed 遷移し、admin 承認フローは持たない。
  *
  * 関連: User(受講生) / Certification / Certificate(発行済修了証) / EnrollmentGoal / EnrollmentNote / EnrollmentStatusLog / MockExamSession
+ * 逆リレーション: defaultedByUser(受講生がデフォルト資格として指している場合のみ存在)
  * scope: learning() / passed() / failed() / forUser(User)
  */
 class Enrollment extends Model
@@ -110,6 +111,41 @@ class Enrollment extends Model
     public function mockExamSessions(): HasMany
     {
         return $this->hasMany(MockExamSession::class);
+    }
+
+    /**
+     * 本受講登録をデフォルト資格として指している受講生(0 または 1 件)。
+     * Enrollment は単一受講生に属するため、`defaultedByUser` も 1 件以下となる。
+     *
+     * @return HasOne<User, $this>
+     */
+    public function defaultedByUser(): HasOne
+    {
+        return $this->hasOne(User::class, 'default_enrollment_id', 'id');
+    }
+
+    /**
+     * @return HasMany<SectionProgress, $this>
+     */
+    public function sectionProgresses(): HasMany
+    {
+        return $this->hasMany(SectionProgress::class);
+    }
+
+    /**
+     * @return HasMany<LearningSession, $this>
+     */
+    public function learningSessions(): HasMany
+    {
+        return $this->hasMany(LearningSession::class);
+    }
+
+    /**
+     * @return HasOne<LearningHourTarget, $this>
+     */
+    public function learningHourTarget(): HasOne
+    {
+        return $this->hasOne(LearningHourTarget::class);
     }
 
     public function scopeLearning(Builder $query): Builder

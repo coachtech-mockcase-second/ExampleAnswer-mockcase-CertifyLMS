@@ -11,6 +11,7 @@ use App\Exceptions\Enrollment\EnrollmentAlreadyEnrolledException;
 use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\User;
+use App\Services\DefaultEnrollmentService;
 use App\Services\EnrollmentStatusChangeService;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -22,6 +23,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * - 同一 user × certification の Enrollment が active(非 SoftDelete) で存在する場合は 409
  * - 初期値: status=learning / current_term=basic_learning / passed_at=null
  * - 直後に EnrollmentStatusLog(from_status=null / to_status=learning / changed_reason='新規登録') を 1 件記録
+ * - 初回登録時(受講生の default_enrollment_id が NULL)は自動的に当該 Enrollment をデフォルトに設定
  *
  * 担当コーチの自動設定は行わない(資格 × N コーチ N:N、certification_coach_assignments で資格経由)。
  *
@@ -31,6 +33,7 @@ final class StoreAction
 {
     public function __construct(
         private readonly EnrollmentStatusChangeService $statusChanger,
+        private readonly DefaultEnrollmentService $defaultEnrollmentService,
     ) {}
 
     /**
@@ -76,6 +79,8 @@ final class StoreAction
                 changedBy: $student,
                 reason: '新規登録',
             );
+
+            $this->defaultEnrollmentService->resolveAfterCreate($student, $enrollment);
 
             return $enrollment;
         });

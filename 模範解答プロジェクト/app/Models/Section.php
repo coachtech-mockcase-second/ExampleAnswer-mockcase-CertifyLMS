@@ -65,6 +65,22 @@ class Section extends Model
         return $this->hasMany(SectionImage::class);
     }
 
+    /**
+     * @return HasMany<LearningSession, $this>
+     */
+    public function learningSessions(): HasMany
+    {
+        return $this->hasMany(LearningSession::class);
+    }
+
+    /**
+     * @return HasMany<SectionProgress, $this>
+     */
+    public function progresses(): HasMany
+    {
+        return $this->hasMany(SectionProgress::class);
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', ContentStatus::Published->value)

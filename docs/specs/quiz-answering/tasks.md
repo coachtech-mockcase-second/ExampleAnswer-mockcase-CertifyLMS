@@ -222,3 +222,24 @@
   - [ ] 結果画面でブラウザバック → 出題画面に戻り、再度解答送信できる(answer は別レコードで INSERT、attempt_count += 1)
 - [ ] SectionQuestion を SoftDelete / Draft 化 → 解答送信 409、過去履歴は表示維持(`selected_option_body` snapshot で選択肢本文も残る)
 - [ ] mock-exam 未実装環境で「おすすめバッジ」が全カテゴリ false 表示になることを確認(NullObject フォールバック)
+
+## v3.5 改修タスク — 教材画面の「演習問題」タブから到達 URL + スコアサマリ Service 公開
+
+### スコアサマリ Service 新設 ([[learning]] 連携)
+
+- [ ] **`App\Services\SectionQuestionScoreService` 新設** — 公開メソッド:
+  - `summarize(User $user, Section $section): SectionQuestionScoreSummary` — 単一 Section の集計(挑戦回数 / 最高スコア / 最新スコア)
+  - `batchSummarize(User $user, Enrollment $enrollment): Collection<Section.id => SectionQuestionScoreSummary>` — Enrollment 配下の全 Section を 1 クエリで集計(1ショット SQL、N+1 回避)
+- [ ] **`App\DTOs\SectionQuestionScoreSummary` readonly class 新設** — `attempt_count: int` / `best_score: int|null` / `latest_score: int|null` / `latest_answered_at: Carbon|null` / `accuracy_rate: float|null`(%)
+- [ ] テスト: `tests/Unit/Services/SectionQuestionScoreServiceTest.php`(`summarize` / `batchSummarize` の各種パターン、N+1 確認)
+
+### 教材画面「演習問題」タブからの到達 URL
+
+- [ ] **`routes/web.php` に「Section ひも付き問題演習」の到達 URL を追加**: `GET /learning/sections/{section}/quiz` (or 既存の `/quiz/sections/{section}` を活用)。教材画面の「演習問題」タブの各 Section リンクから遷移可能にする(REQ-learning-052, 053)
+- [ ] **教材画面 (`views/learning/enrollments/_partials/quizzes-tab.blade.php`) からの遷移時に SectionQuestionScoreService のスコアサマリを表示**: 挑戦回数 / 最高 / 最新を `<x-learning.section-score-row>` Component で展開(REQ-learning-052)
+- [ ] **Section 詳細画面 (`/learning/sections/{section}`) の読了ボタン付近に「Section 紐づき問題演習へ」リンク + 最新スコア表示**(REQ-learning-053、iField LMS `SectionQuizButton` 相当)
+
+### 関連要件マッピング追加
+
+- REQ-learning-052: `SectionQuestionScoreService::batchSummarize` を [[learning]] の `ShowEnrollmentAction` から呼出
+- REQ-learning-053: Section 詳細の「演習問題へ」リンクは本 Feature の Section 演習 URL に遷移

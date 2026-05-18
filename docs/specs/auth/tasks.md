@@ -22,7 +22,8 @@
 
 ### Model
 
-- [ ] `App\Models\User`(`HasUlids` + `HasFactory` + `SoftDeletes` + `Notifiable` + fillable + `$casts['role'=>UserRole, 'status'=>UserStatus, 'last_login_at'=>'datetime', 'plan_started_at'=>'datetime', 'plan_expires_at'=>'datetime']` + **`belongsTo(Plan)`(v3)** + `hasMany(Invitation)` + `scopeActive`(v3 で `whereIn('status', [InProgress, Graduated])`))(REQ-auth-001)
+- [ ] `App\Models\User`(`HasUlids` + `HasFactory` + `SoftDeletes` + `Notifiable` + fillable(**`default_enrollment_id` 含む**、v3 [[default-enrollment]]) + `$casts['role'=>UserRole, 'status'=>UserStatus, 'last_login_at'=>'datetime', 'plan_started_at'=>'datetime', 'plan_expires_at'=>'datetime']` + **`belongsTo(Plan)`(v3)** + `hasMany(Invitation)` + **`belongsTo(Enrollment, 'default_enrollment_id', 'id')` リレーション `defaultEnrollment()`**([[default-enrollment]] 連携) + `scopeActive`(v3 で `whereIn('status', [InProgress, Graduated])`))(REQ-auth-001)
+- [ ] **`users.default_enrollment_id` カラム migration は [[default-enrollment]] が所有**(本 Feature では Model の fillable + リレーション宣言のみ、`{date}_add_default_enrollment_id_to_users_table.php` は default-enrollment Feature の Step 1 で作成)
 - [ ] `App\Models\Invitation`(fillable + casts + `belongsTo(User)` + `belongsTo(User, invited_by_user_id, invitedBy)`)
 - [ ] Factory: `UserFactory`(`invited()` / **`inProgress()`(v3 で `active()` から rename)** / **`graduated()`(v3 新規)** / `withdrawn()` / `coach()` / `student()` / `admin()` / `withPlan(Plan)` state)
 - [ ] Factory: `InvitationFactory`(`pending()` / `accepted()` / `expired()` / `revoked()` state)

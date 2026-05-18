@@ -171,6 +171,7 @@ spec ディレクトリは **kebab-case**、app/ 配下のディレクトリは 
 | `docs/specs/mock-exam/` | `app/UseCases/MockExam/` / `MockExamSession/` | 同上 |
 | `docs/specs/plan-management/` | `app/UseCases/Plan/` | 単一 |
 | `docs/specs/meeting-quota/` | `app/UseCases/MeetingQuota/` | 単一 |
+| `docs/specs/default-enrollment/` | `app/UseCases/UserPreference/` | **変則**(Feature 名 ≠ Entity 名、cross-cutting infrastructure、独自モデルなし、`users.default_enrollment_id` カラム拡張のみ。Action は `UpdateDefaultEnrollmentAction` のみで将来の preference 拡張を見越して `UserPreference/` 配下に配置) |
 
 **変換ルール**:
 - Feature 名（kebab-case）はドメイン領域を表す。**spec のフォルダ名 = Feature 名**

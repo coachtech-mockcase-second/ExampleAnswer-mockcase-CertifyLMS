@@ -622,3 +622,58 @@ class UpdateAction
 - **`AutoSubmitExpiredMockExamSessionsCommandTest.php`** — Schedule Command なし
 - **`MockExamSessionTimeExceededExceptionTest.php`** — 例外なし
 - **`MockExamSessionTimerJSTest.php`** — タイマー UI なし
+
+## v3.5 改修 — URL 再設計 + [[default-enrollment]] 統合
+
+### Routes 再設計
+
+```php
+// 旧 /mock-exams 直接アクセスは Middleware で default 解決(deprecated path、内部 redirect 専用)
+Route::middleware(['auth', 'role:student', 'active-learning'])->group(function () {
+    Route::get('mock-exams', fn () => abort(404))
+        ->middleware('resolve-default-enrollment:mock-exam.catalog.index')
+        ->name('mock-exam.deprecated.index');
+});
+
+// 新 URL (v3.5、/learning 配下に集約)
+Route::middleware(['auth', 'role:student', 'active-learning'])
+    ->prefix('learning/enrollments/{enrollment}')
+    ->name('mock-exam.')
+    ->group(function () {
+        Route::get('mock-exams', [MockExamCatalogController::class, 'index'])->name('catalog.index');
+        Route::get('mock-exams/{mockExam}', [MockExamCatalogController::class, 'show'])->name('catalog.show');
+        Route::post('mock-exams/{mockExam}/sessions', [MockExamSessionController::class, 'store'])->name('sessions.store');
+    });
+
+// MockExamSession 系は維持(セッション ID で参照、enrollment コンテキスト不要)
+Route::middleware(['auth', 'role:student', 'active-learning'])->group(function () {
+    Route::get('mock-exam-sessions/{session}', ...);
+    Route::post('mock-exam-sessions/{session}/start', ...);
+    Route::patch('mock-exam-sessions/{session}/answers', ...);
+    Route::post('mock-exam-sessions/{session}/submit', ...);
+    Route::delete('mock-exam-sessions/{session}', ...);
+});
+```
+
+### Controller 改修
+
+- `MockExamCatalogController::index`: Route Model Binding で `$enrollment` を受け、`$enrollment->certification->mockExams()->where('is_published', true)->orderBy('order')->get()` で一覧取得
+- `MockExamCatalogController::show`: 同上、`$enrollment` + `$mockExam` の整合性検証(`$mockExam->certification_id === $enrollment->certification_id`)を `MockExamPolicy::view` で実施
+
+### Blade 改修
+
+- `views/mock-exams/index.blade.php` / `show.blade.php` の上部に `<x-enrollment-switcher variant="inline" :current="$enrollment" />` 埋込
+- パンくず: `受講中資格 > {certification.name} > 模試一覧 > {mock_exam.title}`
+
+### サイドバー動線
+
+- `resources/views/layouts/_partials/sidebar-student.blade.php` の「模試」リンクの `href` を `auth()->user()->default_enrollment_id` から動的解決
+
+### 関連要件マッピング追加 (v3.5)
+
+| 要件 ID | 実装ポイント |
+|---|---|
+| REQ-mock-exam-180 | `routes/web.php` の `resolve-default-enrollment:mock-exam.catalog.index` Middleware |
+| REQ-mock-exam-181, 182 | URL prefix 再設計 |
+| REQ-mock-exam-185 | inline Switcher 埋込 |
+| REQ-mock-exam-186 | sidebar 動的 route 解決 |

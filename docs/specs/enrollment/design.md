@@ -15,6 +15,7 @@
 [UseCase] StoreAction / FailAction / ReceiveCertificateAction / Goal/Note 各 CRUD Action
   ↓
 [Service] CompletionEligibilityService / TermJudgementService / EnrollmentStatsService / EnrollmentStatusChangeService
+  ↓ + [[default-enrollment]] DefaultEnrollmentService 呼出(StoreAction / FailAction / ResumeAction / ReceiveCertificateAction / FailExpiredCommand から、resolveAfterCreate / resolveAfterStatusChange、constructor injection)
   ↓
 [Model] Enrollment / EnrollmentGoal / EnrollmentNote / EnrollmentStatusLog
   ↓
@@ -164,3 +165,25 @@ public function isEligible(Enrollment $enrollment): bool
 - `tests/Feature/UseCases/Enrollment/ReceiveCertificateActionTest.php`: eligible 検証 + status 遷移 + Certificate 発行 + 通知発火
 - `tests/Feature/Commands/FailExpiredCommandTest.php`
 - `tests/Unit/Services/CompletionEligibilityServiceTest.php` / `TermJudgementServiceTest.php`
+
+## [[default-enrollment]] 連携 (v3 cross-cutting infrastructure)
+
+本 Feature は受講登録 / 状態遷移の各 Action 内で [[default-enrollment]] の `DefaultEnrollmentService` を呼び、`users.default_enrollment_id` の自動設定 / 自動振替 / NULL リセットを連動させる。
+
+### 連携箇所
+
+| Action / Command | 呼出メソッド | タイミング |
+|---|---|---|
+| `Enrollment\StoreAction` | `resolveAfterCreate($user, $newEnrollment)` | 受講登録 INSERT 直後(同一 DB::transaction 内) |
+| `Enrollment\FailAction` | `resolveAfterStatusChange($user, $changedEnrollment)` | admin 手動失敗マークで `failed` 遷移直後 |
+| `Enrollment\ResumeAction` | `resolveAfterStatusChange($user, $changedEnrollment)` | `failed → learning` 再挑戦遷移直後 |
+| `Enrollment\ReceiveCertificateAction` | `resolveAfterStatusChange($user, $changedEnrollment)` | `learning → passed` 修了遷移直後 |
+| `FailExpiredEnrollmentsCommand` | `resolveAfterStatusChange($user, $enrollment)` | 試験日超過自動失敗で `failed` 遷移直後 |
+
+### 依存方向
+
+enrollment → default-enrollment(本 Feature が依存元)。各 Action の constructor injection で `DefaultEnrollmentService $defaultEnrollmentService` を受ける(`backend-usecases.md` 規約準拠)。
+
+### 受講中資格画面の default UI
+
+`/enrollments` index 画面 (`views/enrollments/index.blade.php`) の各 Enrollment カードに `<x-enrollment-switcher.card :enrollment="$e" :is-default="$e->id === auth()->user()->default_enrollment_id" />` を埋込み、「★デフォルト」バッジ + 「これをデフォルトにする」フォーム POST を表示する。本 UI は [[default-enrollment]] Feature が Blade Component を提供し、enrollment Feature の Blade で include する形を取る。

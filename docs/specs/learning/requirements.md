@@ -29,7 +29,7 @@
 
 ### 機能要件 — B. 教材ブラウジング
 
-- **REQ-learning-010**: When 受講生が `/learning` にアクセスした際, the system shall ログイン受講生の `Enrollment::status IN (learning, passed)` 一覧をカード形式で表示する（**`passed` も含めて表示**、v3 改修）。各カードに資格名 / 現在ターム / 直近活動日 / 進捗率 / 試験日カウントダウン / 修了済バッジ（passed のみ）を表示。`failed` Enrollment は本一覧から除外。
+- **REQ-learning-010**: When 受講生が `/learning` index にアクセスした際, the system shall [[default-enrollment]] の `ResolveDefaultEnrollment` Middleware で default 資格の 2 階層目 (`/learning/enrollments/{default_enrollment}`) に自動 redirect する。default NULL かつ Enrollment 2+ 件の場合は教材ページレイアウト内に `<x-enrollment-switcher variant="empty-state" />` で「学習する資格を選択してください」UI を表示し、redirect しない。default NULL かつ Enrollment 0 件の場合は「資格カタログから申し込む」CTA を表示する。**1 階層目の「受講中資格カード一覧」は撤回**(v3.5、`/enrollments` に責務集約、[[default-enrollment]] 統合)。
 - **REQ-learning-011**: When 受講生が `/learning/enrollments/{enrollment}` にアクセスした際, the system shall 当該 Enrollment が所有者本人 + `EnrollmentPolicy::view` を検証し、所有資格の **公開済 Part 一覧** を `order ASC` で表示する。
 - **REQ-learning-012**: When 受講生が `/learning/parts/{part}` にアクセスした際, the system shall 親 Certification への受講登録（`enrollments.status IN (learning, passed)`）を検証し、配下の **公開済 Chapter 一覧** を `order ASC` で表示する。
 - **REQ-learning-013**: When 受講生が `/learning/chapters/{chapter}` にアクセスした際, the system shall 同様の検証を行い、配下の **公開済 Section 一覧**（読了状態バッジ付き）を `order ASC` で表示する。
@@ -47,17 +47,28 @@
 - **REQ-learning-022**: When 受講生が `DELETE /learning/sections/{section}/read` を呼んだ際, the system shall 当該 `SectionProgress` を SoftDelete する。
 - **REQ-learning-023**: If 対象 Section が非公開（Section / 親 Chapter / 親 Part のいずれかが `Draft` または SoftDelete 済）の場合, then the system shall 読了マーク操作を `SectionUnavailableForProgressException`（HTTP 409）で拒否する。
 - **REQ-learning-024**: If 対象 Enrollment が `status = failed` の場合, then the system shall 読了マーク操作を `EnrollmentInactiveException`（HTTP 409）で拒否する。`learning` / `passed` は許容（passed も復習として読了マーク可）。
+- **REQ-learning-025**: When 受講生が読了マーク POST (`POST /learning/sections/{section}/read`) に成功した直後, the system shall Section 詳細画面にリダイレクトし、セッションフラッシュ `section_just_completed = $section->id` を付与する。Blade 側で `@if(session('section_just_completed') === $section->id)` 判定により「読了おめでとうモーダル」を自動表示する(iField LMS `CongratulationsModal` 相当)。
+- **REQ-learning-026**: When 読了モーダルが表示される際, the system shall モーダル内に以下のネクストアクション動線を表示する: (a)「次の Section へ」リンク(同 Chapter 内の sibling、`order` で次がある場合)、(b)「Section 紐づき問題演習へ」リンク([[quiz-answering]] の Section 演習画面、当該 Section に SectionQuestion が存在する場合のみ表示)、(c)「Chapter 一覧へ戻る」リンク。
+- **REQ-learning-027**: When 読了モーダル内に「次の Section へ」リンクが表示される場合, the system shall 同 Chapter 内に next sibling Section が存在しない場合(= 最終 Section の場合)は当該リンクを非表示にし、代わりに「次の Chapter へ」リンク(親 Part 内の next sibling Chapter の最初 Section) or「Part 一覧へ戻る」リンクを表示する。
+- **REQ-learning-028**: When 受講生が Section 詳細画面 (`/learning/sections/{section}`) を表示する, the system shall 画面下部に前後 Section 遷移ボタン (← 前の Section / 次の Section →) を表示する。同 Chapter 内の sibling Section を `order ASC` で並べ、現在 Section の前後を判定する(iField LMS `SectionNavigation` 相当)。
+- **REQ-learning-029**: If 現在 Section が同 Chapter 内の最初 Section の場合, then the system shall 「前の Section へ」ボタンを `disabled` 状態で表示し、最終 Section の場合は「次の Section へ」ボタンを `disabled` 状態で表示する(視覚的に位置を示す UI)。
 
 ### 機能要件 — D. 学習セッション
 
 - **REQ-learning-040**: When 受講生が `GET /learning/sections/{section}` で Section 詳細ページを表示する際, the system shall `BrowseController::showSection` の処理内で同期的に `LearningSession\StartAction::__invoke($student, $section)` を呼び、`learning_sessions` に新規行を INSERT する。**JS / クライアント側からの API 呼出は不要**(サーバ側 auto-start、本 Feature は `POST /learning/sessions/start` エンドポイントを持たない)。
 - **REQ-learning-041**: When 新規セッション INSERT 直前, the system shall 同一 `user_id` の未終了セッションを `SessionCloseService::closeOpenSessions(User, asAutoClosed: true)` で一括クローズする(別 Section 遷移時の自動切替)。
 - **REQ-learning-042**: The system shall `max_session_seconds` を `config('learning.max_session_seconds', 3600)` で設定可能とする（デフォルト 60 分、Schedule Command 閾値と同期）。
-- **REQ-learning-043**: When 受講生が「学習を一旦終える」ボタンから `POST /learning/sessions/{session}/stop` を HTML form で送信した際, the system shall `LearningSessionPolicy::update` 検証 + `ended_at` UPDATE + `duration_seconds` clamp 計算 + `auto_closed=false` 設定を実行し、`/learning`(index)へ 302 redirect する。
-- **REQ-learning-044**: If `stop` 対象が既にクローズ済, then the system shall idempotent に既存状態を維持し 302 redirect で受理する(エラー扱いしない)。
 - **REQ-learning-047**: When Schedule Command `learning:close-stale-sessions` が日次 00:30 に起動する, the system shall 未終了 + 経過時間 `> max_session_seconds` のセッションを `auto_closed=true` で一括クローズする(ブラウザ閉じ / PC スリープ等の不可避ケースの保険)。
 - **REQ-learning-048**: If `BrowseController::showSection` 内の auto-start 時、対応する Enrollment が `status = failed` の場合, then the system shall `EnrollmentInactiveException`（HTTP 409）で拒否する。`learning` / `passed` は許容。
-- **REQ-learning-049**: The system shall **JavaScript / `navigator.sendBeacon` / `pagehide` / `visibilitychange` / heartbeat / タブ可視性検知を採用しない**(2026-05-16 確定)。学習時間トラッキングの整合性は「サーバ側 auto-start による別 Section 遷移時の自動切替 + Schedule Command の `max_session_seconds` clamp auto-close」の 2 重保険で担保する。
+- **REQ-learning-049**: The system shall **JavaScript / `navigator.sendBeacon` / `pagehide` / `visibilitychange` / heartbeat / タブ可視性検知を採用しない**(2026-05-16 確定)。**「学習を一旦終える」明示停止ボタンも撤回**(v3.5、UX 観点で不要と判断)。学習時間トラッキングの整合性は「サーバ側 auto-start による別 Section 遷移時の自動切替 + Schedule Command の `max_session_seconds` clamp auto-close」の 2 重保険で担保する。LearningSessionController / LearningSession\StopAction / `POST /learning/sessions/{session}/stop` ルートはすべて持たない。
+
+### 機能要件 — D2. 教材/演習問題タブ + 前後 Section 遷移 + Switcher 埋込 (v3.5)
+
+- **REQ-learning-050**: When 受講生が `/learning/enrollments/{enrollment}` (2 階層目、教材 Part 一覧) にアクセスした際, the system shall 画面上部に「教材」「演習問題」の 2 タブを表示する(iField LMS `ContentsTabs` 相当)。タブ切替は URL クエリパラメータ `?tab=contents|quizzes` で管理する(デフォルト `contents`)。
+- **REQ-learning-051**: When 「教材」タブが選択されている場合, the system shall Part → Chapter → Section の階層を expandable list 形式で表示し、各 Section に読了バッジを併記する。
+- **REQ-learning-052**: When 「演習問題」タブが選択されている場合, the system shall 同 Part → Chapter → Section の階層を表示し、各 Section に紐づく [[quiz-answering]] の SectionQuestion 集合への遷移リンク + **挑戦回数 / 最高スコア / 最新スコア** を表示する。スコア表示は [[quiz-answering]] の `SectionQuestionScoreService::summarize(User, Section)` を呼び出して取得する(iField LMS `QuizListTab` 相当)。
+- **REQ-learning-053**: When 受講生が Section 詳細画面 (`/learning/sections/{section}`) を表示する際, the system shall 読了マークボタンの近くに「Section 紐づき問題演習へ」リンク([[quiz-answering]] の Section 演習画面、`/learning/sections/{section}/quiz` or similar) + 当該 Section の最新スコアを表示する(iField LMS `SectionQuizButton` 相当)。SectionQuestion が 0 件の場合は本リンクを非表示にする。
+- **REQ-learning-054**: When 受講生が `/learning/enrollments/{enrollment}` 配下のいずれの画面 (Part / Chapter / Section 詳細) を表示する際, the system shall 画面上部に [[default-enrollment]] の `<x-enrollment-switcher variant="inline" :current="$enrollment">` Component を埋め込み、資格切替動線を提供する。
 
 ### 機能要件 — E. 進捗集計（ProgressService）
 
@@ -100,8 +111,10 @@
 
 ## スコープ外
 
+- **「学習を一旦終える」明示停止ボタン** — v3.5 で撤回(UX 観点で不要、auto-close で十分)
+- **`/learning` index の受講中資格カード一覧** — v3.5 で撤回([[default-enrollment]] と [[enrollment]] に責務集約)
 - **教材階層の CRUD** — [[content-management]] が所有
-- **問題演習** — [[quiz-answering]] が所有
+- **問題演習** — [[quiz-answering]] が所有(本 Feature は教材タブから動線リンクのみ提供)
 - **mock-exam 受験時間トラッキング** — [[mock-exam]] が別途持つ
 - **AI チャット時間トラッキング** — [[ai-chat]] スコープ
 - **滞留検知 / `StagnationDetectionService`** — **v3 撤回**、本 Feature では持たない

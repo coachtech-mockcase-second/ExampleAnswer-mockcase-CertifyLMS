@@ -78,7 +78,7 @@ sequenceDiagram
 
 ### Eloquent モデル
 
-- **`User`** — `HasUlids` + `HasFactory` + `SoftDeletes` + `Notifiable`、`role` `UserRole` cast / `status` `UserStatus` cast / `last_login_at` / **`plan_started_at`** / **`plan_expires_at`** datetime cast、`belongsTo(Plan)`(v3) / `hasMany(Invitation)`、`scopeActive`(v3 で `whereIn('status', [InProgress, Graduated])`)
+- **`User`** — `HasUlids` + `HasFactory` + `SoftDeletes` + `Notifiable`、`role` `UserRole` cast / `status` `UserStatus` cast / `last_login_at` / **`plan_started_at`** / **`plan_expires_at`** datetime cast、`belongsTo(Plan)`(v3) / `hasMany(Invitation)` / **`belongsTo(Enrollment, 'default_enrollment_id', 'id')` リレーション `defaultEnrollment()`**([[default-enrollment]] 連携、Migration 所有は [[default-enrollment]])、`scopeActive`(v3 で `whereIn('status', [InProgress, Graduated])`)
 - **`Invitation`** — `HasUlids` + `HasFactory` + `SoftDeletes`、`role` `UserRole` cast / `status` `InvitationStatus` cast / `expires_at` / `accepted_at` / `revoked_at` datetime cast、`belongsTo(User)` / `belongsTo(User, invited_by_user_id, invitedBy)`
 
 ### ER 図
@@ -106,6 +106,7 @@ erDiagram
         timestamp plan_expires_at "v3 nullable"
         unsignedSmallInteger max_meetings "v3 default 0"
         string meeting_url "v3 nullable, this migration"
+        ulid default_enrollment_id "v3 nullable, default-enrollment migration"
         string remember_token "nullable"
         timestamps
         timestamp deleted_at "nullable"

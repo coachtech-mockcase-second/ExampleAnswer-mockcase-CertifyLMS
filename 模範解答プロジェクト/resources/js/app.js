@@ -6,6 +6,7 @@ import { initTabs } from './components/tabs';
 import { initFlash } from './components/flash';
 import { initSidebarDrawer } from './components/sidebar-drawer';
 import { initTextareaCounter } from './components/textarea-counter';
+import { initEnrollmentSwitchers } from './components/enrollment-switcher';
 
 document.addEventListener('DOMContentLoaded', () => {
     initModals();
@@ -14,4 +15,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initFlash();
     initSidebarDrawer();
     initTextareaCounter();
+    initEnrollmentSwitchers();
 });

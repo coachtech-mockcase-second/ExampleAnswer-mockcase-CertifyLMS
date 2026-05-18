@@ -667,3 +667,84 @@ public function store(SectionQuestion $question, StoreRequest $request): Redirec
 - `NullWeaknessAnalysisServiceTest.php`(常に空 Collection)
 - `SectionQuestionAnswerPolicyTest.php`(`view` 本人のみ / `create` ロール × Enrollment(learning + passed) × cascade visibility 網羅)
 - `WeakDrillPolicyTest.php`(本人 + `status IN (learning, passed)` 網羅、v3 で `paused` 削除済)
+
+## v3.5 改修 — SectionQuestionScoreService 新設 + 教材画面からの到達 URL
+
+### Service クラス
+
+```php
+namespace App\Services;
+
+use App\DTOs\SectionQuestionScoreSummary;
+use App\Models\Enrollment;
+use App\Models\Section;
+use App\Models\User;
+use Illuminate\Support\Collection;
+
+final class SectionQuestionScoreService
+{
+    /**
+     * 単一 Section のスコアサマリ。
+     * SectionQuestionAttempt を集計し、attempt_count / best_score / latest_score / latest_answered_at / accuracy_rate を返す。
+     */
+    public function summarize(User $user, Section $section): SectionQuestionScoreSummary
+    {
+        // SELECT
+        //   COUNT(*) as attempt_count,
+        //   MAX(...) as best_score,
+        //   ... latest_score (window function or subquery for latest),
+        //   AVG(correct_count / attempt_count) as accuracy_rate
+        // FROM section_question_attempts
+        // WHERE user_id = ? AND section_question_id IN (
+        //   SELECT id FROM section_questions WHERE section_id = ?
+        // )
+    }
+
+    /**
+     * Enrollment 配下の全 Section を 1 ショット SQL で集計。N+1 回避。
+     *
+     * @return Collection<string, SectionQuestionScoreSummary> key = Section.id
+     */
+    public function batchSummarize(User $user, Enrollment $enrollment): Collection
+    {
+        // 1 ショット SQL with GROUP BY section_id
+        // [[learning]] ShowEnrollmentAction の ?tab=quizzes 受領時に Eager Load される
+    }
+}
+```
+
+### DTO
+
+`app/DTOs/SectionQuestionScoreSummary.php`:
+
+```php
+namespace App\DTOs;
+
+use Carbon\Carbon;
+
+final readonly class SectionQuestionScoreSummary
+{
+    public function __construct(
+        public int $attempt_count,
+        public ?int $best_score,
+        public ?int $latest_score,
+        public ?Carbon $latest_answered_at,
+        public ?float $accuracy_rate,
+    ) {}
+}
+```
+
+### [[learning]] との連携
+
+| 場所 | 呼出 |
+|---|---|
+| `Learning\ShowEnrollmentAction` | `?tab=quizzes` 受領時に `batchSummarize($user, $enrollment)` を呼んで Blade に渡す |
+| `views/learning/enrollments/_partials/quizzes-tab.blade.php` | 各 Section 行に `<x-learning.section-score-row :summary="$summary" />` で展開、挑戦回数 / 最高 / 最新を表示 |
+| `views/learning/sections/show.blade.php` | Section 詳細の読了ボタン付近に `summarize($user, $section)` の結果を Eager Load し、`<x-learning.section-quiz-link>` で「演習問題へ」リンク + 最新スコア表示 |
+
+### 関連要件マッピング追加 (v3.5)
+
+| 要件 ID | 実装ポイント |
+|---|---|
+| REQ-quiz-answering-180〜183 | `App\Services\SectionQuestionScoreService` + `App\DTOs\SectionQuestionScoreSummary` |
+| REQ-quiz-answering-185 | `views/learning/sections/_partials/section-quiz-link.blade.php` (or Component) |

@@ -197,3 +197,23 @@
 
 - [ ] `lang/ja/mentoring.php` — エラーメッセージ + Blade ラベル日本語集約
 - [ ] `lang/ja/validation.php` の attribute 追加（scheduled_at / topic / body 等）
+
+## v3.5 改修タスク — 予約画面のみ [[default-enrollment]] 統合 + Switcher 埋込
+
+### 予約画面のみ Middleware 適用 (履歴一覧は資格横断)
+
+- [ ] **`routes/web.php` の予約画面ルート (`/meetings/availability` / `/meetings/create` 系) に `'resolve-default-enrollment:meetings.availability'` Middleware 適用**(REQ-default-enrollment-031, 082)
+  - 履歴一覧 `/meetings` には適用しない(資格横断で複数面談を一覧表示するため、Switcher で絞り込む UX は不適切)
+- [ ] **予約画面の default NULL + 複数 Enrollment 時のフォールバック**: `MeetingController::create` (or `MeetingAvailabilityController::show`) で `<x-enrollment-switcher variant="empty-state" />` を含む Blade を返す(REQ-default-enrollment-082)
+- [ ] **予約画面の default NULL + Enrollment 0 件**: 「資格カタログから申し込んでください」CTA 表示
+
+### Switcher 埋込
+
+- [ ] **`views/meetings/create.blade.php` の上部に `<x-enrollment-switcher variant="inline" :current="$enrollment" />` 埋込**(REQ-default-enrollment-051)
+- [ ] 履歴一覧 `views/meetings/index.blade.php` には inline Switcher 埋込なし(資格横断画面のため不要)
+- [ ] サイドバーの「面談予約」リンクは default 資格の予約 URL に動的解決
+
+### 関連要件マッピング追加
+
+- REQ-default-enrollment-031 / 082: mentoring 予約画面の `resolve-default-enrollment` Middleware 適用 + empty-state UI
+- REQ-default-enrollment-051: inline Switcher 埋込(予約画面のみ)

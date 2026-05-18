@@ -10,6 +10,8 @@
         EnrollmentStatus::Passed => ['variant' => 'success'],
         EnrollmentStatus::Failed => ['variant' => 'gray'],
     };
+
+    $defaultEnrollmentId = auth()->user()?->default_enrollment_id;
 @endphp
 
 @section('content')
@@ -55,7 +57,11 @@
     @else
         <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($enrollments as $enrollment)
-                @php $sb = $statusBadge($enrollment->status); @endphp
+                @php
+                    $sb = $statusBadge($enrollment->status);
+                    $isDefault = $enrollment->id === $defaultEnrollmentId;
+                    $canBeDefault = in_array($enrollment->status, [EnrollmentStatus::Learning, EnrollmentStatus::Passed], true);
+                @endphp
                 <x-card padding="md" shadow="sm">
                     <div class="flex items-start justify-between gap-2">
                         <div class="space-y-1 min-w-0">
@@ -66,7 +72,12 @@
                                 {{ $enrollment->certification->category?->name ?? '未分類' }}
                             </div>
                         </div>
-                        <x-badge :variant="$sb['variant']" size="sm">{{ $enrollment->status->label() }}</x-badge>
+                        <div class="flex flex-col items-end gap-1 shrink-0">
+                            <x-badge :variant="$sb['variant']" size="sm">{{ $enrollment->status->label() }}</x-badge>
+                            @if ($isDefault)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary-600 text-white">現在のデフォルト</span>
+                            @endif
+                        </div>
                     </div>
 
                     <dl class="mt-4 grid grid-cols-2 gap-y-2 gap-x-3 text-sm">
@@ -107,7 +118,23 @@
                         @endif
                     </dl>
 
-                    <div class="mt-4 pt-3 border-t border-ink-100 flex justify-end">
+                    <div class="mt-4 pt-3 border-t border-ink-100 flex justify-between items-center gap-2">
+                        @if (! $isDefault && $canBeDefault)
+                            <form method="POST" action="{{ route('settings.default-enrollment.update', $enrollment) }}">
+                                @method('PUT')
+                                @csrf
+                                <input type="hidden" name="redirect_to" value="{{ route('enrollments.index') }}">
+                                <button
+                                    type="submit"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-surface-raised border border-ink-300 text-ink-600 hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                                >
+                                    <x-icon name="star" class="w-3 h-3" />
+                                    これをデフォルトに
+                                </button>
+                            </form>
+                        @else
+                            <span></span>
+                        @endif
                         <x-link-button href="{{ route('enrollments.show', $enrollment) }}" variant="ghost" size="sm">
                             <x-icon name="arrow-right" class="w-4 h-4" />
                             詳細

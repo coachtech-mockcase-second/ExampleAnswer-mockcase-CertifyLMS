@@ -260,3 +260,26 @@
   - [ ] `mock-exam:auto-submit-expired` Artisan コマンド存在しない
   - [ ] `MockExamSessionTimeExceededException` クラス存在しない
   - [ ] `timer.js` / `auto-submit.js` ファイル存在しない
+
+## v3.5 改修タスク — URL 再設計 + [[default-enrollment]] 統合 + Switcher 埋込
+
+### URL 再設計 (学習体験の包含構造)
+
+- [ ] **student 系ルートの prefix を `/mock-exams` から `/learning/enrollments/{enrollment}/mock-exams` に再設計**(v3.5、[[default-enrollment]] 連携、`/learning` 配下に集約):
+  - `GET /learning/enrollments/{enrollment}/mock-exams` (一覧、`MockExamCatalogController::index`)
+  - `GET /learning/enrollments/{enrollment}/mock-exams/{mockExam}` (詳細、`MockExamCatalogController::show`)
+  - `POST /learning/enrollments/{enrollment}/mock-exams/{mockExam}/sessions` (セッション作成)
+  - 既存の `MockExamSession` 系ルート (`/mock-exam-sessions/{session}/*`) は維持(セッション ID で参照、enrollment コンテキストは不要)
+- [ ] **`routes/web.php` の `/learning/enrollments/{enrollment}/mock-exams` index ルートに `'resolve-default-enrollment:mock-exam.catalog.index'` Middleware 適用**(REQ-default-enrollment-031)
+- [ ] **`/mock-exams` 直接アクセス時の挙動**: `ResolveDefaultEnrollment` Middleware で default 資格の URL (`/learning/enrollments/{default}/mock-exams`) に自動 redirect、default NULL + 複数 Enrollment 時は教材ページ内 empty-state UI(REQ-learning-010 と同じパターン)
+
+### Switcher 埋込
+
+- [ ] **`views/mock-exams/index.blade.php` の上部に `<x-enrollment-switcher variant="inline" :current="$enrollment" />` 埋込**(REQ-default-enrollment-051)
+- [ ] `MockExamCatalogController::index` / `show` で Route Model Binding で受けた `$enrollment` を Blade に渡す
+- [ ] サイドバーの「模試」リンクの遷移先を default 資格の URL に動的解決(`Route::has('mock-exam.catalog.index')` + auth user の default で URL 生成)
+
+### 関連要件マッピング追加
+
+- REQ-default-enrollment-031 / 081 / 082: mock-exam URL の `resolve-default-enrollment` Middleware 適用 + empty-state UI
+- REQ-default-enrollment-051: inline Switcher 埋込

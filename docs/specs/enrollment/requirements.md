@@ -115,6 +115,13 @@
 - **REQ-enrollment-121**: The system shall `TermJudgementService::recalculate(Enrollment): TermType` を公開し、[[mock-exam]] の MockExamSession 状態変化を伴う各 Action（StartAction / SubmitAction / CancelAction 等）がトランザクション内で呼べる契約とする。
 - **REQ-enrollment-122**: The system shall `EnrollmentStatsService` を公開し、[[dashboard]] の admin パネル用に **受講中件数** / **修了件数** / **失敗件数** / **資格別受講者数** などの KPI を返す。`paused` 関連の集計は削除。
 
+### 機能要件 — [[default-enrollment]] への発火契約 (v3、cross-cutting infrastructure)
+
+- **REQ-enrollment-130**: The system shall `Enrollment\StoreAction` 内で `DefaultEnrollmentService::resolveAfterCreate($user, $newEnrollment)` を `DB::transaction()` 内で呼ぶ契約とする（初回受講登録時に `users.default_enrollment_id` を自動セットさせる、[[default-enrollment]] REQ-018 と整合）。
+- **REQ-enrollment-131**: The system shall `Enrollment\FailAction` / `Enrollment\ResumeAction` / `Enrollment\ReceiveCertificateAction` 内で `DefaultEnrollmentService::resolveAfterStatusChange($user, $changedEnrollment)` を `DB::transaction()` 内で呼ぶ契約とする（[[default-enrollment]] REQ-019 と整合）。
+- **REQ-enrollment-132**: The system shall `FailExpiredEnrollmentsCommand` 内で `failed` 遷移直後に `DefaultEnrollmentService::resolveAfterStatusChange` を呼ぶ契約とする（[[default-enrollment]] REQ-019 と整合）。
+- **REQ-enrollment-133**: The system shall `/enrollments` index 画面の各 Enrollment カードに `<x-enrollment-switcher.card>` Component を埋込み、「★デフォルト」バッジ + 「これをデフォルトにする」フォーム POST を表示する（[[default-enrollment]] REQ-051 と整合、Component 提供は [[default-enrollment]] が所有）。
+
 ### 非機能要件
 
 - **NFR-enrollment-001**: The system shall 状態変更を伴うすべての Action（登録 / 状態遷移 / `ReceiveCertificateAction` / 目標 / ノート）を `DB::transaction()` で囲み、`EnrollmentStatusLog` への記録と本体更新を原子的に同期する。

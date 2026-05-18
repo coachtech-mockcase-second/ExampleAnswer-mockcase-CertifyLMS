@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Models\Enrollment;
 use App\Models\Plan;
 use App\Models\User;
 use Carbon\Carbon;
@@ -88,6 +89,13 @@ class UserFactory extends Factory
             'plan_started_at' => $started,
             'plan_expires_at' => $started->copy()->addDays($plan->duration_days),
             'max_meetings' => $plan->default_meeting_quota,
+        ]);
+    }
+
+    public function withDefaultEnrollment(Enrollment $enrollment): static
+    {
+        return $this->state(fn () => [
+            'default_enrollment_id' => $enrollment->id,
         ]);
     }
 }

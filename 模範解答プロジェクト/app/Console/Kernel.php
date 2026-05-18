@@ -22,6 +22,9 @@ class Kernel extends ConsoleKernel
 
         // プラン期間満了による自動 graduated 遷移（invitations:expire とロック競合しないよう 00:45 にずらす）
         $schedule->command('users:graduate-expired')->dailyAt('00:45')->withoutOverlapping(5);
+
+        // 滞留 open 学習セッションを max_session_seconds で強制クローズ(ブラウザ閉じ / PC スリープ等の保険)
+        $schedule->command('learning:close-stale-sessions')->dailyAt('01:00')->withoutOverlapping(5);
     }
 
     /**

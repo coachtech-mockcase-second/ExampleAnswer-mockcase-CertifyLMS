@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AdminEnrollmentController;
 use App\Http\Controllers\Auth\OnboardingController;
+use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\CertificationCatalogController;
 use App\Http\Controllers\CertificationCategoryController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentGoalController;
 use App\Http\Controllers\EnrollmentNoteController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\LearningHourTargetController;
 use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
 use App\Http\Controllers\MeetingQuotaPlanController;
@@ -26,7 +28,9 @@ use App\Http\Controllers\QuestionCategoryController;
 use App\Http\Controllers\ReceiveCertificateController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\SectionImageController;
+use App\Http\Controllers\SectionProgressController;
 use App\Http\Controllers\SectionQuestionController;
+use App\Http\Controllers\Settings\SettingsDefaultEnrollmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -105,6 +109,49 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
     Route::delete('enrollment-goals/{goal}/achieve', [EnrollmentGoalController::class, 'unmarkAchieved'])
         ->name('enrollment-goals.unmarkAchieved');
 });
+
+// ============================================================
+// 受講生専用 設定ルート(デフォルト資格の永続変更)
+// ============================================================
+Route::middleware(['auth', 'role:student', 'active-learning'])
+    ->prefix('settings')
+    ->name('settings.')
+    ->group(function () {
+        Route::put('default-enrollment/{enrollment}', [SettingsDefaultEnrollmentController::class, 'update'])
+            ->name('default-enrollment.update');
+    });
+
+// ============================================================
+// 受講生専用ルート — 教材閲覧 / 読了マーク / 学習時間目標
+// ============================================================
+Route::middleware(['auth', 'role:student', 'active-learning'])
+    ->prefix('learning')
+    ->name('learning.')
+    ->group(function () {
+        // 教材ブラウジング
+        Route::get('/', [BrowseController::class, 'index'])
+            ->middleware('resolve-default-enrollment:learning.enrollments.show')
+            ->name('index');
+        Route::get('enrollments/{enrollment}', [BrowseController::class, 'showEnrollment'])
+            ->name('enrollments.show');
+        Route::get('parts/{part}', [BrowseController::class, 'showPart'])->name('parts.show');
+        Route::get('chapters/{chapter}', [BrowseController::class, 'showChapter'])->name('chapters.show');
+        Route::get('sections/{section}', [BrowseController::class, 'showSection'])->name('sections.show');
+
+        // Section 読了マーク
+        Route::post('sections/{section}/read', [SectionProgressController::class, 'markRead'])
+            ->name('sections.markRead');
+        Route::delete('sections/{section}/read', [SectionProgressController::class, 'unmarkRead'])
+            ->name('sections.unmarkRead');
+
+        // 学習時間目標
+        Route::get('enrollments/{enrollment}/hour-target', [LearningHourTargetController::class, 'show'])
+            ->name('hourTarget.show');
+        Route::put('enrollments/{enrollment}/hour-target', [LearningHourTargetController::class, 'upsert'])
+            ->name('hourTarget.upsert');
+        Route::delete('enrollments/{enrollment}/hour-target', [LearningHourTargetController::class, 'destroy'])
+            ->name('hourTarget.destroy');
+    });
 
 // ============================================================
 // admin + コーチ共有ルート(コーチメモ: coach は担当資格内のみ、admin は越境可)

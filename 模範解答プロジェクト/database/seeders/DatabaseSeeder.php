@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             CertificationSeeder::class,
             EnrollmentSeeder::class,
             ContentSeeder::class,
+            LearningSeeder::class,
         ]);
     }
 }

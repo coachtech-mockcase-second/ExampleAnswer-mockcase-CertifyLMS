@@ -699,3 +699,46 @@ $schedule->command('meetings:auto-complete')->cron('*/15 * * * *');
 
 `tests/Feature/Http/MeetingControllerTest.php`:
 - 各エンドポイントの認可 / バリデーション / 状態遷移
+
+## v3.5 改修 — 予約画面のみ [[default-enrollment]] 統合
+
+### Routes 改修
+
+```php
+Route::middleware(['auth', 'role:student', 'active-learning'])->group(function () {
+    // 履歴一覧 (Switcher / Middleware 非適用、資格横断)
+    Route::get('meetings', [MeetingController::class, 'index'])->name('meetings.index');
+    Route::get('meetings/{meeting}', [MeetingController::class, 'show'])->name('meetings.show');
+    Route::post('meetings/{meeting}/cancel', [MeetingController::class, 'cancel'])->name('meetings.cancel');
+
+    // 予約画面 (Middleware + Switcher 適用)
+    Route::middleware('resolve-default-enrollment:meetings.create')->group(function () {
+        Route::get('meetings/create', [MeetingController::class, 'create'])->name('meetings.create');
+        Route::get('meetings/availability', [MeetingController::class, 'fetchAvailability'])->name('meetings.availability');
+        Route::post('meetings', [MeetingController::class, 'store'])->name('meetings.store');
+    });
+});
+```
+
+### Controller 改修
+
+- `MeetingController::create`: Route Model Binding で `$enrollment` (default 解決済) を受け、`<x-enrollment-switcher variant="inline" :current="$enrollment" />` を含む Blade を返す
+- `MeetingController::index` (履歴一覧): Switcher なしの Blade、複数 Enrollment 横断で `auth()->user()->meetingsAsStudent()->...` 取得
+
+### Blade 改修
+
+- `views/meetings/create.blade.php` 上部に `<x-enrollment-switcher variant="inline" :current="$enrollment" />` 埋込
+- `views/meetings/index.blade.php` (履歴一覧) は変更なし
+- default NULL + Enrollment 2+ 件のフォールバック: `views/meetings/_empty_state.blade.php` で `<x-enrollment-switcher variant="empty-state" />` 表示
+
+### サイドバー動線
+
+- `sidebar-student.blade.php` の「面談予約」リンクは default 資格の予約画面 URL に動的解決(`auth()->user()->default_enrollment_id` から)
+
+### 関連要件マッピング追加 (v3.5)
+
+| 要件 ID | 実装ポイント |
+|---|---|
+| REQ-mentoring-180〜182 | `routes/web.php` の `resolve-default-enrollment:meetings.create` Middleware + `MeetingController::create` の empty-state 分岐 |
+| REQ-mentoring-185 | `views/meetings/create.blade.php` の inline Switcher 埋込 |
+| REQ-mentoring-186 | `views/meetings/index.blade.php` (履歴一覧) には Switcher 埋め込まない明示 |

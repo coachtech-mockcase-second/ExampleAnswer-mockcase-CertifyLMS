@@ -93,3 +93,11 @@
   - [[dashboard]] — 修了済資格セクション（受講生）+ 全体 KPI（admin）で `Certification` を参照
 - **依存先**（本 Feature が前提とする）:
   - [[auth]]: `User` モデル、`UserRole` / `UserStatus` Enum、`auth` middleware
+  - [[default-enrollment]]: 受講中資格画面 (`/enrollments`) への動線リンクで連携(本 Feature は資格カタログ表示、default 機能は default-enrollment Feature に委譲)
+
+## v3.5 改修 — `/certifications` カタログから `/enrollments` への動線追加
+
+### 機能要件 — 動線リンク
+
+- **REQ-certification-management-180**: When 受講生が `/certifications` 資格カタログ画面を表示した際, the system shall 画面上部に「受講中資格はこちら → `/enrollments`」動線リンクを表示する。「資格カタログ = 申込候補」「受講中資格 = 受講中の Enrollment ハブ」の責務分離を明示する目的。
+- **REQ-certification-management-181**: When 受講生が `/certifications/{certification}` 詳細画面で既に受講登録済の資格を見た際, the system shall 「受講中資格画面で続きを学習 → `/enrollments`」リンクを併記する(重複登録防止 + 学習継続動線)。

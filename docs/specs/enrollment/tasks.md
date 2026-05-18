@@ -42,9 +42,11 @@
 - [x] **`Enrollment\ReceiveCertificateAction`** (新規、自己発火、Certificate 発行のみ。通知は送らない)
 - [x] `EnrollmentGoal\StoreAction` / `UpdateAction` / `DestroyAction` / `MarkAchievedAction` / `UnmarkAchievedAction`
 - [x] `EnrollmentNote\StoreAction` / `UpdateAction` / `DestroyAction`
+- [ ] **`Enrollment\StoreAction` / `FailAction` / `ResumeAction` / `ReceiveCertificateAction` への [[default-enrollment]] 連携追加** — `DefaultEnrollmentService $resolver` を constructor injection、StoreAction 内で `$resolver->resolveAfterCreate($user, $newEnrollment)` 呼出、状態遷移 Action 内で `$resolver->resolveAfterStatusChange($user, $changedEnrollment)` 呼出(REQ-default-enrollment-018, REQ-default-enrollment-019)
 
 ## Schedule Command
 - [x] `App\Console\Commands\FailExpiredEnrollmentsCommand` (`enrollments:fail-expired`、daily 00:00)
+- [ ] **`FailExpiredEnrollmentsCommand` への [[default-enrollment]] 連携追加** — failed 遷移直後に `DefaultEnrollmentService::resolveAfterStatusChange` 呼出(REQ-default-enrollment-019)
 
 ## Controller / Route
 - [x] `EnrollmentController` (index / show / store / destroy)
@@ -55,6 +57,7 @@
 
 ## Blade
 - [x] `views/enrollments/index.blade.php` / `show.blade.php`
+- [ ] **`views/enrollments/index.blade.php` への default UI 追加** — 各 Enrollment カードに `<x-enrollment-switcher.card :enrollment="$e" :is-default="..." />` を埋込み、「★デフォルト」バッジ + 「これをデフォルトにする」フォーム POST を表示(REQ-default-enrollment-051、Component 提供は [[default-enrollment]] が所有)
 - [x] `views/admin/enrollments/index.blade.php` / `show.blade.php`
 - [x] `views/enrollments/_receive_certificate_button.blade.php` (条件付き活性)
 - [x] `views/enrollments/goals/*` / `views/enrollments/notes/*`

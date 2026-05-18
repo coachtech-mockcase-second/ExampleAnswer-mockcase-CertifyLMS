@@ -43,7 +43,7 @@ flowchart LR
 
 ### 1. 教材ブラウジング(/learning → /learning/sections/{section})
 
-> **FE 方針確定**(2026-05-16): JavaScript / `session-tracker.js` / `navigator.sendBeacon` は採用しない。**Section ページ表示時に Controller がサーバ側で `LearningSession` を auto-start**、既存 open session があれば同タイミングで `auto_closed=true` で閉じる(別 Section 遷移時の自動切替)。stop は「学習を一旦終える」明示ボタン or 別 Section の auto-start 連鎖 or Schedule Command auto-close の 3 経路で完結。
+> **FE 方針確定**(2026-05-16 / v3.5 改修): JavaScript / `session-tracker.js` / `navigator.sendBeacon` は採用しない。**Section ページ表示時に Controller がサーバ側で `LearningSession` を auto-start**、既存 open session があれば同タイミングで `auto_closed=true` で閉じる(別 Section 遷移時の自動切替)。stop は「別 Section の auto-start 連鎖」または「Schedule Command auto-close」の **2 経路** で完結。**「学習を一旦終える」明示ボタンは v3.5 で撤回**(UX 観点で不要、別 Section に移るかブラウザを閉じれば自動的に閉じるため)。
 
 ```mermaid
 sequenceDiagram
@@ -80,10 +80,8 @@ sequenceDiagram
     LSStart-->>BC: $currentSession
     BC-->>Student: views/learning/sections/show.blade.php<br/>(本文 + 「学習を一旦終える」ボタン → POST .../stop)
 
-    %% 明示 stop ボタン
-    Student->>LSC: POST /learning/sessions/{currentSession}/stop<br/>(「学習を一旦終える」ボタン押下、HTML form POST)
-    LSC->>DB: UPDATE learning_sessions SET ended_at=now(),<br/>duration_seconds (max_session_seconds clamp), auto_closed=false
-    LSC-->>Student: 302 redirect → GET /learning (index)
+    %% v3.5 で明示 stop ボタン撤回(LearningSessionController / StopAction / Route 削除)
+    %% 旧 stop シーケンスはここに記述されていたが v3.5 で完全削除
 ```
 
 ### 2. Section 読了マーク
@@ -145,11 +143,12 @@ sequenceDiagram
 - **冪等性**: 同一 Section で連続 GET アクセスを受けた場合(リロード等)、既存 open session を `auto_closed=true` で閉じてから新規 INSERT する(別レコード扱い、マージしない)。
 - **失敗時のフェイルセーフ**: `StartAction` 内で例外が発生しても、Controller は `LearningSession` 関連の失敗をログに記録しつつ Section ページ自体は描画する(`try-catch` で吸収、学習行為の妨げを避ける)。Schedule Command で残骸 open は後追い回収される。
 
-### Stop タイミング(3 経路、JS 不要)
+### Stop タイミング(2 経路、JS 不要、v3.5 で明示停止撤回)
 
-1. **明示停止(ユーザー操作)**: Section ページの「学習を一旦終える」ボタン → HTML form で `POST /learning/sessions/{session}/stop` → `LearningSessionController::stop` が `ended_at=now()` + `duration_seconds` clamp + `auto_closed=false` で UPDATE → `/learning`(index)へ 302 redirect。
-2. **別 Section 遷移時の自動 close**: 上述「同時 open は禁止」のロジックで、新 Section の `StartAction` 内で旧 open session を `auto_closed=true` として閉じる。受講生が別 Section をクリックするだけで旧 session が自動的に終了する(別途 stop ボタンを押す必要なし)。
-3. **Schedule Command による保険 close**: `learning:close-stale-sessions`(後述)で `started_at < now() - max_session_seconds` の残存 open を強制 close。ブラウザ閉じ / PC スリープ / その他「ユーザー操作が届かなかったケース」の救済。
+1. **別 Section 遷移時の自動 close**: 上述「同時 open は禁止」のロジックで、新 Section の `StartAction` 内で旧 open session を `auto_closed=true` として閉じる。受講生が別 Section をクリックするだけで旧 session が自動的に終了する(別途 stop ボタン操作不要)。
+2. **Schedule Command による保険 close**: `learning:close-stale-sessions`(後述)で `started_at < now() - max_session_seconds` の残存 open を強制 close。ブラウザ閉じ / PC スリープ / その他「ユーザー操作が届かなかったケース」の救済。
+
+> **v3.5 で「明示停止」撤回**: 「学習を一旦終える」ボタンの UX 必要性が低い(別 Section へ移動するか、ブラウザを閉じるかすれば自動的に閉じる)ため、`LearningSessionController` / `LearningSession\StopAction` / `POST /learning/sessions/{session}/stop` Route はすべて削除。auto-start は `BrowseController::showSection` 内、auto-close は `SessionCloseService` + Schedule Command で完結する純サーバ側設計。
 
 ### `duration_seconds` の計算と上限 clamp
 
@@ -302,7 +301,7 @@ erDiagram
 
 - `BrowseController` — `index` / `showEnrollment` / `showPart` / `showChapter` / `showSection`(`showSection` 内で `LearningSession\StartAction` をサーバ側 auto-start として呼ぶ)
 - `SectionProgressController` — `markRead` / `unmarkRead`
-- `LearningSessionController` — `stop` のみ(明示「学習を一旦終える」ボタン受付。`start` メソッドは持たない、auto-start は `BrowseController::showSection` 内でサーバ側実行)
+- ~~`LearningSessionController`~~ — **v3.5 で削除**(stop メソッドも撤回、`start` は元から無い、auto-start は `BrowseController::showSection` 内、auto-close は `SessionCloseService` + Schedule Command で完結)
 - `LearningHourTargetController` — `show` / `upsert` / `destroy`
 
 ### Action
@@ -315,7 +314,7 @@ erDiagram
 - `SectionProgress\MarkReadAction` — cascade visibility 検証 + Enrollment 状態検証(`learning + passed` 許容) + UPSERT
 - `SectionProgress\UnmarkReadAction` — SoftDelete
 - `LearningSession\StartAction` — `BrowseController::showSection` から呼ばれる(JS / API エンドポイント経由ではない)。`SessionCloseService::closeOpenSessions` で既存 open を `auto_closed=true` で閉じる + 新規 INSERT、`enrollment.status === failed` で `EnrollmentInactiveException`(v3 で `passed` 許容)
-- `LearningSession\StopAction` — `LearningSessionController::stop` から呼ばれる(明示「学習を一旦終える」ボタン経由)。`ended_at` UPDATE + `duration_seconds` 計算(`max_session_seconds` clamp)
+- ~~`LearningSession\StopAction`~~ — **v3.5 で削除**(明示停止ボタン撤回に伴う)
 - `LearningSession\CloseStaleSessionsAction` — Schedule Command `learning:close-stale-sessions` のエントリポイント
 - `LearningHourTarget\ShowAction` / `UpsertAction` / `DestroyAction`
 
@@ -355,7 +354,9 @@ erDiagram
 ```php
 Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])
     ->prefix('learning')->name('learning.')->group(function () {
-        Route::get('/', [BrowseController::class, 'index'])->name('index');
+        Route::get('/', [BrowseController::class, 'index'])
+            ->middleware('resolve-default-enrollment:learning.enrollments.show')
+            ->name('index');
         Route::get('enrollments/{enrollment}', [BrowseController::class, 'showEnrollment'])->name('enrollments.show');
         Route::get('parts/{part}', [BrowseController::class, 'showPart'])->name('parts.show');
         Route::get('chapters/{chapter}', [BrowseController::class, 'showChapter'])->name('chapters.show');
@@ -364,8 +365,7 @@ Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])
         Route::post('sections/{section}/read', [SectionProgressController::class, 'markRead'])->name('sections.markRead');
         Route::delete('sections/{section}/read', [SectionProgressController::class, 'unmarkRead'])->name('sections.unmarkRead');
 
-        // LearningSession の start は API として持たない(BrowseController::showSection 内でサーバ側 auto-start)
-        Route::post('sessions/{session}/stop', [LearningSessionController::class, 'stop'])->name('sessions.stop');
+        // LearningSession の start / stop は API として持たない(v3.5、auto-start は BrowseController::showSection 内のサーバ実行、auto-close は Schedule Command + 別 Section auto-start で完結)
 
         Route::get('enrollments/{enrollment}/hour-target', [LearningHourTargetController::class, 'show'])->name('hourTarget.show');
         Route::put('enrollments/{enrollment}/hour-target', [LearningHourTargetController::class, 'upsert'])->name('hourTarget.upsert');
@@ -436,3 +436,86 @@ Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])
   - **`StagnationDetectionServiceTest` は削除**(v3)
 - `Policies/{SectionProgress,LearningSession,LearningHourTarget}PolicyTest.php`
 - **`Policies/{Part,Chapter,Section}ViewPolicyTest.php`(v3)** — `status IN (learning, passed)` 判定、`paused` テストは削除
+
+## v3.5 改修 — 教材/演習問題タブ + 読了モーダル + 前後 Section 遷移 + Switcher 埋込
+
+### 1. 教材/演習問題タブ ([[quiz-answering]] 連携、iField LMS `ContentsTabs` 相当)
+
+`/learning/enrollments/{enrollment}` (2 階層目、教材 Part 一覧) 画面に「教材」「演習問題」の 2 タブを設置。タブ切替は URL クエリ `?tab=contents|quizzes`(デフォルト `contents`)。
+
+| タブ | 表示内容 | 依存 |
+|---|---|---|
+| `contents` (デフォルト) | Part → Chapter → Section の階層 expandable list + 読了バッジ | learning Feature 単独 |
+| `quizzes` | 同階層 + 各 Section の SectionQuestion 集合への遷移リンク + 挑戦回数 / 最高 / 最新スコア | [[quiz-answering]] の `SectionQuestionScoreService::summarize(User, Section)` を呼出 |
+
+Blade 構造:
+- `views/learning/enrollments/show.blade.php` — タブ Component (`<x-tabs>`) を上部に配置
+- `views/learning/enrollments/_partials/contents-tab.blade.php` — 「教材」タブ panel
+- `views/learning/enrollments/_partials/quizzes-tab.blade.php` — 「演習問題」タブ panel (iField LMS `QuizListTab` 相当、スコア表示は `<x-learning.section-score-row :section="$s" :summary="$summary" />` で展開)
+
+`Learning\ShowEnrollmentAction` は `?tab` パラメータを受けて、quizzes タブの場合は `SectionQuestionScoreService` を Eager に呼んでサマリを Blade に渡す。
+
+### 2. 読了モーダル (iField LMS `CongratulationsModal` 相当)
+
+読了マーク POST 成功時にセッションフラッシュ `section_just_completed = $section->id` を付与し、Section 詳細画面に redirect。Blade で flash 判定してモーダル自動表示。
+
+```mermaid
+sequenceDiagram
+    participant Student
+    participant SPC as SectionProgressController
+    participant Browser
+    Student->>SPC: POST /learning/sections/{section}/read
+    SPC->>SPC: MarkReadAction 実行
+    SPC->>Browser: 302 redirect to /learning/sections/{section}<br/>session flash section_just_completed=Section.id
+    Browser->>Student: Section 詳細画面 + モーダル表示<br/>(JS で open、ESC / 外側クリックで close)
+```
+
+モーダル内ボタン:
+
+| ボタン | 表示条件 | 遷移先 |
+|---|---|---|
+| 「次の Section へ」 | 同 Chapter 内に next sibling Section あり | `/learning/sections/{nextSection}` |
+| 「次の Chapter へ」 | 最終 Section かつ親 Part 内に next sibling Chapter あり | `/learning/chapters/{nextChapter}` |
+| 「Part 一覧へ戻る」 | 最終 Section かつ最終 Chapter | `/learning/enrollments/{enrollment}` |
+| 「Section 紐づき問題演習へ」 | 当該 Section に SectionQuestion が存在 | [[quiz-answering]] の Section 演習 URL |
+| 「閉じる」 | 常時(モーダル右上 X) | — |
+
+実装:
+- Blade Component: `<x-learning.section-completed-modal :current="$section" :next-section="$nextSection" :next-chapter="$nextChapter" :has-quiz="$hasSectionQuestions" />`
+- JS: `resources/js/learning/section-completed-modal.js` — `DOMContentLoaded` で `data-show-modal` 属性を判定して `<x-modal>` を open(共通 modal.js を利用)
+- Controller (`SectionProgressController::markRead`): リダイレクト時に `session()->flash('section_just_completed', $section->id)` を付与
+
+### 3. 前後 Section 遷移ボタン (iField LMS `SectionNavigation` 相当)
+
+Section 詳細画面の下部に「← 前の Section」「次の Section →」ボタンを配置。同 Chapter 内の sibling Section を `order ASC` で並べて前後判定。
+
+実装:
+- Blade: `views/learning/sections/_partials/section-navigation.blade.php`
+- Action (`Learning\ShowSectionAction`): `$section->chapter->sections()->wherePublished()->orderBy('order')->get()` を取得し、現 Section index から `$prevSection` / `$nextSection` (nullable) を算出して Blade に渡す
+- 状態: 最初 Section の場合は「前へ」を `disabled`、最終 Section の場合は「次へ」を `disabled`(または「次の Chapter へ」に切替) で表示
+
+### 4. [[default-enrollment]] Switcher 埋込
+
+`/learning/enrollments/{enrollment}` 配下のすべての 2 階層目画面 (Part / Chapter / Section 詳細) の上部に `<x-enrollment-switcher variant="inline" :current="$enrollment" />` を埋込。サイドバー下部の `variant="sidebar"` Switcher と合わせて、画面文脈に近い切替動線 + グローバル動線の二層構成。
+
+### 5. Routes 変更まとめ (v3.5)
+
+- `Route::get('/', [BrowseController::class, 'index'])->middleware('resolve-default-enrollment:learning.enrollments.show')->name('index');` (新規 Middleware)
+- `BrowseController::index` は default NULL + Enrollment 2+ 件 / 0 件 のフォールバック専用に簡素化、`<x-enrollment-switcher variant="empty-state">` を含む Blade を返す
+- ~~`Route::post('sessions/{session}/stop', ...)`~~ **削除**(v3.5)
+- ~~`LearningSessionController`~~ / ~~`LearningSession\StopAction`~~ / ~~`stop-session-button.blade.php`~~ すべて **削除**(v3.5)
+
+### 6. 新規 Action / Service
+
+- `Learning\ShowEnrollmentAction` 拡張: `?tab=quizzes` 受領時に `SectionQuestionScoreService::batchSummarize($user, $enrollment)` を呼んでスコアサマリを Blade に渡す
+- `BrowseController::showSection` 拡張: 同 Chapter 内 sibling Section を Eager Load して `$prevSection` / `$nextSection` を Blade に渡す
+
+### 7. 関連要件マッピング追加
+
+| 要件 ID | 実装ポイント |
+|---|---|
+| REQ-learning-010 (v3.5) | `routes/web.php` の `'resolve-default-enrollment:learning.enrollments.show'` Middleware + `BrowseController::index` の empty-state UI 分岐 |
+| REQ-learning-025, 026, 027 | `views/learning/components/section-completed-modal.blade.php` + `SectionProgressController::markRead` の flash 付与 + `resources/js/learning/section-completed-modal.js` |
+| REQ-learning-028, 029 | `views/learning/sections/_partials/section-navigation.blade.php` + `Learning\ShowSectionAction` の sibling 算出 |
+| REQ-learning-050〜054 | `views/learning/enrollments/show.blade.php` のタブ Component + `Learning\ShowEnrollmentAction` の tab パラメータ処理 + `<x-enrollment-switcher variant="inline">` 埋込 + [[quiz-answering]] `SectionQuestionScoreService` 呼出 |
+| REQ-learning-049 (v3.5 修正) | LearningSessionController / StopAction / route 削除 |

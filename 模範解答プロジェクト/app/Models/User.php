@@ -43,6 +43,7 @@ class User extends Authenticatable
         'plan_expires_at',
         'max_meetings',
         'meeting_url',
+        'default_enrollment_id',
     ];
 
     protected $hidden = [
@@ -100,6 +101,17 @@ class User extends Authenticatable
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
+    }
+
+    /**
+     * 受講生が「いつもこの資格を見る」と明示設定したデフォルト資格(受講登録)。
+     * サイドバー / 教材 / 模試 / 面談予約画面の自動解決元になる。
+     *
+     * @return BelongsTo<Enrollment, $this>
+     */
+    public function defaultEnrollment(): BelongsTo
+    {
+        return $this->belongsTo(Enrollment::class, 'default_enrollment_id', 'id');
     }
 
     /**
@@ -163,6 +175,14 @@ class User extends Authenticatable
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return HasMany<LearningSession, $this>
+     */
+    public function learningSessions(): HasMany
+    {
+        return $this->hasMany(LearningSession::class);
     }
 
     /**

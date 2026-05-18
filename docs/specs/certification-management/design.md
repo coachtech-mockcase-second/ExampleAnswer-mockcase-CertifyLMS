@@ -277,3 +277,18 @@ Route::middleware('auth')->group(function () {
 ### Unit(Services)
 
 - `CertificateSerialNumberServiceTest`(年月別連番、`CT-202605-00001` 形式)
+
+## v3.5 改修 — `/certifications` カタログから `/enrollments` への動線追加
+
+### Blade 改修
+
+- `views/certifications/index.blade.php` の上部に「受講中資格はこちら → `/enrollments`」リンクを配置(目立たない位置: 上部右側 or 検索フィルタ近く)
+- `views/certifications/show.blade.php` で `auth()->user()->enrollments()->where('certification_id', $certification->id)->whereIn('status', [EnrollmentStatus::Learning, EnrollmentStatus::Passed])->exists()` を判定し、受講登録済の場合「受講中資格画面で続きを学習」リンクを併記
+- 受講登録ボタン(`<form action="{{ route('enrollments.store') }}">`)は重複登録防止のため、上記判定で既に登録済の場合は非活性化
+
+### 関連要件マッピング追加 (v3.5)
+
+| 要件 ID | 実装ポイント |
+|---|---|
+| REQ-certification-management-180 | `views/certifications/index.blade.php` の動線リンク |
+| REQ-certification-management-181 | `views/certifications/show.blade.php` の受講登録済時のリンク表示分岐 |

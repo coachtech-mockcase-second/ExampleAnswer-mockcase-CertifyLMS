@@ -142,3 +142,16 @@
   - [ ] 旧 `code` / `slug` / `passing_score` 等フィールドが Blade に表示されない
   - [ ] PDF に資格コード表示なし(7 要素のみ)
   - [ ] 修了証 PDF に「受講生氏名 / 資格名 / 発行日 / 証書番号」が表示される
+
+## v3.5 改修タスク — `/certifications` カタログ画面から `/enrollments` への動線リンク追加
+
+### 動線リンク追加 ([[default-enrollment]] 統合)
+
+- [ ] **`views/certifications/index.blade.php` の上部に「受講中資格はこちら」リンクを追加** — 「資格カタログ」と「受講中資格画面」の責務分離を明示し、受講生が現在の受講中資格を確認したい場合の動線を提供。デザインは目立たない位置 (上部右側 or 検索フィルタ近く)
+- [ ] `views/certifications/show.blade.php` で受講登録済資格を表示する際、「受講中資格画面で続きを学習」リンクを併記
+- [ ] サイドバー (frontend-ui-foundation.md L156) で「資格カタログ」と「受講中資格」が独立 item として並んでいることを再確認(既存規約準拠、本タスクで変更なし)
+
+### 関連要件マッピング追加
+
+- 受講中資格画面 (`/enrollments`) が default 設定の central hub であることを明示(REQ-default-enrollment-051、`<x-enrollment-switcher.card>` Component は default-enrollment Feature が所有)
+- 本 Feature (certification-management) は資格カタログから動線リンクを提供するのみで、default 機能は default-enrollment Feature に委譲
