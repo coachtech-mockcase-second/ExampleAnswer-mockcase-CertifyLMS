@@ -20,7 +20,7 @@
 | 5 | `MeetingReservedNotification` | **担当コーチ宛のみ**（受講生宛は予約 UI で即時確認のため不要） | [[mentoring]] `Meeting\StoreAction` |
 | 6 | `MeetingCanceledNotification` | 相手方（受講生がキャンセルしたらコーチ、コーチがキャンセルしたら受講生） | [[mentoring]] `Meeting\CancelAction` |
 | 7 | `MeetingReminderNotification` | 受講生 + コーチ両方 | 本 Feature の `SendMeetingRemindersCommand`（前日 18:00 + 1h 前の 2 回） |
-| 8 | `AdminAnnouncementNotification` | 対象 student 集合 | 本 Feature の `Admin\AdminAnnouncement\StoreAction` |
+| 8 | `AdminAnnouncementNotification` | 対象 student 集合 | 本 Feature の `AdminAnnouncement\StoreAction` |
 
 **撤回された通知**:
 - `MockExamGradedNotification` / `NotifyMockExamGradedAction`（[[mock-exam]] 側で提出後の Controller redirect で結果画面に遷移するため、通知不要と判断）
@@ -87,8 +87,8 @@
 
 ### 機能要件 — 管理者お知らせ配信（変更なし）
 
-- **REQ-notification-080**: The system shall `App\Http\Controllers\Admin\AdminAnnouncementController` を提供し、`index` / `create` / `store` / `show` の 4 メソッドを持つ。
-- **REQ-notification-081**: The system shall `App\UseCases\Admin\AdminAnnouncement\StoreAction` を提供し、`__invoke(User $admin, array $validated): AdminAnnouncement` で AdminAnnouncement INSERT + 対象 User Collection 解決 + 各 User へ `NotifyAdminAnnouncementAction` 実行 + `dispatched_count` / `dispatched_at` UPDATE を 1 トランザクションで実行する。
+- **REQ-notification-080**: The system shall `App\Http\Controllers\AdminAnnouncementController` を提供し、`index` / `create` / `store` / `show` の 4 メソッドを持つ。
+- **REQ-notification-081**: The system shall `App\UseCases\AdminAnnouncement\StoreAction` を提供し、`__invoke(User $admin, array $validated): AdminAnnouncement` で AdminAnnouncement INSERT + 対象 User Collection 解決 + 各 User へ `NotifyAdminAnnouncementAction` 実行 + `dispatched_count` / `dispatched_at` UPDATE を 1 トランザクションで実行する。
 - **REQ-notification-082**: When `target_type=AllStudents` の場合, the system shall `User::where('role', UserRole::Student)->where('status', UserStatus::InProgress)->get()` を対象とする。
 - **REQ-notification-083**: When `target_type=Certification` の場合, the system shall `User::query()->where('role', UserRole::Student)->where('status', UserStatus::InProgress)->whereHas('enrollments', fn ($q) => $q->where('certification_id', $announcement->target_certification_id)->where('status', EnrollmentStatus::Learning))->get()` を対象とする。
 - **REQ-notification-084**: When `target_type=User` の場合, the system shall `User::where('id', $announcement->target_user_id)->where('role', UserRole::Student)->where('status', UserStatus::InProgress)->get()` を対象とする。

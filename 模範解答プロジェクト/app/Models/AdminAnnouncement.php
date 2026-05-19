@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * 配信は不可逆 (再配信 / 編集 / 取消は提供しない)。配信後の参照系のみ index / show で提供。
  *
  * 関連: createdBy(配信した admin) / targetCertification(target_type=Certification 時) / targetUser(target_type=User 時)
- * 主要 Action: \App\UseCases\Admin\AdminAnnouncement\StoreAction (本体作成 + 各 User へ通知発火)
+ * 主要 Action: \App\UseCases\AdminAnnouncement\StoreAction (本体作成 + 各 User へ通知発火)
  */
 class AdminAnnouncement extends Model
 {

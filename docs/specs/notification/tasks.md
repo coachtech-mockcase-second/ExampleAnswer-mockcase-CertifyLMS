@@ -43,12 +43,12 @@
 - [x] `App\Policies\AdminAnnouncementPolicy`(`viewAny` / `view` / `create`、admin のみ)(REQ-notification-113)
 - [x] `AuthServiceProvider` 登録
 - [x] `App\Http\Requests\Notification\IndexRequest`(`tab: in:all,unread` / `page`)
-- [x] `App\Http\Requests\Admin\AdminAnnouncement\StoreRequest`(`title` / `body` / `target_type` / `target_certification_id required_if` / `target_user_id required_if`)
+- [x] `App\Http\Requests\AdminAnnouncement\StoreRequest`(`title` / `body` / `target_type` / `target_certification_id required_if` / `target_user_id required_if`)
 
 ## Step 5: HTTP 層
 
 - [x] `App\Http\Controllers\NotificationController`(`index` / `popover` / `markAsRead` / `markAllAsRead`)
-- [x] `App\Http\Controllers\Admin\AdminAnnouncementController`(`index` / `create` / `store` / `show`)
+- [x] `App\Http\Controllers\AdminAnnouncementController`(`index` / `create` / `store` / `show`)
 - [x] `routes/web.php`:
   - `auth` group: `notifications.index` / `notifications.popover` / `notifications.markAsRead` / `notifications.markAllAsRead`
   - `auth + role:admin` group: `Route::resource('announcements')->only(['index', 'create', 'store', 'show'])`
@@ -80,9 +80,9 @@
 
 ### 管理者お知らせ Action 群
 
-- [x] `Admin\AdminAnnouncement\IndexAction`
-- [x] `Admin\AdminAnnouncement\StoreAction`(target 整合性検査 + Announcement INSERT + 対象 User 解決 + 各 User へ NotifyAdminAnnouncementAction 呼出 + `dispatched_count` / `dispatched_at` UPDATE、1 トランザクション)
-- [x] `Admin\AdminAnnouncement\ShowAction`
+- [x] `AdminAnnouncement\IndexAction`
+- [x] `AdminAnnouncement\StoreAction`(target 整合性検査 + Announcement INSERT + 対象 User 解決 + 各 User へ NotifyAdminAnnouncementAction 呼出 + `dispatched_count` / `dispatched_at` UPDATE、1 トランザクション)
+- [x] `AdminAnnouncement\ShowAction`
 
 ## Step 7: ドメイン例外
 

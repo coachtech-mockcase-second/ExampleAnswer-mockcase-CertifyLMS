@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\UseCases\Admin\AdminAnnouncement;
+namespace App\UseCases\AdminAnnouncement;
 
 use App\Enums\AdminAnnouncementTargetType;
 use App\Enums\EnrollmentStatus;

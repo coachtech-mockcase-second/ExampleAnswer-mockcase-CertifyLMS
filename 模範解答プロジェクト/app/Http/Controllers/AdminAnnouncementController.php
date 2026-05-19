@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Admin\AdminAnnouncement\StoreRequest;
+use App\Http\Requests\AdminAnnouncement\StoreRequest;
 use App\Models\AdminAnnouncement;
-use App\UseCases\Admin\AdminAnnouncement\IndexAction;
-use App\UseCases\Admin\AdminAnnouncement\ShowAction;
-use App\UseCases\Admin\AdminAnnouncement\StoreAction;
+use App\UseCases\AdminAnnouncement\IndexAction;
+use App\UseCases\AdminAnnouncement\ShowAction;
+use App\UseCases\AdminAnnouncement\StoreAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
