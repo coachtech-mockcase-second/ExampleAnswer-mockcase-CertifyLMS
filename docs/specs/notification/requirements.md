@@ -2,13 +2,13 @@
 
 > **v3 改修反映**（2026-05-16）: `CompletionApproved` 通知の発火元を admin 承認 → 受講生 `ReceiveCertificateAction` に変更、`MeetingApproved` / `MeetingRejected` / `MeetingRequested` 通知撤回（自動割当のため）、`MeetingReserved` 通知をコーチ宛のみに変更、`PlanExpireSoon` 通知撤回（MVP 外）、`StagnationReminder` 通知撤回（滞留検知 v3 撤回）、chat 通知の双方向化（コーチ→受講生 + 受講生→コーチ全員）+ コーチ間は Database のみ。
 >
-> **2026-05-18 UX 改修**: TopBar ベルクリック時の UI を「ドロップダウン（最近 5 件）」→ **「通知パネル（右側 Sheet スライドオーバー、最新 20 件 + 全件/未読タブ + バルク既読）」** に変更（Linear / Slack / Stripe 等の業界標準パターン準拠）。`/notifications` フルページは併存（サイドバー「通知」ナビ / Sheet フッターリンクから到達、URL アドレッサブル / 深掘り用）。
+> **2026-05-18 UX 改修**: TopBar ベルクリック時の UI を「ドロップダウン（最近 5 件）」→ **「通知ポップオーバー（ベル横アンカー、最新 20 件 + 全件/未読タブ + バルク既読）」** に変更（Stripe / Jira / GitHub 等の業界標準パターン準拠）。`/notifications` フルページは併存（サイドバー「通知」ナビ / ポップオーバー フッターリンクから到達、URL アドレッサブル / 深掘り用）。
 
 ## 概要
 
 **受講生宛 + コーチ宛通知** を扱う通知配信基盤。各 Feature が起こした学習・運用イベントを、**Database + Mail channel の両方固定送信** で対象ユーザーに届ける。**admin 宛通知のみ不採用**（運用情報は [[dashboard]] / 各 Feature の管理画面で集約確認）。
 
-通知種別ごとの ON/OFF 設定 UI は持たない。受信者は **TopBar 通知ベルクリックで通知パネル（右側 Sheet スライドオーバー、最新 20 件 + 全件/未読タブ + バルク既読）** を開いて素早く処理し（学習中のチラ見・即既読化、全利用シーンの ~80% をカバー）、深掘り（フィルタ / 過去スクロール / URL 共有）は `/notifications` フルページで行う。サイドバーバッジで未読件数を把握する。**TopBar ベルへのリアルタイム反映は Pusher + WebSocket（Laravel Broadcasting）で push、通知パネル open 中は DOM もリアルタイム同期、メール配信は Queue（database driver）で非同期化** する。
+通知種別ごとの ON/OFF 設定 UI は持たない。受信者は **TopBar 通知ベルクリックで通知ポップオーバー（ベル横アンカー、最新 20 件 + 全件/未読タブ + バルク既読）** を開いて素早く処理し（学習中のチラ見・即既読化、全利用シーンの ~80% をカバー）、深掘り（フィルタ / 過去スクロール / URL 共有）は `/notifications` フルページで行う。サイドバーバッジで未読件数を把握する。**TopBar ベルへのリアルタイム反映は Pusher + WebSocket（Laravel Broadcasting）で push、通知ポップオーバー open 中は DOM もリアルタイム同期、メール配信は Queue（database driver）で非同期化** する。
 
 通知種別（v3 改修後）:
 
@@ -103,15 +103,15 @@
 - **REQ-notification-093**: When 受信者が通知行をクリックした場合, the system shall 既読化 + `data.link_route` への遷移を実行する。
 - **REQ-notification-094**: The system shall `POST /notifications/read-all` で一括既読化を提供する。
 
-### 機能要件 — TopBar 通知ベル / サイドバーバッジ / 通知パネル
+### 機能要件 — TopBar 通知ベル / サイドバーバッジ / 通知ポップオーバー
 
 - **REQ-notification-100**: The system shall `NotificationBadgeComposer` で `$notificationBadge`（未読件数）を topbar / sidebar に渡す。
 - **REQ-notification-101**: The system shall TopBar 通知ベルに `<x-badge variant="danger" size="sm">{count}</x-badge>` を重ねる（未読 > 0 時）。
 - **REQ-notification-102**: When 未読件数 > 99 の場合, the system shall `99+` に固定する。
-- **REQ-notification-103**: The system shall TopBar 通知ベルクリック時に **通知パネル（右側 Sheet スライドオーバー）** を開閉する。Sheet には以下を表示する: (1) ヘッダ: 「全件」/「未読」の 2 タブ + 「全件既読」ボタン、(2) ボディ: 最新 20 件の通知行（種別アイコン + タイトル + プレビュー + 経過時間 + 未読ドット）、(3) フッター: 「すべての通知を見る →」リンク（→ `route('notifications.index')`）。Sheet は ESC キー / 外側クリック / フッターリンク遷移で close する。行クリック時は REQ-notification-093 に従い既読化 + `data.link_route` への遷移を実行し、遷移前に Sheet を close する。
-- **REQ-notification-104**: The system shall 通知パネルをデスクトップ幅で 400-480px、モバイル幅（< sm ブレークポイント）で全幅表示する。
-- **REQ-notification-105**: The system shall 通知パネル内容取得用に `GET /notifications/panel?tab={all|unread}` エンドポイント（route 名 `notifications.panel`）を提供し、最新 20 件 + 未読件数を返す。
-- **REQ-notification-106**: When Pusher broadcast を受信した場合, the system shall TopBar / サイドバーバッジを +1 更新し、通知パネルが open 状態であれば先頭に新規行を prepend する（リロード不要）。
+- **REQ-notification-103**: The system shall TopBar 通知ベルクリック時に **通知ポップオーバー（ベル横アンカー、Stripe / Jira / GitHub 風のドロップダウン Popover）** を開閉する。ポップオーバーには以下を表示する: (1) ヘッダ: 「全件」/「未読」の 2 タブ + 「全件既読」ボタン、(2) ボディ: 最新 20 件の通知行（種別アイコン + タイトル + プレビュー + 経過時間 + 未読ドット）、(3) フッター: 「すべての通知を見る →」リンク（→ `route('notifications.index')`）。ポップオーバーは ESC キー / 外側クリック / フッターリンク遷移で close する。行クリック時は REQ-notification-093 に従い既読化 + `data.link_route` への遷移を実行し、遷移前にポップオーバーを close する。
+- **REQ-notification-104**: The system shall 通知ポップオーバーをベルアイコンの右下にアンカーし、固定幅 380-420px（デスクトップ・モバイル共通）+ 画面端から最小 8px の余白を確保する。コンテンツは `max-height: 70vh` で内部スクロール、`shadow-lg` / `rounded-lg` / `border` で浮遊感を付与する。
+- **REQ-notification-105**: The system shall 通知ポップオーバー内容取得用に `GET /notifications/popover?tab={all|unread}` エンドポイント（route 名 `notifications.popover`）を提供し、最新 20 件 + 未読件数を返す。
+- **REQ-notification-106**: When Pusher broadcast を受信した場合, the system shall TopBar / サイドバーバッジを +1 更新し、通知ポップオーバーが open 状態であれば先頭に新規行を prepend する（リロード不要）。
 
 ### 機能要件 — 認可・スコープ
 

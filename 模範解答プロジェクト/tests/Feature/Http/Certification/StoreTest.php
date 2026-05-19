@@ -14,7 +14,8 @@ class StoreTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @param  array<string, mixed>  $override
+     * @param array<string, mixed> $override
+     *
      * @return array<string, mixed>
      */
     private function payload(array $override = []): array

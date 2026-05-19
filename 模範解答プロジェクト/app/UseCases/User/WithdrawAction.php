@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Exceptions\UserManagement\LastAdminWithdrawException;
 use App\Exceptions\UserManagement\UserAlreadyWithdrawnException;
+use App\Http\Controllers\UserController;
 use App\Models\User;
 use App\Services\UserStatusChangeService;
 use App\Services\UserWithdrawalService;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * - 上記ガード通過後、`UserStatusLog` 記録 → `UserWithdrawalService` で email リネーム + status=Withdrawn + soft delete
  * - 「強制退会」ボタンは admin 操作画面で `in_progress` / `graduated` の User のみ表示する設計(`invited` は招待取消経路に誘導)
  *
- * @see \App\Http\Controllers\UserController::withdraw()
+ * @see UserController::withdraw()
  */
 final class WithdrawAction
 {
@@ -31,7 +32,7 @@ final class WithdrawAction
     ) {}
 
     /**
-     * @param  ?User  $admin  操作者。Schedule Command 等のシステム自動経路では null
+     * @param ?User $admin 操作者。Schedule Command 等のシステム自動経路では null
      *
      * @throws UserAlreadyWithdrawnException
      * @throws LastAdminWithdrawException

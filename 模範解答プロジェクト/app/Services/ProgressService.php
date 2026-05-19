@@ -102,7 +102,8 @@ final class ProgressService
     }
 
     /**
-     * @param  Collection<int, Enrollment>  $enrollments
+     * @param Collection<int, Enrollment> $enrollments
+     *
      * @return array<string, float>
      */
     public function batchCalculate(Collection $enrollments): array

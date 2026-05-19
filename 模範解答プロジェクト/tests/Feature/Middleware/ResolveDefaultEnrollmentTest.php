@@ -46,7 +46,7 @@ class ResolveDefaultEnrollmentTest extends TestCase
 
         $response = $this->actingAs($user)->get('/__test/middleware-src');
 
-        $response->assertRedirect('/__test/middleware-dest/' . $default->id);
+        $response->assertRedirect('/__test/middleware-dest/'.$default->id);
     }
 
     public function test_redirects_to_default_when_set_and_passed(): void
@@ -57,7 +57,7 @@ class ResolveDefaultEnrollmentTest extends TestCase
 
         $response = $this->actingAs($user)->get('/__test/middleware-src');
 
-        $response->assertRedirect('/__test/middleware-dest/' . $default->id);
+        $response->assertRedirect('/__test/middleware-dest/'.$default->id);
     }
 
     public function test_clears_invalid_default_and_falls_back_when_default_is_failed(): void
@@ -144,7 +144,7 @@ class ResolveDefaultEnrollmentTest extends TestCase
             ->get('/__test/middleware-explicit/{enrollment}', fn () => 'explicit-page')
             ->name('__test.middleware.explicit');
 
-        $response = $this->actingAs($user)->get('/__test/middleware-explicit/' . $explicit->id);
+        $response = $this->actingAs($user)->get('/__test/middleware-explicit/'.$explicit->id);
 
         $response->assertOk();
         $response->assertSee('explicit-page');

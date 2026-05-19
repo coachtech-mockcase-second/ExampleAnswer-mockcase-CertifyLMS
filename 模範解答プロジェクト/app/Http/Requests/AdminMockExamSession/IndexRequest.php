@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\AdminMockExamSession;
 
 use App\Enums\MockExamSessionStatus;
+use App\Models\MockExamSession;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,7 +16,7 @@ class IndexRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('viewAdmin', \App\Models\MockExamSession::class) ?? false;
+        return $this->user()?->can('viewAdmin', MockExamSession::class) ?? false;
     }
 
     /**

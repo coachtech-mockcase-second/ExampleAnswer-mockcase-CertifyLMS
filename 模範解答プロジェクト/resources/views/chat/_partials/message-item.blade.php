@@ -9,7 +9,7 @@
     data-message-id="{{ $message->id }}"
     class="flex gap-3 {{ $isSelf ? 'flex-row-reverse' : '' }}"
 >
-    <x-avatar :name="$message->sender?->name ?? '?'" size="sm" />
+    <x-avatar :src="$message->sender?->avatar_url" :name="$message->sender?->name ?? '?'" size="sm" />
 
     <div class="flex flex-col gap-1 max-w-[75%] {{ $isSelf ? 'items-end' : 'items-start' }}">
         <div class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words {{ $isSelf ? 'bg-primary-600 text-white' : 'bg-surface-raised text-ink-900 border border-[var(--border-subtle)]' }}">{{ $message->body }}</div>

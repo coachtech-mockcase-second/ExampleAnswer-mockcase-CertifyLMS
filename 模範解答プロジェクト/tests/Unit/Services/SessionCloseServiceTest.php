@@ -6,7 +6,6 @@ namespace Tests\Unit\Services;
 
 use App\Models\Enrollment;
 use App\Models\LearningSession;
-use App\Models\Section;
 use App\Models\User;
 use App\Services\SessionCloseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;

@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\DB;
 final class ReorderAction
 {
     /**
-     * @param  string  $certificationId  対象資格 ID(整合性検証用、Controller 側で渡された値)
-     * @param  array<int, array{id: string, order: int}>  $items  並び順を更新する MockExam 一覧
+     * @param string $certificationId 対象資格 ID(整合性検証用、Controller 側で渡された値)
+     * @param array<int, array{id: string, order: int}> $items 並び順を更新する MockExam 一覧
      */
     public function __invoke(string $certificationId, array $items): void
     {

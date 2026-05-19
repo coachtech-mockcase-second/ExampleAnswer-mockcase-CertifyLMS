@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Meeting;
 
+use App\Http\Controllers\MeetingController;
 use App\Models\Meeting;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * コーチ視点の面談一覧リクエスト。受講生別 / 受講登録別フィルタ + viewAny 認可を行う。
  *
- * @see \App\Http\Controllers\MeetingController::indexAsCoach()
+ * @see MeetingController::indexAsCoach()
  */
 class IndexAsCoachRequest extends FormRequest
 {

@@ -10,6 +10,7 @@ use App\Models\MockExamQuestion;
 use App\Models\QuestionCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CrudTest extends TestCase
@@ -148,7 +149,7 @@ class CrudTest extends TestCase
         $coach = User::factory()->coach()->create();
         $cert = Certification::factory()->published()->create();
         $cert->coaches()->attach($coach->id, [
-            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'id' => (string) Str::ulid(),
             'assigned_by_user_id' => $admin->id,
             'assigned_at' => now(),
         ]);

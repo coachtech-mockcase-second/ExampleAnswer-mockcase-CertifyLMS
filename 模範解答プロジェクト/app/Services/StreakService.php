@@ -8,6 +8,7 @@ use App\Models\LearningSession;
 use App\Models\User;
 use App\Services\Learning\StreakSummary;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 
 /**
  * 連続学習日数 (ストリーク) の計算を提供する Service。
@@ -51,9 +52,9 @@ final class StreakService
      * 直近の学習活動日を起点に連続日数を数える。
      * 今日 / 昨日が含まれていなければ current_streak は 0 (連続が切れた状態)。
      *
-     * @param  \Illuminate\Support\Collection<int, CarbonImmutable>  $dates  Desc 順、重複なし
+     * @param Collection<int, CarbonImmutable> $dates Desc 順、重複なし
      */
-    private function countCurrentStreak(\Illuminate\Support\Collection $dates, CarbonImmutable $today): int
+    private function countCurrentStreak(Collection $dates, CarbonImmutable $today): int
     {
         $first = $dates->first();
         if ($first === null) {
@@ -83,9 +84,9 @@ final class StreakService
     /**
      * 過去全期間における最長連続学習日数を数える。
      *
-     * @param  \Illuminate\Support\Collection<int, CarbonImmutable>  $dates  Desc 順、重複なし
+     * @param Collection<int, CarbonImmutable> $dates Desc 順、重複なし
      */
-    private function countLongestStreak(\Illuminate\Support\Collection $dates): int
+    private function countLongestStreak(Collection $dates): int
     {
         if ($dates->isEmpty()) {
             return 0;

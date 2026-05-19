@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\User;
 
+use App\Http\Controllers\UserController;
 use App\Models\Plan;
 use App\Models\User;
 use App\UseCases\Plan\ExtendCourseAction as PlanExtendCourseAction;
@@ -14,7 +15,7 @@ use App\UseCases\Plan\ExtendCourseAction as PlanExtendCourseAction;
  * Plan 期間 + 面談付与回数の延長そのものは Plan ドメインの `\App\UseCases\Plan\ExtendCourseAction` が担う。
  * 本ラッパーは「Controller method 名 = 同 Feature の Action クラス名」規約を保つために配置する。
  *
- * @see \App\Http\Controllers\UserController::extendCourse()
+ * @see UserController::extendCourse()
  */
 final class ExtendCourseAction
 {

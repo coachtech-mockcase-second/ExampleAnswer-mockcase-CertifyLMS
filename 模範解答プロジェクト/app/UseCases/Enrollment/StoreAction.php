@@ -40,7 +40,7 @@ final class StoreAction
     ) {}
 
     /**
-     * @param  array{certification_id: string, exam_date?: ?string}  $validated
+     * @param array{certification_id: string, exam_date?: ?string} $validated
      *
      * @throws EnrollmentAlreadyEnrolledException
      */

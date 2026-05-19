@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Meeting;
 
-use App\Enums\EnrollmentStatus;
 use App\Enums\MeetingStatus;
 use App\Models\Certification;
 use App\Models\CoachAvailability;
 use App\Models\Enrollment;
 use App\Models\Meeting;
-use App\Models\MeetingMemo;
 use App\Models\User;
 use App\Notifications\Mentoring\MeetingReservedNotification;
 use Carbon\Carbon;

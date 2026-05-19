@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Meeting;
 
+use App\Console\Commands\Mentoring\AutoCompleteMeetingsCommand;
 use App\Enums\MeetingStatus;
 use App\Models\Meeting;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * 複数台 worker が並行起動して二重遷移が走るのを防ぐため、`lockForUpdate()` で対象行を取得し直し
  * トランザクション内でステータスを再確認してから UPDATE する(冪等)。
  *
- * @see \App\Console\Commands\Mentoring\AutoCompleteMeetingsCommand
+ * @see AutoCompleteMeetingsCommand
  */
 final class AutoCompleteMeetingAction
 {

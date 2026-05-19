@@ -10,6 +10,7 @@ use App\Http\Requests\SectionQuestion\StoreRequest;
 use App\Http\Requests\SectionQuestion\UpdateRequest;
 use App\Models\Section;
 use App\Models\SectionQuestion;
+use App\Policies\SectionQuestionPolicy;
 use App\UseCases\SectionQuestion\DestroyAction;
 use App\UseCases\SectionQuestion\IndexAction;
 use App\UseCases\SectionQuestion\PublishAction;
@@ -24,7 +25,7 @@ use Illuminate\View\View;
  * Section 紐づき問題(SectionQuestion)の管理 Controller。
  * Section 経由でのみ問題にアクセスし、独立した問題(certification 直下) は持たない。
  *
- * @see \App\Policies\SectionQuestionPolicy
+ * @see SectionQuestionPolicy
  */
 class SectionQuestionController extends Controller
 {

@@ -107,7 +107,7 @@ class PlanSeeder extends Seeder
     /**
      * 受講中 student に Plan を紐づけ、期限進捗を多様化する。
      *
-     * @param  array<int, Plan>  $publishedPlans
+     * @param array<int, Plan> $publishedPlans
      */
     private function assignPlansToStudents(array $publishedPlans): void
     {

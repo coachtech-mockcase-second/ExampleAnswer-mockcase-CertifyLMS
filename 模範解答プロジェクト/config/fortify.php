@@ -146,10 +146,12 @@ return [
     */
 
     'features' => [
-        // Registration / 2FA は招待制 LMS のためスコープ外（[[auth]] requirements 参照）
+        // Registration / 2FA は招待制 LMS のためスコープ外
         Features::resetPasswords(),
         Features::updateProfileInformation(),
-        Features::updatePasswords(),
+        // Password 更新は本人プロフィール画面 /settings/password で受け、UpdateUserPassword Action を委譲する
+        // 自前 Controller(App\Http\Controllers\Settings\PasswordController)経由で扱うため、Fortify 既定の
+        // PUT /user/password ルートは登録しない(同 path と /settings/password の二重登録防止)
     ],
 
 ];

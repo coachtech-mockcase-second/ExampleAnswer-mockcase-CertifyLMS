@@ -12,6 +12,7 @@ use App\Models\Enrollment;
 use App\Models\User;
 use App\Services\ChatMemberSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -40,7 +41,7 @@ class CoachAssignmentChangeTest extends TestCase
         ]);
 
         $certification->coaches()->attach($newCoach->id, [
-            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'id' => (string) Str::ulid(),
             'assigned_by_user_id' => $admin->id,
             'assigned_at' => now(),
             'created_at' => now(),

@@ -4,39 +4,61 @@ declare(strict_types=1);
 
 namespace App\Notifications\Chat;
 
-use App\Enums\UserRole;
 use App\Models\ChatMessage;
-use App\Models\User;
+use App\Notifications\BaseNotification;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
 /**
  * chat メッセージ受信を ChatMember に通知する Notification。
  *
- * 配信チャネルは受信者と送信者の組み合わせで切り替える:
- *
- * - 送信者が student → コーチへ database + mail
- * - 送信者が coach、受信者が student → database + mail
- * - 送信者が coach、受信者が他コーチ → database のみ
- *
- * いずれの場合も database チャネルは共通で書き込み、Mail のみ条件分岐する。
+ * Database / Mail / Broadcast の 3 チャネルを基盤で固定し、コーチ間のみ Mail を抑制する用途で
+ * `mailEnabled` フラグを受け取る (受講生→コーチ、コーチ→受講生は true / コーチ→他コーチは false)。
+ * Mail の抑制判断は `NotifyChatMessageReceivedAction` 側で行い、本クラスはフラグの反映のみを担当する。
  */
-final class ChatMessageReceivedNotification extends Notification
+final class ChatMessageReceivedNotification extends BaseNotification
 {
-    public function __construct(public readonly ChatMessage $message) {}
+    public function __construct(
+        public readonly ChatMessage $message,
+        public readonly bool $mailEnabled = true,
+    ) {
+        parent::__construct();
+    }
 
     /**
      * @return array<int, string>
      */
     public function via(object $notifiable): array
     {
-        $channels = ['database'];
+        $channels = ['database', 'broadcast'];
 
-        if ($this->shouldMailTo($notifiable)) {
+        if ($this->mailEnabled) {
             $channels[] = 'mail';
         }
 
         return $channels;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        $message = $this->message->loadMissing('sender');
+
+        return [
+            'notification_type' => 'chat_message_received',
+            'title' => ($message->sender?->name ?? '送信者').' さんから新着メッセージ',
+            'message' => mb_strimwidth($message->body, 0, 100, '…'),
+            'chat_room_id' => $message->chat_room_id,
+            'chat_message_id' => $message->id,
+            'sender_user_id' => $message->sender_user_id,
+            'sender_name' => $message->sender?->name,
+            'sender_role' => $message->sender?->role?->value,
+            'body_preview' => mb_strimwidth($message->body, 0, 100, '…'),
+            'link_route' => 'chat.show',
+            'link_params' => ['room' => $message->chat_room_id],
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -45,7 +67,6 @@ final class ChatMessageReceivedNotification extends Notification
         $senderName = $message->sender?->name ?? '送信者';
         $certificationName = $message->chatRoom?->enrollment?->certification?->name ?? '担当資格';
         $preview = mb_strimwidth($message->body, 0, 80, '…');
-
         $url = route('chat.show', $message->chat_room_id);
 
         return (new MailMessage)
@@ -58,37 +79,15 @@ final class ChatMessageReceivedNotification extends Notification
             ->salutation('Certify LMS 運営チーム');
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function toArray(object $notifiable): array
+    public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        $message = $this->message->loadMissing('sender');
+        $data = $this->toDatabase($notifiable);
 
-        return [
-            'chat_message_id' => $message->id,
-            'chat_room_id' => $message->chat_room_id,
-            'sender_user_id' => $message->sender_user_id,
-            'sender_name' => $message->sender?->name,
-            'body_preview' => mb_strimwidth($message->body, 0, 60, '…'),
-        ];
-    }
-
-    private function shouldMailTo(object $notifiable): bool
-    {
-        if (! $notifiable instanceof User) {
-            return false;
-        }
-
-        $sender = $this->message->loadMissing('sender')->sender;
-        if ($sender === null) {
-            return false;
-        }
-
-        if ($sender->role === UserRole::Student) {
-            return $notifiable->role === UserRole::Coach;
-        }
-
-        return $notifiable->role === UserRole::Student;
+        return new BroadcastMessage([
+            'id' => $this->id,
+            'type' => static::class,
+            'data' => $data,
+            'created_at' => now()->toIso8601String(),
+        ]);
     }
 }

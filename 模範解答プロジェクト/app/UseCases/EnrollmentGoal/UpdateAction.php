@@ -13,7 +13,7 @@ use App\Models\EnrollmentGoal;
 final class UpdateAction
 {
     /**
-     * @param  array{title: string, description?: ?string, target_date?: ?string}  $validated
+     * @param array{title: string, description?: ?string, target_date?: ?string} $validated
      */
     public function __invoke(EnrollmentGoal $goal, array $validated): EnrollmentGoal
     {

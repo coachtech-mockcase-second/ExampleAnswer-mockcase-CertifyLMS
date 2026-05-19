@@ -7,6 +7,7 @@ namespace App\UseCases\Learning;
 use App\Enums\EnrollmentStatus;
 use App\Models\Enrollment;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * 教材ブラウジング 1 階層目 (/learning) のフォールバック UI 用データを準備する Action。
@@ -15,7 +16,7 @@ use App\Models\User;
  * default NULL かつ Enrollment 2+ 件 / 0 件 のフォールバック分岐でのみ Blade に渡るデータを返す。
  *
  * @return array{
- *     enrollments: \Illuminate\Database\Eloquent\Collection<int, Enrollment>,
+ *     enrollments: Collection<int, Enrollment>,
  *     hasActiveEnrollments: bool,
  * }
  */

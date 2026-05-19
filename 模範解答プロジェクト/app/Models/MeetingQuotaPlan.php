@@ -70,7 +70,8 @@ class MeetingQuotaPlan extends Model
     }
 
     /**
-     * @param  Builder<MeetingQuotaPlan>  $query
+     * @param Builder<MeetingQuotaPlan> $query
+     *
      * @return Builder<MeetingQuotaPlan>
      */
     public function scopePublished(Builder $query): Builder
@@ -79,7 +80,8 @@ class MeetingQuotaPlan extends Model
     }
 
     /**
-     * @param  Builder<MeetingQuotaPlan>  $query
+     * @param Builder<MeetingQuotaPlan> $query
+     *
      * @return Builder<MeetingQuotaPlan>
      */
     public function scopeOrdered(Builder $query): Builder

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Invitation;
 
+use App\Http\Controllers\InvitationController;
 use App\Models\Invitation;
 use App\Models\User;
 use App\UseCases\Auth\RevokeInvitationAction;
@@ -13,7 +14,7 @@ use App\UseCases\Auth\RevokeInvitationAction;
  *
  * 認証基盤の `RevokeInvitationAction` に委譲し、cascade で User も withdrawn にする。
  *
- * @see \App\Http\Controllers\InvitationController::destroy()
+ * @see InvitationController::destroy()
  */
 final class DestroyAction
 {

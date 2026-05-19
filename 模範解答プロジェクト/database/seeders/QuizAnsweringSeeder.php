@@ -14,6 +14,7 @@ use App\Models\SectionQuestionAttempt;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 
 /**
  * Section 紐づき問題演習の解答ログ + Attempt サマリ シーダー。
@@ -143,9 +144,9 @@ final class QuizAnsweringSeeder extends Seeder
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, SectionQuestion>
+     * @return Collection<int, SectionQuestion>
      */
-    private function publishedQuestionsFor(Enrollment $enrollment): \Illuminate\Support\Collection
+    private function publishedQuestionsFor(Enrollment $enrollment): Collection
     {
         return SectionQuestion::query()
             ->where('status', ContentStatus::Published->value)

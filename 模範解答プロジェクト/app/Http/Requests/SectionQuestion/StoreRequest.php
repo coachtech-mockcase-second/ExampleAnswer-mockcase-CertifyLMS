@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\SectionQuestion;
 
+use App\Http\Controllers\SectionQuestionController;
 use App\Models\Section;
 use App\Models\SectionQuestion;
 use Illuminate\Foundation\Http\FormRequest;
@@ -14,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * options 配列は 2..6 件、各 option に body / is_correct / order を要求する。
  * is_correct=true がちょうど 1 件であることのドメイン整合性は StoreAction 側で検証する(QuestionInvalidOptionsException)。
  *
- * @see \App\Http\Controllers\SectionQuestionController::store()
+ * @see SectionQuestionController::store()
  */
 class StoreRequest extends FormRequest
 {

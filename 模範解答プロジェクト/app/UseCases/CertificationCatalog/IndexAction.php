@@ -22,7 +22,8 @@ use Illuminate\Support\Collection as SupportCollection;
 final class IndexAction
 {
     /**
-     * @param  array{category_id?: string|null, difficulty?: string|null, tab?: string|null}  $filter
+     * @param array{category_id?: string|null, difficulty?: string|null, tab?: string|null} $filter
+     *
      * @return array{catalog: Collection<int, Certification>, enrolled: Collection<int, Certification>, enrolled_ids: SupportCollection<int, string>}
      */
     public function __invoke(User $student, array $filter): array

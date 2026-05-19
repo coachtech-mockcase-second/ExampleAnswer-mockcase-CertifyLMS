@@ -11,7 +11,6 @@ use App\UseCases\CoachGoogleCredential\FetchAuthUrlAction;
 use App\UseCases\CoachGoogleCredential\StoreAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 /**
  * コーチによる Google Calendar 連携 / 連携解除の HTTP エントリポイント。
@@ -19,22 +18,16 @@ use Illuminate\View\View;
  * - `redirect`: 認可 URL を組み立てて Google へ 302 redirect する(認可 URL の JSON 返却はしない、教材として redirect の体感を優先)
  * - `callback`: Google からの callback を受けて `code` をトークンに交換し、`state.redirect_path` に戻す
  * - `destroy`: 既存連携を revoke + SoftDelete
+ *
+ * 連携状態の確認 UI 自体は `/settings/profile?tab=meeting` の面談設定タブが所有しており、
+ * 本 Controller には独立した `index` 画面を持たない。
  */
 class CoachGoogleCredentialController extends Controller
 {
-    public function index(Request $request): View
-    {
-        $credential = $request->user()?->googleCredential;
-
-        return view('settings.google-calendar.index', [
-            'credential' => $credential,
-        ]);
-    }
-
     public function redirect(FetchAuthUrlAction $action): RedirectResponse
     {
-        $redirectPath = request()->query('redirect_path', '/settings/profile');
-        $url = $action(request()->user(), is_string($redirectPath) ? $redirectPath : '/settings/profile');
+        $redirectPath = request()->query('redirect_path', '/settings/profile?tab=meeting');
+        $url = $action(request()->user(), is_string($redirectPath) ? $redirectPath : '/settings/profile?tab=meeting');
 
         return redirect()->away($url);
     }
@@ -58,7 +51,7 @@ class CoachGoogleCredentialController extends Controller
 
         $action($request->user(), $code, $state);
 
-        $redirectPath = is_string($state['redirect_path'] ?? null) ? $state['redirect_path'] : '/settings/profile';
+        $redirectPath = is_string($state['redirect_path'] ?? null) ? $state['redirect_path'] : '/settings/profile?tab=meeting';
 
         return redirect($redirectPath)->with('success', 'Googleカレンダーと連携しました。');
     }
@@ -72,6 +65,8 @@ class CoachGoogleCredentialController extends Controller
             $action($credential);
         }
 
-        return redirect()->route('settings.profile.edit')->with('success', 'Googleカレンダー連携を解除しました。');
+        return redirect()
+            ->route('settings.profile.edit', ['tab' => 'meeting'])
+            ->with('success', 'Googleカレンダー連携を解除しました。');
     }
 }

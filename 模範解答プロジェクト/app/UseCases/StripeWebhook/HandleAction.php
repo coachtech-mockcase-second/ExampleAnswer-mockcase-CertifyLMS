@@ -28,7 +28,7 @@ final class HandleAction
     ) {}
 
     /**
-     * @param  array{type: string, data: array{object: array<string, mixed>}}  $event
+     * @param array{type: string, data: array{object: array<string, mixed>}} $event
      */
     public function __invoke(array $event): void
     {
@@ -48,7 +48,7 @@ final class HandleAction
      *   4. Payment を succeeded に UPDATE(stripe_payment_intent_id / paid_at セット)
      *   5. PurchaseQuotaAction で MeetingQuotaTransaction(purchased) INSERT
      *
-     * @param  array{type: string, data: array{object: array<string, mixed>}}  $event
+     * @param array{type: string, data: array{object: array<string, mixed>}} $event
      */
     private function handleCheckoutCompleted(array $event): void
     {
@@ -88,7 +88,7 @@ final class HandleAction
     }
 
     /**
-     * @param  array{type: string, data: array{object: array<string, mixed>}}  $event
+     * @param array{type: string, data: array{object: array<string, mixed>}} $event
      */
     private function handleCheckoutExpired(array $event): void
     {
@@ -108,7 +108,7 @@ final class HandleAction
     }
 
     /**
-     * @param  array{type: string, data: array{object: array<string, mixed>}}  $event
+     * @param array{type: string, data: array{object: array<string, mixed>}} $event
      */
     private function handlePaymentFailed(array $event): void
     {

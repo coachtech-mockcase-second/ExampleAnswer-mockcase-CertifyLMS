@@ -51,4 +51,33 @@ class UserPolicyTest extends TestCase
         $this->assertFalse($policy->extendCourse($student, $target));
         $this->assertFalse($policy->grantMeetingQuota($student, $target));
     }
+
+    public function test_update_self_returns_true_for_same_user(): void
+    {
+        $user = User::factory()->student()->create();
+        $policy = new UserPolicy;
+
+        $this->assertTrue($policy->updateSelf($user, $user));
+    }
+
+    public function test_update_self_returns_true_for_each_role_on_self(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $coach = User::factory()->coach()->create();
+        $student = User::factory()->student()->create();
+        $policy = new UserPolicy;
+
+        $this->assertTrue($policy->updateSelf($admin, $admin));
+        $this->assertTrue($policy->updateSelf($coach, $coach));
+        $this->assertTrue($policy->updateSelf($student, $student));
+    }
+
+    public function test_update_self_returns_false_for_different_user(): void
+    {
+        $auth = User::factory()->student()->create();
+        $other = User::factory()->student()->create();
+        $policy = new UserPolicy;
+
+        $this->assertFalse($policy->updateSelf($auth, $other));
+    }
 }

@@ -93,4 +93,40 @@ class CoachAvailabilityFactory extends Factory
             'end_time' => $end,
         ]);
     }
+
+    /**
+     * 平日(月〜金、Carbon dayOfWeek の 1〜5)からランダム選択。
+     */
+    public function weekday(): static
+    {
+        return $this->state(fn () => [
+            'day_of_week' => fake()->numberBetween(1, 5),
+        ]);
+    }
+
+    /**
+     * 週末(土日、Carbon dayOfWeek の 0 と 6)からランダム選択。
+     */
+    public function weekend(): static
+    {
+        return $this->state(fn () => [
+            'day_of_week' => fake()->randomElement([0, 6]),
+        ]);
+    }
+
+    /**
+     * 午前枠(09:00 〜 12:00)。
+     */
+    public function morning(): static
+    {
+        return $this->timeRange('09:00:00', '12:00:00');
+    }
+
+    /**
+     * 夕方〜夜の枠(18:00 〜 21:00)。
+     */
+    public function evening(): static
+    {
+        return $this->timeRange('18:00:00', '21:00:00');
+    }
 }

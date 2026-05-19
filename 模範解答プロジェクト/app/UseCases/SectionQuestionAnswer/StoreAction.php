@@ -10,6 +10,7 @@ use App\Enums\EnrollmentStatus;
 use App\Exceptions\QuizAnswering\EnrollmentInactiveForAnswerException;
 use App\Exceptions\QuizAnswering\SectionQuestionOptionMismatchException;
 use App\Exceptions\QuizAnswering\SectionQuestionUnavailableForAnswerException;
+use App\Http\Controllers\SectionQuestionAnswerController;
 use App\Models\SectionQuestion;
 use App\Models\SectionQuestionAnswer;
 use App\Models\SectionQuestionAttempt;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  * SectionQuestionAnswer の INSERT と SectionQuestionAttempt の UPSERT を原子的に同期し、
  * 結果画面表示用の正答情報も含めた AnswerResult を返す。
  *
- * @see \App\Http\Controllers\SectionQuestionAnswerController::store()
+ * @see SectionQuestionAnswerController::store()
  */
 final class StoreAction
 {

@@ -13,7 +13,7 @@ use App\Models\EnrollmentNote;
 final class UpdateAction
 {
     /**
-     * @param  array{body: string}  $validated
+     * @param array{body: string} $validated
      */
     public function __invoke(EnrollmentNote $note, array $validated): EnrollmentNote
     {

@@ -33,7 +33,7 @@
                 <li class="p-3 rounded-md border border-ink-100">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2 text-xs text-ink-500">
-                            <x-avatar :name="$note->author?->name ?? '?'" size="sm" />
+                            <x-avatar :src="$note->author?->avatar_url" :name="$note->author?->name ?? '?'" size="sm" />
                             <span class="font-semibold text-ink-700">{{ $note->author?->name ?? '不明' }}</span>
                             <span class="tabular-nums">{{ $note->created_at->format('Y-m-d H:i') }}</span>
                         </div>

@@ -17,7 +17,7 @@ use App\Models\Enrollment;
 final class UpdateExamDateAction
 {
     /**
-     * @param  array{exam_date?: ?string}  $validated
+     * @param array{exam_date?: ?string} $validated
      *
      * @throws EnrollmentAlreadyPassedException
      */

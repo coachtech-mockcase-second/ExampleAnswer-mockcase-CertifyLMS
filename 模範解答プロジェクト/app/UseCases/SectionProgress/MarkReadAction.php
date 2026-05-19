@@ -22,7 +22,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
  * - SoftDelete 済 SectionProgress があれば restore + completed_at UPDATE、無ければ INSERT (冪等)
  *
  * @throws SectionUnavailableForProgressException Section / 親が Draft / SoftDelete
- * @throws EnrollmentInactiveException            Enrollment が failed 状態
+ * @throws EnrollmentInactiveException Enrollment が failed 状態
  */
 final class MarkReadAction
 {

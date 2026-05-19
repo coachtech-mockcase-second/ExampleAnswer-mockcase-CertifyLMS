@@ -7,11 +7,13 @@ namespace App\Services\Google;
 use App\Models\CoachGoogleCredential;
 use App\Models\Meeting;
 use Carbon\Carbon;
+use Google\Client;
 use Google\Service\Calendar as GoogleCalendar;
 use Google\Service\Calendar\Event as GoogleEvent;
 use Google\Service\Calendar\EventDateTime as GoogleEventDateTime;
 use Google\Service\Calendar\FreeBusyRequest;
 use Google\Service\Calendar\FreeBusyRequestItem;
+use Google\Service\Exception;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -145,7 +147,7 @@ class GoogleCalendarService
 
             $calendar = new GoogleCalendar($client);
             $calendar->events->delete($credential->calendar_id, $eventId);
-        } catch (\Google\Service\Exception $e) {
+        } catch (Exception $e) {
             if ($e->getCode() === 410) {
                 // 既に削除済 = 成功扱い
                 return;
@@ -169,7 +171,7 @@ class GoogleCalendarService
      * 期限切れトークンを refresh_token で更新する。成功時 true を返し、credential の DB 行を UPDATE する。
      * refresh_token も無効化された場合は false を返し、呼出側はリクエストをスキップする。
      */
-    private function refresh(CoachGoogleCredential $credential, \Google\Client $client): bool
+    private function refresh(CoachGoogleCredential $credential, Client $client): bool
     {
         try {
             $token = $client->fetchAccessTokenWithRefreshToken($credential->refresh_token);

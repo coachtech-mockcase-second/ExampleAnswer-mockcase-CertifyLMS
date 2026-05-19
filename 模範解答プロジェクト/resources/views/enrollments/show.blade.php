@@ -111,7 +111,7 @@
                     <ul class="space-y-2">
                         @foreach ($enrollment->certification->coaches as $coach)
                             <li class="flex items-center gap-2 text-sm">
-                                <x-avatar :name="$coach->name" size="sm" />
+                                <x-avatar :src="$coach->avatar_url" :name="$coach->name" size="sm" />
                                 <span class="text-ink-700">{{ $coach->name }}</span>
                             </li>
                         @endforeach

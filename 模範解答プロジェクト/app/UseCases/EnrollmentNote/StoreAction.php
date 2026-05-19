@@ -15,7 +15,7 @@ use App\Models\User;
 final class StoreAction
 {
     /**
-     * @param  array{body: string}  $validated
+     * @param array{body: string} $validated
      */
     public function __invoke(Enrollment $enrollment, User $author, array $validated): EnrollmentNote
     {

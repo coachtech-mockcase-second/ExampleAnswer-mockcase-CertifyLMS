@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
 final class UpdateAction
 {
     /**
-     * @param  array{mock_exam_question_id: string, selected_option_id: string}  $validated
+     * @param array{mock_exam_question_id: string, selected_option_id: string} $validated
      *
      * @throws MockExamSessionNotInProgressException
      * @throws MockExamQuestionNotInSessionException

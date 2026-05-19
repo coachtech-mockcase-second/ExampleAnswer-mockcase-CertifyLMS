@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LearningHourTarget\UpsertRequest;
 use App\Models\Enrollment;
+use App\Models\LearningHourTarget;
 use App\UseCases\LearningHourTarget\DestroyAction;
 use App\UseCases\LearningHourTarget\ShowAction;
 use App\UseCases\LearningHourTarget\UpsertAction;
@@ -20,14 +21,14 @@ class LearningHourTargetController extends Controller
 {
     public function show(Enrollment $enrollment, ShowAction $action): View
     {
-        $this->authorize('view', [\App\Models\LearningHourTarget::class, $enrollment]);
+        $this->authorize('view', [LearningHourTarget::class, $enrollment]);
 
         return view('learning.hour-targets.show', $action($enrollment));
     }
 
     public function upsert(Enrollment $enrollment, UpsertRequest $request, UpsertAction $action): RedirectResponse
     {
-        $this->authorize('update', [\App\Models\LearningHourTarget::class, $enrollment]);
+        $this->authorize('update', [LearningHourTarget::class, $enrollment]);
 
         $action($enrollment, $request->validated());
 
@@ -38,7 +39,7 @@ class LearningHourTargetController extends Controller
 
     public function destroy(Enrollment $enrollment, DestroyAction $action): RedirectResponse
     {
-        $this->authorize('delete', [\App\Models\LearningHourTarget::class, $enrollment]);
+        $this->authorize('delete', [LearningHourTarget::class, $enrollment]);
 
         $action($enrollment);
 

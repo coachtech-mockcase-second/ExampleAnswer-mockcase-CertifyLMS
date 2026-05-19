@@ -7,6 +7,7 @@ namespace App\UseCases\QuizStats;
 use App\Models\Enrollment;
 use App\Models\SectionQuestionAttempt;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\DB;
 final class IndexAction
 {
     /**
-     * @param  array{section_id?: ?string, category_id?: ?string, last_is_correct?: ?bool, sort?: ?string}  $filters
+     * @param array{section_id?: ?string, category_id?: ?string, last_is_correct?: ?bool, sort?: ?string} $filters
+     *
      * @return LengthAwarePaginator<SectionQuestionAttempt>
      */
     public function __invoke(Enrollment $enrollment, array $filters): LengthAwarePaginator
@@ -54,9 +56,9 @@ final class IndexAction
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<SectionQuestionAttempt>  $query
+     * @param Builder<SectionQuestionAttempt> $query
      */
-    private function applySort(\Illuminate\Database\Eloquent\Builder $query, string $sort): void
+    private function applySort(Builder $query, string $sort): void
     {
         match ($sort) {
             'accuracy_asc' => $query

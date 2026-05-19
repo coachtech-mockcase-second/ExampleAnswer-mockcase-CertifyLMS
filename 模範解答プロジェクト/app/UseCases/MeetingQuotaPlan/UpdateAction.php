@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 final class UpdateAction
 {
     /**
-     * @param  array{name: string, description?: ?string, meeting_count: int, price: int, stripe_price_id?: ?string, sort_order?: ?int}  $validated
+     * @param array{name: string, description?: ?string, meeting_count: int, price: int, stripe_price_id?: ?string, sort_order?: ?int} $validated
      */
     public function __invoke(MeetingQuotaPlan $plan, User $admin, array $validated): MeetingQuotaPlan
     {

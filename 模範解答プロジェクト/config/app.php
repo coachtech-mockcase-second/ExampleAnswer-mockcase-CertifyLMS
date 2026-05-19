@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Providers\AppServiceProvider;
 use App\Providers\AuthServiceProvider;
+use App\Providers\BroadcastServiceProvider;
 use App\Providers\EventServiceProvider;
 use App\Providers\FortifyServiceProvider;
 use App\Providers\MockExamServiceProvider;
@@ -174,7 +175,7 @@ return [
          */
         AppServiceProvider::class,
         AuthServiceProvider::class,
-        App\Providers\BroadcastServiceProvider::class,
+        BroadcastServiceProvider::class,
         EventServiceProvider::class,
         FortifyServiceProvider::class,
         QuizAnsweringServiceProvider::class,

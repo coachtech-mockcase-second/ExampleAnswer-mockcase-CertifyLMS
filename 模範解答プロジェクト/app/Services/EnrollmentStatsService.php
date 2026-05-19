@@ -40,7 +40,7 @@ final class EnrollmentStatsService
     /**
      * 資格別の受講生数(status 別の内訳付き)。
      *
-     * @return array<string, array{learning: int, passed: int, failed: int}>  キーは certification_id
+     * @return array<string, array{learning: int, passed: int, failed: int}> キーは certification_id
      */
     public function perCertification(): array
     {

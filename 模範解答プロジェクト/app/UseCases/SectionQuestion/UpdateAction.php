@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * - category_id 変更時は所属資格との一致を検証
  * - options が含まれる場合は delete-and-insert で同期し、is_correct=true がちょうど 1 件であることを検証
  *
- * @see \App\UseCases\SectionQuestion\StoreAction
+ * @see StoreAction
  */
 final class UpdateAction
 {

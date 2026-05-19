@@ -9,6 +9,7 @@ use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Broadcast;
 use Tests\TestCase;
 
 /**
@@ -29,7 +30,7 @@ class ChannelAuthorizationTest extends TestCase
 
         $channels = require base_path('routes/channels.php');
 
-        $callback = \Illuminate\Support\Facades\Broadcast::getChannels()['chat-room.{chatRoomId}'] ?? null;
+        $callback = Broadcast::getChannels()['chat-room.{chatRoomId}'] ?? null;
         $this->assertNotNull($callback, 'chat-room.{chatRoomId} channel must be registered');
 
         $this->assertTrue($callback($student, $room->id));

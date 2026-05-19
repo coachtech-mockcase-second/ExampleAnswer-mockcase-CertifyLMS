@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Meeting;
 
+use App\Http\Controllers\MeetingController;
 use App\Models\Meeting;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -13,12 +14,13 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  *
  * eager load は coach ダッシュボードと履歴画面で必要な enrollment.certification / student を先読みする。
  *
- * @see \App\Http\Controllers\MeetingController::indexAsCoach()
+ * @see MeetingController::indexAsCoach()
  */
 final class IndexAsCoachAction
 {
     /**
-     * @param  array{filter?: ?string, student?: ?string, enrollment?: ?string}  $filters
+     * @param array{filter?: ?string, student?: ?string, enrollment?: ?string} $filters
+     *
      * @return LengthAwarePaginator<Meeting>
      */
     public function __invoke(User $coach, array $filters = [], int $perPage = 20): LengthAwarePaginator

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Enums\MockExamSessionStatus;
 use App\Enums\PassProbabilityBand;
 use App\Models\Certification;
 use App\Models\Enrollment;
@@ -133,6 +132,77 @@ class WeaknessAnalysisServiceTest extends TestCase
 
         $band = $this->service->getPassProbabilityBand($enrollment);
         $this->assertSame(PassProbabilityBand::Danger, $band);
+    }
+
+    public function test_batch_heatmap_returns_aggregated_array_per_session(): void
+    {
+        $cert = Certification::factory()->published()->create();
+        $catA = QuestionCategory::factory()->state(['certification_id' => $cert->id, 'name' => 'A'])->create();
+        $catB = QuestionCategory::factory()->state(['certification_id' => $cert->id, 'name' => 'B'])->create();
+        $enrollment = Enrollment::factory()->for($cert)->learning()->create();
+        $mockExam = MockExam::factory()->forCertification($cert)->published()->create();
+
+        $session1 = MockExamSession::factory()
+            ->forEnrollment($enrollment)
+            ->forMockExam($mockExam)
+            ->graded(true)
+            ->create();
+        $this->seedAnswers($session1, $catA, 4, correctCount: 4);
+        $this->seedAnswers($session1, $catB, 2, correctCount: 1);
+
+        $session2 = MockExamSession::factory()
+            ->forEnrollment($enrollment)
+            ->forMockExam($mockExam)
+            ->graded(false)
+            ->create();
+        $this->seedAnswers($session2, $catA, 4, correctCount: 0);
+
+        $heatmap = $this->service->batchHeatmap(collect([$session1, $session2]));
+
+        $this->assertArrayHasKey($session1->id, $heatmap);
+        $this->assertArrayHasKey($session2->id, $heatmap);
+
+        $cellsA1 = collect($heatmap[$session1->id])->firstWhere('category_id', $catA->id);
+        $this->assertSame(4, $cellsA1['correct']);
+        $this->assertSame(4, $cellsA1['total']);
+        $this->assertSame(100.0, $cellsA1['rate']);
+        $this->assertSame('A', $cellsA1['category_name']);
+
+        $cellsA2 = collect($heatmap[$session2->id])->firstWhere('category_id', $catA->id);
+        $this->assertSame(0, $cellsA2['correct']);
+        $this->assertSame(4, $cellsA2['total']);
+        $this->assertSame(0.0, $cellsA2['rate']);
+    }
+
+    public function test_batch_heatmap_excludes_non_graded_sessions(): void
+    {
+        $cert = Certification::factory()->published()->create();
+        $cat = QuestionCategory::factory()->state(['certification_id' => $cert->id])->create();
+        $enrollment = Enrollment::factory()->for($cert)->learning()->create();
+        $mockExam = MockExam::factory()->forCertification($cert)->published()->create();
+
+        $graded = MockExamSession::factory()
+            ->forEnrollment($enrollment)
+            ->forMockExam($mockExam)
+            ->graded(true)
+            ->create();
+        $this->seedAnswers($graded, $cat, 2, correctCount: 1);
+
+        $notStarted = MockExamSession::factory()
+            ->forEnrollment($enrollment)
+            ->forMockExam($mockExam)
+            ->notStarted()
+            ->create();
+
+        $heatmap = $this->service->batchHeatmap(collect([$graded, $notStarted]));
+
+        $this->assertArrayHasKey($graded->id, $heatmap);
+        $this->assertArrayNotHasKey($notStarted->id, $heatmap);
+    }
+
+    public function test_batch_heatmap_returns_empty_for_empty_collection(): void
+    {
+        $this->assertSame([], $this->service->batchHeatmap(collect()));
     }
 
     public function test_get_pass_probability_band_uses_only_recent_three_sessions(): void

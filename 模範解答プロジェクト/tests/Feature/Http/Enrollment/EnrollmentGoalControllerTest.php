@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Models\EnrollmentGoal;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EnrollmentGoalControllerTest extends TestCase
@@ -49,7 +50,7 @@ class EnrollmentGoalControllerTest extends TestCase
         $coach = User::factory()->coach()->inProgress()->create();
         $enrollment = Enrollment::factory()->learning()->create();
         $enrollment->certification->coaches()->attach($coach->id, [
-            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'id' => (string) Str::ulid(),
             'assigned_at' => now(),
             'assigned_by_user_id' => $coach->id,
         ]);

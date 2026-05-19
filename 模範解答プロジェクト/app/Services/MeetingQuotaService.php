@@ -43,7 +43,8 @@ final class MeetingQuotaService
      * 受講生の面談履歴を新しい順で paginate する。
      * type フィルタを掛けた場合は該当 type のみ返す。
      *
-     * @param  ?MeetingQuotaTransactionType  $type  フィルタ type、null で全件
+     * @param ?MeetingQuotaTransactionType $type フィルタ type、null で全件
+     *
      * @return LengthAwarePaginator<MeetingQuotaTransaction>
      */
     public function history(

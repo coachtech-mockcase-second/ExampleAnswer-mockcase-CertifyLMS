@@ -12,6 +12,7 @@ use App\Models\Enrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -112,7 +113,7 @@ class IndexTest extends TestCase
         $student = User::factory()->student()->inProgress()->create();
         $certification = Certification::factory()->published()->create();
         $certification->coaches()->attach($coach->id, [
-            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'id' => (string) Str::ulid(),
             'assigned_by_user_id' => User::factory()->admin()->inProgress()->create()->id,
             'assigned_at' => now(),
             'created_at' => now(),

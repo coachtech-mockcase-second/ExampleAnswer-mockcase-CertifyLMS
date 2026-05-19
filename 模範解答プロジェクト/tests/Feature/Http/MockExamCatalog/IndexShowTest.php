@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\MockExamCatalog;
 
-use App\Enums\EnrollmentStatus;
 use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\MockExam;

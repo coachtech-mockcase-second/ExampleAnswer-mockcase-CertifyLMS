@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 final class UpdateAction
 {
     /**
-     * @param  array{name: string, category_id: string, difficulty: string, description?: ?string}  $validated
+     * @param array{name: string, category_id: string, difficulty: string, description?: ?string} $validated
      */
     public function __invoke(Certification $certification, User $admin, array $validated): Certification
     {

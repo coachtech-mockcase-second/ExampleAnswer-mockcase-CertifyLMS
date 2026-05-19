@@ -4,42 +4,57 @@ declare(strict_types=1);
 
 namespace App\UseCases\Notification;
 
+use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\ChatMessage;
 use App\Notifications\Chat\ChatMessageReceivedNotification;
-use App\UseCases\Chat\StoreMessageAction;
-use Illuminate\Support\Facades\Notification;
 
 /**
  * chat メッセージの受信通知を当事者に配信するラッパー Action。
  *
- * StoreMessageAction が `DB::afterCommit()` 内で呼び、送信者を除く全 ChatMember に対し
- * Notification を一括 send する。チャネル分岐は ChatMessageReceivedNotification::via() に集約。
+ * StoreMessageAction の `DB::afterCommit()` 内で呼ばれ、送信者を除く全 ChatMember に対して
+ * Notification を配信する。受信者ロール × 送信者ロールでチャネル分岐:
  *
- * 送信スキップ条件:
+ * - 受講生 → コーチ: database + mail (全員)
+ * - コーチ → 受講生: database + mail
+ * - コーチ → 他コーチ: database のみ (連絡過剰防止のため Mail 抑制)
  *
- * - 送信者本人(自分宛通知は不要)
- * - withdrawn ユーザー(退会済への通知抑止)
- *
- * @see StoreMessageAction
+ * 受信者の `status !== InProgress` (withdrawn / graduated / invited) は配信スキップする。
  */
 final class NotifyChatMessageReceivedAction
 {
     public function __invoke(ChatMessage $message): void
     {
-        $message->loadMissing('chatRoom.members.user');
+        $message->loadMissing(['sender', 'chatRoom.members.user']);
 
-        $recipients = $message->chatRoom?->members
-            ->pluck('user')
-            ->filter(fn ($user) => $user !== null
-                && $user->id !== $message->sender_user_id
-                && $user->status !== UserStatus::Withdrawn)
-            ->values();
-
-        if ($recipients === null || $recipients->isEmpty()) {
+        $sender = $message->sender;
+        if ($sender === null) {
             return;
         }
 
-        Notification::send($recipients, new ChatMessageReceivedNotification($message));
+        $members = $message->chatRoom?->members ?? collect();
+
+        foreach ($members as $member) {
+            $recipient = $member->user;
+
+            if ($recipient === null) {
+                continue;
+            }
+            if ($recipient->id === $sender->id) {
+                continue;
+            }
+            if ($recipient->status !== UserStatus::InProgress) {
+                continue;
+            }
+
+            $mailEnabled = match (true) {
+                $sender->role === UserRole::Student => true,
+                $sender->role === UserRole::Coach && $recipient->role === UserRole::Student => true,
+                $sender->role === UserRole::Coach && $recipient->role === UserRole::Coach => false,
+                default => true,
+            };
+
+            $recipient->notify(new ChatMessageReceivedNotification($message, mailEnabled: $mailEnabled));
+        }
     }
 }

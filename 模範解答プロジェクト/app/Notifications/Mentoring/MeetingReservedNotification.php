@@ -5,25 +5,47 @@ declare(strict_types=1);
 namespace App\Notifications\Mentoring;
 
 use App\Models\Meeting;
+use App\Notifications\BaseNotification;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
 /**
- * 受講生の予約成立を担当コーチに通知する Notification。Mail channel でコーチへ通知する。
+ * 受講生の予約成立を担当コーチに通知する Notification。
  *
- * Mail 本文は `meeting_url_snapshot` が NULL の場合「URL 未設定」案内を入れる(NFR-mentoring 準拠)。
- * Database channel は通知一覧画面と連動するため、通知一覧 Feature 導入時に `via()` へ追加する。
+ * 受講生向けの予約完了通知は予約 UI 側で即時表示されるため発火しない (コーチ宛のみ)。
+ * Mail 本文には日時 / 受講生名 / 相談内容 / 面談 URL を含める。
  */
-final class MeetingReservedNotification extends Notification
+final class MeetingReservedNotification extends BaseNotification
 {
-    public function __construct(public readonly Meeting $meeting) {}
+    public function __construct(public readonly Meeting $meeting)
+    {
+        parent::__construct();
+    }
 
     /**
-     * @return array<int, string>
+     * @return array<string, mixed>
      */
-    public function via(object $notifiable): array
+    public function toDatabase(object $notifiable): array
     {
-        return ['mail'];
+        $meeting = $this->meeting->loadMissing(['student', 'enrollment.certification']);
+        $studentName = $meeting->student?->name ?? '受講生';
+        $certificationName = $meeting->enrollment?->certification?->name ?? '担当資格';
+
+        return [
+            'notification_type' => 'meeting_reserved',
+            'title' => "{$studentName} さんから面談予約が入りました",
+            'message' => $meeting->scheduled_at->translatedFormat('n月j日(D) H:i').'〜 / '.$certificationName,
+            'meeting_id' => $meeting->id,
+            'enrollment_id' => $meeting->enrollment_id,
+            'coach_user_id' => $meeting->coach_id,
+            'student_user_id' => $meeting->student_id,
+            'student_name' => $studentName,
+            'scheduled_at' => $meeting->scheduled_at->toIso8601String(),
+            'topic' => $meeting->topic,
+            'meeting_url_snapshot' => $meeting->meeting_url_snapshot,
+            'link_route' => 'coach.meetings.index',
+            'link_params' => [],
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -35,7 +57,7 @@ final class MeetingReservedNotification extends Notification
         $url = $meeting->meeting_url_snapshot;
 
         $message = (new MailMessage)
-            ->subject('【Certify LMS】面談予約のお知らせ')
+            ->subject('【Certify LMS】新しい面談予約があります')
             ->greeting('面談予約が入りました')
             ->line("受講生: {$studentName}")
             ->line("資格: {$certificationName}")
@@ -52,21 +74,13 @@ final class MeetingReservedNotification extends Notification
         return $message->salutation('Certify LMS 運営チーム');
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function toArray(object $notifiable): array
+    public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return [
-            'notification_type' => 'meeting_reserved',
-            'meeting_id' => $this->meeting->id,
-            'enrollment_id' => $this->meeting->enrollment_id,
-            'student_id' => $this->meeting->student_id,
-            'scheduled_at' => $this->meeting->scheduled_at->toIso8601String(),
-            'topic' => $this->meeting->topic,
-            'meeting_url_snapshot' => $this->meeting->meeting_url_snapshot,
-            'link_route' => 'coach.meetings.index',
-            'link_params' => [],
-        ];
+        return new BroadcastMessage([
+            'id' => $this->id,
+            'type' => static::class,
+            'data' => $this->toDatabase($notifiable),
+            'created_at' => now()->toIso8601String(),
+        ]);
     }
 }

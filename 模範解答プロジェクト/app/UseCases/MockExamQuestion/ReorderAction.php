@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 final class ReorderAction
 {
     /**
-     * @param  array<int, array{id: string, order: int}>  $items
+     * @param array<int, array{id: string, order: int}> $items
      */
     public function __invoke(MockExam $mockExam, array $items): void
     {

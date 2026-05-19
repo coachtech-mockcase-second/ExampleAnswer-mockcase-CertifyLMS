@@ -26,7 +26,7 @@ final class StoreAction
     ) {}
 
     /**
-     * @param  array{coach_id?: string, redirect_path?: string}  $state  callback 時に渡される decoded state
+     * @param array{coach_id?: string, redirect_path?: string} $state callback 時に渡される decoded state
      *
      * @throws GoogleOAuthException
      */

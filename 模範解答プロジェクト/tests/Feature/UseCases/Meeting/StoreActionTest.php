@@ -6,22 +6,22 @@ namespace Tests\Feature\UseCases\Meeting;
 
 use App\Enums\MeetingQuotaTransactionType;
 use App\Enums\MeetingStatus;
+use App\Exceptions\MeetingQuota\InsufficientMeetingQuotaException;
 use App\Exceptions\Mentoring\MeetingNoAvailableCoachException;
 use App\Exceptions\Mentoring\MeetingOutOfAvailabilityException;
-use App\Exceptions\MeetingQuota\InsufficientMeetingQuotaException;
 use App\Models\Certification;
 use App\Models\CoachAvailability;
+use App\Models\CoachGoogleCredential;
 use App\Models\Enrollment;
 use App\Models\Meeting;
-use App\Models\MeetingQuotaTransaction;
 use App\Models\User;
-use App\Models\CoachGoogleCredential;
 use App\Notifications\Mentoring\MeetingReservedNotification;
 use App\Services\Google\GoogleCalendarService;
 use App\UseCases\Meeting\StoreAction;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -32,7 +32,7 @@ class StoreActionTest extends TestCase
     private function attachCoach(Certification $certification, User $coach): void
     {
         $certification->coaches()->attach($coach->id, [
-            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'id' => (string) Str::ulid(),
             'assigned_by_user_id' => User::factory()->admin()->create()->id,
             'assigned_at' => now(),
             'unassigned_at' => null,

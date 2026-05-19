@@ -82,7 +82,7 @@ class OnboardActionTest extends TestCase
 
     public function test_marks_invitation_accepted(): void
     {
-        [$invitation, ] = $this->setupInvitedUser();
+        [$invitation] = $this->setupInvitedUser();
 
         app(OnboardAction::class)($invitation, [
             'name' => '受講太郎',

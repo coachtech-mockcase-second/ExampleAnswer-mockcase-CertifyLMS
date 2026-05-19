@@ -9,20 +9,21 @@ use App\Models\Meeting;
 use App\Notifications\Mentoring\MeetingReservedNotification;
 
 /**
- * 受講生の予約成立を担当コーチに通知するラッパー Action。
+ * 受講生の予約成立を担当コーチに配信するラッパー Action。
  *
- * 面談予約 Feature の `Meeting\StoreAction` から `DB::afterCommit` 内で呼ばれる。
- * 受信者(コーチ)が `withdrawn` / `graduated` の場合は送信スキップする(運用上はコーチに graduated 状態は無いが、防衛的に判定)。
- *
- * @see \App\UseCases\Meeting\StoreAction
- */ 
+ * 面談予約 Feature の `Meeting\StoreAction` (または `ReserveAction`) から `DB::afterCommit` 内で呼ばれる。
+ * 受講生宛は予約 UI で即時確認できるため発火しない。コーチが `withdrawn / graduated` の場合は配信スキップ。
+ */
 final class NotifyMeetingReservedAction
 {
     public function __invoke(Meeting $meeting): void
     {
         $coach = $meeting->loadMissing('coach')->coach;
 
-        if ($coach === null || $coach->status !== UserStatus::InProgress) {
+        if ($coach === null) {
+            return;
+        }
+        if ($coach->status !== UserStatus::InProgress) {
             return;
         }
 

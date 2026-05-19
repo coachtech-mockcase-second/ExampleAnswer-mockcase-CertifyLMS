@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Meeting;
 
+use App\Http\Controllers\MeetingController;
 use App\Models\Enrollment;
 use App\Models\Meeting;
 use Illuminate\Foundation\Http\FormRequest;
@@ -14,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Enrollment は URL Route Model Binding で受け取り、認証ユーザー本人のものか確認する。
  * date は `YYYY-MM-DD` 形式の今日以降のみ。
  *
- * @see \App\Http\Controllers\MeetingController::fetchAvailability()
+ * @see MeetingController::fetchAvailability()
  */
 class AvailabilityRequest extends FormRequest
 {

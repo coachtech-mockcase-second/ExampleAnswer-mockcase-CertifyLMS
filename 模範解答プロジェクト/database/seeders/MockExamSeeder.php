@@ -139,7 +139,7 @@ final class MockExamSeeder extends Seeder
     /**
      * 模試に 6 問を投入する。分野は循環で散らし、各問に 4 つの選択肢(先頭が正答) を持たせる。
      *
-     * @param  Collection<int, QuestionCategory>  $categories
+     * @param Collection<int, QuestionCategory> $categories
      */
     private function seedQuestionsForMockExam(MockExam $mockExam, Collection $categories): void
     {
@@ -175,7 +175,7 @@ final class MockExamSeeder extends Seeder
      * 1 資格目: 第1回 Graded(合格 100%) / 第2回 Graded(不合格 33%) / 第3回 InProgress / 第4回 NotStarted
      * 2 資格目: 全公開模試で合格 — CompletionEligibilityService の「修了証を受け取る」ボタン活性化シナリオ
      *
-     * @param  array<string, Collection<int, MockExam>>  $mockExamsByCertification
+     * @param array<string, Collection<int, MockExam>> $mockExamsByCertification
      */
     private function seedSessionsForFixedStudent(User $student, array $mockExamsByCertification): void
     {
@@ -200,7 +200,7 @@ final class MockExamSeeder extends Seeder
     /**
      * 1 資格目の固定 student シナリオ: 各模試で異なる状態を持たせる。
      *
-     * @param  Collection<int, MockExam>  $mockExams
+     * @param Collection<int, MockExam> $mockExams
      */
     private function seedVariedStatesForFixedStudent(Enrollment $enrollment, User $student, Collection $mockExams): void
     {
@@ -228,7 +228,7 @@ final class MockExamSeeder extends Seeder
     /**
      * 2 資格目の固定 student シナリオ: 全公開模試に合格(修了申請ボタン活性化シナリオ)。
      *
-     * @param  Collection<int, MockExam>  $mockExams
+     * @param Collection<int, MockExam> $mockExams
      */
     private function seedAllPassedForFixedStudent(Enrollment $enrollment, User $student, Collection $mockExams): void
     {
@@ -246,7 +246,7 @@ final class MockExamSeeder extends Seeder
     /**
      * demo 受講生(固定 student 以外の in_progress) にランダムに Graded セッションを散らす。
      *
-     * @param  array<string, Collection<int, MockExam>>  $mockExamsByCertification
+     * @param array<string, Collection<int, MockExam>> $mockExamsByCertification
      */
     private function seedSessionsForDemoStudents(array $mockExamsByCertification): void
     {

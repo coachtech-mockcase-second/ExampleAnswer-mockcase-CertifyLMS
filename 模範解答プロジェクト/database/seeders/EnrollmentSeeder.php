@@ -16,7 +16,9 @@ use App\Models\EnrollmentGoal;
 use App\Models\EnrollmentNote;
 use App\Models\EnrollmentStatusLog;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 /**
  * 開発用 受講登録シーダー。
@@ -78,7 +80,7 @@ final class EnrollmentSeeder extends Seeder
     /**
      * 固定 student に published 資格 2 件を learning で登録し、個人目標 + コーチメモを添える。
      *
-     * @param  \Illuminate\Database\Eloquent\Collection<int, Certification>  $publishedCerts
+     * @param Collection<int, Certification> $publishedCerts
      */
     private function enrollFixedStudent(User $student, $publishedCerts, ?User $admin): void
     {
@@ -126,8 +128,8 @@ final class EnrollmentSeeder extends Seeder
     /**
      * demo 受講生に対し各 status を網羅した受講登録を投入する(admin の status フィルタ・状態遷移ボタンの実機確認用)。
      *
-     * @param  \Illuminate\Database\Eloquent\Collection<int, User>  $demoStudents
-     * @param  \Illuminate\Database\Eloquent\Collection<int, Certification>  $publishedCerts
+     * @param Collection<int, User> $demoStudents
+     * @param Collection<int, Certification> $publishedCerts
      */
     private function enrollDemoStudents($demoStudents, $publishedCerts, ?User $admin): void
     {
@@ -263,7 +265,7 @@ final class EnrollmentSeeder extends Seeder
      * 受講生 enrollments.show の「修了済み → PDF DL リンク」表示の実機確認用。
      * PDF 本体は seed しない(pdf_path はダミー値)。
      */
-    private function issueCertificate(Enrollment $enrollment, ?\Illuminate\Support\Carbon $passedAt): void
+    private function issueCertificate(Enrollment $enrollment, ?Carbon $passedAt): void
     {
         if (Certificate::query()->where('enrollment_id', $enrollment->id)->exists()) {
             return;

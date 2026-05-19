@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 final class StoreAction
 {
     /**
-     * @param  array{certification_id: string, title: string, description?: ?string, order: int, passing_score: int}  $validated
+     * @param array{certification_id: string, title: string, description?: ?string, order: int, passing_score: int} $validated
      */
     public function __invoke(User $auth, array $validated): MockExam
     {

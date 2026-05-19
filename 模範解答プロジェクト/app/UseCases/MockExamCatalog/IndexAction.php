@@ -40,7 +40,7 @@ final class IndexAction
     /**
      * 当該 Enrollment に紐づく進行中セッション(NotStarted / InProgress / Submitted)を MockExam 単位で連想配列化する。
      *
-     * @return array<string, string>  mock_exam_id => session_id
+     * @return array<string, string> mock_exam_id => session_id
      */
     public function activeSessionMap(Enrollment $enrollment): array
     {

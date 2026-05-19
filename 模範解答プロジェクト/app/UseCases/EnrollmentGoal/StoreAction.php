@@ -14,7 +14,7 @@ use App\Models\EnrollmentGoal;
 final class StoreAction
 {
     /**
-     * @param  array{title: string, description?: ?string, target_date?: ?string}  $validated
+     * @param array{title: string, description?: ?string, target_date?: ?string} $validated
      */
     public function __invoke(Enrollment $enrollment, array $validated): EnrollmentGoal
     {

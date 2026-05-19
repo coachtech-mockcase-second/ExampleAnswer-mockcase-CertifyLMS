@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Http\Middleware\ApiKeyMiddleware;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureActiveLearning;
 use App\Http\Middleware\EnsureUserRole;
+use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\ResolveDefaultEnrollment;
@@ -72,6 +74,7 @@ class Kernel extends HttpKernel
 
         'api' => [
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            ForceJsonResponse::class,
             ThrottleRequests::class.':api',
             SubstituteBindings::class,
         ],
@@ -86,6 +89,7 @@ class Kernel extends HttpKernel
      */
     protected $middlewareAliases = [
         'active-learning' => EnsureActiveLearning::class,
+        'api.key' => ApiKeyMiddleware::class,
         'auth' => Authenticate::class,
         'auth.basic' => AuthenticateWithBasicAuth::class,
         'auth.session' => AuthenticateSession::class,

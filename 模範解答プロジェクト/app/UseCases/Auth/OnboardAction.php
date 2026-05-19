@@ -8,6 +8,7 @@ use App\Enums\InvitationStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Exceptions\Auth\InvalidInvitationTokenException;
+use App\Http\Controllers\Auth\OnboardingController;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Services\UserStatusChangeService;
@@ -25,7 +26,7 @@ use Illuminate\Support\Facades\Hash;
  *   とは別経路で履歴を残す)
  * - 全 DB 操作は `DB::transaction()` で囲み、自動ログインは commit 後に実施する
  *
- * @see \App\Http\Controllers\Auth\OnboardingController::store()
+ * @see OnboardingController::store()
  */
 final class OnboardAction
 {
@@ -35,7 +36,7 @@ final class OnboardAction
     ) {}
 
     /**
-     * @param  array{name: string, bio?: ?string, password: string, meeting_url?: string}  $validated
+     * @param array{name: string, bio?: ?string, password: string, meeting_url?: string} $validated
      *
      * @throws InvalidInvitationTokenException
      */

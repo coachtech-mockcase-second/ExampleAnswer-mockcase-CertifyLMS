@@ -147,6 +147,19 @@ class User extends Authenticatable
     }
 
     /**
+     * コーチが担当する資格 ID のみを配列で返すヘルパ。
+     *
+     * Policy / IndexAction 等でリレーションオブジェクトではなく ID 配列を必要とする箇所から利用する。
+     * 結果が空配列なら未担当 (受講生 / 管理者 は常に空)。
+     *
+     * @return array<int, string>
+     */
+    public function coachingCertificationIds(): array
+    {
+        return $this->assignedCertifications()->pluck('certifications.id')->all();
+    }
+
+    /**
      * @return BelongsTo<Plan, $this>
      */
     public function plan(): BelongsTo
@@ -277,7 +290,7 @@ class User extends Authenticatable
      * Laravel フレームワーク側のシグナル(`Illuminate\Foundation\Auth\User::sendPasswordResetNotification($token)`)
      * との LSP 整合のため、引数に型宣言を付与しない(親クラスが parameter type なしで宣言しているため)。
      *
-     * @param  string  $token  パスワードリセット用の署名付きトークン
+     * @param string $token パスワードリセット用の署名付きトークン
      */
     public function sendPasswordResetNotification($token): void
     {
@@ -285,10 +298,20 @@ class User extends Authenticatable
     }
 
     /**
+     * Broadcast 通知をユーザー固有 Private Channel `notifications.{userId}` に流す。
+     * routes/channels.php の Broadcast::channel('notifications.{userId}', ...) と対になる。
+     */
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return 'notifications.'.$this->id;
+    }
+
+    /**
      * 受講中(in_progress) と 卒業(graduated) を「ログイン可能 = 活動アカウント」として扱うスコープ。
      * Fortify の認証通過判定や、管理画面の active 集計に使う。
      *
-     * @param  Builder<User>  $query
+     * @param Builder<User> $query
+     *
      * @return Builder<User>
      */
     public function scopeActive(Builder $query): Builder

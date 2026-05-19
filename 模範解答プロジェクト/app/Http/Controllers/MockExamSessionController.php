@@ -8,6 +8,7 @@ use App\Enums\MockExamSessionStatus;
 use App\Http\Requests\MockExamSession\IndexRequest;
 use App\Models\Enrollment;
 use App\Models\MockExam;
+use App\Models\MockExamQuestion;
 use App\Models\MockExamSession;
 use App\Services\WeaknessAnalysisService;
 use App\UseCases\MockExamSession\DestroyAction;
@@ -16,6 +17,7 @@ use App\UseCases\MockExamSession\ShowAction;
 use App\UseCases\MockExamSession\StartAction;
 use App\UseCases\MockExamSession\StoreAction;
 use App\UseCases\MockExamSession\SubmitAction;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -126,11 +128,11 @@ class MockExamSessionController extends Controller
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, \App\Models\MockExamQuestion>
+     * @return Collection<int, MockExamQuestion>
      */
     private function loadQuestionsForTake(MockExamSession $session)
     {
-        return \App\Models\MockExamQuestion::query()
+        return MockExamQuestion::query()
             ->whereIn('id', $session->generated_question_ids ?? [])
             ->with(['category', 'options' => fn ($q) => $q->orderBy('order')])
             ->orderBy('order')
@@ -140,11 +142,11 @@ class MockExamSessionController extends Controller
     /**
      * 結果画面は SoftDelete された問題も withTrashed で取得し、削除済の表示は淡色で出す前提。
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, \App\Models\MockExamQuestion>
+     * @return Collection<int, MockExamQuestion>
      */
     private function loadQuestionsForResult(MockExamSession $session)
     {
-        return \App\Models\MockExamQuestion::withTrashed()
+        return MockExamQuestion::withTrashed()
             ->whereIn('id', $session->generated_question_ids ?? [])
             ->with([
                 'category',

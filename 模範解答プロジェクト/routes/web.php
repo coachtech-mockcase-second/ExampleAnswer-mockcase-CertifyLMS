@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Enums\EnrollmentStatus;
+use App\Http\Controllers\AdminAnnouncementController;
 use App\Http\Controllers\AdminChatRoomController;
 use App\Http\Controllers\AdminEnrollmentController;
 use App\Http\Controllers\AdminMockExamSessionController;
+use App\Http\Controllers\AdminQaReplyController;
+use App\Http\Controllers\AdminQaThreadController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CertificateController;
@@ -30,9 +34,12 @@ use App\Http\Controllers\MockExamCatalogController;
 use App\Http\Controllers\MockExamController;
 use App\Http\Controllers\MockExamQuestionController;
 use App\Http\Controllers\MockExamSessionController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlanStatusController;
+use App\Http\Controllers\QaReplyController;
+use App\Http\Controllers\QaThreadController;
 use App\Http\Controllers\QuestionCategoryController;
 use App\Http\Controllers\QuizHistoryController;
 use App\Http\Controllers\QuizStatsController;
@@ -44,7 +51,11 @@ use App\Http\Controllers\SectionQuestionAnswerController;
 use App\Http\Controllers\SectionQuestionController;
 use App\Http\Controllers\SectionQuizController;
 use App\Http\Controllers\SectionQuizResultController;
+use App\Http\Controllers\Settings\AvailabilityController as SettingsAvailabilityController;
+use App\Http\Controllers\Settings\AvatarController as SettingsAvatarController;
 use App\Http\Controllers\Settings\CoachGoogleCredentialController;
+use App\Http\Controllers\Settings\PasswordController as SettingsPasswordController;
+use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Settings\SettingsDefaultEnrollmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeakDrillController;
@@ -76,13 +87,20 @@ Route::middleware('auth')->group(function () {
     Route::view('/dashboard', 'placeholders.coming-soon', ['feature' => 'dashboard'])
         ->name('dashboard.index');
 
-    // プロフィール設定
-    Route::view('/settings/profile', 'placeholders.coming-soon', ['feature' => 'settings-profile'])
-        ->name('settings.profile.edit');
+    // プロフィール設定 / パスワード変更 / アバター(全ロール共通)
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('profile', [SettingsProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('profile', [SettingsProfileController::class, 'update'])->name('profile.update');
+        Route::post('avatar', [SettingsAvatarController::class, 'store'])->name('avatar.store');
+        Route::delete('avatar', [SettingsAvatarController::class, 'destroy'])->name('avatar.destroy');
+        Route::put('password', [SettingsPasswordController::class, 'update'])->name('password.update');
+    });
 
     // 通知
-    Route::view('/notifications', 'placeholders.coming-soon', ['feature' => 'notification'])
-        ->name('notifications.index');
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/popover', [NotificationController::class, 'popover'])->name('notifications.popover');
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 
     // 修了証配信(graduated 受講生でも DL 可、active-learning 非適用)
     Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
@@ -254,6 +272,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->name('admin.enrollments.updateExamDate');
     Route::post('enrollments/{enrollment}/fail', [AdminEnrollmentController::class, 'fail'])
         ->name('admin.enrollments.fail');
+
+    // 管理者お知らせ配信(全 in_progress 受講生 / 資格別 / ユーザー指定)
+    Route::resource('announcements', AdminAnnouncementController::class)
+        ->only(['index', 'create', 'store', 'show'])
+        ->parameters(['announcements' => 'announcement'])
+        ->names('admin.announcements');
 });
 
 // ============================================================
@@ -387,8 +411,8 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
         $enrollments = $user
             ?->enrollments()
             ->whereIn('status', [
-                \App\Enums\EnrollmentStatus::Learning->value,
-                \App\Enums\EnrollmentStatus::Passed->value,
+                EnrollmentStatus::Learning->value,
+                EnrollmentStatus::Passed->value,
             ])
             ->with('certification')
             ->get();
@@ -520,11 +544,23 @@ Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')->grou
 // コーチ専用ルート — Google カレンダー連携
 // ============================================================
 Route::middleware(['auth', 'role:coach'])->prefix('settings/google-calendar')->name('settings.google-calendar.')->group(function () {
-    Route::get('/', [CoachGoogleCredentialController::class, 'index'])->name('index');
     Route::get('connect', [CoachGoogleCredentialController::class, 'redirect'])->name('redirect');
     Route::get('callback', [CoachGoogleCredentialController::class, 'callback'])->name('callback');
     Route::delete('/', [CoachGoogleCredentialController::class, 'destroy'])->name('destroy');
 });
+
+// ============================================================
+// コーチ専用ルート — 面談可能時間枠の編集
+// ============================================================
+Route::middleware(['auth', 'role:coach'])
+    ->prefix('settings/availability')
+    ->name('settings.availability.')
+    ->group(function () {
+        Route::get('/', [SettingsAvailabilityController::class, 'index'])->name('index');
+        Route::post('/', [SettingsAvailabilityController::class, 'store'])->name('store');
+        Route::patch('{availability}', [SettingsAvailabilityController::class, 'update'])->name('update');
+        Route::delete('{availability}', [SettingsAvailabilityController::class, 'destroy'])->name('destroy');
+    });
 
 // ============================================================
 // 受講生専用ルート(受講中=in_progress のみ通過)
@@ -537,6 +573,35 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->prefix('meeting-
 
     // 面談回数履歴
     Route::get('history', [MeetingQuotaHistoryController::class, 'index'])->name('history');
+});
+
+// ============================================================
+// 受講生 / コーチ共有 — qa-board (質問掲示板) 公開エンドポイント
+// ============================================================
+Route::middleware(['auth', 'role:student,coach', 'active-learning'])->group(function () {
+    Route::get('qa-board', [QaThreadController::class, 'index'])->name('qa-board.index');
+    Route::get('qa-board/create', [QaThreadController::class, 'create'])->name('qa-board.create');
+    Route::post('qa-board', [QaThreadController::class, 'store'])->name('qa-board.store');
+    Route::get('qa-board/{thread}', [QaThreadController::class, 'show'])->name('qa-board.show');
+    Route::get('qa-board/{thread}/edit', [QaThreadController::class, 'edit'])->name('qa-board.edit');
+    Route::patch('qa-board/{thread}', [QaThreadController::class, 'update'])->name('qa-board.update');
+    Route::delete('qa-board/{thread}', [QaThreadController::class, 'destroy'])->name('qa-board.destroy');
+    Route::post('qa-board/{thread}/resolve', [QaThreadController::class, 'resolve'])->name('qa-board.resolve');
+    Route::post('qa-board/{thread}/unresolve', [QaThreadController::class, 'unresolve'])->name('qa-board.unresolve');
+
+    Route::post('qa-board/{thread}/replies', [QaReplyController::class, 'store'])->name('qa-board.replies.store');
+    Route::patch('qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'update'])->name('qa-board.replies.update');
+    Route::delete('qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'destroy'])->name('qa-board.replies.destroy');
+});
+
+// ============================================================
+// 管理者専用 — qa-board モデレーション
+// ============================================================
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('qa-board', [AdminQaThreadController::class, 'index'])->name('admin.qa-board.index');
+    Route::get('qa-board/{thread}', [AdminQaThreadController::class, 'show'])->withTrashed()->name('admin.qa-board.show');
+    Route::delete('qa-board/{thread}', [AdminQaThreadController::class, 'destroy'])->name('admin.qa-board.destroy');
+    Route::delete('qa-board/replies/{reply}', [AdminQaReplyController::class, 'destroy'])->name('admin.qa-board.replies.destroy');
 });
 
 // ============================================================

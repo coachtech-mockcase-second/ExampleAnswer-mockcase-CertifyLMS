@@ -14,6 +14,7 @@ use App\Services\Google\GoogleCalendarService;
 use App\Services\MeetingAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -24,7 +25,7 @@ class MeetingAvailabilityServiceTest extends TestCase
     private function attachCoach(Certification $certification, User $coach): void
     {
         $certification->coaches()->attach($coach->id, [
-            'id' => (string) \Illuminate\Support\Str::ulid(),
+            'id' => (string) Str::ulid(),
             'assigned_by_user_id' => User::factory()->admin()->create()->id,
             'assigned_at' => now(),
             'unassigned_at' => null,

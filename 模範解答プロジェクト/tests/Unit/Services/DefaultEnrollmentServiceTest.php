@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\User;
 use App\Services\DefaultEnrollmentService;

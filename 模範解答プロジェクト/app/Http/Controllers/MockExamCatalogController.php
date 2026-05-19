@@ -9,9 +9,9 @@ use App\Models\Enrollment;
 use App\Models\MockExam;
 use App\UseCases\MockExamCatalog\IndexAction;
 use App\UseCases\MockExamCatalog\ShowAction;
+use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Illuminate\View\View;
 
 /**
  * 受講生視点の模試カタログ Controller。

@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 final class RefundQuotaAction
 {
     /**
-     * @param  string  $meetingId  キャンセルされた面談(Meeting)の ULID
+     * @param string $meetingId キャンセルされた面談(Meeting)の ULID
      */
     public function __invoke(User $user, string $meetingId): MeetingQuotaTransaction
     {

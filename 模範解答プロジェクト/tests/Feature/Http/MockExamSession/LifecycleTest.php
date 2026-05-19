@@ -9,6 +9,7 @@ use App\Enums\TermType;
 use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\MockExam;
+use App\Models\MockExamAnswer;
 use App\Models\MockExamQuestion;
 use App\Models\MockExamSession;
 use App\Models\User;
@@ -153,7 +154,7 @@ class LifecycleTest extends TestCase
             $wrongOption = $question->options->firstWhere('is_correct', false);
             $selectedOption = $index < 3 ? $correctOption : $wrongOption;
 
-            \App\Models\MockExamAnswer::factory()->create([
+            MockExamAnswer::factory()->create([
                 'mock_exam_session_id' => $session->id,
                 'mock_exam_question_id' => $question->id,
                 'selected_option_id' => $selectedOption->id,
@@ -173,7 +174,7 @@ class LifecycleTest extends TestCase
         $this->assertEquals(75.00, (float) $session->score_percentage);
         $this->assertTrue($session->pass);
         // 提出により実践ターム継続(submitted/graded は mock_practice 判定対象)
-        $this->assertSame(\App\Enums\TermType::MockPractice, $enrollment->refresh()->current_term);
+        $this->assertSame(TermType::MockPractice, $enrollment->refresh()->current_term);
     }
 
     public function test_submit_rejects_when_not_in_progress(): void

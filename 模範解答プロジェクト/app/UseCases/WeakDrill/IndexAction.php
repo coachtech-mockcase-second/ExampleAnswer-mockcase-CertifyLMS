@@ -7,6 +7,7 @@ namespace App\UseCases\WeakDrill;
 use App\Enums\ContentStatus;
 use App\Models\Enrollment;
 use App\Models\QuestionCategory;
+use App\Services\CategoryStats;
 use App\Services\Contracts\WeaknessAnalysisServiceContract;
 use App\Services\SectionQuestionAttemptStatsService;
 use Illuminate\Support\Collection;
@@ -29,7 +30,7 @@ final class IndexAction
     /**
      * @return array{
      *     categories: Collection<int, QuestionCategory>,
-     *     statsById: array<string, \App\Services\CategoryStats>,
+     *     statsById: array<string, CategoryStats>,
      *     weakCategoryIds: array<int, string>
      * }
      */

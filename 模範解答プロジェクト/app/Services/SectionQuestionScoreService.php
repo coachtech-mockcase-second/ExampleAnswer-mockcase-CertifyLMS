@@ -43,7 +43,7 @@ final class SectionQuestionScoreService
      * Section→SectionQuestion→SectionQuestionAttempt / SectionQuestionAnswer をまとめて読み込み、
      * メモリ上で集計することでセクション数 N に比例した SELECT 増を防ぐ。
      *
-     * @return Collection<string, SectionQuestionScoreSummary>  キーは Section.id
+     * @return Collection<string, SectionQuestionScoreSummary> キーは Section.id
      */
     public function batchSummarize(User $user, Enrollment $enrollment): Collection
     {
@@ -94,7 +94,7 @@ final class SectionQuestionScoreService
     }
 
     /**
-     * @param  array<int, string>  $publishedQuestionIds
+     * @param array<int, string> $publishedQuestionIds
      */
     private function buildSummary(User $user, array $publishedQuestionIds): SectionQuestionScoreSummary
     {
@@ -113,9 +113,9 @@ final class SectionQuestionScoreService
     }
 
     /**
-     * @param  array<int, string>  $publishedQuestionIds
-     * @param  Collection<int, SectionQuestionAttempt>  $attempts
-     * @param  Collection<int, SectionQuestionAnswer>  $answers
+     * @param array<int, string> $publishedQuestionIds
+     * @param Collection<int, SectionQuestionAttempt> $attempts
+     * @param Collection<int, SectionQuestionAnswer> $answers
      */
     private function buildSummaryFromCollections(
         array $publishedQuestionIds,
@@ -141,7 +141,8 @@ final class SectionQuestionScoreService
     }
 
     /**
-     * @param  Collection<int, Collection<int, SectionQuestionAnswer>>  $rounds
+     * @param Collection<int, Collection<int, SectionQuestionAnswer>> $rounds
+     *
      * @return array{0: ?int, 1: ?int}
      */
     private function extractRoundScores(Collection $rounds): array
@@ -167,8 +168,9 @@ final class SectionQuestionScoreService
      * 解答ログを「全 SectionQuestion を最初に解き終えるまで」を 1 ラウンドとして区切る。
      * 同一ラウンド内で同じ SectionQuestion を複数回解いた場合は、最初の正誤判定をそのラウンドのスコアとして採用する。
      *
-     * @param  Collection<int, SectionQuestionAnswer>  $answers
-     * @param  array<int, string>  $publishedQuestionIds
+     * @param Collection<int, SectionQuestionAnswer> $answers
+     * @param array<int, string> $publishedQuestionIds
+     *
      * @return Collection<int, Collection<int, SectionQuestionAnswer>>
      */
     private function groupIntoRounds(Collection $answers, array $publishedQuestionIds): Collection
@@ -200,7 +202,8 @@ final class SectionQuestionScoreService
     /**
      * 公開済 SectionQuestion を 1 件も持たない Section について empty summary を補完する。
      *
-     * @param  Collection<string, SectionQuestionScoreSummary>  $summaries
+     * @param Collection<string, SectionQuestionScoreSummary> $summaries
+     *
      * @return Collection<string, SectionQuestionScoreSummary>
      */
     private function mergeMissingSections(Collection $summaries, Enrollment $enrollment): Collection

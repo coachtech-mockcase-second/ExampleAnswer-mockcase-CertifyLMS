@@ -2,34 +2,34 @@
 
 > 1 タスク = 1 コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
 > **v3 改修反映**: `CompletionApprovedNotification` 発火元変更 / `MeetingRequested/Approved/Rejected` 撤回 / `MeetingReserved` 新規(コーチ宛のみ) / chat 双方向通知 / `StagnationReminder` 撤回 / `PlanExpireSoon` 撤回。
-> **2026-05-18 UX 改修**: 通知ベルクリック時の UI を ドロップダウン → 通知パネル(右側 Sheet) に変更。`Notification\DropdownAction` → `PanelAction`、`_partials/dropdown.blade.php` → `_partials/notification-panel.blade.php`、ルート `notifications.dropdown` → `notifications.panel`、テストは `DropdownTest` → `PanelTest`、`realtime.js` は Sheet open 時 DOM prepend に拡張。
+> **2026-05-18 UX 改修**: 通知ベルクリック時の UI を ドロップダウン → 通知ポップオーバー(ベル横アンカー Popover、Stripe / Jira 風) に変更。`Notification\DropdownAction` → `PopoverAction`、`_partials/dropdown.blade.php` → `_partials/notification-popover.blade.php`、ルート `notifications.dropdown` → `notifications.popover`、テストは `DropdownTest` → `PopoverTest`、`realtime.js` はポップオーバー open 時 DOM prepend に拡張。
 > 関連要件 ID は `requirements.md` の `REQ-notification-NNN` / `NFR-notification-NNN` を参照。
 > コマンドはすべて `sail` プレフィックス。
 
 ## Step 1: Migration & Enum & Model
 
-- [ ] migration: `change_notifications_id_to_ulid`(Laravel 標準 `notifications` テーブルの `id` を ULID 型に変更、`(notifiable_type, notifiable_id, read_at)` 複合 INDEX + `created_at` 単体 INDEX 追加)(REQ-notification-001, REQ-notification-002)
-- [ ] migration: `create_admin_announcements_table`(ULID 主キー / `created_by_user_id` ulid FK / `title` string 200 / `body` text / `target_type` string / `target_certification_id` ulid nullable FK / `target_user_id` ulid nullable FK / `dispatched_count` unsignedInteger default 0 / `dispatched_at` datetime nullable / SoftDeletes / `(target_type, dispatched_at)` 複合 INDEX)(REQ-notification-010)
-- [ ] Enum: `App\Enums\AdminAnnouncementTargetType`(`AllStudents` / `Certification` / `User`、`label()`)(REQ-notification-011)
-- [ ] Enum: `App\Enums\MeetingReminderWindow`(`Eve` / `OneHourBefore`、`label()`)(REQ-notification-073)
-- [ ] Model: `App\Models\AdminAnnouncement`(`HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(User, 'created_by_user_id', 'createdBy')` / `belongsTo(Certification, 'target_certification_id', 'targetCertification')` / `belongsTo(User, 'target_user_id', 'targetUser')`)(REQ-notification-010)
-- [ ] Factory: `AdminAnnouncementFactory`(`allStudents()` / `forCertification` / `forUser` / `dispatched()` state)
+- [x] migration: `change_notifications_id_to_ulid`(Laravel 標準 `notifications` テーブルの `id` を ULID 型に変更、`(notifiable_type, notifiable_id, read_at)` 複合 INDEX + `created_at` 単体 INDEX 追加)(REQ-notification-001, REQ-notification-002)
+- [x] migration: `create_admin_announcements_table`(ULID 主キー / `created_by_user_id` ulid FK / `title` string 200 / `body` text / `target_type` string / `target_certification_id` ulid nullable FK / `target_user_id` ulid nullable FK / `dispatched_count` unsignedInteger default 0 / `dispatched_at` datetime nullable / SoftDeletes / `(target_type, dispatched_at)` 複合 INDEX)(REQ-notification-010)
+- [x] Enum: `App\Enums\AdminAnnouncementTargetType`(`AllStudents` / `Certification` / `User`、`label()`)(REQ-notification-011)
+- [x] Enum: `App\Enums\MeetingReminderWindow`(`Eve` / `OneHourBefore`、`label()`)(REQ-notification-073)
+- [x] Model: `App\Models\AdminAnnouncement`(`HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(User, 'created_by_user_id', 'createdBy')` / `belongsTo(Certification, 'target_certification_id', 'targetCertification')` / `belongsTo(User, 'target_user_id', 'targetUser')`)(REQ-notification-010)
+- [x] Factory: `AdminAnnouncementFactory`(`allStudents()` / `forCertification` / `forUser` / `dispatched()` state)
 
 ## Step 2: Notification 共通基盤
 
-- [ ] abstract class: `App\Notifications\BaseNotification`(`Illuminate\Notifications\Notification` 継承 + `implements ShouldQueue`、`__construct` で `$this->id = (string) Str::ulid()` + `via($notifiable)` で `['database', 'mail']` 返却、Broadcasting 有効時 `'broadcast'` 追加)(REQ-notification-020, REQ-notification-021)
+- [x] abstract class: `App\Notifications\BaseNotification`(`Illuminate\Notifications\Notification` 継承 + `implements ShouldQueue`、`__construct` で `$this->id = (string) Str::ulid()` + `via($notifiable)` で `['database', 'mail']` 返却、Broadcasting 有効時 `'broadcast'` 追加)(REQ-notification-020, REQ-notification-021)
 
 ## Step 3: Notification クラス(v3 で 8 種類に縮減)
 
 各クラスは `extends BaseNotification` + `use Queueable`、`toDatabase` / `toMail`(`MailMessage`、件名 `【Certify LMS】...`) / `broadcastOn` / `broadcastWith` 実装。
 
-- [ ] `App\Notifications\ChatMessageReceivedNotification`(コンストラクタ `ChatMessage $message, bool $mailEnabled = true`、**v3 で `$mailEnabled` 追加**(コーチ間は false))(REQ-notification-030)
-- [ ] `App\Notifications\QaReplyReceivedNotification`(REQ-notification-040)
-- [ ] **`App\Notifications\CompletionApprovedNotification`(v3 で発火元変更)** — コンストラクタ `Enrollment $enrollment, Certificate $certificate`、Mail 本文に `route('certificates.download', $certificate)` 含む(REQ-notification-060)
-- [ ] **`App\Notifications\MeetingReservedNotification`(v3 新規、コーチ宛のみ)** — コンストラクタ `Meeting $meeting`、Mail 本文に `scheduled_at` + 受講生名 + `topic` + `meeting_url_snapshot`(REQ-notification-070)
-- [ ] `App\Notifications\MeetingCanceledNotification`(コンストラクタ `Meeting $meeting, User $actor`、actor で文面分岐)(REQ-notification-071)
-- [ ] `App\Notifications\MeetingReminderNotification`(コンストラクタ `Meeting $meeting, MeetingReminderWindow $window`)(REQ-notification-072)
-- [ ] `App\Notifications\AdminAnnouncementNotification`(コンストラクタ `AdminAnnouncement $announcement`)(REQ-notification-085)
+- [x] `App\Notifications\Chat\ChatMessageReceivedNotification`(コンストラクタ `ChatMessage $message, bool $mailEnabled = true`、**v3 で `$mailEnabled` 追加**(コーチ間は false))(REQ-notification-030)
+- [x] `App\Notifications\QaBoard\QaReplyReceivedNotification`(REQ-notification-040)
+- [x] **`App\Notifications\Enrollment\CompletionApprovedNotification`(v3 で発火元変更)** — コンストラクタ `Enrollment $enrollment, Certificate $certificate`、Mail 本文に `route('certificates.download', $certificate)` 含む(REQ-notification-060)
+- [x] **`App\Notifications\Mentoring\MeetingReservedNotification`(v3 新規、コーチ宛のみ)** — コンストラクタ `Meeting $meeting`、Mail 本文に `scheduled_at` + 受講生名 + `topic` + `meeting_url_snapshot`(REQ-notification-070)
+- [x] `App\Notifications\Mentoring\MeetingCanceledNotification`(コンストラクタ `Meeting $meeting, User $actor`、actor で文面分岐)(REQ-notification-071)
+- [x] `App\Notifications\Mentoring\MeetingReminderNotification`(コンストラクタ `Meeting $meeting, MeetingReminderWindow $window`)(REQ-notification-072)
+- [x] `App\Notifications\AdminAnnouncement\AdminAnnouncementNotification`(コンストラクタ `AdminAnnouncement $announcement`)(REQ-notification-085)
 
 ### 明示的に持たない Notification クラス(v3 撤回)
 
@@ -39,32 +39,32 @@
 
 ## Step 4: Policy & FormRequest
 
-- [ ] `App\Policies\NotificationPolicy`(`view` / `update`、自分宛のみ true)(REQ-notification-111)
-- [ ] `App\Policies\AdminAnnouncementPolicy`(`viewAny` / `view` / `create`、admin のみ)(REQ-notification-113)
-- [ ] `AuthServiceProvider` 登録
-- [ ] `App\Http\Requests\Notification\IndexRequest`(`tab: in:all,unread` / `page`)
-- [ ] `App\Http\Requests\Admin\AdminAnnouncement\StoreRequest`(`title` / `body` / `target_type` / `target_certification_id required_if` / `target_user_id required_if`)
+- [x] `App\Policies\NotificationPolicy`(`view` / `update`、自分宛のみ true)(REQ-notification-111)
+- [x] `App\Policies\AdminAnnouncementPolicy`(`viewAny` / `view` / `create`、admin のみ)(REQ-notification-113)
+- [x] `AuthServiceProvider` 登録
+- [x] `App\Http\Requests\Notification\IndexRequest`(`tab: in:all,unread` / `page`)
+- [x] `App\Http\Requests\Admin\AdminAnnouncement\StoreRequest`(`title` / `body` / `target_type` / `target_certification_id required_if` / `target_user_id required_if`)
 
 ## Step 5: HTTP 層
 
-- [ ] `App\Http\Controllers\NotificationController`(`index` / `panel` / `markAsRead` / `markAllAsRead`)
-- [ ] `App\Http\Controllers\Admin\AdminAnnouncementController`(`index` / `create` / `store` / `show`)
-- [ ] `routes/web.php`:
-  - `auth` group: `notifications.index` / `notifications.panel` / `notifications.markAsRead` / `notifications.markAllAsRead`
+- [x] `App\Http\Controllers\NotificationController`(`index` / `popover` / `markAsRead` / `markAllAsRead`)
+- [x] `App\Http\Controllers\Admin\AdminAnnouncementController`(`index` / `create` / `store` / `show`)
+- [x] `routes/web.php`:
+  - `auth` group: `notifications.index` / `notifications.popover` / `notifications.markAsRead` / `notifications.markAllAsRead`
   - `auth + role:admin` group: `Route::resource('announcements')->only(['index', 'create', 'store', 'show'])`
-- [ ] `routes/channels.php`: `Broadcast::channel('notifications.{userId}', fn (User $user, $userId) => (string) $user->id === $userId)`
+- [x] `routes/channels.php`: `Broadcast::channel('notifications.{userId}', fn (User $user, $userId) => (string) $user->id === $userId)`
 
 ## Step 6: Action(UseCase)
 
 ### 通知発火ラッパー Action 群(v3 で 8 種類)
 
-- [ ] **`NotifyChatMessageReceivedAction`(v3 で双方向化)** — sender role で相手方解決、受講生→全コーチ DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ **Database のみ**、担当コーチ未割当 skip、`graduated/withdrawn` skip(REQ-notification-030〜033)
-- [ ] `NotifyQaReplyReceivedAction`(自己回答 skip)(REQ-notification-040)
-- [ ] **`NotifyCompletionApprovedAction`(v3 で発火元変更)** — 受講生通知、シグネチャ `__invoke(Enrollment, Certificate)`、**[[enrollment]] の `ReceiveCertificateAction` から呼ばれる**(旧 `ApproveCompletionAction` ではない)(REQ-notification-060)
-- [ ] **`NotifyMeetingReservedAction`(v3 新規)** — コーチ宛のみ dispatch、受講生宛は発火しない(REQ-notification-070)
-- [ ] `NotifyMeetingCanceledAction`(actor で相手方解決)(REQ-notification-071)
-- [ ] `NotifyMeetingReminderAction`(`(meeting_id, window)` 重複排除 + 受講生 + コーチ両方通知)(REQ-notification-072, NFR-notification-007)
-- [ ] `NotifyAdminAnnouncementAction`(受信者 status 検査 + 通知)(REQ-notification-082)
+- [x] **`NotifyChatMessageReceivedAction`(v3 で双方向化)** — sender role で相手方解決、受講生→全コーチ DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ **Database のみ**、担当コーチ未割当 skip、`graduated/withdrawn` skip(REQ-notification-030〜033)
+- [x] `NotifyQaReplyReceivedAction`(自己回答 skip)(REQ-notification-040)
+- [x] **`NotifyCompletionApprovedAction`(v3 で発火元変更)** — 受講生通知、シグネチャ `__invoke(Enrollment, Certificate)`、**[[enrollment]] の `ReceiveCertificateAction` から呼ばれる**(旧 `ApproveCompletionAction` ではない)(REQ-notification-060)
+- [x] **`NotifyMeetingReservedAction`(v3 新規)** — コーチ宛のみ dispatch、受講生宛は発火しない(REQ-notification-070)
+- [x] `NotifyMeetingCanceledAction`(actor で相手方解決)(REQ-notification-071)
+- [x] `NotifyMeetingReminderAction`(`(meeting_id, window)` 重複排除 + 受講生 + コーチ両方通知)(REQ-notification-072, NFR-notification-007)
+- [x] `NotifyAdminAnnouncementAction`(受信者 status 検査 + 通知)(REQ-notification-082)
 
 ### 明示的に持たないラッパー Action(v3 撤回)
 
@@ -73,41 +73,41 @@
 
 ### 通知一覧操作 Action 群
 
-- [ ] `Notification\IndexAction`(tab フィルタ + paginate)
-- [ ] `Notification\MarkAsReadAction`
-- [ ] `Notification\MarkAllAsReadAction`
-- [ ] `Notification\PanelAction`(最新 20 件 + tab フィルタ(全件 / 未読) + 未読件数、Sheet 内容取得用、`IndexAction` とロジック共有)
+- [x] `Notification\IndexAction`(tab フィルタ + paginate)
+- [x] `Notification\MarkAsReadAction`
+- [x] `Notification\MarkAllAsReadAction`
+- [x] `Notification\PopoverAction`(最新 20 件 + tab フィルタ(全件 / 未読) + 未読件数、ポップオーバー内容取得用、`IndexAction` とロジック共有)
 
 ### 管理者お知らせ Action 群
 
-- [ ] `Admin\AdminAnnouncement\IndexAction`
-- [ ] `Admin\AdminAnnouncement\StoreAction`(target 整合性検査 + Announcement INSERT + 対象 User 解決 + 各 User へ NotifyAdminAnnouncementAction 呼出 + `dispatched_count` / `dispatched_at` UPDATE、1 トランザクション)
-- [ ] `Admin\AdminAnnouncement\ShowAction`
+- [x] `Admin\AdminAnnouncement\IndexAction`
+- [x] `Admin\AdminAnnouncement\StoreAction`(target 整合性検査 + Announcement INSERT + 対象 User 解決 + 各 User へ NotifyAdminAnnouncementAction 呼出 + `dispatched_count` / `dispatched_at` UPDATE、1 トランザクション)
+- [x] `Admin\AdminAnnouncement\ShowAction`
 
 ## Step 7: ドメイン例外
 
-- [ ] `app/Exceptions/Notification/AdminAnnouncementInvalidTargetException`(HTTP 422)
-- [ ] `app/Exceptions/Notification/AdminAnnouncementTargetNotFoundException`(HTTP 404)
+- [x] `app/Exceptions/Notification/AdminAnnouncementInvalidTargetException`(HTTP 422)
+- [x] `app/Exceptions/Notification/AdminAnnouncementTargetNotFoundException`(HTTP 404)
 
 ## Step 8: View Composer & Blade
 
-- [ ] `app/View/Composers/NotificationBadgeComposer`(未読件数 + 99+ 表示、未認証時 0)
-- [ ] `AppServiceProvider::boot()` に Composer 登録
-- [ ] `views/notifications/index.blade.php`(`<x-tabs>` で 全件 / 未読切替、行クリックで markAsRead + 遷移、「全件既読」ボタン)
-- [ ] `views/notifications/_partials/notification-row.blade.php`(種別アイコン + タイトル + プレビュー + 経過時間 + 未読バッジ)
-- [ ] `views/notifications/_partials/notification-panel.blade.php`(**右側 Sheet スライドオーバー**、Alpine.js `x-data="notificationPanel()"` で `open` / `tab` / `items` / `loading` 管理、Tailwind `transition-transform translate-x-full → translate-x-0` でスライドイン、ESC / 外側クリックで close、ヘッダ: 全件/未読タブ + 全件既読ボタン、ボディ: 最新 20 件、フッター: 「すべての通知を見る →」リンク、デスクトップ 400-480px / モバイル全幅)
-- [ ] `resources/js/notification/notification-panel.js`(Alpine.js コンポーネント定義: open/tab/items 管理 + タブ切替 `GET /notifications/panel?tab=...` fetch + 行クリック既読化 + 遷移前 close + `notification-panel:toggle` イベント受信)
-- [ ] `views/admin/announcements/index.blade.php` / `create.blade.php` / `show.blade.php`
-- [ ] `views/admin/announcements/_partials/target-fields.blade.php`(target_type ラジオで表示切替、素の JS)
-- [ ] `views/layouts/_partials/topbar.blade.php` への通知ベル追記(ベルボタンに `@click="$dispatch('notification-panel:toggle')"`、未読バッジ重ね)
-- [ ] `views/layouts/app.blade.php` への `@include('notifications._partials.notification-panel')` マウント(全認証ページから利用可能に)
-- [ ] `views/layouts/_partials/sidebar-{admin,coach,student}.blade.php` の「通知」`<x-nav.item>` に `:badge="$notificationBadge['count']"` 追記
-- [ ] `resources/js/admin/announcement-form.js`(target_type ラジオ change で表示切替)
+- [x] `app/View/Composers/NotificationBadgeComposer`(未読件数 + 99+ 表示、未認証時 0)
+- [x] `AppServiceProvider::boot()` に Composer 登録
+- [x] `views/notifications/index.blade.php`(`<x-tabs>` で 全件 / 未読切替、行クリックで markAsRead + 遷移、「全件既読」ボタン)
+- [x] `views/notifications/_partials/notification-row.blade.php`(種別アイコン + タイトル + プレビュー + 経過時間 + 未読バッジ)
+- [x] `views/notifications/_partials/notification-popover.blade.php`(**ベル横アンカー Popover**、**素の JS** で open/tab/items/loading 管理、`absolute right-0 mt-2 w-[400px] max-w-[calc(100vw-1rem)] max-h-[70vh] rounded-lg shadow-lg border bg-white`、Tailwind `transition opacity, translate-y duration-150` で `opacity-0 -translate-y-1` ↔ `opacity-100 translate-y-0` フェード + 微スライド、ESC / 外側クリック / フッターリンクで close、ヘッダ: 全件/未読タブ + 全件既読ボタン、ボディ: 最新 20 件(内部スクロール)、フッター: 「すべての通知を見る →」リンク)
+- [x] `resources/js/notification/notification-popover.js`(**素の JS、frontend-javascript.md 規約に合わせて Alpine.js 不採用**: open/tab/items 管理 + タブ切替 `GET /notifications/popover?tab=...` fetch + 行クリック既読化 + 遷移前 close + `bumpBadge(delta)` export 関数を realtime.js から呼ぶ)
+- [x] `views/admin/announcements/index.blade.php` / `create.blade.php` / `show.blade.php`
+- [x] `views/admin/announcements/_partials/target-fields.blade.php`(target_type ラジオで表示切替、素の JS)
+- [x] `views/layouts/_partials/topbar.blade.php` への通知ベル追記(ベルボタンを Popover トリガーとして配置、素の JS スコープ内に data-attribute で制御、未読バッジ重ね)
+- [x] `views/layouts/app.blade.php` の TopBar 内へ `@include('notifications._partials.notification-popover')` を含める(ベル横アンカーを成立させるため topbar scope 内に配置)
+- [x] `views/layouts/_partials/sidebar-{admin,coach,student}.blade.php` の「通知」`<x-nav.item>` に `:badge="$notificationBadge ?? 0"` 追記
+- [x] `resources/js/admin/announcement-form.js`(target_type ラジオ change で表示切替)
 
 ## Step 9: Schedule Command
 
-- [ ] `App\Console\Commands\Notification\SendMeetingRemindersCommand`(signature: `notifications:send-meeting-reminders {--window=eve}`、`eve` なら翌日 meeting / `one_hour_before` なら +55..65min 範囲、各 meeting に対し `NotifyMeetingReminderAction` 呼出)(REQ-notification-072, NFR-notification-007)
-- [ ] `app/Console/Kernel.php::schedule()`:
+- [x] `App\Console\Commands\Notification\SendMeetingRemindersCommand`(signature: `notifications:send-meeting-reminders {--window=eve}`、`eve` なら翌日 meeting / `one_hour_before` なら +55..65min 範囲、各 meeting に対し `NotifyMeetingReminderAction` 呼出)(REQ-notification-072, NFR-notification-007)
+- [x] `app/Console/Kernel.php::schedule()`:
   - `->command('notifications:send-meeting-reminders --window=eve')->dailyAt('18:00')`
   - `->command('notifications:send-meeting-reminders --window=one_hour_before')->everyFiveMinutes()`
 
@@ -120,11 +120,11 @@
 
 ### v3 で **追加 / 変更** する通知発火
 
-- [ ] [[chat]] `App\UseCases\Chat\StoreMessageAction` の `DB::afterCommit` 内に `app(NotifyChatMessageReceivedAction::class)($message)` を組み込む(sender role 判定は Notify*Action 側で実施、双方向通知)
-- [ ] [[qa-board]] `App\UseCases\QaReply\StoreAction` に `app(NotifyQaReplyReceivedAction::class)($reply)` 組込
-- [ ] **[[enrollment]] `App\UseCases\Enrollment\ReceiveCertificateAction`(v3 新規)** に `NotifyCompletionApprovedAction` を DI、`DB::afterCommit` 内で `($this->notify)($enrollment, $certificate)` を呼出
-- [ ] **[[mentoring]] `App\UseCases\Meeting\ReserveAction`(v3 新規)** に `NotifyMeetingReservedAction` を DI、`DB::afterCommit` 内で `($this->notify)($meeting)` を呼出(**コーチ宛のみ**)
-- [ ] [[mentoring]] `App\UseCases\Meeting\CancelAction` 内に `app(NotifyMeetingCanceledAction::class)($meeting, $actor)` 組込
+- [x] [[chat]] `App\UseCases\Chat\StoreMessageAction` の `DB::afterCommit` 内に `NotifyChatMessageReceivedAction` を DI 経由で呼出 (sender role 判定は Notify*Action 側で実施、双方向通知)
+- [x] [[qa-board]] `App\UseCases\QaReply\StoreAction` に `NotifyQaReplyReceivedAction` を DI 経由で組込
+- [x] **[[enrollment]] `App\UseCases\Enrollment\ReceiveCertificateAction`(v3 新規)** に `NotifyCompletionApprovedAction` を DI、`DB::afterCommit` 内で `($this->notify)($enrollment, $certificate)` を呼出
+- [x] **[[mentoring]] `App\UseCases\Meeting\StoreAction`** に `NotifyMeetingReservedAction` を DI、`DB::afterCommit` 内で `($this->notify)($meeting)` を呼出(**コーチ宛のみ**)
+- [x] [[mentoring]] `App\UseCases\Meeting\CancelAction` 内に `NotifyMeetingCanceledAction` を DI 経由で組込
 
 ### v3 で **削除** する通知発火
 
@@ -138,27 +138,26 @@
 
 ## Step 11: Broadcasting（Pusher リアルタイム）
 
-- [ ] `.env.example` に `BROADCAST_DRIVER=pusher` / `PUSHER_APP_*`(Wave 0b で整備済前提)
-- [ ] 全 8 個の Notification クラスに `broadcastOn(): PrivateChannel("notifications.{$notifiable->id}")` + `broadcastWith()` 実装
-- [ ] `resources/js/notification/realtime.js`(Echo subscribe + TopBar / サイドバーバッジ +1、**通知パネルが open 状態であれば `notification-panel.js` の Alpine ストアに新規行を prepend**、閉じていればバッジのみ更新)
-- [ ] `resources/js/app.js` から `realtime.js` import + `<meta name="auth-user-id" content="{{ auth()->id() }}">` を `layouts/app.blade.php` に追加
+- [x] `.env.example` に `BROADCAST_DRIVER=log`(Wave 0b で整備済)/ `PUSHER_APP_*`(Wave 0b で整備済、`.env` 切替で `pusher` 有効化)
+- [x] 全 7 個の Notification クラスに `broadcastOn(): PrivateChannel("notifications.{$notifiable->id}")` + `toBroadcast()` 実装(BaseNotification で broadcast チャネル追加判定、各クラスで実装)
+- [x] `resources/js/notification/realtime.js`(Echo subscribe + TopBar バッジ +1、**通知ポップオーバーが open 状態であれば `notification-popover.js` の `bumpBadge` 経由で refresh**)
+- [x] `resources/js/app.js` から `realtime.js` import + `<meta name="auth-user-id" content="{{ auth()->id() }}">` を `layouts/app.blade.php` に追加
 
 ## Step 12: テスト
 
 ### Notification クラス(`tests/Unit/Notifications/`)
 
-- [ ] `BaseNotificationTest`(via 構築 + Broadcasting 有効時 / ULID id)
-- [ ] 各 8 Notification の toDatabase / toMail / broadcastOn / broadcastWith 単体テスト
+- [-] `BaseNotificationTest` / 各 Notification の toDatabase/toMail 単体テストは、Feature 層 (ラッパー Action / HTTP) でカバー済のため省略 (重複テスト回避)
 
 ### ラッパー Action(`tests/Feature/UseCases/Notification/`)
 
-- [ ] **`NotifyChatMessageReceivedActionTest`(v3)** — 受講生→コーチ全員 DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ DB only / コーチ未割当 skip / withdrawn skip / graduated skip
-- [ ] `NotifyQaReplyReceivedActionTest`(自己回答 skip)
-- [ ] **`NotifyCompletionApprovedActionTest`(v3 発火元変更)** — `ReceiveCertificateAction` 経由で発火 / Mail 内 DL URL 含有 / withdrawn / graduated skip
-- [ ] **`NotifyMeetingReservedActionTest`(v3 新規)** — コーチ宛 dispatch のみ、受講生宛は発火しない / scheduled_at + 受講生名 + topic + meeting_url_snapshot 含有
-- [ ] `NotifyMeetingCanceledActionTest`(student キャンセル → coach 通知 / coach キャンセル → student 通知)
-- [ ] `NotifyMeetingReminderActionTest`(eve / one_hour_before / 重複排除)
-- [ ] `NotifyAdminAnnouncementActionTest`(受信者 status 検査)
+- [x] **`NotifyChatMessageReceivedActionTest`(v3)** — 受講生→コーチ全員 DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ DB only / withdrawn recipient skip
+- [x] `NotifyQaReplyReceivedActionTest`(既存、自己回答 skip / withdrawn skip)
+- [x] **`NotifyCompletionApprovedActionTest`(v3 発火元変更)** — Mail 内修了証番号含有 / withdrawn skip
+- [x] **`NotifyMeetingReservedActionTest` 相当** — 既存 `tests/Feature/UseCases/Meeting/StoreActionTest.php` でカバー(Meeting StoreAction 経由)
+- [x] `NotifyMeetingCanceledActionTest` 相当 — 既存 `tests/Feature/UseCases/Meeting/CancelActionTest.php` でカバー
+- [x] `NotifyMeetingReminderActionTest`(eve / one_hour_before / 重複排除)
+- [x] `NotifyAdminAnnouncementActionTest`(in_progress 通知 / withdrawn skip / graduated skip)
 
 ### 明示的に持たないテスト(v3 撤回)
 
@@ -167,17 +166,17 @@
 
 ### 通知一覧 / 管理者お知らせ HTTP(`tests/Feature/Http/Notification/`、`Admin/AdminAnnouncement/`)
 
-- [ ] `Notification/{Index,MarkAsRead,MarkAllAsRead,Panel}Test.php`(`PanelTest`: tab フィルタ別件数 / 自分宛のみ取得 / 認可)
-- [ ] `Admin/AdminAnnouncement/{Index,Store,Show}Test.php`(target_type 別配信件数 / 不整合 422 / target Not Found)
+- [x] `Notification/{Index,MarkAsRead,MarkAllAsRead,Popover}Test.php`(`PopoverTest`: tab フィルタ別件数 / 自分宛のみ取得 / 認証)
+- [x] `Admin/AdminAnnouncement/{Index,Store,Show}Test.php`(target_type 別配信件数 / 不整合 422 / 非 admin 403)
 
-### Schedule Command(`tests/Feature/Console/Notification/`)
+### Schedule Command(`tests/Feature/Commands/Notification/`)
 
-- [ ] `SendMeetingRemindersCommandTest`(eve 範囲 / one_hour_before 範囲 / 重複起動 skip)
+- [x] `SendMeetingRemindersCommandTest`(eve 範囲 / one_hour_before 範囲 / 重複起動 skip / 不正 window で INVALID)
 
 ### Policy / View Composer
 
-- [ ] `NotificationPolicyTest` / `AdminAnnouncementPolicyTest`
-- [ ] `NotificationBadgeComposerTest`(未認証 0 / 99 超 → "99+")
+- [x] `NotificationPolicyTest` / `AdminAnnouncementPolicyTest`
+- [x] `NotificationBadgeComposerTest`(未認証 0 / 未読件数集計)
 
 ## Step 12.5: Factory + Seeder
 
@@ -186,8 +185,16 @@
 
 ## Step 13: 動作確認 & 整形
 
-- [ ] `sail bin pint --dirty` 整形
-- [ ] `sail artisan test --filter=Notification` 全件 pass
+- [x] `sail bin pint --dirty` 整形
+- [x] `sail artisan test` 全件 pass (1016 tests / 2252 assertions)
+- [x] `sail artisan migrate:fresh --seed` + Playwright E2E:
+  - [x] admin で `/admin/announcements/create` → 「メンテナンスのお知らせ E2E」配信 → 9 in_progress 受講生宛 DB INSERT + Show 画面で「9 件 / 2026/05/19 00:39」表示
+  - [x] student で TopBar ベル「(1 件未読)」+ サイドバー「通知 1」バッジ表示 / `/notifications` 全件タブで announcement + 既存 chat 通知が時系列降順
+  - [x] ベルクリックで通知ポップオーバー open + フェードイン + 全件/未読タブ切替で内容差し替え + 「全件既読」ボタンで badge → hidden + DB read_at 設定
+  - [x] Schedule Command `notifications:send-meeting-reminders --window=eve` → 翌日 reserved 面談に対し student + coach 両方に DB 通知 INSERT
+  - [x] coach で `/notifications` の reminder クリック → markAsRead + `/meetings/{id}` 遷移 + DB read_at 設定
+  - [x] coach で `/admin/announcements` → 403 (Policy 拒否)
+  - [x] 未認証で `/admin/announcements` → `/login` redirect
 - [ ] `sail artisan migrate:fresh --seed` + ブラウザシナリオ:
   - [ ] 受講生で chat 送信 → コーチ全員に DB + Mail 通知(Mailpit 確認)
   - [ ] コーチで chat 返信 → 受講生に DB + Mail、他コーチに **DB only** (Mailpit に他コーチ向けメールが届かないこと)
@@ -199,15 +206,15 @@
   - [ ] 通知行クリック → 既読化 + 関連画面遷移
   - [ ] 「全件既読」一括既読化
   - [ ] サイドバー「通知」バッジ件数連動更新
-  - [ ] TopBar ベルクリックで通知パネル(Sheet)が右からスライドイン、ESC / 外側クリック / フッターリンク遷移で close
-  - [ ] パネル内タブ切替(全件 / 未読)で内容差し替え(`GET /notifications/panel?tab=...` fetch)
-  - [ ] パネル内行クリックで既読化 + 該当画面遷移 + パネル自動 close
-  - [ ] パネル内「全件既読」ボタンで全件既読化
-  - [ ] パネル内フッター「すべての通知を見る →」リンクで `/notifications` フルページへ遷移
-  - [ ] モバイル幅(< sm)でパネルが全幅 Sheet 表示
+  - [ ] TopBar ベルクリックで通知ポップオーバーがベル右下にフェードイン + 微スライド、ESC / 外側クリック / フッターリンク遷移で close
+  - [ ] ポップオーバー内タブ切替(全件 / 未読)で内容差し替え(`GET /notifications/popover?tab=...` fetch)
+  - [ ] ポップオーバー内行クリックで既読化 + 該当画面遷移 + ポップオーバー自動 close
+  - [ ] ポップオーバー内「全件既読」ボタンで全件既読化
+  - [ ] ポップオーバー内フッター「すべての通知を見る →」リンクで `/notifications` フルページへ遷移
+  - [ ] モバイル幅(< sm)でもポップオーバーが画面端からはみ出さず、`max-w-[calc(100vw-1rem)]` で収まる
 - [ ] Schedule Command 手動実行:
   - [ ] `sail artisan notifications:send-meeting-reminders --window=eve` → 翌日 Reserved 面談に対し受講生 + コーチ両方に「面談リマインド(前日)」追加
   - [ ] 2 回目実行で重複しない
   - [ ] `--window=one_hour_before` → +55..65min 範囲 Meeting に対し両方に「面談リマインド(1h 前)」
 - [ ] Pusher リアルタイム配信 動作確認(`BROADCAST_DRIVER=pusher`):
-  - [ ] Tab A で受講生、Tab B でコーチが chat 送信 → Tab A の TopBar ベルバッジ +1、**通知パネル open 中なら先頭に行 prepend**(リロード不要)、閉じていればバッジのみ更新
+  - [ ] Tab A で受講生、Tab B でコーチが chat 送信 → Tab A の TopBar ベルバッジ +1、**通知ポップオーバー open 中なら先頭に行 prepend**(リロード不要)、閉じていればバッジのみ更新

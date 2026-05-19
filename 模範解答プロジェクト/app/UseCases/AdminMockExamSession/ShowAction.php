@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\UseCases\AdminMockExamSession;
 
+use App\Enums\PassProbabilityBand;
 use App\Models\MockExamSession;
+use App\Services\CategoryHeatmapCell;
 use App\Services\WeaknessAnalysisService;
 use Illuminate\Support\Collection;
 
@@ -14,7 +16,7 @@ use Illuminate\Support\Collection;
  * 受講生の結果ビューと同じ素材(ヒートマップ + 合格可能性バンド) を組み立てて返す。
  * Service の DI 解決は ServiceProvider 経由(WeaknessAnalysisServiceContract → WeaknessAnalysisService)。
  *
- * @return array{session: MockExamSession, heatmap: \Illuminate\Support\Collection<int, \App\Services\CategoryHeatmapCell>, passProbabilityBand: \App\Enums\PassProbabilityBand}
+ * @return array{session: MockExamSession, heatmap: Collection<int, CategoryHeatmapCell>, passProbabilityBand: PassProbabilityBand}
  */
 final class ShowAction
 {
@@ -26,7 +28,7 @@ final class ShowAction
      * @return array{
      *     session: MockExamSession,
      *     heatmap: Collection,
-     *     passProbabilityBand: \App\Enums\PassProbabilityBand,
+     *     passProbabilityBand: PassProbabilityBand,
      * }
      */
     public function __invoke(MockExamSession $session): array

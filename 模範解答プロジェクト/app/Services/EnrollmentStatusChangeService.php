@@ -21,11 +21,11 @@ use App\Models\User;
 class EnrollmentStatusChangeService
 {
     /**
-     * @param  Enrollment  $enrollment  状態遷移する対象 Enrollment
-     * @param  ?EnrollmentStatus  $fromStatus  遷移前ステータス(初回登録時のみ null、それ以降は必須)
-     * @param  EnrollmentStatus  $toStatus  遷移後ステータス
-     * @param  ?User  $changedBy  操作者(null はシステム自動 = Schedule Command 等)
-     * @param  ?string  $reason  変更理由(任意、UI 表示用)
+     * @param Enrollment $enrollment 状態遷移する対象 Enrollment
+     * @param ?EnrollmentStatus $fromStatus 遷移前ステータス(初回登録時のみ null、それ以降は必須)
+     * @param EnrollmentStatus $toStatus 遷移後ステータス
+     * @param ?User $changedBy 操作者(null はシステム自動 = Schedule Command 等)
+     * @param ?string $reason 変更理由(任意、UI 表示用)
      */
     public function recordStatusChange(
         Enrollment $enrollment,

@@ -6,7 +6,6 @@ namespace Tests\Feature\Http\MockExam;
 
 use App\Models\Certification;
 use App\Models\MockExam;
-use App\Models\MockExamQuestion;
 use App\Models\MockExamSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

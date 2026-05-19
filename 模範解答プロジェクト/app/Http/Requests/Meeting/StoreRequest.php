@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Meeting;
 
+use App\Http\Controllers\MeetingController;
 use App\Models\Enrollment;
 use App\Models\Meeting;
 use Illuminate\Foundation\Http\FormRequest;
@@ -14,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * `scheduled_at` は分単位を 00 に固定(60 分単位スロットしか提供しないため)。
  * URL 上の Enrollment が認証ユーザー本人のものでない場合は authorize で 403 を返す。
  *
- * @see \App\Http\Controllers\MeetingController::store()
+ * @see MeetingController::store()
  */
 class StoreRequest extends FormRequest
 {

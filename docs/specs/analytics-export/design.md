@@ -136,85 +136,132 @@ public function handle(Request $request, Closure $next): Response
 
 `Kernel.php` の `$middlewareAliases` に `'api.key' => ApiKeyMiddleware::class` 登録。
 
-### Controller
+### Action (取得ロジック)
 
-`app/Http/Controllers/Api/Admin/`:
+Controller は薄く保ち、取得ロジックは `App\UseCases\AnalyticsExport\{Entity}\IndexAction` に委譲する(`backend-usecases.md` の「Controller method 名 = Action クラス名」原則準拠)。
+
+`app/UseCases/AnalyticsExport/`:
 
 ```php
-class UserController
+namespace App\UseCases\AnalyticsExport\User;
+
+final class IndexAction
 {
-    public function index(IndexRequest $request): AnonymousResourceCollection
+    public function __invoke(array $validated): LengthAwarePaginator
     {
-        return UserResource::collection(
-            User::query()
-                ->where('status', '!=', UserStatus::Withdrawn)
-                ->whereNull('deleted_at')
-                ->when($request->validated('role'), fn ($q, $v) => $q->where('role', $v))
-                ->when($request->validated('status'), fn ($q, $v) => $q->where('status', $v))
-                ->orderBy('created_at')
-                ->paginate($request->validated('per_page', 100))
-        );
+        return User::query()
+            ->whereNull('deleted_at')
+            ->where('status', '!=', UserStatus::Withdrawn->value)
+            ->when($validated['role'] ?? null, fn ($q, $v) => $q->where('role', $v))
+            ->when($validated['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->orderBy('created_at')
+            ->paginate((int) ($validated['per_page'] ?? 100));
     }
 }
 
-class EnrollmentController
+namespace App\UseCases\AnalyticsExport\Enrollment;
+
+final class IndexAction
 {
     public function __construct(
-        private ProgressService $progressService,
-        private LastActivityService $lastActivityService,  // v3 で StagnationDetectionService から差し替え
+        private readonly ProgressService $progressService,
+        private readonly LastActivityService $lastActivityService,
     ) {}
 
-    public function index(IndexRequest $request): AnonymousResourceCollection
+    public function __invoke(array $validated, array $includes): LengthAwarePaginator
     {
         $enrollments = Enrollment::query()
             ->whereNull('deleted_at')
-            ->when($request->validated('status'), fn ($q, $v) => $q->where('status', $v))
-            ->when($request->validated('certification_id'), fn ($q, $v) => $q->where('certification_id', $v))
-            ->when($request->validated('current_term'), fn ($q, $v) => $q->where('current_term', $v))
-            // v3: assigned_coach_id クエリは撤回
-            ->with($this->mapIncludes($request->resolveIncludes()))
+            ->when($validated['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($validated['certification_id'] ?? null, fn ($q, $v) => $q->where('certification_id', $v))
+            ->when($validated['current_term'] ?? null, fn ($q, $v) => $q->where('current_term', $v))
+            ->with($includes)
             ->orderBy('created_at')
-            ->paginate($request->validated('per_page', 100));
+            ->paginate((int) ($validated['per_page'] ?? 100));
 
         $progressMap = $this->progressService->batchCalculate($enrollments->getCollection());
         $activityMap = $this->lastActivityService->batchLastActivityFor($enrollments->getCollection());
 
-        return EnrollmentResource::collection($enrollments)->additional([
-            '_batch' => ['progress_rate' => $progressMap, 'last_activity_at' => $activityMap],
-        ]);
+        // Resource::collection()->additional() は top-level にしか効かないため、
+        // 各 Model にバッチ集計結果を attribute として注入して Resource から参照させる。
+        $enrollments->getCollection()->each(function ($enrollment) use ($progressMap, $activityMap) {
+            $enrollment->setAttribute('analytics_progress_rate', $progressMap[$enrollment->id] ?? null);
+            $enrollment->setAttribute('analytics_last_activity_at', $activityMap[$enrollment->id] ?? null);
+        });
+
+        return $enrollments;
+    }
+}
+
+namespace App\UseCases\AnalyticsExport\MockExamSession;
+
+final class IndexAction
+{
+    public function __construct(
+        private readonly WeaknessAnalysisService $weaknessService,
+    ) {}
+
+    public function __invoke(array $validated, array $includes): LengthAwarePaginator
+    {
+        $sessions = MockExamSession::query()
+            ->whereNull('deleted_at')
+            ->when($validated['mock_exam_id'] ?? null, fn ($q, $v) => $q->where('mock_exam_id', $v))
+            ->when(($validated['pass'] ?? null) !== null, fn ($q) => $q->where('pass', filter_var($validated['pass'], FILTER_VALIDATE_BOOLEAN)))
+            ->when($validated['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($validated['from'] ?? null, fn ($q, $v) => $q->where('submitted_at', '>=', $v))
+            ->when($validated['to'] ?? null, fn ($q, $v) => $q->where('submitted_at', '<=', $v.' 23:59:59'))
+            ->with($includes)
+            ->orderBy('created_at')
+            ->paginate((int) ($validated['per_page'] ?? 100));
+
+        $heatmapMap = $this->weaknessService->batchHeatmap($sessions->getCollection());
+        $sessions->getCollection()->each(function ($session) use ($heatmapMap) {
+            $session->setAttribute('analytics_category_breakdown', $heatmapMap[$session->id] ?? []);
+        });
+
+        return $sessions;
+    }
+}
+```
+
+### Controller (薄いラッパー)
+
+`app/Http/Controllers/Api/`:
+
+```php
+namespace App\Http\Controllers\Api;
+
+final class UserController extends Controller
+{
+    public function index(IndexRequest $request, IndexAction $action): AnonymousResourceCollection
+    {
+        return UserResource::collection($action($request->validated()));
+    }
+}
+
+final class EnrollmentController extends Controller
+{
+    public function index(IndexRequest $request, IndexAction $action): AnonymousResourceCollection
+    {
+        return EnrollmentResource::collection(
+            $action($request->validated(), $this->mapIncludes($request->resolveIncludes())),
+        );
     }
 
     private function mapIncludes(array $resolved): array
     {
         $map = ['user' => 'user', 'certification' => 'certification'];
-        // v3: 'assigned_coach' マッピングは撤回
         return array_values(array_intersect_key($map, array_flip($resolved)));
     }
 }
 
-class MockExamSessionController
+final class MockExamSessionController extends Controller
 {
-    public function __construct(private WeaknessAnalysisService $weaknessService) {}
-
-    public function index(IndexRequest $request): AnonymousResourceCollection
+    public function index(IndexRequest $request, IndexAction $action): AnonymousResourceCollection
     {
-        $sessions = MockExamSession::query()
-            ->whereNull('deleted_at')
-            ->when($request->validated('mock_exam_id'), fn ($q, $v) => $q->where('mock_exam_id', $v))
-            ->when(!is_null($request->validated('pass')), fn ($q) => $q->where('pass', $request->validated('pass')))
-            ->when($request->validated('status'), fn ($q, $v) => $q->where('status', $v))
-            ->when($request->validated('from'), fn ($q, $v) => $q->where('submitted_at', '>=', $v))
-            ->when($request->validated('to'), fn ($q, $v) => $q->where('submitted_at', '<=', $v))
-            ->with($this->mapIncludes($request->resolveIncludes()))
-            ->orderBy('created_at')
-            ->paginate($request->validated('per_page', 100));
-
-        // v3: batchHeatmap は MockExamQuestion JOIN ベース(旧 Question JOIN 撤回)
-        $heatmapMap = $this->weaknessService->batchHeatmap($sessions->getCollection());
-
-        return MockExamSessionResource::collection($sessions)->additional([
-            '_batch' => ['category_breakdown' => $heatmapMap],
-        ]);
+        return MockExamSessionResource::collection(
+            $action($request->validated(), $this->mapIncludes($request->resolveIncludes())),
+        );
     }
 
     private function mapIncludes(array $resolved): array
@@ -227,10 +274,10 @@ class MockExamSessionController
 
 ### IndexRequest
 
-`app/Http/Requests/Api/Admin/`:
+`app/Http/Requests/Api/`:
 
 ```php
-namespace App\Http\Requests\Api\Admin\User;
+namespace App\Http\Requests\Api\User;
 
 class IndexRequest extends FormRequest
 {
@@ -251,7 +298,7 @@ class IndexRequest extends FormRequest
     }
 }
 
-namespace App\Http\Requests\Api\Admin\Enrollment;
+namespace App\Http\Requests\Api\Enrollment;
 
 class IndexRequest extends FormRequest
 {
@@ -278,7 +325,7 @@ class IndexRequest extends FormRequest
     }
 }
 
-namespace App\Http\Requests\Api\Admin\MockExamSession;
+namespace App\Http\Requests\Api\MockExamSession;
 
 class IndexRequest extends FormRequest
 {
@@ -300,7 +347,7 @@ class IndexRequest extends FormRequest
 
 ### Resource
 
-`app/Http/Resources/Api/Admin/`:
+`app/Http/Resources/Api/`:
 
 ```php
 class UserResource extends JsonResource
@@ -457,7 +504,7 @@ Route::prefix('v1/admin')
 
 ## テスト戦略
 
-### Feature(`tests/Feature/Http/Api/Admin/`)
+### Feature(`tests/Feature/Http/Api/`)
 
 - `ApiKeyMiddlewareTest`(キー一致 200 / 欠落 401 / 不一致 401 / config 空 503)
 - **`UserIndexTest`(v3 更新)** — 全件取得 / `?role` フィルタ / `?status=graduated` フィルタ(v3 新規) / `?status=withdrawn` で 422 / `?per_page=200` / `?per_page=501` で 422 / **`UserResource` に `plan_id` / `plan_started_at` / `plan_expires_at` / `max_meetings` 含む**(v3) / センシティブカラム除外検証(`password` / `meeting_url` 等) / キー不一致 401

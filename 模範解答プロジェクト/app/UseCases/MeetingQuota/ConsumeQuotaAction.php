@@ -27,7 +27,7 @@ final class ConsumeQuotaAction
     ) {}
 
     /**
-     * @param  string  $meetingId  予約した面談(Meeting)の ULID
+     * @param string $meetingId 予約した面談(Meeting)の ULID
      *
      * @throws InsufficientMeetingQuotaException
      */

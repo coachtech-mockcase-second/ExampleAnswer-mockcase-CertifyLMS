@@ -6,6 +6,7 @@ namespace App\UseCases\Invitation;
 
 use App\Enums\UserRole;
 use App\Exceptions\Auth\PendingInvitationAlreadyExistsException;
+use App\Http\Controllers\InvitationController;
 use App\Models\Invitation;
 use App\Models\Plan;
 use App\Models\User;
@@ -18,7 +19,7 @@ use RuntimeException;
  * 招待発行時に紐付けた Plan を維持したまま、`IssueInvitationAction` に `force=true` で渡すことで
  * 既存 pending Invitation を revoke してから新しい Invitation を発行する。
  *
- * @see \App\Http\Controllers\InvitationController::resend()
+ * @see InvitationController::resend()
  */
 final class ResendAction
 {

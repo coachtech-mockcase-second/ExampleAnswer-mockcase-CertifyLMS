@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\Google\GoogleOAuthService;
 use App\UseCases\CoachGoogleCredential\StoreAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
 

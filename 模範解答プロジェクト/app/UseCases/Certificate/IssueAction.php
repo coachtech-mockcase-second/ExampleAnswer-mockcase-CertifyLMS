@@ -8,6 +8,7 @@ use App\Enums\EnrollmentStatus;
 use App\Exceptions\Certification\CertificateAlreadyIssuedException;
 use App\Exceptions\Certification\CertificateGenerationFailedException;
 use App\Exceptions\Certification\EnrollmentNotPassedException;
+use App\Http\Controllers\CertificateController;
 use App\Models\Certificate;
 use App\Models\Enrollment;
 use App\Services\CertificatePdfService;
@@ -26,7 +27,7 @@ use Illuminate\Support\Str;
  *
  * 採番 + INSERT + PDF 生成 + Storage 保存はすべて `DB::transaction()` 内で実行する。
  *
- * @see \App\Http\Controllers\CertificateController
+ * @see CertificateController
  */
 final class IssueAction
 {

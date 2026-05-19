@@ -1,13 +1,6 @@
 @php
     $user = auth()->user();
-    $notificationBadge = $sidebarBadges['notifications'] ?? 0;
-    $roleAvatarBg = match (optional($user)->role?->value) {
-        'admin' => 'bg-primary-600',
-        'coach' => 'bg-secondary-600',
-        'student' => 'bg-success-600',
-        default => 'bg-ink-300',
-    };
-    $userInitial = $user?->name ? mb_substr($user->name, 0, 1) : '?';
+    $notificationBadge = $notificationBadge ?? 0;
     $searchPlaceholder = match (optional($user)->role?->value) {
         'admin' => 'ユーザー・資格・コーチを検索...',
         'coach' => '受講生・教材を検索...',
@@ -40,20 +33,32 @@
 
     <div class="flex-1"></div>
 
-    {{-- 通知ベル（フレーム付き） --}}
+    {{-- 通知ベル + 通知ポップオーバー(ベル横アンカー) --}}
     @if (Route::has('notifications.index'))
-        <a
-            href="{{ route('notifications.index') }}"
-            class="relative inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-ink-700 bg-white/50 border border-[var(--border-subtle)] hover:bg-white hover:border-primary-200 hover:text-primary-700 hover:shadow-md transition-all"
-            aria-label="通知 ({{ $notificationBadge }} 件未読)"
-        >
-            <x-icon name="bell" class="w-[18px] h-[18px]" />
-            @if ($notificationBadge > 0)
-                <span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] font-bold font-display tnum border-2 border-surface-canvas">
+        <div class="relative" data-notification-popover-root>
+            <button
+                type="button"
+                data-notification-popover-trigger
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                aria-controls="notification-popover-panel"
+                aria-label="通知 ({{ $notificationBadge }} 件未読)"
+                class="relative inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-ink-700 bg-white/50 border border-[var(--border-subtle)] hover:bg-white hover:border-primary-200 hover:text-primary-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 transition-all"
+            >
+                <x-icon name="bell" class="w-[18px] h-[18px]" />
+                <span
+                    data-notification-popover-badge
+                    @class([
+                        'absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] font-bold font-display tnum border-2 border-surface-canvas',
+                        'hidden' => $notificationBadge <= 0,
+                    ])
+                >
                     {{ $notificationBadge > 99 ? '99+' : $notificationBadge }}
                 </span>
-            @endif
-        </a>
+            </button>
+
+            @include('notifications._partials.notification-popover')
+        </div>
     @endif
 
     {{-- ユーザーピル (アバター + 名前 + ▼) --}}
@@ -61,9 +66,7 @@
         <x-dropdown align="right">
             <x-slot:trigger>
                 <button type="button" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full hover:bg-ink-50 transition-colors">
-                    <span class="inline-flex w-7 h-7 items-center justify-center rounded-full text-white text-[11px] font-semibold {{ $roleAvatarBg }}">
-                        {{ $userInitial }}
-                    </span>
+                    <x-avatar :src="$user->avatar_url" :name="$user->name" size="sm" class="w-7 h-7" />
                     <span class="hidden md:inline text-xs font-semibold text-ink-900">{{ $user->name }}</span>
                     <x-icon name="chevron-down" class="hidden md:block w-3 h-3 text-ink-500" />
                 </button>

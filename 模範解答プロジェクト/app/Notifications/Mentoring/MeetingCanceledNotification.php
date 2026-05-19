@@ -7,29 +7,49 @@ namespace App\Notifications\Mentoring;
 use App\Enums\UserRole;
 use App\Models\Meeting;
 use App\Models\User;
+use App\Notifications\BaseNotification;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
 /**
  * 当事者によるキャンセルを相手方に通知する Notification。
- * 送信者(actor)のロールで「受講生によるキャンセル」「コーチによるキャンセル」の文面を切り替える。
  *
- * Mail channel で相手方(受講生がキャンセルしたらコーチ、コーチがキャンセルしたら受講生)へ通知する。
- * Database channel は通知一覧 Feature 導入時に `via()` へ追加する。
+ * 送信者 (actor) のロールで文面を切り替える: 受講生キャンセル → コーチ宛 / コーチキャンセル → 受講生宛。
+ * 受信者の遷移リンクは role に合わせて切り替える (`meetings.index` か `coach.meetings.index`)。
  */
-final class MeetingCanceledNotification extends Notification
+final class MeetingCanceledNotification extends BaseNotification
 {
     public function __construct(
         public readonly Meeting $meeting,
         public readonly User $actor,
-    ) {}
+    ) {
+        parent::__construct();
+    }
 
     /**
-     * @return array<int, string>
+     * @return array<string, mixed>
      */
-    public function via(object $notifiable): array
+    public function toDatabase(object $notifiable): array
     {
-        return ['mail'];
+        $meeting = $this->meeting->loadMissing(['enrollment.certification']);
+        $certificationName = $meeting->enrollment?->certification?->name ?? '担当資格';
+        $actorLabel = $this->actor->role === UserRole::Coach ? 'コーチ' : '受講生';
+
+        return [
+            'notification_type' => 'meeting_canceled',
+            'title' => "{$actorLabel} {$this->actor->name} さんが面談をキャンセルしました",
+            'message' => $meeting->scheduled_at->translatedFormat('n月j日(D) H:i').'〜 / '.$certificationName,
+            'meeting_id' => $meeting->id,
+            'enrollment_id' => $meeting->enrollment_id,
+            'coach_user_id' => $meeting->coach_id,
+            'student_user_id' => $meeting->student_id,
+            'actor_user_id' => $this->actor->id,
+            'actor_role' => $this->actor->role->value,
+            'scheduled_at' => $meeting->scheduled_at->toIso8601String(),
+            'topic' => $meeting->topic,
+            'link_route' => $this->actor->role === UserRole::Coach ? 'meetings.index' : 'coach.meetings.index',
+            'link_params' => [],
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -48,19 +68,13 @@ final class MeetingCanceledNotification extends Notification
             ->salutation('Certify LMS 運営チーム');
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function toArray(object $notifiable): array
+    public function toBroadcast(object $notifiable): BroadcastMessage
     {
-        return [
-            'notification_type' => 'meeting_canceled',
-            'meeting_id' => $this->meeting->id,
-            'actor_user_id' => $this->actor->id,
-            'actor_role' => $this->actor->role->value,
-            'scheduled_at' => $this->meeting->scheduled_at->toIso8601String(),
-            'link_route' => $this->actor->role === UserRole::Coach ? 'meetings.index' : 'coach.meetings.index',
-            'link_params' => [],
-        ];
+        return new BroadcastMessage([
+            'id' => $this->id,
+            'type' => static::class,
+            'data' => $this->toDatabase($notifiable),
+            'created_at' => now()->toIso8601String(),
+        ]);
     }
 }

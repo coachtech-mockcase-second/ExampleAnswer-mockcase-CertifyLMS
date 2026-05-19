@@ -15,40 +15,6 @@ class CoachGoogleCredentialControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_index_renders_unconnected_state_for_coach_without_credential(): void
-    {
-        $coach = User::factory()->coach()->create();
-
-        $response = $this->actingAs($coach)->get(route('settings.google-calendar.index'));
-
-        $response->assertOk();
-        $response->assertViewIs('settings.google-calendar.index');
-        $response->assertViewHas('credential', null);
-        $response->assertSeeText('まだ連携していません');
-    }
-
-    public function test_index_renders_connected_state_for_coach_with_credential(): void
-    {
-        $coach = User::factory()->coach()->create();
-        CoachGoogleCredential::factory()->forCoach($coach)->create([
-            'connected_at' => now()->subDays(3),
-        ]);
-
-        $response = $this->actingAs($coach)->get(route('settings.google-calendar.index'));
-
-        $response->assertOk();
-        $response->assertSeeText('連携済みです');
-    }
-
-    public function test_index_blocks_non_coach(): void
-    {
-        $student = User::factory()->student()->create();
-        $admin = User::factory()->admin()->create();
-
-        $this->actingAs($student)->get(route('settings.google-calendar.index'))->assertForbidden();
-        $this->actingAs($admin)->get(route('settings.google-calendar.index'))->assertForbidden();
-    }
-
     public function test_redirect_proxies_to_oauth_url(): void
     {
         $coach = User::factory()->coach()->create();
@@ -65,6 +31,15 @@ class CoachGoogleCredentialControllerTest extends TestCase
         $response->assertRedirect($authUrl);
     }
 
+    public function test_redirect_is_blocked_for_non_coach(): void
+    {
+        $student = User::factory()->student()->create();
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($student)->get(route('settings.google-calendar.redirect'))->assertForbidden();
+        $this->actingAs($admin)->get(route('settings.google-calendar.redirect'))->assertForbidden();
+    }
+
     public function test_destroy_revokes_and_soft_deletes_credential(): void
     {
         $coach = User::factory()->coach()->create();
@@ -76,7 +51,7 @@ class CoachGoogleCredentialControllerTest extends TestCase
 
         $response = $this->actingAs($coach)->delete(route('settings.google-calendar.destroy'));
 
-        $response->assertRedirect(route('settings.profile.edit'));
+        $response->assertRedirect(route('settings.profile.edit', ['tab' => 'meeting']));
         $this->assertSoftDeleted('coach_google_credentials', ['id' => $credential->id]);
     }
 
@@ -91,5 +66,28 @@ class CoachGoogleCredentialControllerTest extends TestCase
         );
 
         $response->assertStatus(400);
+    }
+
+    public function test_callback_redirects_to_meeting_tab_by_default(): void
+    {
+        $coach = User::factory()->coach()->create();
+        $state = json_encode(['coach_id' => $coach->id]);
+
+        $this->mock(GoogleOAuthService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('exchangeCode')
+                ->once()
+                ->andReturn([
+                    'access_token' => 'access-stub',
+                    'refresh_token' => 'refresh-stub',
+                ]);
+        });
+
+        $response = $this->actingAs($coach)->get(
+            route('settings.google-calendar.callback').'?code=xyz&state='.urlencode($state)
+        );
+
+        // state.redirect_path 未設定なら meeting タブへ
+        $this->assertSame(302, $response->status());
+        $this->assertStringContainsString('/settings/profile?tab=meeting', $response->headers->get('Location'));
     }
 }

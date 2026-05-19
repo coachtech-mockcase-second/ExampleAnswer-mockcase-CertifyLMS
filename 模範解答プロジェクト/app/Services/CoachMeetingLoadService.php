@@ -23,7 +23,7 @@ final class CoachMeetingLoadService
      * 候補集合の中から、過去 30 日の completed 数が最少のコーチを 1 名返す。
      * 集計クエリは引数集合の id を IN 句で渡す単発 GROUP BY で、0 件のコーチも候補対象に残す。
      *
-     * @param  Collection<int, User>  $candidates  空き枠 ∩ 当該時刻に予約なし のコーチ集合(空でないこと)
+     * @param Collection<int, User> $candidates 空き枠 ∩ 当該時刻に予約なし のコーチ集合(空でないこと)
      */
     public function leastLoadedCoach(Collection $candidates): User
     {

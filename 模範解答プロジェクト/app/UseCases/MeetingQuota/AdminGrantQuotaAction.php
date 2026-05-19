@@ -20,10 +20,10 @@ use InvalidArgumentException;
 final class AdminGrantQuotaAction
 {
     /**
-     * @param  User  $target  付与対象の受講生
-     * @param  int  $amount  付与回数(正の整数)
-     * @param  User  $admin  操作 admin
-     * @param  ?string  $reason  付与理由(監査ログ)
+     * @param User $target 付与対象の受講生
+     * @param int $amount 付与回数(正の整数)
+     * @param User $admin 操作 admin
+     * @param ?string $reason 付与理由(監査ログ)
      *
      * @throws InvalidArgumentException 付与回数が 0 以下の場合
      */

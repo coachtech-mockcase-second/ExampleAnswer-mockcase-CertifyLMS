@@ -12,6 +12,7 @@ use App\Models\Enrollment;
 use App\Services\CompletionEligibilityService;
 use App\Services\EnrollmentStatusChangeService;
 use App\UseCases\Certificate\IssueAction as IssueCertificateAction;
+use App\UseCases\Notification\NotifyCompletionApprovedAction;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -25,9 +26,7 @@ use Illuminate\Support\Facades\DB;
  * 2. Enrollment を status=passed / passed_at=now() に更新
  * 3. EnrollmentStatusLog 記録(from=learning / to=passed / changed_by=本人 / reason='受講生による修了証受領')
  * 4. IssueCertificateAction を呼んで Certificate 発行 + PDF 生成
- *
- * 修了通知(Database / Mail) は送らない。受講生がボタンを押した直後のリダイレクト先画面に PDF DL リンクが表示されるため、
- * 通知は冗長(二重通知になる)。
+ * 5. commit 後に修了通知 (Database / Mail / Broadcast) を本人へ発火 (Mail には PDF DL URL を含める)
  */
 final class ReceiveCertificateAction
 {
@@ -35,6 +34,7 @@ final class ReceiveCertificateAction
         private readonly CompletionEligibilityService $eligibility,
         private readonly EnrollmentStatusChangeService $statusChanger,
         private readonly IssueCertificateAction $issueCertificate,
+        private readonly NotifyCompletionApprovedAction $notifyCompletion,
     ) {}
 
     /**
@@ -65,7 +65,13 @@ final class ReceiveCertificateAction
                 reason: '受講生による修了証受領',
             );
 
-            return ($this->issueCertificate)($enrollment->refresh());
+            $certificate = ($this->issueCertificate)($enrollment->refresh());
+
+            DB::afterCommit(function () use ($enrollment, $certificate): void {
+                ($this->notifyCompletion)($enrollment->refresh(), $certificate);
+            });
+
+            return $certificate;
         });
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\MockExamQuestion;
 
 use App\Models\MockExam;
+use App\Models\MockExamQuestion;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -17,7 +18,7 @@ class ReorderRequest extends FormRequest
         $mockExam = $this->route('mockExam');
 
         return $mockExam instanceof MockExam
-            && ($this->user()?->can('reorder', [\App\Models\MockExamQuestion::class, $mockExam]) ?? false);
+            && ($this->user()?->can('reorder', [MockExamQuestion::class, $mockExam]) ?? false);
     }
 
     /**

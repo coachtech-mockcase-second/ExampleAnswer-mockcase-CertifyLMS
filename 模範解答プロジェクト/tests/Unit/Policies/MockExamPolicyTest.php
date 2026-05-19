@@ -25,7 +25,7 @@ class MockExamPolicyTest extends TestCase
         $this->policy = new MockExamPolicy;
     }
 
-    public function test_admin_can_view_any_mock_exam_via_canManage(): void
+    public function test_admin_can_view_any_mock_exam_via_can_manage(): void
     {
         $admin = User::factory()->admin()->create();
         $mockExam = MockExam::factory()->create();

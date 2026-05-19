@@ -11,12 +11,15 @@ use App\Enums\UserStatus;
 use App\Exceptions\Auth\EmailAlreadyRegisteredException;
 use App\Exceptions\Auth\InvalidInvitationPlanException;
 use App\Exceptions\Auth\PendingInvitationAlreadyExistsException;
+use App\Http\Controllers\InvitationController;
 use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\UserPlanLogService;
 use App\Services\UserStatusChangeService;
+use App\UseCases\Invitation\ResendAction;
+use App\UseCases\Invitation\StoreAction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
@@ -33,9 +36,9 @@ use Illuminate\Support\Facades\Mail;
  * Plan 期間(`plan_started_at` / `plan_expires_at`)は受講生でも invited 段階では NULL とし、オンボーディング完了時に
  * OnboardAction が確定する。
  *
- * @see \App\Http\Controllers\InvitationController::store()
- * @see \App\UseCases\Invitation\StoreAction
- * @see \App\UseCases\Invitation\ResendAction
+ * @see InvitationController::store()
+ * @see StoreAction
+ * @see ResendAction
  */
 final class IssueInvitationAction
 {
@@ -46,9 +49,9 @@ final class IssueInvitationAction
     ) {}
 
     /**
-     * @param  ?Plan  $plan  受講生招待では必須、コーチ招待では NULL を渡す
-     * @param  User  $invitedBy  招待を発行する管理者(performed_by として UserStatusLog に記録される)
-     * @param  bool  $force  既存 pending 招待があっても上書き発行するか(true で旧 pending を revoke)
+     * @param ?Plan $plan 受講生招待では必須、コーチ招待では NULL を渡す
+     * @param User $invitedBy 招待を発行する管理者(performed_by として UserStatusLog に記録される)
+     * @param bool $force 既存 pending 招待があっても上書き発行するか(true で旧 pending を revoke)
      *
      * @throws EmailAlreadyRegisteredException
      * @throws PendingInvitationAlreadyExistsException

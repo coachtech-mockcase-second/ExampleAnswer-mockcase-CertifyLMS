@@ -42,7 +42,8 @@
         <div class="mt-6 space-y-3">
             @foreach ($rooms as $room)
                 @php
-                    $studentName = $room->enrollment->user->name;
+                    $student = $room->enrollment->user;
+                    $studentName = $student->name;
                     $latest = $room->latestMessage;
                     $coaches = $room->enrollment->certification->coaches;
                 @endphp
@@ -51,7 +52,7 @@
                     class="block bg-surface-raised border border-[var(--border-subtle)] rounded-2xl px-5 py-4 hover:border-primary-200 hover:shadow-md transition"
                 >
                     <div class="flex items-start gap-4">
-                        <x-avatar :name="$studentName" size="md" />
+                        <x-avatar :src="$student->avatar_url" :name="$studentName" size="md" />
 
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">

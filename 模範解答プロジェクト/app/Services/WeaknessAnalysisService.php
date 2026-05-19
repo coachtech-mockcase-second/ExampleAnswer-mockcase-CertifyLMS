@@ -94,6 +94,60 @@ final class WeaknessAnalysisService implements WeaknessAnalysisServiceContract
     }
 
     /**
+     * 複数 MockExamSession の分野別ヒートマップを一括取得する (運用エクスポート API の N+1 回避用)。
+     *
+     * graded セッションのみ集計対象とし、それ以外のセッション ID は空配列をキー含みで返さない
+     * (Resource 側で `?? []` フォールバックする)。各要素は category_id / category_name / correct / total / rate の
+     * 連想配列で、Apps Script から扱いやすい snake_case の素データ形式に揃える。
+     *
+     * @param Collection<int, MockExamSession> $sessions
+     *
+     * @return array<string, array<int, array{category_id: string, category_name: string, correct: int, total: int, rate: float}>>
+     */
+    public function batchHeatmap(Collection $sessions): array
+    {
+        if ($sessions->isEmpty()) {
+            return [];
+        }
+
+        $gradedSessionIds = $sessions
+            ->filter(fn (MockExamSession $session) => $session->status === MockExamSessionStatus::Graded)
+            ->pluck('id')
+            ->all();
+
+        if ($gradedSessionIds === []) {
+            return [];
+        }
+
+        $rows = \DB::table('mock_exam_answers as a')
+            ->join('mock_exam_questions as q', 'q.id', '=', 'a.mock_exam_question_id')
+            ->join('question_categories as c', 'c.id', '=', 'q.category_id')
+            ->whereIn('a.mock_exam_session_id', $gradedSessionIds)
+            ->groupBy('a.mock_exam_session_id', 'q.category_id', 'c.name', 'c.sort_order')
+            ->orderBy('a.mock_exam_session_id')
+            ->orderBy('c.sort_order')
+            ->selectRaw('a.mock_exam_session_id as session_id, q.category_id as category_id, c.name as category_name, COUNT(*) as total_count, SUM(a.is_correct) as correct_count')
+            ->get();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $total = (int) $row->total_count;
+            $correct = (int) $row->correct_count;
+            $rate = $total > 0 ? round($correct / $total * 100, 2) : 0.0;
+
+            $result[$row->session_id][] = [
+                'category_id' => (string) $row->category_id,
+                'category_name' => (string) $row->category_name,
+                'correct' => $correct,
+                'total' => $total,
+                'rate' => $rate,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * 直近 3 件の Graded セッションの平均得点率と `passing_score * 0.90 / 0.70` で 3 バンドに分け、
      * 採点済セッションが 0 件の場合は Unknown を返す。
      */

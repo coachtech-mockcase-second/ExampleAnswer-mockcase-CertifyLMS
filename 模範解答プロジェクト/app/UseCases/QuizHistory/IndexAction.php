@@ -18,7 +18,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 final class IndexAction
 {
     /**
-     * @param  array{section_id?: ?string, category_id?: ?string, is_correct?: ?bool, source?: ?string}  $filters
+     * @param array{section_id?: ?string, category_id?: ?string, is_correct?: ?bool, source?: ?string} $filters
+     *
      * @return LengthAwarePaginator<SectionQuestionAnswer>
      */
     public function __invoke(Enrollment $enrollment, array $filters): LengthAwarePaginator

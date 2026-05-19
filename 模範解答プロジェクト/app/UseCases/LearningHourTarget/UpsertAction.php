@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 final class UpsertAction
 {
     /**
-     * @param  array{target_total_hours: int}  $validated
+     * @param array{target_total_hours: int} $validated
      */
     public function __invoke(Enrollment $enrollment, array $validated): LearningHourTarget
     {

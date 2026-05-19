@@ -13,7 +13,7 @@
                 $roleLabel = $user->role?->label() ?? '';
             @endphp
             <li class="flex items-center gap-3">
-                <x-avatar :name="$user->name" size="sm" />
+                <x-avatar :src="$user->avatar_url" :name="$user->name" size="sm" />
                 <div class="min-w-0">
                     <div class="text-sm font-medium text-ink-900 truncate">{{ $user->name }}</div>
                     <div class="text-[11px] text-ink-500">{{ $roleLabel }}</div>

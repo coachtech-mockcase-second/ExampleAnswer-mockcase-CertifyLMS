@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 final class UpdateAction
 {
     /**
-     * @param  array{name: string, slug: string, sort_order?: int|null}  $validated
+     * @param array{name: string, slug: string, sort_order?: int|null} $validated
      */
     public function __invoke(CertificationCategory $category, array $validated): CertificationCategory
     {

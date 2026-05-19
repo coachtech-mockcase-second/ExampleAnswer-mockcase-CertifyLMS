@@ -23,10 +23,10 @@ use App\Models\UserStatusLog;
 class UserStatusChangeService
 {
     /**
-     * @param  User  $user  ステータス遷移する対象 User(呼出時に `$user->status` が遷移前の値である必要がある)
-     * @param  UserStatus  $newStatus  遷移後ステータス(`to_status` として記録される)
-     * @param  ?User  $changedBy  操作者。null はシステム自動変更(Schedule Command 等)
-     * @param  ?string  $reason  変更理由(任意、UI 表示用)
+     * @param User $user ステータス遷移する対象 User(呼出時に `$user->status` が遷移前の値である必要がある)
+     * @param UserStatus $newStatus 遷移後ステータス(`to_status` として記録される)
+     * @param ?User $changedBy 操作者。null はシステム自動変更(Schedule Command 等)
+     * @param ?string $reason 変更理由(任意、UI 表示用)
      */
     public function record(
         User $user,

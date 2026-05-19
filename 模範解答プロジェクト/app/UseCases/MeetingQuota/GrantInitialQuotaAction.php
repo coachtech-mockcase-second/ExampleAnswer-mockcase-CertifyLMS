@@ -20,10 +20,10 @@ use InvalidArgumentException;
 final class GrantInitialQuotaAction
 {
     /**
-     * @param  User  $user  対象受講生
-     * @param  int  $amount  付与回数(正の整数)
-     * @param  ?User  $admin  admin 経由のプラン延長時の操作 admin、システム自動付与時は NULL
-     * @param  ?string  $reason  監査ログ用の理由文字列
+     * @param User $user 対象受講生
+     * @param int $amount 付与回数(正の整数)
+     * @param ?User $admin admin 経由のプラン延長時の操作 admin、システム自動付与時は NULL
+     * @param ?string $reason 監査ログ用の理由文字列
      *
      * @throws InvalidArgumentException 付与回数が 0 以下の場合
      */

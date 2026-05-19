@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\SectionQuestion;
 
+use App\Http\Controllers\SectionQuestionController;
 use App\Models\SectionQuestion;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Section 紐づき問題の更新リクエスト。section_id は不可変、options が含まれる場合は delete-and-insert 同期。
  *
- * @see \App\Http\Controllers\SectionQuestionController::update()
+ * @see SectionQuestionController::update()
  */
 class UpdateRequest extends FormRequest
 {

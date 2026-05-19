@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 final class UpdateAction
 {
     /**
-     * @param  array{title: string, description?: ?string, order: int, passing_score: int}  $validated
+     * @param array{title: string, description?: ?string, order: int, passing_score: int} $validated
      */
     public function __invoke(MockExam $mockExam, User $auth, array $validated): MockExam
     {

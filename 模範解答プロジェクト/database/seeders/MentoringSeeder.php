@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\MeetingQuotaTransactionType;
-use App\Enums\MeetingStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\CoachAvailability;

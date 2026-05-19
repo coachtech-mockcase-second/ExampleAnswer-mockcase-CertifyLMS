@@ -56,7 +56,8 @@ class UserStatusLog extends Model
     }
 
     /**
-     * @param  Builder<UserStatusLog>  $query
+     * @param Builder<UserStatusLog> $query
+     *
      * @return Builder<UserStatusLog>
      */
     public function scopeForUser(Builder $query, User $user): Builder
@@ -65,7 +66,8 @@ class UserStatusLog extends Model
     }
 
     /**
-     * @param  Builder<UserStatusLog>  $query
+     * @param Builder<UserStatusLog> $query
+     *
      * @return Builder<UserStatusLog>
      */
     public function scopeRecent(Builder $query): Builder

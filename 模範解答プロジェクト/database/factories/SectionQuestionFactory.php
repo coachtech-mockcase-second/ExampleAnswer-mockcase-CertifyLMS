@@ -6,8 +6,6 @@ namespace Database\Factories;
 
 use App\Enums\ContentStatus;
 use App\Models\Certification;
-use App\Models\Chapter;
-use App\Models\Part;
 use App\Models\QuestionCategory;
 use App\Models\Section;
 use App\Models\SectionQuestion;

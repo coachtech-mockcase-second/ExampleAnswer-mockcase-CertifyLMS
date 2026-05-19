@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\MockExamQuestion;
 
 use App\Models\MockExam;
+use App\Models\MockExamQuestion;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -21,7 +22,7 @@ class StoreRequest extends FormRequest
         $mockExam = $this->route('mockExam');
 
         return $mockExam instanceof MockExam
-            && ($this->user()?->can('create', [\App\Models\MockExamQuestion::class, $mockExam]) ?? false);
+            && ($this->user()?->can('create', [MockExamQuestion::class, $mockExam]) ?? false);
     }
 
     /**

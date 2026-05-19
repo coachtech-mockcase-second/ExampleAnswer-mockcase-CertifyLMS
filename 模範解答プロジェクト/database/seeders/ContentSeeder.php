@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Enums\ContentStatus;
 use App\Models\Certification;
 use App\Models\Chapter;
 use App\Models\Part;
@@ -90,7 +89,7 @@ final class ContentSeeder extends Seeder
     }
 
     /**
-     * @param  array<string, QuestionCategory>  $categories
+     * @param array<string, QuestionCategory> $categories
      */
     private function seedKihonjohoContents(Certification $certification, array $categories): void
     {
@@ -183,7 +182,7 @@ final class ContentSeeder extends Seeder
     }
 
     /**
-     * @param  array<string, QuestionCategory>  $categories
+     * @param array<string, QuestionCategory> $categories
      */
     private function seedOyojohoContents(Certification $certification, array $categories): void
     {
@@ -392,7 +391,7 @@ final class ContentSeeder extends Seeder
     }
 
     /**
-     * @param  array<int, array{body: string, is_correct: bool}>  $options
+     * @param array<int, array{body: string, is_correct: bool}> $options
      */
     private function seedOptions(SectionQuestion $question, array $options): void
     {

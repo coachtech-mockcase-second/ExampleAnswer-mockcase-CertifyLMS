@@ -11,13 +11,11 @@ use App\Models\User;
 use App\Notifications\Mentoring\MeetingCanceledNotification;
 
 /**
- * 当事者によるキャンセルを相手方に通知するラッパー Action。
+ * 当事者によるキャンセルを相手方に配信するラッパー Action。
  *
  * `Meeting\CancelAction` から `DB::afterCommit` 内で呼ばれる。
- * actor が受講生ならコーチ宛、actor がコーチなら受講生宛に通知を送る。
- * 受信者が `withdrawn` の場合は送信スキップする(受講生は graduated でも通知対象に含めて履歴を残す)。
- *
- * @see \App\UseCases\Meeting\CancelAction
+ * actor が受講生なら相手は担当コーチ、actor がコーチなら相手は受講生。
+ * 相手の `status !== InProgress` の場合は配信スキップする。
  */
 final class NotifyMeetingCanceledAction
 {
@@ -29,7 +27,10 @@ final class NotifyMeetingCanceledAction
             ? $meeting->student
             : $meeting->coach;
 
-        if ($recipient === null || $recipient->status === UserStatus::Withdrawn) {
+        if ($recipient === null) {
+            return;
+        }
+        if ($recipient->status !== UserStatus::InProgress) {
             return;
         }
 

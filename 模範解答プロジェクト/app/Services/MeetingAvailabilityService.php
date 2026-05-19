@@ -112,7 +112,7 @@ final class MeetingAvailabilityService
     }
 
     /**
-     * @param  array<int, array{start: Carbon, end: Carbon}>  $busyPeriods
+     * @param array<int, array{start: Carbon, end: Carbon}> $busyPeriods
      */
     private function overlapsBusy(Carbon $slotStart, array $busyPeriods): bool
     {

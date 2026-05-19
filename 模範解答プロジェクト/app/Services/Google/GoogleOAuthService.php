@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Google;
 
 use Google\Client as GoogleClient;
+use Google\Service\Exception;
 
 /**
  * Google API クライアントを集中生成する Service。OAuth 認可 URL の発行と、共通設定を済ませた
@@ -36,7 +37,7 @@ class GoogleOAuthService
     /**
      * OAuth 認可 URL を生成する。`state` には callback 後の処理に必要な情報を JSON で詰める。
      *
-     * @param  array<string, mixed>  $state  callback 時に検証する任意 payload(`coach_id` / `redirect_path` 等)
+     * @param array<string, mixed> $state callback 時に検証する任意 payload(`coach_id` / `redirect_path` 等)
      */
     public function getAuthUrl(array $state): string
     {
@@ -51,7 +52,7 @@ class GoogleOAuthService
      *
      * @return array{access_token: string, refresh_token?: string, expires_in?: int, scope?: string, token_type?: string, created?: int}
      *
-     * @throws \Google\Service\Exception
+     * @throws Exception
      */
     public function exchangeCode(string $code): array
     {

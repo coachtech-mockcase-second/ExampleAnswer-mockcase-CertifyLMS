@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\CertificationDifficulty;
-use App\Enums\CertificationStatus;
 use App\Enums\UserRole;
 use App\Models\Certification;
 use App\Models\CertificationCategory;
 use App\Models\CertificationCoachAssignment;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -59,7 +59,8 @@ final class CertificationSeeder extends Seeder
     /**
      * 受講生カタログに並ぶ published 資格を 5 種、複数カテゴリ × 難易度で投入する。
      *
-     * @param  \Illuminate\Support\Collection<string, CertificationCategory>  $categories
+     * @param Collection<string, CertificationCategory> $categories
+     *
      * @return array<int, Certification>
      */
     private function createPublishedCertifications(User $admin, $categories): array
@@ -118,7 +119,7 @@ final class CertificationSeeder extends Seeder
     /**
      * draft / archived 資格を少数投入(admin の status フィルタ・受講生カタログでの非表示を実機確認するため)。
      *
-     * @param  \Illuminate\Support\Collection<string, CertificationCategory>  $categories
+     * @param Collection<string, CertificationCategory> $categories
      */
     private function createNonPublishedCertifications(User $admin, $categories): void
     {
@@ -150,7 +151,7 @@ final class CertificationSeeder extends Seeder
     /**
      * 固定 coach 2 名 (coach@ / coach2@) を主要 published 資格に分担して attach する。
      *
-     * @param  array<int, Certification>  $publishedCerts
+     * @param array<int, Certification> $publishedCerts
      */
     private function assignCoaches(array $publishedCerts, User $admin): void
     {
