@@ -9,6 +9,7 @@ use App\Enums\MeetingStatus;
 use App\Models\Meeting;
 use App\UseCases\Notification\NotifyMeetingReminderAction;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * 予約済の面談に対して受講生 + 担当コーチ双方へリマインダ通知を配信する Schedule Command。
@@ -54,9 +55,9 @@ class SendMeetingRemindersCommand extends Command
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<Meeting>
+     * @return Builder<Meeting>
      */
-    private function buildTargetQuery(MeetingReminderWindow $window): \Illuminate\Database\Eloquent\Builder
+    private function buildTargetQuery(MeetingReminderWindow $window): Builder
     {
         $query = Meeting::query()
             ->where('status', MeetingStatus::Reserved->value);

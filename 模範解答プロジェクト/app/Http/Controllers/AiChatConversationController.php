@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\AiChat\StoreRequest;
 use App\Http\Requests\AiChat\UpdateRequest;
 use App\Models\AiChatConversation;
+use App\Models\User;
 use App\UseCases\AiChat\DestroyAction;
 use App\UseCases\AiChat\ShowAction;
 use App\UseCases\AiChat\StoreAction;
@@ -115,10 +116,10 @@ class AiChatConversationController extends Controller
             ->with('success', '会話を削除しました。');
     }
 
-    private function user(): \App\Models\User
+    private function user(): User
     {
         $user = request()->user();
-        \assert($user instanceof \App\Models\User);
+        \assert($user instanceof User);
 
         return $user;
     }

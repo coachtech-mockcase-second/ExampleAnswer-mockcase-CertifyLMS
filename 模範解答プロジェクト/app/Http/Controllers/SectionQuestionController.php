@@ -40,7 +40,7 @@ class SectionQuestionController extends Controller
             status: isset($validated['status']) ? ContentStatus::from($validated['status']) : null,
         );
 
-        return view('admin.contents.section-questions.index', [
+        return view('section-question.management.index', [
             'section' => $section,
             'questions' => $questions,
             'categories' => $section->chapter->part->certification->questionCategories()->ordered()->get(),
@@ -53,7 +53,7 @@ class SectionQuestionController extends Controller
         $this->authorize('create', [SectionQuestion::class, $section]);
         $section->loadMissing('chapter.part.certification');
 
-        return view('admin.contents.section-questions.create', [
+        return view('section-question.management.create', [
             'section' => $section,
             'categories' => $section->chapter->part->certification->questionCategories()->ordered()->get(),
         ]);
@@ -74,7 +74,7 @@ class SectionQuestionController extends Controller
 
         $question = $action($sectionQuestion);
 
-        return view('admin.contents.section-questions.show', [
+        return view('section-question.management.show', [
             'question' => $question,
             'categories' => $question->section->chapter->part->certification
                 ->questionCategories()->ordered()->get(),

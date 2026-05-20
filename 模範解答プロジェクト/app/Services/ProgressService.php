@@ -108,7 +108,8 @@ class ProgressService
      * 受講生ダッシュボードの受講中資格カード一覧から呼ばれ、N+1 を回避する。
      * 戻り値のキーは Enrollment.id、値は Section 単位の完了率(0.0〜1.0、未集計時 0.0)。
      *
-     * @param  Collection<int, Enrollment>  $enrollments
+     * @param Collection<int, Enrollment> $enrollments
+     *
      * @return array<string, float>
      */
     public function batchCalculate(Collection $enrollments): array

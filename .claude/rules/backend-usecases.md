@@ -60,7 +60,7 @@ app/UseCases/Enrollment/
 └── AssignAction.php         # admin 手動割当 (Controller method 名と一致)
 ```
 
-Controller 側も `EnrollmentController::store()` (student) と `AdminEnrollmentController::assign()` (admin) のように method 名で対称性を保つ。
+Controller 側も `EnrollmentController::store()` (student) と `EnrollmentManagementController::assign()` (admin) のように method 名で対称性を保つ。
 
 ## 命名規則
 

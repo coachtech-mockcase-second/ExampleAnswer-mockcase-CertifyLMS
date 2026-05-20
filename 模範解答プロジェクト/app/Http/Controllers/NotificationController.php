@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 
 /**
@@ -51,7 +52,7 @@ class NotificationController extends Controller
         $route = $link['link_route'] ?? null;
         $params = $link['link_params'] ?? [];
 
-        if (is_string($route) && \Illuminate\Support\Facades\Route::has($route)) {
+        if (is_string($route) && Route::has($route)) {
             return redirect()->route($route, is_array($params) ? $params : []);
         }
 

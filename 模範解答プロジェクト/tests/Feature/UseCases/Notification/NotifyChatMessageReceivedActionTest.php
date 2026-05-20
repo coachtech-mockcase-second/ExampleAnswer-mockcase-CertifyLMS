@@ -104,6 +104,6 @@ class NotifyChatMessageReceivedActionTest extends TestCase
             $coaches[] = $coach;
         }
 
-        return [$room, $student, $coaches[0], $coaches[1] ?? new AnonymousNotifiable()];
+        return [$room, $student, $coaches[0], $coaches[1] ?? new AnonymousNotifiable];
     }
 }

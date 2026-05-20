@@ -41,7 +41,7 @@ class CertificationController extends Controller
             difficulty: isset($validated['difficulty']) ? CertificationDifficulty::from($validated['difficulty']) : null,
         );
 
-        return view('admin.certifications.index', [
+        return view('certification.management.index', [
             'certifications' => $certifications,
             'categories' => CertificationCategory::ordered()->get(),
             'keyword' => $validated['keyword'] ?? '',
@@ -60,7 +60,7 @@ class CertificationController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.certifications.show', [
+        return view('certification.management.show', [
             'certification' => $action($certification),
             'coachCandidates' => $coachCandidates,
         ]);
@@ -70,7 +70,7 @@ class CertificationController extends Controller
     {
         $this->authorize('create', Certification::class);
 
-        return view('admin.certifications.create', [
+        return view('certification.management.create', [
             'categories' => CertificationCategory::ordered()->get(),
         ]);
     }
@@ -88,7 +88,7 @@ class CertificationController extends Controller
     {
         $this->authorize('update', $certification);
 
-        return view('admin.certifications.edit', [
+        return view('certification.management.edit', [
             'certification' => $certification,
             'categories' => CertificationCategory::ordered()->get(),
         ]);

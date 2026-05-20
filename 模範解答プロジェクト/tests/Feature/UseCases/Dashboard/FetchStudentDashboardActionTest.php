@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\CompletionEligibilityService;
 use App\Services\Contracts\WeaknessAnalysisServiceContract;
 use App\Services\ProgressService;
+use App\Services\StreakService;
 use App\UseCases\Dashboard\FetchStudentDashboardAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
@@ -132,9 +133,9 @@ class FetchStudentDashboardActionTest extends TestCase
         $weakness->shouldReceive('getPassProbabilityBand')->andReturn(PassProbabilityBand::Unknown);
         $this->app->instance(WeaknessAnalysisServiceContract::class, $weakness);
 
-        $streakMock = Mockery::mock(\App\Services\StreakService::class);
+        $streakMock = Mockery::mock(StreakService::class);
         $streakMock->shouldReceive('calculate')->andThrow(new \RuntimeException('boom'));
-        $this->app->instance(\App\Services\StreakService::class, $streakMock);
+        $this->app->instance(StreakService::class, $streakMock);
 
         $vm = app(FetchStudentDashboardAction::class)($student);
 

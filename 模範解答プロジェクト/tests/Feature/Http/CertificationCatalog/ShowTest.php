@@ -21,7 +21,7 @@ class ShowTest extends TestCase
         $response = $this->actingAs($student)->get(route('certifications.show', $cert));
 
         $response->assertOk();
-        $response->assertViewIs('certifications.show');
+        $response->assertViewIs('certification.show');
     }
 
     public function test_student_gets_403_on_draft_certification(): void

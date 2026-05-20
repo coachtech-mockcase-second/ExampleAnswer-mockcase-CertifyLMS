@@ -32,7 +32,7 @@ class MeetingPackController extends Controller
             status: isset($validated['status']) ? MeetingPackStatus::from($validated['status']) : null,
         );
 
-        return view('admin.meeting-packs.index', [
+        return view('meeting-pack.management.index', [
             'plans' => $plans,
             'keyword' => $validated['keyword'] ?? '',
             'status' => $validated['status'] ?? '',
@@ -43,7 +43,7 @@ class MeetingPackController extends Controller
     {
         $this->authorize('view', $plan);
 
-        return view('admin.meeting-packs.show', [
+        return view('meeting-pack.management.show', [
             'plan' => $action($plan),
         ]);
     }
@@ -52,7 +52,7 @@ class MeetingPackController extends Controller
     {
         $this->authorize('create', MeetingPack::class);
 
-        return view('admin.meeting-packs.create');
+        return view('meeting-pack.management.create');
     }
 
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse
@@ -68,7 +68,7 @@ class MeetingPackController extends Controller
     {
         $this->authorize('update', $plan);
 
-        return view('admin.meeting-packs.edit', [
+        return view('meeting-pack.management.edit', [
             'plan' => $plan,
         ]);
     }

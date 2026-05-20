@@ -29,7 +29,7 @@ class ChapterController extends Controller
     {
         $this->authorize('view', $chapter);
 
-        return view('admin.contents.chapters.show', [
+        return view('chapter.management.show', [
             'chapter' => $action($chapter),
         ]);
     }

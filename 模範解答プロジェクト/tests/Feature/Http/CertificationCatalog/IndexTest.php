@@ -24,7 +24,7 @@ class IndexTest extends TestCase
         $response = $this->actingAs($student)->get(route('certifications.index'));
 
         $response->assertOk();
-        $response->assertViewIs('certifications.index');
+        $response->assertViewIs('certification.index');
         $response->assertSee('Published Cert');
         $response->assertDontSee('Draft Cert');
         $response->assertDontSee('Archived Cert');

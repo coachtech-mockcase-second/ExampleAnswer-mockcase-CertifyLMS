@@ -23,7 +23,7 @@ class EnrollmentController extends Controller
     {
         $enrollments = $action(auth()->user());
 
-        return view('enrollments.index', [
+        return view('enrollment.index', [
             'enrollments' => $enrollments,
         ]);
     }
@@ -32,7 +32,7 @@ class EnrollmentController extends Controller
     {
         $this->authorize('view', $enrollment);
 
-        return view('enrollments.show', [
+        return view('enrollment.show', [
             'enrollment' => $action($enrollment),
         ]);
     }

@@ -49,10 +49,10 @@
 - [x] `app/UseCases/QaReply/StoreAction`（`DB::transaction` 内で INSERT + 自己回答以外なら **`QaReplyReceivedNotification`**（v3 rename）通知 dispatch）（REQ-qa-board-064, REQ-qa-board-065）
 - [x] `app/UseCases/QaReply/UpdateAction`（`body` のみ UPDATE）（REQ-qa-board-070, REQ-qa-board-073）
 - [x] `app/UseCases/QaReply/DestroyAction`（SoftDelete、スレッド状態不変）（REQ-qa-board-080, REQ-qa-board-083）
-- [x] `app/UseCases/AdminQaThread/IndexAction`（全資格・全状態・SoftDelete 含む切替で 20 件ページネーション）（REQ-qa-board-130）
-- [x] `app/UseCases/AdminQaThread/ShowAction`（`withTrashedReplies` フラグで SoftDelete 済回答も含めて Eager Load）（REQ-qa-board-131）
-- [x] `app/UseCases/AdminQaThread/DestroyAction`（回答有無不問で SoftDelete）（REQ-qa-board-052, REQ-qa-board-132）
-- [x] `app/UseCases/AdminQaReply/DestroyAction`（SoftDelete のみ）（REQ-qa-board-081, REQ-qa-board-132）
+- [x] `app/UseCases/QaThread\Moderation/IndexAction`（全資格・全状態・SoftDelete 含む切替で 20 件ページネーション）（REQ-qa-board-130）
+- [x] `app/UseCases/QaThread\Moderation/ShowAction`（`withTrashedReplies` フラグで SoftDelete 済回答も含めて Eager Load）（REQ-qa-board-131）
+- [x] `app/UseCases/QaThread\Moderation/DestroyAction`（回答有無不問で SoftDelete）（REQ-qa-board-052, REQ-qa-board-132）
+- [x] `app/UseCases/QaReply\Moderation/DestroyAction`（SoftDelete のみ）（REQ-qa-board-081, REQ-qa-board-132）
 - [x] ドメイン例外: `app/Exceptions/QaBoard/QaThreadHasRepliesException` extends `ConflictHttpException`（NFR-qa-board-003）
 - [x] ドメイン例外: `app/Exceptions/QaBoard/QaThreadAlreadyResolvedException` extends `ConflictHttpException`（NFR-qa-board-003）
 - [x] ドメイン例外: `app/Exceptions/QaBoard/QaThreadNotResolvedException` extends `ConflictHttpException`（NFR-qa-board-003）

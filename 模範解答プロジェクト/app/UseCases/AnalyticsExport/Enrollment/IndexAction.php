@@ -28,7 +28,7 @@ final class IndexAction
 
     /**
      * @param array{status?: string|null, certification_id?: string|null, current_term?: string|null, per_page?: int|null, page?: int|null} $validated
-     * @param array<int, string> $includes  Eager Loading リレーション名 (camelCase)
+     * @param array<int, string> $includes Eager Loading リレーション名 (camelCase)
      *
      * @return LengthAwarePaginator<Enrollment>
      */

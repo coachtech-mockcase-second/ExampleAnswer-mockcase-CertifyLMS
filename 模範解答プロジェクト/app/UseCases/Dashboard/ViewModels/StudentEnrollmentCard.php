@@ -7,6 +7,7 @@ namespace App\UseCases\Dashboard\ViewModels;
 use App\Enums\EnrollmentStatus;
 use App\Enums\PassProbabilityBand;
 use App\Enums\TermType;
+use App\Models\QuestionCategory;
 use App\Services\Learning\LearningHourTargetSummary;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -20,7 +21,7 @@ use Illuminate\Support\Collection;
 final readonly class StudentEnrollmentCard
 {
     /**
-     * @param  Collection<int, \App\Models\QuestionCategory>  $weakCategories  上位 3 件まで、取得失敗時は空 collection
+     * @param Collection<int, QuestionCategory> $weakCategories 上位 3 件まで、取得失敗時は空 collection
      */
     public function __construct(
         public string $enrollmentId,

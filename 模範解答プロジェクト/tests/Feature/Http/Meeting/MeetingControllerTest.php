@@ -46,7 +46,7 @@ class MeetingControllerTest extends TestCase
         $response = $this->actingAs($student)->get(route('meetings.index'));
 
         $response->assertOk();
-        $response->assertViewIs('meetings.index');
+        $response->assertViewIs('meeting.index');
         $response->assertViewHas('meetings', fn ($meetings) => $meetings->contains('id', $own->id)
             && ! $meetings->contains('id', $other->id));
     }
@@ -182,7 +182,7 @@ class MeetingControllerTest extends TestCase
         $response = $this->actingAs($coach)->get(route('coach.meetings.index'));
 
         $response->assertOk();
-        $response->assertViewIs('coach.meetings.index');
+        $response->assertViewIs('meeting.coach.index');
         $response->assertViewHas('meetings', fn ($meetings) => $meetings->contains('id', $own->id)
             && ! $meetings->contains('id', $other->id));
     }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Http\AdminQaThread;
+namespace Tests\Feature\Http\QaThread\Moderation;
 
 use App\Models\Certification;
 use App\Models\QaThread;

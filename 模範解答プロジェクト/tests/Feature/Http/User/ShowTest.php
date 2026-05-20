@@ -27,7 +27,7 @@ class ShowTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.users.show', $target));
 
         $response->assertOk();
-        $response->assertViewIs('admin.users.show');
+        $response->assertViewIs('user.management.show');
         $response->assertSee('受講生 A');
         $response->assertSee('student-a@example.test');
     }

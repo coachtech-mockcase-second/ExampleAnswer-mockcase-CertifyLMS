@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Notification;
 
-use App\Models\AdminAnnouncement;
+use App\Models\Announcement;
 use App\Models\User;
-use App\Notifications\AdminAnnouncement\AdminAnnouncementNotification;
+use App\Notifications\Announcement\AnnouncementNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,11 +17,11 @@ class PopoverTest extends TestCase
     public function test_returns_latest_20_items_with_unread_count_for_self(): void
     {
         $user = User::factory()->student()->inProgress()->create();
-        $announcement = AdminAnnouncement::factory()->allStudents()->dispatched()->create();
+        $announcement = Announcement::factory()->allStudents()->dispatched()->create();
 
         // 25 件流す、20 件しか返らない
         for ($i = 0; $i < 25; $i++) {
-            $user->notify(new AdminAnnouncementNotification($announcement));
+            $user->notify(new AnnouncementNotification($announcement));
         }
 
         $response = $this->actingAs($user)->getJson(route('notifications.popover'));
@@ -35,10 +35,10 @@ class PopoverTest extends TestCase
     public function test_unread_tab_filters_to_unread_only(): void
     {
         $user = User::factory()->student()->inProgress()->create();
-        $announcement = AdminAnnouncement::factory()->allStudents()->dispatched()->create();
-        $user->notify(new AdminAnnouncementNotification($announcement));
+        $announcement = Announcement::factory()->allStudents()->dispatched()->create();
+        $user->notify(new AnnouncementNotification($announcement));
         $user->unreadNotifications->first()?->markAsRead();
-        $user->notify(new AdminAnnouncementNotification($announcement));
+        $user->notify(new AnnouncementNotification($announcement));
 
         $response = $this->actingAs($user)->getJson(route('notifications.popover', ['tab' => 'unread']));
 

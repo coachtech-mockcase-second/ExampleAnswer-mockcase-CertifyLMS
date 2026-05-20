@@ -269,8 +269,8 @@ Route::middleware('auth')->group(function () {
 |---|---|
 | REQ-certification-management-001 | `database/migrations/{date}_create_certifications_table.php`(**v3 で 4 カラム + 監査 + status**) / `App\Models\Certification` |
 | **REQ-certification-management-002** | **撤回(v3)**: `code` / `slug` / `passing_score` / `total_questions` / `exam_duration_minutes` カラム持たない / `code` UNIQUE INDEX 持たない |
-| REQ-certification-management-011 | `App\Http\Requests\Admin\Certification\IndexRequest` の `keyword` rule + `Certification::scopeKeyword('name only')` |
-| REQ-certification-management-014 | `App\Http\Requests\Admin\Certification\UpdateRequest`(v3 で 4 フィールドのみ) |
+| REQ-certification-management-011 | `App\Http\Requests\Certification\IndexRequest` の `keyword` rule + `Certification::scopeKeyword('name only')` |
+| REQ-certification-management-014 | `App\Http\Requests\Certification\UpdateRequest`(v3 で 4 フィールドのみ) |
 | **REQ-certification-management-062**(v3) | `App\UseCases\Certificate\IssueAction` + **呼出元 [[enrollment]] `ReceiveCertificateAction`**(v3 rename) |
 | REQ-certification-management-063 | `App\Http\Controllers\CertificateController::download` + Policy + **EnsureActiveLearning 非適用**(v3) |
 | **REQ-certification-management-068**(v3) | `resources/views/certificates/pdf.blade.php`(**7 要素**、資格コード撤回) |

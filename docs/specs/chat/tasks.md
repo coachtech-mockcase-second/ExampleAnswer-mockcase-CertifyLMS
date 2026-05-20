@@ -61,14 +61,14 @@
 ## Step 6: HTTP 層
 
 - [x] `App\Http\Controllers\ChatRoomController` スケルトン(`index` / `indexAsCoach` / `show` / `storeMessage`、各 method = 同名 Action `__invoke`)
-- [x] `App\Http\Controllers\AdminChatRoomController`(`index` / `show`、既存 `AdminEnrollmentController` と同じくフラット namespace、`backend-http.md`「ロール別 namespace 禁止」準拠)
+- [x] `App\Http\Controllers\ChatRoomModerationController`(`index` / `show`、既存 `EnrollmentManagementController` と同じくフラット namespace、`backend-http.md`「ロール別 namespace 禁止」準拠)
 - [x] **`App\Http\Controllers\ChatAttachmentController` は作成しない**(E-2 撤回)
 - [x] **`ChatRoomController::storeFirstMessage` method 作成しない**(E-3 撤回、送信はすべて `storeMessage` 経由)
 - [x] `App\Http\Requests\Chat\IndexRequest`(`page` rule、authorize: `student` or `coach`)
 - [x] `App\Http\Requests\Chat\IndexAsCoachRequest`(`filter` / `certification_id` / `keyword` / `page`、authorize: coach のみ)
 - [x] **`App\Http\Requests\Chat\StoreMessageRequest`(E-2 簡素化 + E-3 で唯一の送信用 Request)** — `body: required string max:2000` のみ、**`attachments` rules 削除**、authorize: `Policy::sendMessage` 委譲
 - [x] **`App\Http\Requests\Chat\StoreFirstMessageRequest` は作成しない**(E-3 撤回)
-- [x] `App\Http\Requests\AdminChatRoom\IndexRequest`(`AdminChatRoomController` namespace に揃える)
+- [x] `App\Http\Requests\Chat\Moderation\IndexRequest`(`ChatRoomModerationController` namespace に揃える)
 - [x] `routes/web.php`:
   - `chat.index` / `coach.chat.index`(`role:student,coach` + `EnsureActiveLearning`)
   - `chat.show` / `chat.storeMessage`(`EnsureActiveLearning`)
@@ -83,7 +83,7 @@
 - [x] `App\UseCases\Chat\ShowAction`(eager load + **viewer 自身の `ChatMember.last_read_at` のみ UPDATE**(個人別既読、admin 除外))(REQ-chat-012, REQ-chat-032)
 - [x] **`App\UseCases\Chat\StoreMessageAction`(E-2 簡素化 + E-3 でシグネチャ統一)** — `__invoke(User $sender, ChatRoom $room, array $validated): ChatMessage`、`ChatMessage` INSERT / 送信者の `ChatMember.last_read_at` UPDATE / `DB::afterCommit()` で Broadcast + 通知 dispatch、**`ChatRoom|Enrollment` union 引数 / `resolveOrCreateRoom` / `firstOrCreate` / `lockForUpdate` / `ChatMemberSyncService` 呼出 / 添付保存ロジックすべて持たない**(担当コーチ未割当検査は Controller 上で `Policy::sendMessage` が担い、ChatRoom + ChatMember 生成は [[enrollment]] `StoreAction` が担う)
 - [x] **`App\UseCases\Chat\StoreFirstMessageAction` 作成しない**(E-3 撤回、ChatRoom eager 生成でラッパー不要)
-- [x] `App\UseCases\AdminChatRoom\IndexAction` / `ShowAction`(`AdminChatRoomController` namespace に揃える)
+- [x] `App\UseCases\Chat\Moderation\IndexAction` / `ShowAction`(`ChatRoomModerationController` namespace に揃える)
 - [x] **`App\UseCases\ChatAttachment\DownloadAction` 作成しない**(E-2 撤回)
 - [x] `App\Exceptions\Chat\CertificationCoachNotAssignedForChatException`(HTTP 422)(REQ-chat-004、Controller で `Policy::sendMessage` が false を返した時に担当コーチ 0 件のケースのみこの例外を throw、それ以外は `AuthorizationException` 403)
 - [x] `App\Notifications\Chat\ChatMessageReceivedNotification`(database + mail 配信、role 別チャネル切替)+ `App\UseCases\Notification\NotifyChatMessageReceivedAction`(ラッパー Action) + `notifications` テーブル migration([[notification]] Feature 未着手のため chat 側で先行追加、REQ-chat-070〜072)
@@ -127,7 +127,7 @@
 - [x] **`tests/Feature/Http/Chat/StoreMessageTest.php`(E-2 で添付テスト削除 + E-3 で送信テスト集約)** — body 必須 / body 超過 / 非 ChatMember 送信 403 / 担当コーチ 0 件 422 (`postJson`) + HTML POST は flash error redirect (`Handler.php` の `REDIRECT_BACK_STATUSES` 規約) / Broadcast 発火 / 通知 INSERT / 編集・削除エンドポイント不在で `PUT/DELETE /chat-rooms/{room}/messages/{message}` が 404 (REQ-chat-014)
 - [x] `tests/Feature/Http/Chat/CoachAssignmentChangeTest.php`(ChatMember 同期、コーチ追加で全該当 ChatRoom に ChatMember INSERT)
 - [x] `tests/Feature/Http/Chat/EnsureActiveLearningTest.php`(graduated 403)
-- [x] `tests/Feature/Http/AdminChatRoom/IndexTest.php` / `ShowTest.php`
+- [x] `tests/Feature/Http/Chat\Moderation/IndexTest.php` / `ShowTest.php`
 
 ### 明示的に持たないテスト(E-2 / E-3 撤回)
 
@@ -162,7 +162,7 @@
 
 ## Step 11: 動作確認 & 整形
 
-- [x] `sail artisan test --filter=Chat|AdminChatRoom|ChatRoomPolicy|ChatMessageSent|ChatMemberSync|ChatUnreadCount|ChannelAuthorization` 通過(34 tests / 82 assertions)
+- [x] `sail artisan test --filter=Chat|Chat\Moderation|ChatRoomPolicy|ChatMessageSent|ChatMemberSync|ChatUnreadCount|ChannelAuthorization` 通過(34 tests / 82 assertions)
 - [x] `sail artisan test`(全 755 tests / 1592 assertions、既存破壊なし)
 - [x] `sail bin pint --dirty` 整形(passed)
 - [x] `sail artisan migrate:fresh --seed` で `ChatSeeder` 投入確認(10 rooms / 22 members / 5 messages)

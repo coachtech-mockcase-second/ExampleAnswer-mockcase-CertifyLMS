@@ -39,7 +39,7 @@ class UserController extends Controller
             status: isset($validated['status']) ? UserStatus::from($validated['status']) : null,
         );
 
-        return view('admin.users.index', [
+        return view('user.management.index', [
             'users' => $users,
             'keyword' => $validated['keyword'] ?? '',
             'role' => $validated['role'] ?? '',
@@ -54,7 +54,7 @@ class UserController extends Controller
 
         $loaded = $action($user);
 
-        return view('admin.users.show', [
+        return view('user.management.show', [
             'user' => $loaded,
             'plans' => Plan::query()->published()->ordered()->get(),
             'meetingsRemaining' => $quotaService->remaining($loaded),

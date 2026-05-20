@@ -52,7 +52,7 @@
 
 ## Controller / Route
 - [x] `EnrollmentController` (index / show / store / destroy)
-- [x] `AdminEnrollmentController` (admin index / show / updateExamDate / fail。手動割当 store は撤回)
+- [x] `EnrollmentManagementController` (admin index / show / updateExamDate / fail。手動割当 store は撤回)
 - [x] `ReceiveCertificateController` (store)
 - [x] `EnrollmentGoalController` / `EnrollmentNoteController`
 - [x] routes/web.php に登録 (auth + role:student / role:admin / EnsureActiveLearning)
@@ -80,7 +80,7 @@
 ## Coach 担当受講生管理 (REQ-enrollment-033)
 
 - [x] **`Enrollment::scopeForUser(User)` をロール別 dispatcher に拡張** — admin = 全件 / coach = 担当資格 (`certification.coaches` whereHas) / student = 自分の (user_id = self.id) / その他 = 空集合。Laravel 業界標準パターン (Policy で viewAny 共通許可 + Eloquent scope で表示行絞込) に整合
-- [x] **`CoachStudentController::index/show`** 新規実装 (`app/Http/Controllers/CoachStudentController.php`)。index は担当 Enrollment 一覧 (受講生名 / 資格 / status / 試験日 / 詳細リンク、フィルタは資格 / status / キーワード)。show は単一 Enrollment 詳細 (受講生情報 / 学習進捗 [ProgressService::summarize] / 個人目標 / コーチメモ一覧 + メモ追加フォーム)
+- [x] **`EnrollmentRosterController::index/show`** 新規実装 (`app/Http/Controllers/EnrollmentRosterController.php`)。index は担当 Enrollment 一覧 (受講生名 / 資格 / status / 試験日 / 詳細リンク、フィルタは資格 / status / キーワード)。show は単一 Enrollment 詳細 (受講生情報 / 学習進捗 [ProgressService::summarize] / 個人目標 / コーチメモ一覧 + メモ追加フォーム)
 - [x] **`routes/web.php`** に `coach.students.index` / `coach.students.show` を追加 (`Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')` group 内)。サイドバー Blade は既存定義 (`sidebar-coach.blade.php` の `coach.students.index` 参照) で自動表示される
 - [x] **`views/coach/students/index.blade.php` / `show.blade.php`** 新規作成。コーチメモ追加 POST は既存 `admin.enrollments.notes.store` ルート (admin/coach 共有グループ内) を流用
 - [x] **`tests/Feature/Http/CoachStudent/IndexTest.php` / `ShowTest.php`** — 担当資格スコープ / admin・student 拒否 / 未担当 Enrollment への show 403 を検証

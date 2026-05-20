@@ -76,7 +76,7 @@ final class MeetingReminderNotification extends BaseNotification
     {
         return new BroadcastMessage([
             'id' => $this->id,
-            'type' => static::class,
+            'type' => self::class,
             'data' => $this->toDatabase($notifiable),
             'created_at' => now()->toIso8601String(),
         ]);
