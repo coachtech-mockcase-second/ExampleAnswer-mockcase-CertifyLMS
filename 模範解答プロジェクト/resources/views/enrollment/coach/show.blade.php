@@ -139,7 +139,7 @@
                 @foreach ($enrollment->notes as $note)
                     <li class="rounded-md bg-ink-50 px-3 py-2">
                         <div class="flex items-center justify-between gap-2 text-xs text-ink-500">
-                            <span class="font-semibold text-ink-700">{{ $note->coach?->name ?? '退会済' }}</span>
+                            <span class="font-semibold text-ink-700">{{ $note->author?->name ?? '退会済' }}</span>
                             <span class="font-mono tabular-nums">{{ $note->created_at?->format('Y-m-d H:i') }}</span>
                         </div>
                         <p class="mt-1 text-sm text-ink-900 whitespace-pre-wrap">{{ $note->body }}</p>

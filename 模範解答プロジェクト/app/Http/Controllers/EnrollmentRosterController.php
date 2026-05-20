@@ -71,7 +71,7 @@ class EnrollmentRosterController extends Controller
             'user',
             'certification.category',
             'goals' => fn ($q) => $q->orderByDesc('created_at'),
-            'notes' => fn ($q) => $q->with('coach')->latest(),
+            'notes' => fn ($q) => $q->with('author')->latest(),
         ]);
 
         return view('enrollment.coach.show', [
