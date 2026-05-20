@@ -62,6 +62,8 @@
             @include('dashboard._partials.meeting-upcoming-list', [
                 'meetings' => $viewModel->todayAndTomorrowMeetings,
                 'partnerAttribute' => 'student',
+                'linkRoute' => 'coach.meetings.index',
+                'linkLabel' => '一覧 &rarr;',
             ])
 
             @include('dashboard._partials.coach.qa-thread-summary', [

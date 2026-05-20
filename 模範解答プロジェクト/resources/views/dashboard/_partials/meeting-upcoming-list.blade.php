@@ -1,6 +1,8 @@
 @props([
     'meetings',
     'partnerAttribute' => 'coach',
+    'linkRoute' => 'meetings.index',
+    'linkLabel' => '予約 &rarr;',
 ])
 
 <x-card padding="md">
@@ -10,7 +12,7 @@
             今後の面談予定
         </h2>
         <span class="flex-1"></span>
-        <a href="{{ route('meetings.index') }}" class="text-xs text-primary-700 hover:underline">予約 &rarr;</a>
+        <a href="{{ route($linkRoute) }}" class="text-xs text-primary-700 hover:underline">{!! $linkLabel !!}</a>
     </div>
 
     @if ($meetings === null)

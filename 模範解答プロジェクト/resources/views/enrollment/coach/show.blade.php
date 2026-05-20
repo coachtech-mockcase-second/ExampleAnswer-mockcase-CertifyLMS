@@ -103,7 +103,10 @@
                     <li class="flex items-start gap-2 text-sm">
                         <x-icon name="flag" class="w-4 h-4 mt-0.5 text-primary-600 shrink-0" />
                         <div class="min-w-0">
-                            <div class="text-ink-900">{{ $goal->content }}</div>
+                            <div class="text-ink-900 font-semibold">{{ $goal->title }}</div>
+                            @if ($goal->description)
+                                <div class="text-sm text-ink-700 mt-0.5 whitespace-pre-wrap">{{ $goal->description }}</div>
+                            @endif
                             <div class="text-xs text-ink-500 mt-0.5">{{ $goal->target_date?->format('Y-m-d') ?? '期限なし' }}</div>
                         </div>
                     </li>
