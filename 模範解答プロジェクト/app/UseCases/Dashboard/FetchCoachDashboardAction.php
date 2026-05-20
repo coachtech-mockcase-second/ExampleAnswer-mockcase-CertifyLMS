@@ -7,7 +7,6 @@ namespace App\UseCases\Dashboard;
 use App\Enums\EnrollmentStatus;
 use App\Enums\MeetingStatus;
 use App\Enums\QaThreadStatus;
-use App\Http\Controllers\DashboardController;
 use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\Meeting;
@@ -26,7 +25,7 @@ use Illuminate\Support\Collection;
  * 担当受講生一覧は表示専用(ソートなし、最終活動日は `withMax` で集約取得)。
  * 弱点カテゴリ集約 / 受講生メモ表示 / 滞留検知は本ロールでは表示しない(個別画面で対応)。
  *
- * @see DashboardController::index()
+ * @see \App\Http\Controllers\DashboardController::index()
  */
 final class FetchCoachDashboardAction
 {
@@ -88,7 +87,7 @@ final class FetchCoachDashboardAction
     }
 
     /**
-     * @param array<int, string> $certificationIds
+     * @param  array<int, string>  $certificationIds
      */
     private function fetchUnansweredQaCount(array $certificationIds): int
     {
@@ -102,8 +101,7 @@ final class FetchCoachDashboardAction
     /**
      * 担当資格スコープの未回答 Q&A スレッド上位 5 件を新着順で返す。
      *
-     * @param array<int, string> $certificationIds
-     *
+     * @param  array<int, string>  $certificationIds
      * @return Collection<int, QaThread>
      */
     private function fetchRecentUnansweredQaThreads(array $certificationIds): Collection

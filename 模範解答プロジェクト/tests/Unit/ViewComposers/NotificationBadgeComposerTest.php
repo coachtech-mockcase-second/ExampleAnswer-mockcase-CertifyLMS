@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\ViewComposers;
 
-use App\Models\Announcement;
+use App\Models\AdminAnnouncement;
 use App\Models\User;
-use App\Notifications\Announcement\AnnouncementNotification;
+use App\Notifications\AdminAnnouncement\AdminAnnouncementNotification;
 use App\View\Composers\NotificationBadgeComposer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\View\View;
@@ -19,9 +19,9 @@ class NotificationBadgeComposerTest extends TestCase
     public function test_returns_unread_count_for_authenticated_user(): void
     {
         $user = User::factory()->student()->inProgress()->create();
-        $announcement = Announcement::factory()->allStudents()->dispatched()->create();
-        $user->notify(new AnnouncementNotification($announcement));
-        $user->notify(new AnnouncementNotification($announcement));
+        $announcement = AdminAnnouncement::factory()->allStudents()->dispatched()->create();
+        $user->notify(new AdminAnnouncementNotification($announcement));
+        $user->notify(new AdminAnnouncementNotification($announcement));
 
         $this->actingAs($user);
 

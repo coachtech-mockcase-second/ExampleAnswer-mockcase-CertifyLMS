@@ -40,7 +40,7 @@ class MockExamController extends Controller
             isPublished: $isPublished,
         );
 
-        return view('mock-exam.management.index', [
+        return view('admin.mock-exams.index', [
             'mockExams' => $mockExams,
             'certifications' => Certification::query()->orderBy('name')->get(),
             'keyword' => $validated['keyword'] ?? '',
@@ -53,7 +53,7 @@ class MockExamController extends Controller
     {
         $this->authorize('view', $mockExam);
 
-        return view('mock-exam.management.show', [
+        return view('admin.mock-exams.show', [
             'mockExam' => $action($mockExam),
         ]);
     }
@@ -62,7 +62,7 @@ class MockExamController extends Controller
     {
         $this->authorize('viewAny', MockExam::class);
 
-        return view('mock-exam.management.create', [
+        return view('admin.mock-exams.create', [
             'certifications' => Certification::query()->orderBy('name')->get(),
         ]);
     }
@@ -80,7 +80,7 @@ class MockExamController extends Controller
     {
         $this->authorize('update', $mockExam);
 
-        return view('mock-exam.management.edit', [
+        return view('admin.mock-exams.edit', [
             'mockExam' => $mockExam,
         ]);
     }

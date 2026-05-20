@@ -30,7 +30,7 @@ class EnrollmentControllerTest extends TestCase
         $response = $this->actingAs($student)->get(route('enrollments.index'));
 
         $response->assertOk();
-        $response->assertViewIs('enrollment.index');
+        $response->assertViewIs('enrollments.index');
         $response->assertViewHas('enrollments', function ($enrollments) use ($ownEnrollment, $otherEnrollment) {
             return $enrollments->pluck('id')->contains($ownEnrollment->id)
                 && ! $enrollments->pluck('id')->contains($otherEnrollment->id);
@@ -45,7 +45,7 @@ class EnrollmentControllerTest extends TestCase
         $response = $this->actingAs($student)->get(route('enrollments.show', $enrollment));
 
         $response->assertOk();
-        $response->assertViewIs('enrollment.show');
+        $response->assertViewIs('enrollments.show');
     }
 
     public function test_show_forbids_other_student(): void

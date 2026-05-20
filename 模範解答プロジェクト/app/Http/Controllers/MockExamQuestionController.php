@@ -33,7 +33,7 @@ class MockExamQuestionController extends Controller
             ->orderBy('order')
             ->get();
 
-        return view('mock-exam-question.management.index', [
+        return view('admin.mock-exams.questions.index', [
             'mockExam' => $mockExam->load('certification'),
             'questions' => $questions,
         ]);
@@ -45,7 +45,7 @@ class MockExamQuestionController extends Controller
 
         $categories = $mockExam->certification->questionCategories()->ordered()->get();
 
-        return view('mock-exam-question.management.create', [
+        return view('admin.mock-exams.questions.create', [
             'mockExam' => $mockExam->load('certification'),
             'categories' => $categories,
         ]);
@@ -64,7 +64,7 @@ class MockExamQuestionController extends Controller
     {
         $this->authorize('view', $question);
 
-        return view('mock-exam-question.management.show', [
+        return view('admin.mock-exams.questions.show', [
             'mockExam' => $question->mockExam,
             'question' => $question->load(['category', 'options' => fn ($q) => $q->orderBy('order')]),
         ]);
@@ -76,7 +76,7 @@ class MockExamQuestionController extends Controller
 
         $categories = $question->mockExam->certification->questionCategories()->ordered()->get();
 
-        return view('mock-exam-question.management.edit', [
+        return view('admin.mock-exams.questions.edit', [
             'mockExam' => $question->mockExam,
             'question' => $question->load(['category', 'options' => fn ($q) => $q->orderBy('order')]),
             'categories' => $categories,

@@ -22,7 +22,7 @@ class PlanControllerTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.plans.index'));
 
         $response->assertOk();
-        $response->assertViewIs('plan.management.index');
+        $response->assertViewIs('admin.plans.index');
         $response->assertViewHas('plans');
     }
 

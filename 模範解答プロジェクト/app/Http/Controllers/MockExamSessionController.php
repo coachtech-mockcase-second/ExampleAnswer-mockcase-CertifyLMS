@@ -47,7 +47,7 @@ class MockExamSessionController extends Controller
             pass: $pass,
         );
 
-        return view('mock-exam-session.index', [
+        return view('mock-exam-sessions.index', [
             'sessions' => $sessions,
             'certificationId' => $validated['certification_id'] ?? '',
             'mockExamId' => $validated['mock_exam_id'] ?? '',
@@ -73,22 +73,22 @@ class MockExamSessionController extends Controller
         $session = $action($session);
 
         return match ($session->status) {
-            MockExamSessionStatus::NotStarted => view('mock-exam-session.lobby', [
+            MockExamSessionStatus::NotStarted => view('mock-exam-sessions.lobby', [
                 'session' => $session,
             ]),
-            MockExamSessionStatus::InProgress => view('mock-exam-session.take', [
+            MockExamSessionStatus::InProgress => view('mock-exam-sessions.take', [
                 'session' => $session,
                 'questions' => $this->loadQuestionsForTake($session),
                 'answers' => $session->answers->keyBy('mock_exam_question_id'),
             ]),
-            MockExamSessionStatus::Submitted, MockExamSessionStatus::Graded => view('mock-exam-session.result', [
+            MockExamSessionStatus::Submitted, MockExamSessionStatus::Graded => view('mock-exam-sessions.result', [
                 'session' => $session,
                 'heatmap' => $weaknessAnalysis->getHeatmap($session),
                 'passProbabilityBand' => $weaknessAnalysis->getPassProbabilityBand($session->enrollment),
                 'answers' => $session->answers->keyBy('mock_exam_question_id'),
                 'questions' => $this->loadQuestionsForResult($session),
             ]),
-            MockExamSessionStatus::Canceled => view('mock-exam-session.canceled', [
+            MockExamSessionStatus::Canceled => view('mock-exam-sessions.canceled', [
                 'session' => $session,
             ]),
         };

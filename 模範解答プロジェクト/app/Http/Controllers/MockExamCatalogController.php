@@ -27,7 +27,7 @@ class MockExamCatalogController extends Controller
         $mockExams = $action($enrollment);
         $activeSessions = $action->activeSessionMap($enrollment);
 
-        return view('mock-exam.index', [
+        return view('mock-exams.index', [
             'enrollment' => $enrollment->load('certification'),
             'mockExams' => $mockExams,
             'activeSessions' => $activeSessions,
@@ -44,7 +44,7 @@ class MockExamCatalogController extends Controller
 
         $this->authorize('take', $mockExam);
 
-        return view('mock-exam.show', [
+        return view('mock-exams.show', [
             'enrollment' => $enrollment->load('certification'),
             'mockExam' => $action($mockExam, $enrollment),
             'activeSession' => $action->findActiveSession($mockExam, $enrollment),

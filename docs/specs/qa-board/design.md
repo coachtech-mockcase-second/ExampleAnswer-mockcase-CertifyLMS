@@ -58,15 +58,15 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     A[admin] -->|"GET /admin/qa-board"| L["Admin QaThreadController#index"]
-    L --> AI["QaThread\Moderation/IndexAction"]
+    L --> AI["AdminQaThread/IndexAction"]
     AI -->|"全スレッド SoftDelete 含む選択肢"| V["admin/qa-board/index.blade.php"]
 
     A -->|"DELETE /admin/qa-board/(thread)"| D["Admin QaThreadController#destroy"]
-    D --> AD["QaThread\Moderation/DestroyAction"]
+    D --> AD["AdminQaThread/DestroyAction"]
     AD -->|"SoftDelete 回答存在不問"| DB[("qa_threads.deleted_at = now")]
 
     A -->|"DELETE /admin/qa-board/replies/(reply)"| RD["Admin QaReplyController#destroy"]
-    RD --> ARD["QaReply\Moderation/DestroyAction"]
+    RD --> ARD["AdminQaReply/DestroyAction"]
     ARD -->|"SoftDelete スレッド状態不変"| DB2[("qa_replies.deleted_at = now")]
 ```
 
@@ -180,7 +180,7 @@ stateDiagram-v2
 - **`Admin\QaReplyController`**（admin 用、`/admin/qa-board/replies`）
   - `destroy(QaReply $reply, DestroyAction $action)`
 
-> Controller method 名と Action クラス名は完全一致させる（`backend-usecases.md` 規約）。Admin 配下の Action は `App\UseCases\QaThread\Moderation\` / `App\UseCases\QaReply\Moderation\` 配下に独立配置し、公開エンドポイント用 Action と命名衝突しない。
+> Controller method 名と Action クラス名は完全一致させる（`backend-usecases.md` 規約）。Admin 配下の Action は `App\UseCases\AdminQaThread\` / `App\UseCases\AdminQaReply\` 配下に独立配置し、公開エンドポイント用 Action と命名衝突しない。
 
 ### Action（UseCase）
 
@@ -251,7 +251,7 @@ class DestroyAction
 
 責務: 整合性チェック「`$thread->replies()->withTrashed()->count() === 0`」を行い、true なら SoftDelete。1 件以上の回答（SoftDelete 含む）があれば `QaThreadHasRepliesException`（HTTP 409）を throw。`DB::transaction` でラップ。
 
-> 注: Controller の Policy（`delete`）は「投稿者本人 OR admin」を判定するが、admin の場合は本 Action ではなく `QaThread\Moderation\DestroyAction` を経由するため、本 Action に到達するのは「投稿者本人」のみ。回答件数チェックは Action 側の整合性ガードとして二重で実施（Policy で先取りしてもよい）。
+> 注: Controller の Policy（`delete`）は「投稿者本人 OR admin」を判定するが、admin の場合は本 Action ではなく `AdminQaThread\DestroyAction` を経由するため、本 Action に到達するのは「投稿者本人」のみ。回答件数チェックは Action 側の整合性ガードとして二重で実施（Policy で先取りしてもよい）。
 
 #### `QaThread\ResolveAction` / `QaThread\UnresolveAction`
 
@@ -318,10 +318,10 @@ class DestroyAction
 
 責務: SoftDelete のみ。スレッドの `status` / `resolved_at` は変更しない（REQ-qa-board-083）。`DB::transaction` でラップ。
 
-#### `QaThread\Moderation\IndexAction` / `QaThread\Moderation\ShowAction` / `QaThread\Moderation\DestroyAction`
+#### `AdminQaThread\IndexAction` / `AdminQaThread\ShowAction` / `AdminQaThread\DestroyAction`
 
 ```php
-namespace App\UseCases\QaThread\Moderation;
+namespace App\UseCases\AdminQaThread;
 
 class IndexAction
 {
@@ -344,10 +344,10 @@ class DestroyAction
 - `ShowAction`: `$withTrashedReplies = true` なら SoftDelete 済の回答も eager load。
 - `DestroyAction`: 回答有無不問で SoftDelete。`DB::transaction` でラップ。
 
-#### `QaReply\Moderation\DestroyAction`
+#### `AdminQaReply\DestroyAction`
 
 ```php
-namespace App\UseCases\QaReply\Moderation;
+namespace App\UseCases\AdminQaReply;
 
 class DestroyAction
 {
@@ -642,17 +642,17 @@ Route::middleware('auth')->group(function () {
 | REQ-qa-board-001 〜 006 | `database/migrations/{date}_create_qa_threads_table.php`（`status` カラム含む）/ `app/Models/QaThread.php`（リレーション + scope + `isResolved()` + `$casts['status']`）/ `app/Enums/QaThreadStatus.php`（`Open` / `Resolved` + `label()`）|
 | REQ-qa-board-010 〜 014 | `database/migrations/{date}_create_qa_replies_table.php` / `app/Models/QaReply.php` |
 | REQ-qa-board-020 〜 026 | `app/Http/Controllers/QaThreadController::store` / `app/Http/Requests/QaThread/StoreRequest` / `app/UseCases/QaThread/StoreAction` / `app/Policies/QaThreadPolicy::create` / `resources/views/qa-board/create.blade.php` |
-| REQ-qa-board-030 〜 037 | `app/Http/Controllers/QaThreadController::index` / `app/Http/Controllers/QaThreadController::show` / `app/Http/Controllers/Admin/QaThreadController::index` / `app/UseCases/QaThread/IndexAction` / `app/UseCases/QaThread/ShowAction` / `app/UseCases/QaThread\Moderation/IndexAction` / `app/Policies/QaThreadPolicy::viewAny` / `app/Policies/QaThreadPolicy::view` / `resources/views/qa-board/index.blade.php` / `resources/views/qa-board/show.blade.php` |
+| REQ-qa-board-030 〜 037 | `app/Http/Controllers/QaThreadController::index` / `app/Http/Controllers/QaThreadController::show` / `app/Http/Controllers/Admin/QaThreadController::index` / `app/UseCases/QaThread/IndexAction` / `app/UseCases/QaThread/ShowAction` / `app/UseCases/AdminQaThread/IndexAction` / `app/Policies/QaThreadPolicy::viewAny` / `app/Policies/QaThreadPolicy::view` / `resources/views/qa-board/index.blade.php` / `resources/views/qa-board/show.blade.php` |
 | REQ-qa-board-040 〜 044 | `app/Http/Controllers/QaThreadController::edit` / `app/Http/Controllers/QaThreadController::update` / `app/Http/Requests/QaThread/UpdateRequest` / `app/UseCases/QaThread/UpdateAction` / `app/Policies/QaThreadPolicy::update` / `resources/views/qa-board/edit.blade.php` |
-| REQ-qa-board-050 〜 054 | `app/Http/Controllers/QaThreadController::destroy` / `app/Http/Controllers/Admin/QaThreadController::destroy` / `app/UseCases/QaThread/DestroyAction` / `app/UseCases/QaThread\Moderation/DestroyAction` / `app/Policies/QaThreadPolicy::delete` / `app/Exceptions/QaBoard/QaThreadHasRepliesException` |
+| REQ-qa-board-050 〜 054 | `app/Http/Controllers/QaThreadController::destroy` / `app/Http/Controllers/Admin/QaThreadController::destroy` / `app/UseCases/QaThread/DestroyAction` / `app/UseCases/AdminQaThread/DestroyAction` / `app/Policies/QaThreadPolicy::delete` / `app/Exceptions/QaBoard/QaThreadHasRepliesException` |
 | REQ-qa-board-060 〜 065 | `app/Http/Controllers/QaReplyController::store` / `app/Http/Requests/QaReply/StoreRequest` / `app/UseCases/QaReply/StoreAction` / `app/Policies/QaReplyPolicy::create` / **`app/Notifications/QaReplyReceivedNotification`**（v3 rename） |
 | REQ-qa-board-070 〜 073 | `app/Http/Controllers/QaReplyController::update` / `app/Http/Requests/QaReply/UpdateRequest` / `app/UseCases/QaReply/UpdateAction` / `app/Policies/QaReplyPolicy::update` |
-| REQ-qa-board-080 〜 084 | `app/Http/Controllers/QaReplyController::destroy` / `app/Http/Controllers/Admin/QaReplyController::destroy` / `app/UseCases/QaReply/DestroyAction` / `app/UseCases/QaReply\Moderation/DestroyAction` / `app/Policies/QaReplyPolicy::delete` |
+| REQ-qa-board-080 〜 084 | `app/Http/Controllers/QaReplyController::destroy` / `app/Http/Controllers/Admin/QaReplyController::destroy` / `app/UseCases/QaReply/DestroyAction` / `app/UseCases/AdminQaReply/DestroyAction` / `app/Policies/QaReplyPolicy::delete` |
 | REQ-qa-board-090 〜 094 | `app/Http/Controllers/QaThreadController::resolve` / `app/Http/Controllers/QaThreadController::unresolve` / `app/UseCases/QaThread/ResolveAction` / `app/UseCases/QaThread/UnresolveAction` / `app/Policies/QaThreadPolicy::resolve` / `app/Policies/QaThreadPolicy::unresolve` / `app/Exceptions/QaBoard/QaThreadAlreadyResolvedException` / `app/Exceptions/QaBoard/QaThreadNotResolvedException` |
 | REQ-qa-board-100 〜 105 | `app/Http/Requests/QaThread/IndexRequest` / `app/UseCases/QaThread/IndexAction`（フィルタ + LIKE 検索）/ `resources/views/qa-board/_filter.blade.php` |
 | REQ-qa-board-110 〜 113 | **`app/Notifications/QaReplyReceivedNotification`**（v3 rename、`via` / `toMail` / `toDatabase`）/ `app/UseCases/QaReply/StoreAction`（dispatch 条件）|
 | REQ-qa-board-120 〜 122 | `app/View/Composers/SidebarBadgeComposer`（coach 分岐に未回答件数集計を追加）/ `resources/views/layouts/_partials/sidebar-coach.blade.php` |
-| REQ-qa-board-130 〜 133 | `app/Http/Controllers/Admin/QaThreadController` / `app/Http/Controllers/Admin/QaReplyController` / `app/UseCases/QaThread\Moderation/IndexAction` / `ShowAction` / `DestroyAction` / `app/UseCases/QaReply\Moderation/DestroyAction` / `resources/views/admin/qa-board/index.blade.php` / `resources/views/admin/qa-board/show.blade.php` |
+| REQ-qa-board-130 〜 133 | `app/Http/Controllers/Admin/QaThreadController` / `app/Http/Controllers/Admin/QaReplyController` / `app/UseCases/AdminQaThread/IndexAction` / `ShowAction` / `DestroyAction` / `app/UseCases/AdminQaReply/DestroyAction` / `resources/views/admin/qa-board/index.blade.php` / `resources/views/admin/qa-board/show.blade.php` |
 | NFR-qa-board-001 | 各 Action 内の `DB::transaction(function () { ... })` |
 | NFR-qa-board-002 | `IndexAction` / `ShowAction` 内の `with([...])` + `withCount('replies')` |
 | NFR-qa-board-003 | `app/Exceptions/QaBoard/QaThreadHasRepliesException` / `QaThreadAlreadyResolvedException` / `QaThreadNotResolvedException` |

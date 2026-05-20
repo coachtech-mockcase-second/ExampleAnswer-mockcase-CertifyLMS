@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Http\AiChat;
 
 use App\Enums\EnrollmentStatus;
-use App\Models\AiChatConversation;
 use App\Models\Certification;
 use App\Models\Chapter;
 use App\Models\Enrollment;
@@ -78,7 +77,7 @@ class StoreTest extends TestCase
         $chapter = Chapter::factory()->create(['part_id' => $part->id]);
         $section = Section::factory()->create(['chapter_id' => $chapter->id]);
 
-        $existing = AiChatConversation::factory()->create([
+        $existing = \App\Models\AiChatConversation::factory()->create([
             'user_id' => $student->id,
             'section_id' => $section->id,
         ]);

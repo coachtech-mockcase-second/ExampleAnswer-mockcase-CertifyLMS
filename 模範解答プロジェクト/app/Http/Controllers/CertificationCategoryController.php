@@ -23,7 +23,7 @@ class CertificationCategoryController extends Controller
     {
         $this->authorize('viewAny', CertificationCategory::class);
 
-        return view('certification-category.management.index', [
+        return view('admin.certification-categories.index', [
             'categories' => $action(),
         ]);
     }

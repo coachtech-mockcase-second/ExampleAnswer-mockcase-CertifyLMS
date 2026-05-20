@@ -22,7 +22,7 @@ class MeetingPackControllerTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.meeting-packs.index'));
 
         $response->assertOk();
-        $response->assertViewIs('meeting-pack.management.index');
+        $response->assertViewIs('admin.meeting-packs.index');
         $response->assertViewHas('plans');
     }
 

@@ -91,7 +91,7 @@ class ChatRoom extends Model
      * 「未読あり」フィルタを適用する scope。`coach.chat.index` / `chat.show` の
      * rooms-pane 両方で利用する。
      *
-     * @param array{filter?: string, certification_id?: ?string, keyword?: ?string} $filters
+     * @param  array{filter?: string, certification_id?: ?string, keyword?: ?string}  $filters
      */
     public function scopeFilterForCoach(Builder $query, User $coach, array $filters): Builder
     {
@@ -129,7 +129,7 @@ class ChatRoom extends Model
      * 管理者向け chat 監査の検索条件 (certification_id / keyword) を適用する scope。
      * `admin.chat-rooms.index` / `admin.chat-rooms.show` の rooms-pane 両方で利用する。
      *
-     * @param array{certification_id?: ?string, keyword?: ?string} $filters
+     * @param  array{certification_id?: ?string, keyword?: ?string}  $filters
      */
     public function scopeFilterForAdmin(Builder $query, array $filters): Builder
     {

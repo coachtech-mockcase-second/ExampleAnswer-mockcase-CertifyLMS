@@ -13,8 +13,8 @@ use App\Models\ChatRoom;
 use App\UseCases\Chat\ShowAction;
 use App\UseCases\Chat\StoreMessageAction;
 use Illuminate\Contracts\Support\Renderable;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 /**
@@ -41,7 +41,7 @@ class ChatRoomController extends Controller
             return redirect()->route('chat.show', $latest);
         }
 
-        return view('chat-room.empty-state');
+        return view('chat.empty-state');
     }
 
     public function indexAsCoach(IndexAsCoachRequest $request): Renderable|RedirectResponse
@@ -60,7 +60,7 @@ class ChatRoomController extends Controller
             return redirect()->route('chat.show', $latest);
         }
 
-        return view('chat-room.coach-empty-state', ['filters' => $request->filters()]);
+        return view('chat.coach-empty-state', ['filters' => $request->filters()]);
     }
 
     public function show(ChatRoom $room, ShowAction $action, Request $request): View
@@ -90,7 +90,7 @@ class ChatRoomController extends Controller
             ->limit(50)
             ->get();
 
-        return view('chat-room.show', [
+        return view('chat.show', [
             'room' => $room,
             'messages' => $room->messages,
             'navRooms' => $navRooms,

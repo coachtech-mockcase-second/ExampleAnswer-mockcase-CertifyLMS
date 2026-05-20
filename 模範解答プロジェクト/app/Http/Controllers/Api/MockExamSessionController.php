@@ -32,8 +32,7 @@ final class MockExamSessionController extends Controller
     /**
      * `?include=user,mock_exam,enrollment` を Eloquent リレーション名 (camelCase) に変換する。
      *
-     * @param array<int, string> $resolved
-     *
+     * @param  array<int, string>  $resolved
      * @return array<int, string>
      */
     private function mapIncludes(array $resolved): array

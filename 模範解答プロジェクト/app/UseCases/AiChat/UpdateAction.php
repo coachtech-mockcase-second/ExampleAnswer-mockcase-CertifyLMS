@@ -12,7 +12,7 @@ use App\Models\AiChatConversation;
 final class UpdateAction
 {
     /**
-     * @param array{title: string} $validated
+     * @param  array{title: string}  $validated
      */
     public function __invoke(AiChatConversation $conversation, array $validated): AiChatConversation
     {

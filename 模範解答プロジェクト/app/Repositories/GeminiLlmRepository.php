@@ -92,8 +92,7 @@ final class GeminiLlmRepository implements LlmRepositoryInterface
      * Gemini は assistant role を "model" と呼ぶ。System prompt は本メソッドの対象外
      * (systemInstruction で別経路で渡すため)。
      *
-     * @param array<int, array{role: string, content: string}> $messages
-     *
+     * @param  array<int, array{role: string, content: string}>  $messages
      * @return array<int, array{role: string, parts: array<int, array{text: string}>}>
      */
     private function formatMessages(array $messages): array

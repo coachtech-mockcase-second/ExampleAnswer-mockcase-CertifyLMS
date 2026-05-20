@@ -85,7 +85,7 @@ final class ChatMessageReceivedNotification extends BaseNotification
 
         return new BroadcastMessage([
             'id' => $this->id,
-            'type' => self::class,
+            'type' => static::class,
             'data' => $data,
             'created_at' => now()->toIso8601String(),
         ]);

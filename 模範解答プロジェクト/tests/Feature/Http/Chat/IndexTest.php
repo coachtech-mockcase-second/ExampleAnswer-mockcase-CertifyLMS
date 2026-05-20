@@ -6,6 +6,7 @@ namespace Tests\Feature\Http\Chat;
 
 use App\Models\Certification;
 use App\Models\ChatMember;
+use App\Models\ChatMessage;
 use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\User;
@@ -70,7 +71,7 @@ class IndexTest extends TestCase
 
         // student 自身は ChatMember 0 件 → empty-state にフォールバック
         $response->assertOk();
-        $response->assertViewIs('chat-room.empty-state');
+        $response->assertViewIs('chat.empty-state');
     }
 
     public function test_empty_state_when_no_rooms(): void
@@ -80,7 +81,7 @@ class IndexTest extends TestCase
         $response = $this->actingAs($student)->get(route('chat.index'));
 
         $response->assertOk();
-        $response->assertViewIs('chat-room.empty-state');
+        $response->assertViewIs('chat.empty-state');
     }
 
     public function test_eager_generated_room_becomes_redirect_target_after_enrollment_store(): void
@@ -133,7 +134,7 @@ class IndexTest extends TestCase
 
         $this->actingAs($coach)->get(route('coach.chat.index'))
             ->assertOk()
-            ->assertViewIs('chat-room.coach-empty-state');
+            ->assertViewIs('chat.coach-empty-state');
 
         $this->assertNotNull(Str::ulid()); // Str use 抑止
     }

@@ -17,7 +17,7 @@ use Illuminate\Http\RedirectResponse;
  * 受講生 / コーチ向けの回答 Controller。
  *
  * Policy::create は admin に対して常に false を返すため、admin は回答送信不可。
- * 削除は本人 + admin に許可されるが、admin モデレーション削除は QaReplyModerationController を使う想定。
+ * 削除は本人 + admin に許可されるが、admin モデレーション削除は AdminQaReplyController を使う想定。
  */
 class QaReplyController extends Controller
 {

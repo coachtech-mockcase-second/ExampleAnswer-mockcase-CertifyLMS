@@ -25,7 +25,7 @@ class QuestionCategoryController extends Controller
     {
         $this->authorize('viewAny', [QuestionCategory::class, $certification]);
 
-        return view('question-category.management.index', [
+        return view('admin.contents.question-categories.index', [
             'certification' => $certification,
             'categories' => $action($certification),
         ]);

@@ -24,7 +24,7 @@ class IndexTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.certifications.parts.index', $cert))
             ->assertOk()
-            ->assertViewIs('part.management.index')
+            ->assertViewIs('admin.contents.parts.index')
             ->assertViewHas('parts');
     }
 

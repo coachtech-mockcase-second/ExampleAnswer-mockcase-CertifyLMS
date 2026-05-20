@@ -27,7 +27,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
  * 受講生 / コーチ向け質問掲示板スレッド Controller。
  *
  * リソース固有認可は QaThreadPolicy に集約。投稿は student のみ、回答は coach も可能、編集 / 削除 / 解決マークは
- * 投稿者本人のみ (admin 代行不可)。admin モデレーションは QaThreadModerationController を使う。
+ * 投稿者本人のみ (admin 代行不可)。admin モデレーションは AdminQaThreadController を使う。
  */
 class QaThreadController extends Controller
 {
@@ -40,7 +40,7 @@ class QaThreadController extends Controller
         $filters = $request->filters();
         $threads = $action($request->user(), $filters);
 
-        return view('qa-thread.index', [
+        return view('qa-board.index', [
             'threads' => $threads,
             'filters' => $filters,
             'certifications' => $this->certificationOptionsFor($request->user()),
@@ -53,7 +53,7 @@ class QaThreadController extends Controller
 
         $thread = $action($thread);
 
-        return view('qa-thread.show', [
+        return view('qa-board.show', [
             'thread' => $thread,
         ]);
     }
@@ -62,7 +62,7 @@ class QaThreadController extends Controller
     {
         $this->authorize('create', QaThread::class);
 
-        return view('qa-thread.create', [
+        return view('qa-board.create', [
             'certifications' => $this->certificationOptionsFor(auth()->user()),
         ]);
     }
@@ -82,7 +82,7 @@ class QaThreadController extends Controller
     {
         $this->authorize('update', $thread);
 
-        return view('qa-thread.edit', [
+        return view('qa-board.edit', [
             'thread' => $thread->load('certification'),
         ]);
     }

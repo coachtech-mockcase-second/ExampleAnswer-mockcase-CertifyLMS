@@ -22,7 +22,7 @@ class IndexTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.users.index'));
 
         $response->assertOk();
-        $response->assertViewIs('user.management.index');
+        $response->assertViewIs('admin.users.index');
         $response->assertViewHas('users');
     }
 

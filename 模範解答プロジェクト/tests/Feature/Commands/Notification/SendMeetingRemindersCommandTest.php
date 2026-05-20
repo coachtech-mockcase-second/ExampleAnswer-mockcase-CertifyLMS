@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Commands\Notification;
 
+use App\Enums\MeetingStatus;
 use App\Models\Meeting;
 use App\Models\User;
 use App\Notifications\Mentoring\MeetingReminderNotification;

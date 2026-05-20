@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\UseCases\Dashboard;
 
 use App\Enums\EnrollmentStatus;
-use App\Http\Controllers\DashboardController;
 use App\Models\Enrollment;
 use App\Models\User;
 use App\UseCases\Dashboard\ViewModels\GraduatedDashboardViewModel;
@@ -16,7 +15,7 @@ use App\UseCases\Dashboard\ViewModels\GraduatedDashboardViewModel;
  * `User.status === UserStatus::Graduated` のユーザーが対象。修了済資格一覧 + PDF DL リンクのみを集約する。
  * プラン機能 / プロフィール閲覧 / 卒業日表示は持たない(サイドバーから直接アクセス)。
  *
- * @see DashboardController::index()
+ * @see \App\Http\Controllers\DashboardController::index()
  */
 final class FetchGraduatedDashboardAction
 {

@@ -3,9 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\EnrollmentStatus;
+use App\Http\Controllers\AdminAnnouncementController;
+use App\Http\Controllers\AdminChatRoomController;
 use App\Http\Controllers\AiChatConversationController;
 use App\Http\Controllers\AiChatMessageController;
-use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AdminEnrollmentController;
+use App\Http\Controllers\AdminMockExamSessionController;
+use App\Http\Controllers\AdminQaReplyController;
+use App\Http\Controllers\AdminQaThreadController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CertificateController;
@@ -13,37 +18,32 @@ use App\Http\Controllers\CertificationCatalogController;
 use App\Http\Controllers\CertificationCategoryController;
 use App\Http\Controllers\CertificationCoachAssignmentController;
 use App\Http\Controllers\CertificationController;
+use App\Http\Controllers\CoachStudentController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\ChatRoomController;
-use App\Http\Controllers\ChatRoomModerationController;
 use App\Http\Controllers\ContentSearchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentGoalController;
-use App\Http\Controllers\EnrollmentManagementController;
 use App\Http\Controllers\EnrollmentNoteController;
-use App\Http\Controllers\EnrollmentRosterController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LearningHourTargetController;
 use App\Http\Controllers\MeetingController;
-use App\Http\Controllers\MeetingPackController;
-use App\Http\Controllers\MeetingPackStatusController;
 use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
+use App\Http\Controllers\MeetingPackController;
+use App\Http\Controllers\MeetingPackStatusController;
 use App\Http\Controllers\MockExamAnswerController;
 use App\Http\Controllers\MockExamCatalogController;
 use App\Http\Controllers\MockExamController;
 use App\Http\Controllers\MockExamQuestionController;
 use App\Http\Controllers\MockExamSessionController;
-use App\Http\Controllers\MockExamSessionMonitorController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlanStatusController;
 use App\Http\Controllers\QaReplyController;
-use App\Http\Controllers\QaReplyModerationController;
 use App\Http\Controllers\QaThreadController;
-use App\Http\Controllers\QaThreadModerationController;
 use App\Http\Controllers\QuestionCategoryController;
 use App\Http\Controllers\QuizHistoryController;
 use App\Http\Controllers\QuizStatsController;
@@ -268,17 +268,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->name('admin.meeting-packs.unarchive');
 
     // 受講登録管理(全件一覧 / 詳細 / 試験日変更 / 手動学習中止)。新規作成は受講生自身の自己登録のみ
-    Route::get('enrollments', [EnrollmentManagementController::class, 'index'])->name('admin.enrollments.index');
-    Route::get('enrollments/{enrollment}', [EnrollmentManagementController::class, 'show'])
+    Route::get('enrollments', [AdminEnrollmentController::class, 'index'])->name('admin.enrollments.index');
+    Route::get('enrollments/{enrollment}', [AdminEnrollmentController::class, 'show'])
         ->withTrashed()
         ->name('admin.enrollments.show');
-    Route::patch('enrollments/{enrollment}/exam-date', [EnrollmentManagementController::class, 'updateExamDate'])
+    Route::patch('enrollments/{enrollment}/exam-date', [AdminEnrollmentController::class, 'updateExamDate'])
         ->name('admin.enrollments.updateExamDate');
-    Route::post('enrollments/{enrollment}/fail', [EnrollmentManagementController::class, 'fail'])
+    Route::post('enrollments/{enrollment}/fail', [AdminEnrollmentController::class, 'fail'])
         ->name('admin.enrollments.fail');
 
     // 管理者お知らせ配信(全 in_progress 受講生 / 資格別 / ユーザー指定)
-    Route::resource('announcements', AnnouncementController::class)
+    Route::resource('announcements', AdminAnnouncementController::class)
         ->only(['index', 'create', 'store', 'show'])
         ->parameters(['announcements' => 'announcement'])
         ->names('admin.announcements');
@@ -376,9 +376,9 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
         ->name('admin.mock-exam-questions.destroy');
 
     // 模試管理 — 受講生セッション閲覧(coach は担当資格のみ)
-    Route::get('mock-exam-sessions', [MockExamSessionMonitorController::class, 'index'])
+    Route::get('mock-exam-sessions', [AdminMockExamSessionController::class, 'index'])
         ->name('admin.mock-exam-sessions.index');
-    Route::get('mock-exam-sessions/{session}', [MockExamSessionMonitorController::class, 'show'])
+    Route::get('mock-exam-sessions/{session}', [AdminMockExamSessionController::class, 'show'])
         ->name('admin.mock-exam-sessions.show');
 
     // 演習管理 — Section 紐づき演習問題: 一覧 / 作成 / 詳細・編集 / 公開遷移(Section 経由でのみアクセス)
@@ -536,9 +536,9 @@ Route::middleware(['auth', 'role:coach', 'active-learning'])->group(function () 
 // 管理者専用 — chat 監査閲覧
 // ============================================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('chat-rooms', [ChatRoomModerationController::class, 'index'])
+    Route::get('chat-rooms', [AdminChatRoomController::class, 'index'])
         ->name('admin.chat-rooms.index');
-    Route::get('chat-rooms/{room}', [ChatRoomModerationController::class, 'show'])
+    Route::get('chat-rooms/{room}', [AdminChatRoomController::class, 'show'])
         ->name('admin.chat-rooms.show');
 });
 
@@ -547,8 +547,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 // ============================================================
 Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')->group(function () {
     // 担当資格受講生管理(担当資格に属する Enrollment の一覧 / 詳細)
-    Route::get('students', [EnrollmentRosterController::class, 'index'])->name('students.index');
-    Route::get('students/{enrollment}', [EnrollmentRosterController::class, 'show'])->name('students.show');
+    Route::get('students', [CoachStudentController::class, 'index'])->name('students.index');
+    Route::get('students/{enrollment}', [CoachStudentController::class, 'show'])->name('students.show');
 
     // 面談管理
     Route::get('meetings', [MeetingController::class, 'indexAsCoach'])->name('meetings.index');
@@ -613,10 +613,10 @@ Route::middleware(['auth', 'role:student,coach', 'active-learning'])->group(func
 // 管理者専用 — qa-board モデレーション
 // ============================================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('qa-board', [QaThreadModerationController::class, 'index'])->name('admin.qa-board.index');
-    Route::get('qa-board/{thread}', [QaThreadModerationController::class, 'show'])->withTrashed()->name('admin.qa-board.show');
-    Route::delete('qa-board/{thread}', [QaThreadModerationController::class, 'destroy'])->name('admin.qa-board.destroy');
-    Route::delete('qa-board/replies/{reply}', [QaReplyModerationController::class, 'destroy'])->name('admin.qa-board.replies.destroy');
+    Route::get('qa-board', [AdminQaThreadController::class, 'index'])->name('admin.qa-board.index');
+    Route::get('qa-board/{thread}', [AdminQaThreadController::class, 'show'])->withTrashed()->name('admin.qa-board.show');
+    Route::delete('qa-board/{thread}', [AdminQaThreadController::class, 'destroy'])->name('admin.qa-board.destroy');
+    Route::delete('qa-board/replies/{reply}', [AdminQaReplyController::class, 'destroy'])->name('admin.qa-board.replies.destroy');
 });
 
 // ============================================================

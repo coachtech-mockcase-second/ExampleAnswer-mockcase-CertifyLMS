@@ -72,7 +72,7 @@ final class MeetingCanceledNotification extends BaseNotification
     {
         return new BroadcastMessage([
             'id' => $this->id,
-            'type' => self::class,
+            'type' => static::class,
             'data' => $this->toDatabase($notifiable),
             'created_at' => now()->toIso8601String(),
         ]);

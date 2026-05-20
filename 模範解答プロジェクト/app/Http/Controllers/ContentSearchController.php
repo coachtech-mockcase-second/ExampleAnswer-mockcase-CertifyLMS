@@ -27,7 +27,7 @@ class ContentSearchController extends Controller
 
         $certification = Certification::find($validated['certification_id']);
 
-        return view('content.search', [
+        return view('contents.search', [
             'certification' => $certification,
             'paginator' => $result['paginator'],
             'snippets' => $result['snippets'],

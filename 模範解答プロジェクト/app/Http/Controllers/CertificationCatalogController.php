@@ -23,7 +23,7 @@ class CertificationCatalogController extends Controller
 
         $result = $action($request->user(), $validated);
 
-        return view('certification.index', [
+        return view('certifications.index', [
             'catalog' => $result['catalog'],
             'enrolledIds' => $result['enrolled_ids'],
             'categories' => CertificationCategory::ordered()->get(),
@@ -41,7 +41,7 @@ class CertificationCatalogController extends Controller
             ->where('certification_id', $certification->id)
             ->exists();
 
-        return view('certification.show', [
+        return view('certifications.show', [
             'certification' => $action($certification),
             'isEnrolled' => $isEnrolled,
         ]);

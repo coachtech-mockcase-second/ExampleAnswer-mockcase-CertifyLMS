@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\UseCases\Dashboard\ViewModels;
 
-use App\Models\Enrollment;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
@@ -16,7 +15,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 final readonly class GraduatedDashboardViewModel
 {
     /**
-     * @param EloquentCollection<int, Enrollment> $passedEnrollments 修了済 Enrollment(passed_at DESC、Certificate eager load 済)
+     * @param  EloquentCollection<int, \App\Models\Enrollment>  $passedEnrollments  修了済 Enrollment(passed_at DESC、Certificate eager load 済)
      */
     public function __construct(
         public EloquentCollection $passedEnrollments,

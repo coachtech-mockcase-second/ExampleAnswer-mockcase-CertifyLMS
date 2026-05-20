@@ -54,113 +54,44 @@ resources/views/
 │   ├── modal.blade.php
 │   ├── nav/
 │   └── ...
-├── common/                 # 複数 Entity を束ねる Feature 共通の partials/modals 置き場（cross-Entity）
-│   └── content-management/
-│       ├── _partials/      #   status-pill.blade.php 等、Part/Chapter/Section/SectionQuestion/QuestionCategory が共有
-│       └── _modals/        #   publish-confirm.blade.php / delete-confirm.blade.php 等
 ├── auth/                   # 認証系（Fortify、[[auth]] 所有）
 ├── errors/                 # エラーページ（[frontend-ui-foundation.md] 所有）
-├── dashboard/              # ダッシュボード（[[dashboard]] 所有、ロール別 Blade を直下に保持）
+├── dashboard/              # ダッシュボード（[[dashboard]] 所有、ロール別）
 │   ├── admin.blade.php
 │   ├── coach.blade.php
 │   └── student.blade.php
-└── {entity}/               # ★ Entity 単位（単数 kebab-case、Eloquent Model 名と 1:1 対応）
-    ├── index.blade.php     #   受講生・コーチ日常利用（catalog / 閲覧 / 操作）
-    ├── show.blade.php
-    ├── _partials/          #   Entity 内共有 partials
-    ├── _modals/            #   Entity 内モーダル
-    ├── {sub-feature}/      #   Entity 内のサブ機能（goals / notes 等）任意
-    ├── management/         #   admin or admin+coach の管理操作（CRUD / 状態遷移 / 削除 / モデレーション / 監査）
-    │   ├── index.blade.php
-    │   ├── show.blade.php
-    │   ├── create.blade.php
-    │   └── edit.blade.php
-    └── coach/              #   coach 特化（自分のスコープ内の閲覧/メモ操作、management より権限狭い）任意
-        ├── index.blade.php
-        └── show.blade.php
-```
-
-### Entity 命名規則（必読）
-
-トップディレクトリ名は **Eloquent Model 名の単数 kebab-case** に揃える。route 名 / URL とは **意図的にずれる**（後述）。
-
-| Model | views ディレクトリ | URL prefix | route 名（変更なし）|
-|---|---|---|---|
-| `User` | `user/` | `/admin/users` | `admin.users.*` |
-| `Certification` | `certification/` | `/admin/certifications`, `/certifications` | `admin.certifications.*` / `certifications.*` |
-| `MockExam` | `mock-exam/` | `/admin/mock-exams`, `/mock-exams` | `admin.mock-exams.*` / `mock-exams.*` |
-| `MockExamQuestion` | `mock-exam-question/` | `/admin/mock-exams/{mockExam}/questions` | `admin.mock-exams.questions.*` |
-| `MockExamSession` | `mock-exam-session/` | `/admin/mock-exam-sessions`, `/mock-exam-sessions` | `admin.mock-exam-sessions.*` / `mock-exam-sessions.*` |
-| `Enrollment` | `enrollment/` | `/admin/enrollments`, `/enrollments` | `admin.enrollments.*` / `enrollments.*` |
-| `EnrollmentGoal` | `enrollment-goal/` | `/enrollments/{enrollment}/goals` | `enrollments.goals.*` |
-| `EnrollmentNote` | `enrollment-note/` | `/admin/enrollments/{enrollment}/notes` | `admin.enrollments.notes.*` |
-| `ChatRoom` | `chat-room/` | `/chat-rooms`, `/admin/chat-rooms` | `chat.*` / `admin.chat-rooms.*` |
-| `QaThread` | `qa-thread/` | `/qa-board`, `/admin/qa-board` | `qa-board.*` / `admin.qa-board.*` |
-| `Plan` | `plan/` | `/admin/plans` | `admin.plans.*` |
-| `MeetingPack` | `meeting-pack/` | `/admin/meeting-packs` | `admin.meeting-packs.*` |
-| `Announcement` | `announcement/` | `/admin/announcements` | `admin.announcements.*` |
-| `Part` / `Chapter` / `Section` / `SectionQuestion` / `QuestionCategory` | `part/` `chapter/` `section/` `section-question/` `question-category/` | `/admin/...` 各種 | `admin.parts.*` 等 |
-
-ポイント:
-
-- **view 名と route 名は意図的にずれる**: route 名 / URL prefix は外向け（受講生・コーチ・admin にとっての URL 慣習として `/admin/...` の階層が意味を持つ）なので **変更しない**。view 名 / Class 名は内向け（開発者用）なので **Entity + 役割** の純粋な命名軸に揃える
-- **子 Entity も完全フラット top-level**: `MockExamQuestion` は `mock-exam/questions/` のような nested ではなく、`mock-exam-question/` 単独で並べる。BookStack / Snipe-IT / Akaunting 等の Laravel 大型 OSS と整合（`books/` `chapters/` `pages/` のフラット展開がデファクト）
-- **Feature 単位ディレクトリは top-level に作らない**: `content-management/` のような複数 Entity 束ね名は使わない。例外として複数 Entity 共有の partials/modals のみ `views/common/{feature-name}/_partials/` に置く（後フェーズで `<x-...>` 共通コンポーネントへの昇格を検討）
-
-### 役割サブディレクトリ命名規則
-
-| サブディレクトリ | 用途 | 例 |
-|---|---|---|
-| **`management/`** | admin or admin+coach の管理操作。CRUD / 状態遷移 / 削除 / モデレーション / 監査を統合 | `user/management/`（admin の user CRUD）/ `chat-room/management/`（admin の chat 監査）/ `qa-thread/management/`（admin モデレーション）/ `mock-exam-session/management/`（admin の閲覧専用） |
-| **`coach/`** | coach 特化の閲覧/メモ操作（`management/` より権限が狭い） | `enrollment/coach/`（coach の担当受講生一覧）/ `meeting/coach/`（coach の担当面談） |
-| **トップ直下** | 受講生・コーチが日常利用する画面（catalog / 閲覧 / 操作） | `certification/index.blade.php`（受講生 catalog）/ `chat-room/show.blade.php`（受講生・コーチ chat 閲覧）/ `enrollment/show.blade.php`（受講生 enrollment 詳細） |
-| **`_partials/` / `_modals/`** | Entity 内共有 partials / モーダル | `enrollment/_partials/` |
-| **`{sub-feature}/`**（任意） | Entity 内のサブ機能区切り | `enrollment/goals/` / `enrollment/notes/` |
-
-### ❌ 採用しないパターン（ロール由来 top-level / Class 命名）
-
-```
-views/
-├── admin/                # ❌ ロール由来 top-level は禁止
-│   ├── users/
-│   ├── enrollments/
+├── admin/                  # URL prefix `/admin/...` 配下の管理画面群（admin / coach が共通利用するものを含む）
+│   ├── certifications/     #   /admin/certifications/* (admin+coach 共通 + admin only 操作)
+│   ├── mock-exams/         #   /admin/mock-exams/* (同上)
+│   ├── enrollments/        #   /admin/enrollments/* (現状 admin only、Coach は /coach/students/)
 │   └── ...
-├── coach/                # ❌ 同上
-│   ├── students/
-│   └── meetings/
-└── student/              # ❌ 同上
-    └── enrollments/
+├── coach/                  # URL prefix `/coach/...` 配下の coach 専用画面群
+│   └── students/           #   /coach/students/* (担当受講生管理)
+└── {feature}/              # Feature 単位（enrollment / mock-exam / chat 等）
+    ├── index.blade.php
+    ├── show.blade.php
+    └── form.blade.php
 ```
 
-理由（[backend-http.md](./backend-http.md)「ロール別 namespace 禁止」と同じ精神を view 階層にも適用）:
+### ディレクトリ命名規則(重要)
 
-- **リソース固有認可は Policy で分岐すべき**: ロール別ディレクトリで切ると Policy の責務が view ディレクトリ階層に漏れ出す
-- **ロール追加・移管時に大規模リネームが必要**: admin → coach への業務移管・新ロール追加時、ディレクトリ全体を物理移動することになる
-- **同 Entity を複数ロールが操作する場合に二重実装が生まれる**: `admin/certifications/show.blade.php` と `coach/certifications/show.blade.php` のような重複が発生し、`@can` で出し分ければ済むはずの分岐がディレクトリ構造で表現されてしまう
-- **「admin が触る画面 → admin/」ではなく「Entity 操作の意味で management/」が正しい命名軸**: 「誰が触るか」ではなく「何をする操作か」で分類する
+Blade のディレクトリ命名は **URL prefix or Feature 名** で行う。「画面がどの URL から呼ばれるか」を反映するのが目的:
 
-#### Controller / UseCase namespace でも同じ精神
+| パターン | 例 | 採用可否 |
+|---|---|---|
+| **URL prefix 由来** | `admin/certifications/` (`/admin/certifications/*`) / `coach/students/` (`/coach/students/*`) / `auth/login.blade.php` (`/login`) | ✅ **OK**(routes/web.php の `prefix(...)` と対応) |
+| **Feature 名由来** | `enrollment/index.blade.php` (`/enrollments`) / `mock-exam/show.blade.php` (`/mock-exams/{id}`) | ✅ **OK**(Feature 単位、prefix なしの画面) |
+| **ロール名そのもの** | `views/student/.../` / `views/coach-only/.../` 等の **意味的ロール命名** | ❌ **避ける**(機能領域でなくロールで区切ると、共通画面化時に大規模リネームが必要になる) |
 
-```php
-// ❌ 採用しない（ロール由来 Class 命名）
-class AdminEnrollmentController { ... }
-class CoachStudentController { ... }
-namespace App\UseCases\AdminAnnouncement;
-namespace App\Http\Requests\AdminChatRoom;
+#### `admin/` ディレクトリは Admin 専用 view ではない
 
-// ✅ 採用する（機能由来 / Entity 単位 namespace）
-class EnrollmentManagementController { ... }
-class EnrollmentRosterController { ... }              // coach の担当 roster
-class ChatRoomModerationController { ... }            // admin の chat 監査
-namespace App\UseCases\Announcement;                  // Entity 単位
-namespace App\UseCases\Chat\Moderation;               // 既存 Entity namespace + サブ namespace
-```
+`resources/views/admin/` 配下に Coach も使う view が含まれる(例: `admin/certifications/index.blade.php` は admin + coach 両方がアクセス、`@can` で操作 UI を出し分け)。これは **URL prefix `/admin/...` 配下の画面** という意味であって、ロール限定を表すものではない。
 
-詳細は [backend-http.md](./backend-http.md) の「namespace 方針」を参照。
+[backend-http.md](./backend-http.md) で **Controller のロール別 namespace**(`App\Http\Controllers\Admin\UserController` 等)は禁止しているが、これは **Class FQN(PHP namespace)** に対する規約。Blade のディレクトリ命名は URL に対応した別領域の慣習で、Laravel コミュニティ標準でも `resources/views/admin/` のような URL prefix 由来のディレクトリは広く採用されている。混同しないこと。
 
-### 共通画面で admin/coach の出し分けが必要な場合
+#### 共通画面の責務出し分けは Blade 内 `@can` で実現
 
-同じ Entity を複数ロールが操作する画面（`certification/management/show.blade.php` のように admin + coach が共有する画面）では、view ファイルそのものをロール別に複製せず、Blade 内 `@can('update', $cert)` 等で個別判定し、UI を出し分ける。詳細は [frontend-ui-foundation.md](./frontend-ui-foundation.md) の「複数ロール共通画面の 4 層認可」も参照。
+`admin/certifications/show.blade.php` のように **admin / coach が共通利用** する画面では、操作ボタンを `@can('update', $cert)` 等で個別判定し、ロールに応じて UI を出し分ける。view ファイルそのものをロール別に複製しない。詳細は [frontend-ui-foundation.md](./frontend-ui-foundation.md) の「複数ロール共通画面の 4 層認可」も参照。
 
 ## 必須事項
 

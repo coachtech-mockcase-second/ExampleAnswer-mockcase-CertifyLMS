@@ -32,8 +32,7 @@ final class EnrollmentController extends Controller
     /**
      * `?include=user,certification` をリレーション名 (camelCase) 配列に変換する。
      *
-     * @param array<int, string> $resolved
-     *
+     * @param  array<int, string>  $resolved
      * @return array<int, string>
      */
     private function mapIncludes(array $resolved): array
