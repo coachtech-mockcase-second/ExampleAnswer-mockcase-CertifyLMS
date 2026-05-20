@@ -86,6 +86,15 @@ class BrowseController extends Controller
             ]);
         }
 
+        // フローティング AI 相談ウィジェットに教材コンテキストを渡す
+        // (ウィジェットは layouts/app.blade.php で $pageMeta を読み、Section / 資格名を data-* 属性に焼き付ける)
+        $section->loadMissing('chapter.part.certification');
+        view()->share('pageMeta', [
+            'section_id' => $section->id,
+            'section_title' => $section->title,
+            'certification_name' => $section->chapter?->part?->certification?->name,
+        ]);
+
         return view('learning.sections.show', $data);
     }
 }

@@ -34,6 +34,7 @@ class CertificationController extends Controller
         $validated = $request->validated();
 
         $certifications = $action(
+            viewer: $request->user(),
             keyword: $validated['keyword'] ?? null,
             status: isset($validated['status']) ? CertificationStatus::from($validated['status']) : null,
             categoryId: $validated['category_id'] ?? null,

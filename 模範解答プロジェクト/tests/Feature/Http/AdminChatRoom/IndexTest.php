@@ -8,25 +8,43 @@ use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * `GET /admin/chat-rooms` の挙動を検証する。admin のみ閲覧可。
+ * `GET /admin/chat-rooms` の挙動を検証する。admin のみ閲覧可で、最新ルーム redirect。
  */
 class IndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_see_all_chat_rooms(): void
+    public function test_admin_redirects_to_latest_chat_room(): void
     {
         $admin = User::factory()->admin()->inProgress()->create();
-        $enrollment = Enrollment::factory()->create();
-        ChatRoom::factory()->for($enrollment)->create();
+        $older = ChatRoom::factory()
+            ->for(Enrollment::factory())
+            ->withMessageAt(Carbon::now()->subHours(3))
+            ->create();
+        $newer = ChatRoom::factory()
+            ->for(Enrollment::factory())
+            ->withMessageAt(Carbon::now()->subMinutes(5))
+            ->create();
 
-        $response = $this->actingAs($admin)->get(route('admin.chat-rooms.index'));
+        $this->actingAs($admin)
+            ->get(route('admin.chat-rooms.index'))
+            ->assertRedirect(route('admin.chat-rooms.show', $newer));
 
-        $response->assertOk();
-        $response->assertViewIs('admin.chat-rooms.index');
+        $this->assertNotNull($older); // 退避: 未使用警告抑止
+    }
+
+    public function test_admin_sees_empty_state_when_no_rooms_match(): void
+    {
+        $admin = User::factory()->admin()->inProgress()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.chat-rooms.index'))
+            ->assertOk()
+            ->assertViewIs('admin.chat-rooms.empty-state');
     }
 
     public function test_coach_forbidden(): void

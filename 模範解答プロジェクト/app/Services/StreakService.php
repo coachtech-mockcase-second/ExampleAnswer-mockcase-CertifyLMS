@@ -15,8 +15,9 @@ use Illuminate\Support\Collection;
  *
  * 「学習活動日」は `DISTINCT DATE(learning_sessions.started_at) WHERE user_id = ?` で定義する。
  * タイムゾーンは `config('app.timezone')` で日付グルーピング。
+ * 受講生ダッシュボードの Action テストで Mockery 経由 mock するため `final` は付けない。
  */
-final class StreakService
+class StreakService
 {
     public function calculate(User $user): StreakSummary
     {

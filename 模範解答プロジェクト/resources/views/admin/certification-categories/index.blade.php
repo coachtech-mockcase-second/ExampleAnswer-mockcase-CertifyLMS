@@ -1,18 +1,26 @@
 @extends('layouts.app')
 
-@section('title', '資格分類マスタ')
+@section('title', '資格マスタ管理 — カテゴリ')
 
 @section('content')
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
-        ['label' => '資格分類マスタ'],
+        ['label' => '資格マスタ管理', 'href' => route('admin.certifications.index')],
+        ['label' => 'カテゴリ'],
     ]" />
 
-    <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-            <h1 class="text-2xl font-bold text-ink-900">資格分類マスタ</h1>
-            <p class="text-sm text-ink-500 mt-1">資格カタログのカテゴリ。<span class="font-semibold text-ink-700">{{ $categories->count() }} 件</span></p>
-        </div>
+    <div class="mt-4">
+        <h1 class="text-2xl font-bold text-ink-900">資格マスタ管理</h1>
+        <p class="text-sm text-ink-500 mt-1">資格マスタとカテゴリの管理を行います。</p>
+    </div>
+
+    @include('admin.certifications._partials.section-tabs')
+
+    <div class="mt-6 flex items-center justify-between gap-4 flex-wrap">
+        <p class="text-sm text-ink-500">
+            資格カタログのカテゴリを管理します。
+            <span class="font-semibold text-ink-700">{{ $categories->count() }} 件</span>
+        </p>
         <x-button variant="primary" data-modal-trigger="category-create-modal">
             <x-icon name="plus" class="w-4 h-4" />
             分類を追加

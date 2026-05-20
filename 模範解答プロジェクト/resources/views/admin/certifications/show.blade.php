@@ -48,29 +48,39 @@
                 <x-icon name="tag" class="w-4 h-4" />
                 出題分野マスタ
             </x-link-button>
-            <x-link-button href="{{ route('admin.certifications.edit', $certification) }}" variant="outline" size="sm">
-                <x-icon name="pencil" class="w-4 h-4" />
-                編集
-            </x-link-button>
+            @can('update', $certification)
+                <x-link-button href="{{ route('admin.certifications.edit', $certification) }}" variant="outline" size="sm">
+                    <x-icon name="pencil" class="w-4 h-4" />
+                    編集
+                </x-link-button>
+            @endcan
 
             @if ($isDraft)
-                <x-button variant="primary" size="sm" data-modal-trigger="publish-confirm-modal">
-                    <x-icon name="arrow-up-on-square" class="w-4 h-4" />
-                    公開する
-                </x-button>
-                <x-button variant="danger" size="sm" data-modal-trigger="delete-confirm-modal">
-                    <x-icon name="trash" class="w-4 h-4" />
-                    削除
-                </x-button>
+                @can('publish', $certification)
+                    <x-button variant="primary" size="sm" data-modal-trigger="publish-confirm-modal">
+                        <x-icon name="arrow-up-on-square" class="w-4 h-4" />
+                        公開する
+                    </x-button>
+                @endcan
+                @can('delete', $certification)
+                    <x-button variant="danger" size="sm" data-modal-trigger="delete-confirm-modal">
+                        <x-icon name="trash" class="w-4 h-4" />
+                        削除
+                    </x-button>
+                @endcan
             @elseif ($isPublished)
-                <x-button variant="outline" size="sm" data-modal-trigger="unpublish-confirm-modal">
-                    <x-icon name="arrow-uturn-down" class="w-4 h-4" />
-                    公開停止
-                </x-button>
-                <x-button variant="outline" size="sm" data-modal-trigger="archive-confirm-modal">
-                    <x-icon name="archive-box-arrow-down" class="w-4 h-4" />
-                    アーカイブ
-                </x-button>
+                @can('unpublish', $certification)
+                    <x-button variant="outline" size="sm" data-modal-trigger="unpublish-confirm-modal">
+                        <x-icon name="arrow-uturn-down" class="w-4 h-4" />
+                        公開停止
+                    </x-button>
+                @endcan
+                @can('archive', $certification)
+                    <x-button variant="outline" size="sm" data-modal-trigger="archive-confirm-modal">
+                        <x-icon name="archive-box-arrow-down" class="w-4 h-4" />
+                        アーカイブ
+                    </x-button>
+                @endcan
             @endif
         </div>
     </div>
@@ -88,46 +98,56 @@
         @include('admin.certifications._partials.recent-certificates', ['certification' => $certification])
     </div>
 
-    {{-- モーダル群 --}}
-    @if ($assignableCoaches->isNotEmpty())
-        @include('admin.certifications._modals.assign-coach-form', [
-            'certification' => $certification,
-            'assignableCoaches' => $assignableCoaches,
-        ])
-    @endif
+    {{-- モーダル群(admin のみ) --}}
+    @can('attachCoach', $certification)
+        @if ($assignableCoaches->isNotEmpty())
+            @include('admin.certifications._modals.assign-coach-form', [
+                'certification' => $certification,
+                'assignableCoaches' => $assignableCoaches,
+            ])
+        @endif
+    @endcan
 
     @if ($isDraft)
-        @include('admin.certifications._modals.transition-confirm', [
-            'id' => 'publish-confirm-modal',
-            'title' => '資格を公開しますか？',
-            'description' => '公開すると受講生の資格カタログに即時に表示され、受講登録が可能になります。',
-            'action' => route('admin.certifications.publish', $certification),
-            'buttonLabel' => '公開する',
-            'buttonVariant' => 'primary',
-        ])
+        @can('publish', $certification)
+            @include('admin.certifications._modals.transition-confirm', [
+                'id' => 'publish-confirm-modal',
+                'title' => '資格を公開しますか？',
+                'description' => '公開すると受講生の資格カタログに即時に表示され、受講登録が可能になります。',
+                'action' => route('admin.certifications.publish', $certification),
+                'buttonLabel' => '公開する',
+                'buttonVariant' => 'primary',
+            ])
+        @endcan
 
-        @include('admin.certifications._modals.delete-confirm', [
-            'certification' => $certification,
-        ])
+        @can('delete', $certification)
+            @include('admin.certifications._modals.delete-confirm', [
+                'certification' => $certification,
+            ])
+        @endcan
     @endif
 
     @if ($isPublished)
-        @include('admin.certifications._modals.transition-confirm', [
-            'id' => 'unpublish-confirm-modal',
-            'title' => '公開を停止しますか？',
-            'description' => '下書き状態に戻り、受講生カタログから非表示になります（既存受講生の学習継続には影響しません）。再度公開するには別途「公開」操作が必要です。',
-            'action' => route('admin.certifications.unpublish', $certification),
-            'buttonLabel' => '公開停止',
-            'buttonVariant' => 'outline',
-        ])
+        @can('unpublish', $certification)
+            @include('admin.certifications._modals.transition-confirm', [
+                'id' => 'unpublish-confirm-modal',
+                'title' => '公開を停止しますか？',
+                'description' => '下書き状態に戻り、受講生カタログから非表示になります（既存受講生の学習継続には影響しません）。再度公開するには別途「公開」操作が必要です。',
+                'action' => route('admin.certifications.unpublish', $certification),
+                'buttonLabel' => '公開停止',
+                'buttonVariant' => 'outline',
+            ])
+        @endcan
 
-        @include('admin.certifications._modals.transition-confirm', [
-            'id' => 'archive-confirm-modal',
-            'title' => '資格をアーカイブしますか？',
-            'description' => 'アーカイブ後はカタログから非表示になり、新規受講登録ができなくなります（既存受講生の学習継続には影響しません）。',
-            'action' => route('admin.certifications.archive', $certification),
-            'buttonLabel' => 'アーカイブする',
-            'buttonVariant' => 'outline',
-        ])
+        @can('archive', $certification)
+            @include('admin.certifications._modals.transition-confirm', [
+                'id' => 'archive-confirm-modal',
+                'title' => '資格をアーカイブしますか？',
+                'description' => 'アーカイブ後はカタログから非表示になり、新規受講登録ができなくなります（既存受講生の学習継続には影響しません）。',
+                'action' => route('admin.certifications.archive', $certification),
+                'buttonLabel' => 'アーカイブする',
+                'buttonVariant' => 'outline',
+            ])
+        @endcan
     @endif
 @endsection

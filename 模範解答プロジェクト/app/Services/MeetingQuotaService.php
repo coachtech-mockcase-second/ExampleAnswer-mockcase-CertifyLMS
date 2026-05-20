@@ -54,7 +54,7 @@ final class MeetingQuotaService
     ): LengthAwarePaginator {
         // 面談予約 Feature(Meeting Model) 未実装環境では relatedMeeting の Eager Loading は省略する。
         // Meeting Model 導入後は relatedMeeting.enrollment.certification まで一括ロードされる。
-        $with = ['relatedPayment.meetingQuotaPlan', 'grantedBy'];
+        $with = ['relatedPayment.meetingPack', 'grantedBy'];
         if (class_exists('App\\Models\\Meeting')) {
             $with[] = 'relatedMeeting.enrollment.certification';
         }

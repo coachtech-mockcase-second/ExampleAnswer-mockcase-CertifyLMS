@@ -12,7 +12,7 @@ use App\UseCases\CertificationCatalog\ShowAction;
 use Illuminate\View\View;
 
 /**
- * 受講生向けの資格カタログ Controller。一覧（カタログ / 受講中タブ）と詳細を提供する。
+ * 受講生向けの資格カタログ Controller。一覧と詳細を提供する。
  * `auth + role:student + active-learning` Middleware 配下で動作し、graduated 受講生はアクセス不可。
  */
 class CertificationCatalogController extends Controller
@@ -25,10 +25,8 @@ class CertificationCatalogController extends Controller
 
         return view('certifications.index', [
             'catalog' => $result['catalog'],
-            'enrolled' => $result['enrolled'],
             'enrolledIds' => $result['enrolled_ids'],
             'categories' => CertificationCategory::ordered()->get(),
-            'tab' => $validated['tab'] ?? 'catalog',
             'categoryId' => $validated['category_id'] ?? '',
             'difficulty' => $validated['difficulty'] ?? '',
         ]);

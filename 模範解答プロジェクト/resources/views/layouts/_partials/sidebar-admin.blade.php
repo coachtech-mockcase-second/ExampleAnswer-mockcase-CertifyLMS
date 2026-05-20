@@ -1,13 +1,12 @@
 <x-nav.sidebar>
     <x-nav.item route="dashboard.index" icon="home" label="ダッシュボード" />
 
-    <x-nav.section title="運用" :routes="['admin.users.index', 'admin.enrollments.index', 'admin.plans.index', 'admin.meeting-quota-plans.index', 'admin.certifications.index', 'admin.certification-categories.index', 'admin.mock-exams.index', 'admin.mock-exam-sessions.index', 'admin.announcements.index']" />
+    <x-nav.section title="運用" :routes="['admin.users.index', 'admin.enrollments.index', 'admin.plans.index', 'admin.meeting-packs.index', 'admin.certifications.index', 'admin.certification-categories.index', 'admin.mock-exams.index', 'admin.mock-exam-sessions.index', 'admin.announcements.index']" />
     <x-nav.item route="admin.users.index" icon="users" label="ユーザー管理" />
     <x-nav.item route="admin.enrollments.index" icon="clipboard-document-list" label="受講登録管理" />
     <x-nav.item route="admin.plans.index" icon="credit-card" label="プラン管理" />
-    <x-nav.item route="admin.meeting-quota-plans.index" icon="banknotes" label="追加面談プラン管理" />
+    <x-nav.item route="admin.meeting-packs.index" icon="banknotes" label="面談パック管理" />
     <x-nav.item route="admin.certifications.index" icon="academic-cap" label="資格マスタ管理" />
-    <x-nav.item route="admin.certification-categories.index" icon="tag" label="カテゴリ管理" />
     <x-nav.item route="admin.mock-exams.index" icon="clipboard-document-check" label="模試マスタ管理" />
     <x-nav.item route="admin.mock-exam-sessions.index" icon="chart-pie" label="受験セッション閲覧" />
     <x-nav.item route="admin.announcements.index" icon="megaphone" label="お知らせ配信" />

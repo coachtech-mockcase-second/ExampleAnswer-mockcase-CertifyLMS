@@ -19,7 +19,7 @@
         <x-card class="mt-6" padding="none">
             <x-empty-state
                 icon="banknotes"
-                title="現在ご購入いただける追加面談プランはありません"
+                title="現在ご購入いただける面談パックはありません"
                 description="管理者へお問い合わせください。"
             />
         </x-card>
@@ -42,7 +42,7 @@
 
                     <form method="POST" action="{{ route('meeting-quota.checkout.create') }}" class="mt-auto pt-6">
                         @csrf
-                        <input type="hidden" name="meeting_quota_plan_id" value="{{ $plan->id }}">
+                        <input type="hidden" name="meeting_pack_id" value="{{ $plan->id }}">
                         <x-button type="submit" variant="primary" class="w-full justify-center">
                             <x-icon name="credit-card" class="w-4 h-4" />
                             このパックを購入

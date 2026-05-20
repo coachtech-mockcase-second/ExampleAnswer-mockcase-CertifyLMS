@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\AdminAnnouncementController;
 use App\Http\Controllers\AdminChatRoomController;
+use App\Http\Controllers\AiChatConversationController;
+use App\Http\Controllers\AiChatMessageController;
 use App\Http\Controllers\AdminEnrollmentController;
 use App\Http\Controllers\AdminMockExamSessionController;
 use App\Http\Controllers\AdminQaReplyController;
@@ -16,9 +18,11 @@ use App\Http\Controllers\CertificationCatalogController;
 use App\Http\Controllers\CertificationCategoryController;
 use App\Http\Controllers\CertificationCoachAssignmentController;
 use App\Http\Controllers\CertificationController;
+use App\Http\Controllers\CoachStudentController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\ChatRoomController;
 use App\Http\Controllers\ContentSearchController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentGoalController;
 use App\Http\Controllers\EnrollmentNoteController;
@@ -27,8 +31,8 @@ use App\Http\Controllers\LearningHourTargetController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
-use App\Http\Controllers\MeetingQuotaPlanController;
-use App\Http\Controllers\MeetingQuotaPlanStatusController;
+use App\Http\Controllers\MeetingPackController;
+use App\Http\Controllers\MeetingPackStatusController;
 use App\Http\Controllers\MockExamAnswerController;
 use App\Http\Controllers\MockExamCatalogController;
 use App\Http\Controllers\MockExamController;
@@ -84,8 +88,7 @@ Route::post('/onboarding/{invitation}', [OnboardingController::class, 'store'])
 // ============================================================
 Route::middleware('auth')->group(function () {
     // ダッシュボード
-    Route::view('/dashboard', 'placeholders.coming-soon', ['feature' => 'dashboard'])
-        ->name('dashboard.index');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
     // プロフィール設定 / パスワード変更 / アバター(全ロール共通)
     Route::prefix('settings')->name('settings.')->group(function () {
@@ -229,8 +232,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('plans/{plan}/unarchive', [PlanStatusController::class, 'unarchive'])
         ->name('admin.plans.unarchive');
 
-    // 資格マスタ管理(資格本体 + 状態遷移)
+    // 資格マスタ管理(資格本体の CRUD + 状態遷移、admin のみ)
     Route::resource('certifications', CertificationController::class)
+        ->except(['index', 'show'])
         ->parameters(['certifications' => 'certification'])
         ->names('admin.certifications');
     Route::post('certifications/{certification}/publish', [CertificationController::class, 'publish'])
@@ -240,7 +244,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('certifications/{certification}/archive', [CertificationController::class, 'archive'])
         ->name('admin.certifications.archive');
 
-    // 担当コーチ割当(資格 ↔ コーチ)
+    // 担当コーチ割当(資格 ↔ コーチ、admin のみ)
     Route::post('certifications/{certification}/coaches/{coach}', [CertificationCoachAssignmentController::class, 'attach'])
         ->name('admin.certifications.coaches.attach');
     Route::delete('certifications/{certification}/coaches/{coach}', [CertificationCoachAssignmentController::class, 'detach'])
@@ -252,16 +256,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->except(['show', 'create', 'edit'])
         ->names('admin.certification-categories');
 
-    // 追加面談プラン管理(SKU マスタ + 状態遷移)
-    Route::resource('meeting-quota-plans', MeetingQuotaPlanController::class)
-        ->parameters(['meeting-quota-plans' => 'plan'])
-        ->names('admin.meeting-quota-plans');
-    Route::post('meeting-quota-plans/{plan}/publish', [MeetingQuotaPlanStatusController::class, 'publish'])
-        ->name('admin.meeting-quota-plans.publish');
-    Route::post('meeting-quota-plans/{plan}/archive', [MeetingQuotaPlanStatusController::class, 'archive'])
-        ->name('admin.meeting-quota-plans.archive');
-    Route::post('meeting-quota-plans/{plan}/unarchive', [MeetingQuotaPlanStatusController::class, 'unarchive'])
-        ->name('admin.meeting-quota-plans.unarchive');
+    // 面談パック管理(SKU マスタ + 状態遷移)
+    Route::resource('meeting-packs', MeetingPackController::class)
+        ->parameters(['meeting-packs' => 'plan'])
+        ->names('admin.meeting-packs');
+    Route::post('meeting-packs/{plan}/publish', [MeetingPackStatusController::class, 'publish'])
+        ->name('admin.meeting-packs.publish');
+    Route::post('meeting-packs/{plan}/archive', [MeetingPackStatusController::class, 'archive'])
+        ->name('admin.meeting-packs.archive');
+    Route::post('meeting-packs/{plan}/unarchive', [MeetingPackStatusController::class, 'unarchive'])
+        ->name('admin.meeting-packs.unarchive');
 
     // 受講登録管理(全件一覧 / 詳細 / 試験日変更 / 手動学習中止)。新規作成は受講生自身の自己登録のみ
     Route::get('enrollments', [AdminEnrollmentController::class, 'index'])->name('admin.enrollments.index');
@@ -281,9 +285,15 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 });
 
 // ============================================================
-// admin + コーチ共有ルート(教材管理: コーチは担当資格のみ Policy で絞り込み)
+// admin + コーチ共有ルート(資格マスタ閲覧 / 教材管理: コーチは担当資格のみ Policy + scope で絞り込み)
 // ============================================================
 Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function () {
+    // 資格マスタ閲覧 (admin = 全件 / coach = 担当資格のみ、Certification::scopeForUser で絞込)
+    Route::resource('certifications', CertificationController::class)
+        ->only(['index', 'show'])
+        ->parameters(['certifications' => 'certification'])
+        ->names('admin.certifications');
+
     // 教材管理 — Part: 一覧 / 新規作成 / 並び替え
     Route::get('certifications/{certification}/parts', [PartController::class, 'index'])
         ->name('admin.certifications.parts.index');
@@ -533,9 +543,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 });
 
 // ============================================================
-// コーチ専用ルート — 面談管理 / メモ記録
+// コーチ専用ルート — 担当資格受講生管理 / 面談管理 / メモ記録
 // ============================================================
 Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')->group(function () {
+    // 担当資格受講生管理(担当資格に属する Enrollment の一覧 / 詳細)
+    Route::get('students', [CoachStudentController::class, 'index'])->name('students.index');
+    Route::get('students/{enrollment}', [CoachStudentController::class, 'show'])->name('students.show');
+
+    // 面談管理
     Route::get('meetings', [MeetingController::class, 'indexAsCoach'])->name('meetings.index');
     Route::put('meetings/{meeting}/memo', [MeetingController::class, 'upsertMemo'])->name('meetings.memo');
 });
@@ -603,6 +618,30 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::delete('qa-board/{thread}', [AdminQaThreadController::class, 'destroy'])->name('admin.qa-board.destroy');
     Route::delete('qa-board/replies/{reply}', [AdminQaReplyController::class, 'destroy'])->name('admin.qa-board.replies.destroy');
 });
+
+// ============================================================
+// 受講生専用 — AI 相談
+// ============================================================
+if ((bool) config('ai-chat.enabled', true)) {
+    Route::middleware(['auth', 'role:student', 'active-learning'])
+        ->prefix('ai-chat')
+        ->name('ai-chat.')
+        ->group(function () {
+            Route::get('/', [AiChatConversationController::class, 'index'])->name('index');
+            Route::post('conversations', [AiChatConversationController::class, 'store'])->name('conversations.store');
+            Route::get('conversations/{conversation}', [AiChatConversationController::class, 'show'])->name('conversations.show');
+            Route::patch('conversations/{conversation}', [AiChatConversationController::class, 'update'])->name('conversations.update');
+            Route::delete('conversations/{conversation}', [AiChatConversationController::class, 'destroy'])->name('conversations.destroy');
+
+            // メッセージ送信系は throttle:ai-chat で日次上限を適用
+            Route::middleware('throttle:ai-chat')->group(function () {
+                Route::post('conversations/{conversation}/messages', [AiChatMessageController::class, 'store'])
+                    ->name('conversations.messages.store');
+                Route::post('messages/{message}/retry', [AiChatMessageController::class, 'retry'])
+                    ->name('messages.retry');
+            });
+        });
+}
 
 // ============================================================
 // Webhook(認証なし、署名検証 + CSRF 除外)

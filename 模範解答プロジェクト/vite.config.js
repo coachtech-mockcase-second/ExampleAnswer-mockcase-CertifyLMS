@@ -17,6 +17,7 @@ export default defineConfig({
                 'resources/js/settings-profile/avatar.js',
                 'resources/js/settings-profile/availability-calendar.js',
                 'resources/js/admin/announcement-form.js',
+                'resources/js/ai-chat/index.js',
             ],
             refresh: true,
         }),

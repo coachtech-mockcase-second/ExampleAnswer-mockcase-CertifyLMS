@@ -19,11 +19,11 @@ paths:
 
 ### namespace 方針
 
-Controller は **基本フラット** (`app/Http/Controllers/{Entity}Controller.php` 直置き) を原則とする。Feature が判別できれば十分なので、`PlanController` / `MeetingQuotaPlanController` / `CertificationCatalogController` のように **Feature 名 + 役割** で命名すれば namespace で切る必要はない。
+Controller は **基本フラット** (`app/Http/Controllers/{Entity}Controller.php` 直置き) を原則とする。Feature が判別できれば十分なので、`PlanController` / `MeetingPackController` / `CertificationCatalogController` のように **Feature 名 + 役割** で命名すれば namespace で切る必要はない。
 
 | パターン | 例 | 採用可否 | 理由 |
 |---|---|---|---|
-| **フラット** | `PlanController` / `MeetingQuotaPlanController` / `MeetingQuotaPlanStatusController` | ✅ **原則** | Feature は名前で判別可能、構造を浅く保てる |
+| **フラット** | `PlanController` / `MeetingPackController` / `MeetingPackStatusController` | ✅ **原則** | Feature は名前で判別可能、構造を浅く保てる |
 | **ロール別 namespace** | `Admin\PlanController` / `Coach\StudentController` / `Student\ChatController` | ❌ **禁止** | リソース固有認可は Policy で分岐すべき。namespace で切るとロール追加・移管時に大規模リネームが必要になり破綻 |
 | **Feature 別 namespace** | `MeetingQuota\CheckoutController` / `MeetingQuota\HistoryController` | ⚪ **許容**（迷ったらフラット） | 同一 Feature 内に複数 Controller が生まれる場合の論理グルーピング。ただし `MeetingQuotaCheckoutController` のフラット命名でも代替可能なので、新規実装時はフラットを推奨 |
 | **領域別 namespace** | `Auth\OnboardingController` / `Webhooks\StripeWebhookController` | ⚪ **許容** | 画面 Controller ではない外部システム連携の特殊カテゴリ（Fortify Auth 系 / 外部 inbound endpoint）。将来 `Webhooks\GoogleCalendarWebhookController` 等が増える前提でグルーピングする |
@@ -144,7 +144,7 @@ class StoreRequest extends FormRequest
 
 ### `routes/web.php` のコメント方針（必須）
 
-`routes/web.php` は受講生に渡るコードベース。**Feature 固有のコメントを書かない**。Feature の所有は route name の prefix（`admin.meeting-quota-plans.*` / `meeting-quota.*` / `webhooks.stripe` 等）と Controller の namespace で表現する。
+`routes/web.php` は受講生に渡るコードベース。**Feature 固有のコメントを書かない**。Feature の所有は route name の prefix（`admin.meeting-packs.*` / `meeting-quota.*` / `webhooks.stripe` 等）と Controller の namespace で表現する。
 
 #### ❌ 禁止（Feature 固有 / 構築側メタ情報の漏洩）
 
@@ -196,9 +196,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('plans/{plan}/publish', [PlanStatusController::class, 'publish'])->name('admin.plans.publish');
     // ...
 
-    // 追加面談プラン管理(SKU マスタ + 状態遷移)
-    Route::resource('meeting-quota-plans', MeetingQuotaPlanController::class)
-        ->parameters(['meeting-quota-plans' => 'plan'])->names('admin.meeting-quota-plans');
+    // 面談パック管理(SKU マスタ + 状態遷移)
+    Route::resource('meeting-packs', MeetingPackController::class)
+        ->parameters(['meeting-packs' => 'plan'])->names('admin.meeting-packs');
     // ...
 });
 
@@ -212,7 +212,7 @@ Route::post('webhooks/stripe', [StripeWebhookController::class, 'handle'])
 
 許容するコメント:
 - **ロールグループの見出し**（`============` 罫線 + 1 行のグループ説明）
-- **業務名のグルーピング**（「ユーザー管理」「招待管理」「プラン管理」「追加面談プラン管理」「資格マスタ管理」「カテゴリ管理」「教材管理」「修了証配信」等）
+- **業務名のグルーピング**（「ユーザー管理」「招待管理」「プラン管理」「面談パック管理」「資格マスタ管理」「カテゴリ管理」「教材管理」「修了証配信」等）
 - 慣習から外れる特殊措置（例: `signed` middleware を Controller 内で個別検証する理由）の Why コメント
 
 業務名コメントの判断基準:

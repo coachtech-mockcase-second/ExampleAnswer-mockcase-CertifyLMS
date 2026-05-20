@@ -1,11 +1,16 @@
 @props([
     'navRooms',
     'currentRoom',
+    'coachFilters' => null,
+    'adminFilters' => null,
 ])
 
 @php
     $viewer = auth()->user();
     $viewerIsStudent = $viewer?->role === \App\Enums\UserRole::Student;
+    $coachFilter = $coachFilters['filter'] ?? 'all';
+    $coachKeyword = $coachFilters['keyword'] ?? '';
+    $adminKeyword = $adminFilters['keyword'] ?? '';
 @endphp
 
 <aside class="flex flex-col overflow-hidden bg-surface-raised border-b lg:border-b-0 lg:border-r border-[var(--border-subtle)]">
@@ -16,7 +21,42 @@
         </span>
     </div>
 
+    @if ($coachFilters !== null)
+        {{-- コーチ閲覧時の絞り込み: タブで未読/全件、キーワード検索。current room は変えずに query string を更新する --}}
+        <form method="GET" action="{{ route('chat.show', $currentRoom) }}" class="px-3 pt-3 pb-3 space-y-2 border-b border-[var(--border-subtle)]">
+            <div class="flex gap-1">
+                <button type="submit" name="filter" value="unread"
+                    class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold transition {{ $coachFilter === 'unread' ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-700 hover:bg-ink-200' }}">
+                    未読あり
+                </button>
+                <button type="submit" name="filter" value="all"
+                    class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold transition {{ $coachFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-700 hover:bg-ink-200' }}">
+                    すべて
+                </button>
+            </div>
+            <input type="search" name="keyword" placeholder="受講生名 / メール"
+                value="{{ $coachKeyword }}"
+                class="w-full px-2.5 py-1.5 rounded-md border border-[var(--border-subtle)] bg-white text-xs focus:outline-none focus:ring-2 focus:ring-primary-500">
+        </form>
+    @elseif ($adminFilters !== null)
+        {{-- 管理者監査時の絞り込み: キーワード検索のみ(全ルームが対象なので未読の概念は無い) --}}
+        <form method="GET" action="{{ route('admin.chat-rooms.show', $currentRoom) }}" class="px-3 pt-3 pb-3 border-b border-[var(--border-subtle)]">
+            <input type="search" name="keyword" placeholder="受講生名 / メール"
+                value="{{ $adminKeyword }}"
+                class="w-full px-2.5 py-1.5 rounded-md border border-[var(--border-subtle)] bg-white text-xs focus:outline-none focus:ring-2 focus:ring-primary-500">
+        </form>
+    @endif
+
     <div class="flex-1 overflow-y-auto">
+        @php
+            $isAdmin = $viewer?->role === \App\Enums\UserRole::Admin;
+            $linkRouteName = $isAdmin ? 'admin.chat-rooms.show' : 'chat.show';
+            $linkQuery = $coachFilters !== null
+                ? array_filter(['filter' => $coachFilter, 'keyword' => $coachKeyword], fn ($v) => $v !== null && $v !== '')
+                : ($adminFilters !== null
+                    ? array_filter(['keyword' => $adminKeyword], fn ($v) => $v !== null && $v !== '')
+                    : []);
+        @endphp
         @forelse ($navRooms as $r)
             @php
                 $isCurrent = $r->id === $currentRoom->id;
@@ -31,7 +71,7 @@
                     : null;
             @endphp
             <a
-                href="{{ route('chat.show', $r) }}"
+                href="{{ route($linkRouteName, array_merge(['room' => $r], $linkQuery)) }}"
                 aria-current="{{ $isCurrent ? 'page' : 'false' }}"
                 class="grid grid-cols-[auto_1fr] gap-3 items-start px-4 py-3 border-b border-[var(--border-subtle)] transition-colors duration-fast hover:bg-ink-50 {{ $isCurrent ? 'bg-primary-50' : '' }}"
             >
@@ -57,7 +97,7 @@
             </a>
         @empty
             <div class="px-4 py-6 text-sm text-ink-500">
-                参加中のルームがありません。
+                該当するルームがありません。
             </div>
         @endforelse
     </div>

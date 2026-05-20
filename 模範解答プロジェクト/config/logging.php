@@ -128,6 +128,14 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+        'ai-chat' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai-chat.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
     ],
 
 ];

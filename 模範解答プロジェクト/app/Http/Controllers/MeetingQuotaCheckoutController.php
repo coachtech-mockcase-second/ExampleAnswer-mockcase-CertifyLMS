@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\MeetingQuota\CheckoutRequest;
-use App\Models\MeetingQuotaPlan;
+use App\Models\MeetingPack;
 use App\Models\Payment;
 use App\UseCases\MeetingQuota\CreateCheckoutSessionAction;
 use Illuminate\Http\RedirectResponse;
@@ -22,7 +22,7 @@ class MeetingQuotaCheckoutController extends Controller
     {
         $this->authorize('purchase-meeting-quota');
 
-        $plans = MeetingQuotaPlan::query()
+        $plans = MeetingPack::query()
             ->published()
             ->ordered()
             ->get();
@@ -34,7 +34,7 @@ class MeetingQuotaCheckoutController extends Controller
 
     public function create(CheckoutRequest $request, CreateCheckoutSessionAction $action): RedirectResponse
     {
-        $plan = MeetingQuotaPlan::query()->findOrFail($request->validated('meeting_quota_plan_id'));
+        $plan = MeetingPack::query()->findOrFail($request->validated('meeting_pack_id'));
 
         $result = $action($request->user(), $plan);
 

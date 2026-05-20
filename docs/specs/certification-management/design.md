@@ -197,8 +197,22 @@ class IssueAction
 
 ### Policy
 
-- `CertificationPolicy::view`(admin true / coach 担当 / student published のみ) / `update` / `delete` / `publish` 等
+- `CertificationPolicy::viewAny(User)` — **admin / coach 両ロールに対して一覧画面到達を許可**(`true`)。受講生は `false`。表示行はクエリで絞り込む(下記 scope 参照)。
+- `CertificationPolicy::view`(admin true / coach 担当 / student published のみ) / `update` / `delete` / `publish` / `archive` / `attachCoach` / `detachCoach` — **admin のみ true、coach は閲覧 (`view`) のみ可、CRUD 系操作は不可**。
 - `CertificateDownloadPolicy::download(User, Certificate)`(admin true / coach 担当資格 / student 本人)
+
+#### 業界標準パターン: viewAny 共通許可 + Eloquent scopeForUser
+
+一覧画面 (`admin.certifications.index`) は admin / coach の共通画面で、Coach の場合のみ担当資格に絞られる。実装は **Policy で全件 / 拒否を切り替える** のではなく、**`Certification::scopeForUser(User)` で表示行を絞り込む** Laravel 業界標準パターンを採用する。
+
+- `viewAny` は admin / coach 両方 true → ルート到達 + 画面表示 OK
+- 表示行は `Certification::query()->forUser($viewer)->...` で絞り込み
+  - admin: 全件
+  - coach: `assignedTo($user)` (担当資格のみ)
+  - その他: 空集合
+- 個別操作 (`update` / `delete` 等) の認可は引き続き `CertificationPolicy::update($user, $cert)` などで個別判定
+
+この設計により、「Policy で拒否 = 一覧画面に来れない」という古い実装パターンを避け、「Policy で一覧到達許可 → Controller / Action 側でクエリ絞り込み」という Laravel コミュニティ標準パターンに揃える。同じパターンを他 Feature でも採用する場合、`scopeForUser(User)` を Eloquent Model に実装すれば良い。
 
 ### FormRequest
 
@@ -238,6 +252,7 @@ Route::middleware('auth')->group(function () {
 
 - `admin/certifications/index.blade.php` / `create.blade.php` / `edit.blade.php` / `show.blade.php`(**v3 で `code` / `slug` / `passing_score` / `total_questions` / `exam_duration_minutes` 入力欄削除**)
 - `admin/certification-categories/index.blade.php` 等
+- **`admin/certifications/_partials/section-tabs.blade.php`** — 資格マスタ管理画面共通の sub-navigation tabs (「資格マスタ」「カテゴリ」)。admin サイドバーからは「資格マスタ管理」1 つのみ表示し、配下の「カテゴリ管理」画面は本画面の内部タブとして統合する。両画面の上部に同 partial を include し、パンくずも「ダッシュボード > 資格マスタ管理 (> カテゴリ)」で統一。
 - `certifications/index.blade.php` / `show.blade.php`(受講生カタログ、v3 で資格コード表示削除)
 - **`certificates/pdf.blade.php`(v3 で 7 要素構成)** — タイトル + 証書定型文 + 発行元 + **受講生氏名 / 資格名 / 発行日 / 証書番号**(資格コード撤回)
 

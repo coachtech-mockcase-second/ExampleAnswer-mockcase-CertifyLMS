@@ -11,7 +11,7 @@
 Admin Browser                            Student Browser
     ↓                                        ↓
 [Web Layer]                              [Web Layer]
-MeetingQuotaPlanController              CheckoutController
+MeetingPackController              CheckoutController
                                         HistoryController
     ↓                                        ↓
 [Policy / Middleware]                   [Policy / Middleware]
@@ -39,13 +39,13 @@ AdminGrantQuotaAction (user-management の Admin\UserController::grantMeetingQuo
 MeetingQuotaService::remaining / ::history
     ↓
 [Model]
-MeetingQuotaPlan / MeetingQuotaTransaction / Payment
+MeetingPack / MeetingQuotaTransaction / Payment
 ```
 
 ## ERD
 
 ```
-meeting_quota_plans
+meeting_packs
 ├ id ULID PK
 ├ name varchar(100) NOT NULL
 ├ description text NULL
@@ -75,7 +75,7 @@ payments
 ├ id ULID PK
 ├ user_id ULID FK NOT NULL
 ├ type enum('extra_meeting_quota')
-├ meeting_quota_plan_id ULID FK NOT NULL restrict
+├ meeting_pack_id ULID FK NOT NULL restrict
 ├ stripe_payment_intent_id varchar(255) UNIQUE NULL (succeeded 後にセット)
 ├ stripe_checkout_session_id varchar(255) UNIQUE NOT NULL
 ├ amount unsigned int NOT NULL (購入時 price)
@@ -235,10 +235,10 @@ class AdminGrantQuotaAction
 ```php
 class CreateCheckoutSessionAction
 {
-    public function __invoke(User $user, MeetingQuotaPlan $plan): array
+    public function __invoke(User $user, MeetingPack $plan): array
     {
-        if ($plan->status !== MeetingQuotaPlanStatus::Published) {
-            throw new MeetingQuotaPlanNotPublishedException();
+        if ($plan->status !== MeetingPackStatus::Published) {
+            throw new MeetingPackNotPublishedException();
         }
         if ($user->status !== UserStatus::InProgress) {
             throw new UserNotInProgressException();
@@ -260,14 +260,14 @@ class CreateCheckoutSessionAction
                 'cancel_url' => route('dashboard.index'),
                 'metadata' => [
                     'user_id' => $user->id,
-                    'meeting_quota_plan_id' => $plan->id,
+                    'meeting_pack_id' => $plan->id,
                 ],
             ]);
 
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'type' => 'extra_meeting_quota',
-                'meeting_quota_plan_id' => $plan->id,
+                'meeting_pack_id' => $plan->id,
                 'stripe_checkout_session_id' => $session->id,
                 'amount' => $plan->price,
                 'quantity' => $plan->meeting_count,
@@ -416,7 +416,7 @@ class MeetingQuotaService
     ): LengthAwarePaginator {
         return MeetingQuotaTransaction::query()
             ->where('user_id', $user->id)
-            ->with(['relatedMeeting.enrollment.certification', 'relatedPayment.meetingQuotaPlan', 'grantedBy'])  // Eager Loading
+            ->with(['relatedMeeting.enrollment.certification', 'relatedPayment.meetingPack', 'grantedBy'])  // Eager Loading
             ->when($type, fn ($q, $t) => $q->where('type', $t))
             ->orderByDesc('occurred_at')
             ->paginate($perPage);
@@ -435,10 +435,10 @@ class MeetingQuotaService
 
 | Controller | Method | Route | Action | Middleware |
 |---|---|---|---|---|
-| `Admin\MeetingQuotaPlanController` | `index` | `GET /admin/meeting-quota-plans` | `MeetingQuotaPlan\IndexAction` | `auth + role:admin` |
-| `Admin\MeetingQuotaPlanController` | `create` / `store` | `POST /admin/meeting-quota-plans` | `MeetingQuotaPlan\StoreAction` | 同上 |
-| `Admin\MeetingQuotaPlanController` | `show` / `edit` / `update` / `destroy` | (RESTful) | `MeetingQuotaPlan\*Action` | 同上 |
-| `Admin\MeetingQuotaPlanStatusController` | `publish` / `archive` / `unarchive` | `POST /admin/meeting-quota-plans/{plan}/publish` etc. | `MeetingQuotaPlan\PublishAction` etc. | 同上 |
+| `Admin\MeetingPackController` | `index` | `GET /admin/meeting-packs` | `MeetingPack\IndexAction` | `auth + role:admin` |
+| `Admin\MeetingPackController` | `create` / `store` | `POST /admin/meeting-packs` | `MeetingPack\StoreAction` | 同上 |
+| `Admin\MeetingPackController` | `show` / `edit` / `update` / `destroy` | (RESTful) | `MeetingPack\*Action` | 同上 |
+| `Admin\MeetingPackStatusController` | `publish` / `archive` / `unarchive` | `POST /admin/meeting-packs/{plan}/publish` etc. | `MeetingPack\PublishAction` etc. | 同上 |
 | `CheckoutController` | `select` | `GET /meeting-quota/checkout` | (Blade 描画) | `auth + role:student + EnsureActiveLearning` |
 | `CheckoutController` | `create` | `POST /meeting-quota/checkout` | `CreateCheckoutSessionAction` | 同上 |
 | `CheckoutController` | `success` | `GET /meeting-quota/success` | `CheckoutSuccessAction` | 同上 |
@@ -449,7 +449,7 @@ class MeetingQuotaService
 
 ## FormRequest(D-4 で明示)
 
-`app/Http/Requests/MeetingQuotaPlan/`:
+`app/Http/Requests/MeetingPack/`:
 
 - **`StoreRequest`**:
   ```php
@@ -468,11 +468,11 @@ class MeetingQuotaService
 - `IndexRequest`: `status` / `keyword` 任意フィルタ
 
 `app/Http/Requests/MeetingQuota/`:
-- `CheckoutRequest`(`meeting_quota_plan_id: required ulid exists:meeting_quota_plans,id,status,published`)
+- `CheckoutRequest`(`meeting_pack_id: required ulid exists:meeting_packs,id,status,published`)
 
 ## Policy(D-4 で真偽値マトリクス明示)
 
-`MeetingQuotaPlanPolicy`:
+`MeetingPackPolicy`:
 
 | メソッド | admin | coach | student |
 |---|---|---|---|
@@ -489,10 +489,10 @@ class MeetingQuotaService
 ```php
 // admin
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::resource('meeting-quota-plans', Admin\MeetingQuotaPlanController::class);
-    Route::post('meeting-quota-plans/{plan}/publish', [Admin\MeetingQuotaPlanStatusController::class, 'publish']);
-    Route::post('meeting-quota-plans/{plan}/archive', [Admin\MeetingQuotaPlanStatusController::class, 'archive']);
-    Route::post('meeting-quota-plans/{plan}/unarchive', [Admin\MeetingQuotaPlanStatusController::class, 'unarchive']);
+    Route::resource('meeting-packs', Admin\MeetingPackController::class);
+    Route::post('meeting-packs/{plan}/publish', [Admin\MeetingPackStatusController::class, 'publish']);
+    Route::post('meeting-packs/{plan}/archive', [Admin\MeetingPackStatusController::class, 'archive']);
+    Route::post('meeting-packs/{plan}/unarchive', [Admin\MeetingPackStatusController::class, 'unarchive']);
 });
 
 // student
@@ -538,17 +538,17 @@ class VerifyStripeSignature
 
 `app/Exceptions/MeetingQuota/`:
 - `InsufficientMeetingQuotaException`(HTTP 409)
-- `MeetingQuotaPlanNotDeletableException`(HTTP 409)
-- `MeetingQuotaPlanNotPublishedException`(HTTP 422)
-- `MeetingQuotaPlanInvalidTransitionException`(HTTP 409)
+- `MeetingPackNotDeletableException`(HTTP 409)
+- `MeetingPackNotPublishedException`(HTTP 422)
+- `MeetingPackInvalidTransitionException`(HTTP 409)
 - `UserNotInProgressException`(HTTP 403)
 - `StripeWebhookSignatureInvalidException`(HTTP 400)
 
 ## Blade テンプレ
 
-- `views/admin/meeting-quota-plans/index.blade.php`(SKU 一覧)
-- `views/admin/meeting-quota-plans/create.blade.php` / `edit.blade.php`(フォーム: name / description / meeting_count / price / sort_order)
-- `views/admin/meeting-quota-plans/show.blade.php`(詳細 + 購入履歴)
+- `views/admin/meeting-packs/index.blade.php`(SKU 一覧)
+- `views/admin/meeting-packs/create.blade.php` / `edit.blade.php`(フォーム: name / description / meeting_count / price / sort_order)
+- `views/admin/meeting-packs/show.blade.php`(詳細 + 購入履歴)
 - `views/meeting-quota/checkout-select.blade.php`(受講生の SKU 選択画面、dashboard から遷移)
 - `views/meeting-quota/success.blade.php`(決済完了画面)
 - `views/meeting-quota/history.blade.php`(受講生用、`MeetingQuotaService::history` の結果を表示)
@@ -557,7 +557,7 @@ class VerifyStripeSignature
 
 ## Test 戦略
 
-- `tests/Feature/Http/Admin/MeetingQuotaPlanControllerTest.php`(SKU CRUD + 状態遷移)
+- `tests/Feature/Http/Admin/MeetingPackControllerTest.php`(SKU CRUD + 状態遷移)
 - `tests/Feature/Http/MeetingQuota/CheckoutControllerTest.php`(Stripe Checkout Session 作成、`Http::fake` でモック)
 - `tests/Feature/Http/Webhooks/StripeWebhookControllerTest.php`(`Stripe\Webhook::constructEvent` を `Http::fake` でモック)
 - **`tests/Feature/UseCases/MeetingQuota/GrantInitialQuotaActionTest.php`(D-1)** — 統一シグネチャ網羅(`($user, $amount)` / `($user, $amount, $admin)` / `($user, $amount, $admin, $reason)` / `granted_by_user_id` が admin 経由時にのみ記録) / `amount <= 0` で `InvalidArgumentException`

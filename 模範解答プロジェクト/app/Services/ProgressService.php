@@ -20,8 +20,9 @@ use Illuminate\Support\Facades\DB;
  * - `batchCalculate(Collection<Enrollment>)`: 複数 Enrollment の overall_completion_ratio をまとめて返す
  *
  * クエリ時集計のみで内部キャッシュは持たない (RAM / Redis のキャッシュ管理コストが集計コストを上回らない)。
+ * 受講生ダッシュボードの Action テストで Mockery 経由 mock するため `final` は付けない。
  */
-final class ProgressService
+class ProgressService
 {
     public function summarize(Enrollment $enrollment): ProgressSummary
     {
@@ -102,8 +103,12 @@ final class ProgressService
     }
 
     /**
-     * @param Collection<int, Enrollment> $enrollments
+     * 複数 Enrollment の overall_completion_ratio を 1 クエリでまとめて返す。
      *
+     * 受講生ダッシュボードの受講中資格カード一覧から呼ばれ、N+1 を回避する。
+     * 戻り値のキーは Enrollment.id、値は Section 単位の完了率(0.0〜1.0、未集計時 0.0)。
+     *
+     * @param  Collection<int, Enrollment>  $enrollments
      * @return array<string, float>
      */
     public function batchCalculate(Collection $enrollments): array
@@ -112,9 +117,39 @@ final class ProgressService
             return [];
         }
 
+        $enrollmentIds = $enrollments->pluck('id')->all();
+        $certificationIds = $enrollments->pluck('certification_id')->unique()->values()->all();
+
+        $rows = DB::table('sections')
+            ->join('chapters', 'chapters.id', '=', 'sections.chapter_id')
+            ->join('parts', 'parts.id', '=', 'chapters.part_id')
+            ->join('enrollments', 'enrollments.certification_id', '=', 'parts.certification_id')
+            ->leftJoin('section_progresses', function ($join): void {
+                $join->on('section_progresses.section_id', '=', 'sections.id')
+                    ->on('section_progresses.enrollment_id', '=', 'enrollments.id')
+                    ->whereNull('section_progresses.deleted_at');
+            })
+            ->whereIn('enrollments.id', $enrollmentIds)
+            ->whereIn('parts.certification_id', $certificationIds)
+            ->where('parts.status', ContentStatus::Published->value)
+            ->whereNull('parts.deleted_at')
+            ->where('chapters.status', ContentStatus::Published->value)
+            ->whereNull('chapters.deleted_at')
+            ->where('sections.status', ContentStatus::Published->value)
+            ->whereNull('sections.deleted_at')
+            ->groupBy('enrollments.id')
+            ->selectRaw('enrollments.id AS enrollment_id, COUNT(sections.id) AS total, COUNT(section_progresses.id) AS done')
+            ->get();
+
         $result = [];
-        foreach ($enrollments as $enrollment) {
-            $result[$enrollment->id] = $this->sectionRatio($enrollment);
+        foreach ($enrollmentIds as $id) {
+            $result[$id] = 0.0;
+        }
+
+        foreach ($rows as $row) {
+            $total = (int) $row->total;
+            $done = (int) $row->done;
+            $result[(string) $row->enrollment_id] = $total === 0 ? 0.0 : round($done / $total, 4);
         }
 
         return $result;

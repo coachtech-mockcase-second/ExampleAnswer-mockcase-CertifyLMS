@@ -98,6 +98,7 @@
 
 - [ ] `admin/certifications/index.blade.php` / `create.blade.php` / `edit.blade.php` / `show.blade.php`(**v3 で 4 フィールド入力**: name / category_id / difficulty / description、**`code` / `slug` / `passing_score` / `total_questions` / `exam_duration_minutes` 入力欄なし**)
 - [ ] `admin/certification-categories/index.blade.php` 等(モーダル UI)
+- [x] **`admin/certifications/_partials/section-tabs.blade.php`** — 資格マスタ管理画面の sub-navigation tabs(「資格マスタ」「カテゴリ」)。admin サイドバーは「資格マスタ管理」1 項目のみとし、カテゴリ管理画面は内部タブとして統合する。両画面の上部に同 partial を include し、パンくずは「ダッシュボード > 資格マスタ管理 (> カテゴリ)」で統一する。サイドバー `sidebar-admin.blade.php` から `admin.certification-categories.index` の独立 `<x-nav.item>` を撤去(URL とルートは維持し、タブ内遷移で到達)。
 - [ ] `certifications/index.blade.php` / `show.blade.php`(受講生カタログ、**`code` 表示なし**(v3))
 - [ ] **`certificates/pdf.blade.php`(v3 で 7 要素)** — タイトル + 証書定型文 + 発行元 + **受講生氏名 / 資格名 / 発行日 / 証書番号**(資格コード撤回、+α 要素なし)
 
@@ -147,7 +148,7 @@
 
 ### 動線リンク追加 ([[default-enrollment]] 統合)
 
-- [ ] **`views/certifications/index.blade.php` の上部に「受講中資格はこちら」リンクを追加** — 「資格カタログ」と「受講中資格画面」の責務分離を明示し、受講生が現在の受講中資格を確認したい場合の動線を提供。デザインは目立たない位置 (上部右側 or 検索フィルタ近く)
+- [x] **`views/certifications/index.blade.php` の上部に「受講中資格はこちら」リンクを追加** — 「資格カタログ」と「受講中資格画面」の責務分離を明示し、受講生が現在の受講中資格を確認したい場合の動線を提供。デザインは目立たない位置 (上部右側 or 検索フィルタ近く)。**併せて旧「受講中」タブ (catalog/enrolled 切替) を撤去** — 受講中資格画面が central hub として進捗・試験日・コーチ情報まで担うため、カタログ側の受講中タブと機能重複していた。これにより IndexAction の `enrolled` Collection 取得・IndexRequest の `tab` rule・Blade のタブ navigation はすべて削除。
 - [ ] `views/certifications/show.blade.php` で受講登録済資格を表示する際、「受講中資格画面で続きを学習」リンクを併記
 - [ ] サイドバー (frontend-ui-foundation.md L156) で「資格カタログ」と「受講中資格」が独立 item として並んでいることを再確認(既存規約準拠、本タスクで変更なし)
 

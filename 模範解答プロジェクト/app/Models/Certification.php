@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\CertificationDifficulty;
 use App\Enums\CertificationStatus;
+use App\Enums\UserRole;
 use Database\Factories\CertificationFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * 資格マスタを表す Model。受講生カタログ・admin マスタ管理・修了証発行・教材階層の親として参照される。
  *
  * 関連: CertificationCategory / Part(教材) / MockExam(模試) / Enrollment(受講登録) / Certificate(修了証) / User(担当コーチ via certification_coach_assignments)
- * scope: published / assignedTo(User) / keyword(?string)(資格名のみ部分一致)
+ * scope: published / assignedTo(User) / forUser(User)(admin = 全件 / coach = 担当のみ) / keyword(?string)(資格名のみ部分一致)
  */
 class Certification extends Model
 {
@@ -144,6 +145,19 @@ class Certification extends Model
             'coaches',
             fn (Builder $q) => $q->where('users.id', $coach->id),
         );
+    }
+
+    /**
+     * 操作者ロールに応じて一覧表示行を絞り込む scope。admin は全件、coach は担当資格のみ、その他は空集合。
+     * admin / coach 共通の一覧画面 (`admin.certifications.index`) で利用する。
+     */
+    public function scopeForUser(Builder $query, User $user): Builder
+    {
+        return match ($user->role) {
+            UserRole::Admin => $query,
+            UserRole::Coach => $query->assignedTo($user),
+            default => $query->whereRaw('1 = 0'),
+        };
     }
 
     public function scopeKeyword(Builder $query, ?string $keyword): Builder

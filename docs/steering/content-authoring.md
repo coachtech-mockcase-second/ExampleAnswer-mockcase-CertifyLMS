@@ -357,7 +357,7 @@ sail artisan migrate:fresh --seed
 `DatabaseSeeder` が以下を順次実行:
 
 1. `UserSeeder` (固定アカウント + 状態網羅 demo 受講生)
-2. `PlanSeeder` / `MeetingQuotaPlanSeeder`
+2. `PlanSeeder` / `MeetingPackSeeder`
 3. `CertificationCategorySeeder` / `CertificationSeeder` (資格 + 出題分野マスタ)
 4. `EnrollmentSeeder` (固定 student / demo 受講生の受講登録)
 5. `ContentMarkdownSeeder` (本ディレクトリの教材すべて) ← 教材投入
@@ -599,7 +599,7 @@ echo "Questions: " . \App\Models\MockExamQuestion::count() . PHP_EOL;
 `DatabaseSeeder` での実行順:
 
 1. UserSeeder
-2. PlanSeeder / MeetingQuotaPlanSeeder
+2. PlanSeeder / MeetingPackSeeder
 3. CertificationCategorySeeder
 4. CertificationSeeder (資格本体 + QuestionCategory マスタ)
 5. EnrollmentSeeder

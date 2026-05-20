@@ -26,7 +26,6 @@ class IndexRequest extends FormRequest
         return [
             'category_id' => ['nullable', 'ulid', 'exists:certification_categories,id'],
             'difficulty' => ['nullable', Rule::enum(CertificationDifficulty::class)],
-            'tab' => ['nullable', 'in:catalog,enrolled'],
         ];
     }
 }

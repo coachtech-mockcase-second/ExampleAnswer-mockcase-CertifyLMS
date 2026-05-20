@@ -44,7 +44,7 @@ user_plan_logs           -- プラン履歴（INSERT only）
 ├ changed_by_user_id (nullable, FK)
 ├ changed_reason / occurred_at / timestamps
 
-meeting_quota_plans      -- 追加面談購入用 SKU マスタ（LMS 内）
+meeting_packs      -- 追加面談購入用 SKU マスタ（LMS 内）
 ├ id ULID
 ├ name (例: "5 回パック")
 ├ meeting_count unsigned smallint
@@ -67,7 +67,7 @@ payments                 -- Stripe 決済記録
 ├ type enum (extra_meeting_quota)
 ├ stripe_payment_intent_id (UNIQUE)
 ├ stripe_checkout_session_id
-├ meeting_quota_plan_id (FK)
+├ meeting_pack_id (FK)
 ├ amount / quantity
 ├ status enum (pending/succeeded/failed/refunded)
 ├ paid_at / timestamps
@@ -317,7 +317,7 @@ __invoke(User $user, Plan $plan, ?User $admin = null): User
 
 ### 5.2 meeting-quota
 
-**MeetingQuotaPlan マスタ**:
+**MeetingPack マスタ**:
 - admin が CRUD（`name` / `meeting_count` / `price` / `sort_order` / `status`）
 - 複数 SKU（1 回 / 5 回パック / 10 回パック 等）
 - 受講生は LMS 内 Stripe で都度購入
@@ -332,7 +332,7 @@ __invoke(User $user, Plan $plan, ?User $admin = null): User
 - 各 Feature（mentoring の `ReserveAction` 等）がチェック
 
 **Stripe 連携**:
-- `CreateCheckoutSessionAction(User $user, MeetingQuotaPlan $plan)`: Stripe Checkout Session 作成
+- `CreateCheckoutSessionAction(User $user, MeetingPack $plan)`: Stripe Checkout Session 作成
 - `HandleStripeWebhookAction`: `checkout.session.completed` を受信、`Payment` 行 INSERT + `MeetingQuotaTransaction(type=purchased)` 挿入
 - `signature_verification` で Webhook 署名検証必須
 

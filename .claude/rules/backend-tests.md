@@ -38,7 +38,7 @@ Controller のロール別 namespace 禁止と同じ理由でテストパスも 
 |---|---|---|
 | Entity ベース (フラット) | `tests/Feature/Http/Plan/PlanControllerTest.php` / `tests/Feature/Http/User/IndexTest.php` | ✅ |
 | ロール別 + Entity | `tests/Feature/Http/Admin/Plan/PlanControllerTest.php` | ❌ 禁止 |
-| Feature 単位 (多 Controller の Feature) | `tests/Feature/Http/MeetingQuota/CheckoutControllerTest.php` / `tests/Feature/Http/MeetingQuotaPlan/MeetingQuotaPlanControllerTest.php` | ✅ |
+| Feature 単位 (多 Controller の Feature) | `tests/Feature/Http/MeetingQuota/CheckoutControllerTest.php` / `tests/Feature/Http/MeetingPack/MeetingPackControllerTest.php` | ✅ |
 | 領域別 (外部連携) | `tests/Feature/Http/Webhooks/StripeWebhookControllerTest.php` | ⚪ 許容 (Controller 側 `Webhooks\` namespace と対応) |
 
 namespace 宣言も同じく `Tests\Feature\Http\{Entity}` で、`Tests\Feature\Http\Admin\{Entity}` は禁止。
@@ -91,7 +91,7 @@ public function test_destroy_via_browser_redirects_back_with_flash_error_for_pub
 
 - **同じドメイン例外を JSON と HTML の両方で検証する必要はない**(Handler のロジックが共通なので片方で十分)
 - 既存テストで `assertStatus(40x)` / `assertSame(40x, ...)` を書くなら **JSON 経由**(`->deleteJson` 等)に書き換える(これが既存パターンとの整合性も高い)
-- **ブラウザ実機の UX(リダイレクト先 + flash メッセージ)を保証したい** 場合のみ、追加で HTML 経由テストを 1 件書く(`Plan` / `MeetingQuotaPlan` のテストにサンプル実装あり)
+- **ブラウザ実機の UX(リダイレクト先 + flash メッセージ)を保証したい** 場合のみ、追加で HTML 経由テストを 1 件書く(`Plan` / `MeetingPack` のテストにサンプル実装あり)
 - 全 Feature の全ドメイン例外で HTML 経由テストを書く必要はない(Handler の挙動は共通なので、代表 1 件で十分)
 
 ## 必須シナリオ（カテゴリ別）

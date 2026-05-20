@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Dashboard\ViewModels;
+
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
+
+/**
+ * コーチダッシュボード全体の ViewModel。Blade はプロパティアクセスのみで描画する。
+ *
+ * 担当受講生一覧は表示専用(ソートなし、最終活動日は `withMax` で集約取得済)。
+ * Service 例外で取得失敗したカウンタ / 一覧は nullable プロパティに null が入り、Blade で empty-state にフォールバックする。
+ */
+final readonly class CoachDashboardViewModel
+{
+    /**
+     * @param  EloquentCollection<int, \App\Models\Enrollment>  $assignedEnrollments  担当資格に登録した受講生(certification.coaches 経由) + last_activity_at(withMax)
+     * @param  EloquentCollection<int, \App\Models\Meeting>  $todayAndTomorrowMeetings  今日 / 明日の面談予約
+     * @param  ?Collection<int, \App\Models\ChatRoom>  $recentUnreadChatRooms  未読 chat ルーム上位 5(取得失敗時 null)
+     * @param  ?Collection<int, \App\Models\QaThread>  $recentQaThreads  未回答 Q&A 上位 5(取得失敗時 null)
+     * @param  EloquentCollection<int, \Illuminate\Notifications\DatabaseNotification>  $recentNotifications  直近通知 5 件
+     */
+    public function __construct(
+        public EloquentCollection $assignedEnrollments,
+        public EloquentCollection $todayAndTomorrowMeetings,
+        public ?int $unreadChatCount,
+        public ?Collection $recentUnreadChatRooms,
+        public ?int $unansweredQaCount,
+        public ?Collection $recentQaThreads,
+        public EloquentCollection $recentNotifications,
+        public int $unreadNotificationCount,
+    ) {}
+}

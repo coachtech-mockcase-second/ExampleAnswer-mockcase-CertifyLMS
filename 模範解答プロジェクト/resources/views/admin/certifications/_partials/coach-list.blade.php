@@ -4,12 +4,14 @@
             <h2 class="text-base font-semibold text-ink-900">担当コーチ</h2>
             <p class="text-xs text-ink-500 mt-1">{{ $certification->coaches->count() }} 名のコーチが担当</p>
         </div>
-        @if ($assignableCoaches->isNotEmpty())
-            <x-button variant="primary" size="sm" data-modal-trigger="assign-coach-modal">
-                <x-icon name="plus" class="w-4 h-4" />
-                コーチを追加
-            </x-button>
-        @endif
+        @can('attachCoach', $certification)
+            @if ($assignableCoaches->isNotEmpty())
+                <x-button variant="primary" size="sm" data-modal-trigger="assign-coach-modal">
+                    <x-icon name="plus" class="w-4 h-4" />
+                    コーチを追加
+                </x-button>
+            @endif
+        @endcan
     </div>
 
     @if ($certification->coaches->isEmpty())
@@ -27,14 +29,16 @@
                             <div class="text-xs text-ink-500 font-mono truncate">{{ $coach->email }}</div>
                         </div>
                     </div>
-                    <form method="POST" action="{{ route('admin.certifications.coaches.detach', ['certification' => $certification, 'coach' => $coach]) }}" class="shrink-0">
-                        @csrf
-                        @method('DELETE')
-                        <x-button type="submit" variant="ghost" size="sm">
-                            <x-icon name="x-mark" class="w-4 h-4" />
-                            解除
-                        </x-button>
-                    </form>
+                    @can('detachCoach', $certification)
+                        <form method="POST" action="{{ route('admin.certifications.coaches.detach', ['certification' => $certification, 'coach' => $coach]) }}" class="shrink-0">
+                            @csrf
+                            @method('DELETE')
+                            <x-button type="submit" variant="ghost" size="sm">
+                                <x-icon name="x-mark" class="w-4 h-4" />
+                                解除
+                            </x-button>
+                        </form>
+                    @endcan
                 </li>
             @endforeach
         </ul>

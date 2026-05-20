@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\MeetingQuota;
 
-use App\Models\MeetingQuotaPlan;
+use App\Models\MeetingPack;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,8 +22,8 @@ class CheckoutControllerTest extends TestCase
     public function test_student_can_view_checkout_select(): void
     {
         $student = User::factory()->student()->inProgress()->create();
-        MeetingQuotaPlan::factory()->published()->count(2)->create();
-        MeetingQuotaPlan::factory()->draft()->create(['name' => 'Hidden Draft']);
+        MeetingPack::factory()->published()->count(2)->create();
+        MeetingPack::factory()->draft()->create(['name' => 'Hidden Draft']);
 
         $response = $this->actingAs($student)->get(route('meeting-quota.checkout.select'));
 
@@ -53,7 +53,7 @@ class CheckoutControllerTest extends TestCase
     public function test_student_can_create_checkout_session_and_redirect(): void
     {
         $student = User::factory()->student()->inProgress()->create();
-        $plan = MeetingQuotaPlan::factory()->published()->state(['price' => 12000, 'meeting_count' => 5])->create();
+        $plan = MeetingPack::factory()->published()->state(['price' => 12000, 'meeting_count' => 5])->create();
 
         $sessionId = 'cs_test_'.bin2hex(random_bytes(12));
         $sessionUrl = 'https://checkout.stripe.com/c/pay/'.$sessionId;
@@ -66,13 +66,13 @@ class CheckoutControllerTest extends TestCase
         });
 
         $response = $this->actingAs($student)->post(route('meeting-quota.checkout.create'), [
-            'meeting_quota_plan_id' => $plan->id,
+            'meeting_pack_id' => $plan->id,
         ]);
 
         $response->assertRedirect($sessionUrl);
         $this->assertDatabaseHas('payments', [
             'user_id' => $student->id,
-            'meeting_quota_plan_id' => $plan->id,
+            'meeting_pack_id' => $plan->id,
             'stripe_checkout_session_id' => $sessionId,
             'amount' => 12000,
             'quantity' => 5,
@@ -83,15 +83,15 @@ class CheckoutControllerTest extends TestCase
     public function test_checkout_validates_plan_must_be_published(): void
     {
         $student = User::factory()->student()->inProgress()->create();
-        $draftPlan = MeetingQuotaPlan::factory()->draft()->create();
+        $draftPlan = MeetingPack::factory()->draft()->create();
 
         $response = $this->actingAs($student)->post(route('meeting-quota.checkout.create'), [
-            'meeting_quota_plan_id' => $draftPlan->id,
+            'meeting_pack_id' => $draftPlan->id,
         ]);
 
-        $response->assertSessionHasErrors('meeting_quota_plan_id');
+        $response->assertSessionHasErrors('meeting_pack_id');
         $this->assertDatabaseMissing('payments', [
-            'meeting_quota_plan_id' => $draftPlan->id,
+            'meeting_pack_id' => $draftPlan->id,
         ]);
     }
 

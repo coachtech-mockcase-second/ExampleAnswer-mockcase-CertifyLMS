@@ -516,10 +516,10 @@ Fail を 1 件でも発見したら:
 
 ```
 ✅ admin が新規 SKU 作成
-  URL: /admin/meeting-quota-plans/create (admin@)
+  URL: /admin/meeting-packs/create (admin@)
   操作: name + meeting_count + price 入力 → 「下書きとして保存」
-  期待: /admin/meeting-quota-plans/{id} へリダイレクト + Flash「追加面談プランを作成しました。」
-  DB:  meeting_quota_plans に status='draft' + created_by_user_id=admin.id で INSERT
+  期待: /admin/meeting-packs/{id} へリダイレクト + Flash「面談パックを作成しました。」
+  DB:  meeting_packs に status='draft' + created_by_user_id=admin.id で INSERT
   証跡: scrshot=cur-admin-mq-create-success.png / DB=tinker で確認済(1 行追加)
 
 ✗ student が published 以外の SKU を購入

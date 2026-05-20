@@ -19,18 +19,24 @@
         ['label' => '資格マスタ管理'],
     ]" />
 
-    <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-            <h1 class="text-2xl font-bold text-ink-900">資格マスタ管理</h1>
-            <p class="text-sm text-ink-500 mt-1">
-                資格マスタの追加・編集・公開状態の管理を行います。
-                <span class="font-semibold text-ink-700">{{ $certifications->total() }} 件</span>
-            </p>
-        </div>
-        <x-link-button href="{{ route('admin.certifications.create') }}" variant="primary">
-            <x-icon name="plus" class="w-4 h-4" />
-            新規作成
-        </x-link-button>
+    <div class="mt-4">
+        <h1 class="text-2xl font-bold text-ink-900">資格マスタ管理</h1>
+        <p class="text-sm text-ink-500 mt-1">資格マスタとカテゴリの管理を行います。</p>
+    </div>
+
+    @include('admin.certifications._partials.section-tabs')
+
+    <div class="mt-6 flex items-center justify-between gap-4 flex-wrap">
+        <p class="text-sm text-ink-500">
+            資格マスタの追加・編集・公開状態の管理を行います。
+            <span class="font-semibold text-ink-700">{{ $certifications->total() }} 件</span>
+        </p>
+        @can('create', App\Models\Certification::class)
+            <x-link-button href="{{ route('admin.certifications.create') }}" variant="primary">
+                <x-icon name="plus" class="w-4 h-4" />
+                新規作成
+            </x-link-button>
+        @endcan
     </div>
 
     {{-- フィルタ --}}
@@ -99,12 +105,14 @@
                     title="該当する資格マスタがありません"
                     description="条件を変えるか、新しく資格を作成してみてください。"
                 >
-                    <x-slot:action>
-                        <x-link-button href="{{ route('admin.certifications.create') }}" variant="primary">
-                            <x-icon name="plus" class="w-4 h-4" />
-                            新規作成
-                        </x-link-button>
-                    </x-slot:action>
+                    @can('create', App\Models\Certification::class)
+                        <x-slot:action>
+                            <x-link-button href="{{ route('admin.certifications.create') }}" variant="primary">
+                                <x-icon name="plus" class="w-4 h-4" />
+                                新規作成
+                            </x-link-button>
+                        </x-slot:action>
+                    @endcan
                 </x-empty-state>
             </x-card>
         </div>

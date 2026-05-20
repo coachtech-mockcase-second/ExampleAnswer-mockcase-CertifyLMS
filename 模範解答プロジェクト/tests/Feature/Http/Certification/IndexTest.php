@@ -6,8 +6,10 @@ namespace Tests\Feature\Http\Certification;
 
 use App\Models\Certification;
 use App\Models\CertificationCategory;
+use App\Models\CertificationCoachAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class IndexTest extends TestCase
@@ -26,14 +28,31 @@ class IndexTest extends TestCase
         $response->assertViewHas('certifications');
     }
 
-    public function test_coach_and_student_cannot_access_admin_certifications_index(): void
+    public function test_coach_sees_only_assigned_certifications(): void
     {
+        $admin = User::factory()->admin()->create();
         $coach = User::factory()->coach()->create();
-        $student = User::factory()->student()->create();
+        $assigned = Certification::factory()->published()->create(['name' => 'My Assigned Cert']);
+        $other = Certification::factory()->published()->create(['name' => 'Unassigned Cert']);
 
-        $this->actingAs($coach)
-            ->get(route('admin.certifications.index'))
-            ->assertForbidden();
+        CertificationCoachAssignment::create([
+            'id' => (string) Str::ulid(),
+            'certification_id' => $assigned->id,
+            'user_id' => $coach->id,
+            'assigned_by_user_id' => $admin->id,
+            'assigned_at' => now(),
+        ]);
+
+        $response = $this->actingAs($coach)->get(route('admin.certifications.index'));
+
+        $response->assertOk();
+        $response->assertSee('My Assigned Cert');
+        $response->assertDontSee('Unassigned Cert');
+    }
+
+    public function test_student_cannot_access_admin_certifications_index(): void
+    {
+        $student = User::factory()->student()->create();
 
         $this->actingAs($student)
             ->get(route('admin.certifications.index'))

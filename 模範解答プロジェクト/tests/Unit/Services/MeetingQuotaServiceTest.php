@@ -131,7 +131,7 @@ class MeetingQuotaServiceTest extends TestCase
         foreach ($page->items() as $tx) {
             // Eager Load 済みなので追加クエリは発生しないはず
             $tx->grantedBy?->name;
-            $tx->relatedPayment?->meetingQuotaPlan?->name;
+            $tx->relatedPayment?->meetingPack?->name;
         }
         $queries = DB::getQueryLog();
         DB::disableQueryLog();

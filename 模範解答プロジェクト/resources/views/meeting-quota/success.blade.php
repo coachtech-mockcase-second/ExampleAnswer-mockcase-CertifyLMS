@@ -17,7 +17,7 @@
             @if ($payment)
                 <dl class="mt-6 grid grid-cols-2 gap-3 text-left text-sm bg-ink-50 rounded-md p-4">
                     <dt class="text-ink-500">プラン</dt>
-                    <dd class="text-ink-900">{{ $payment->meetingQuotaPlan?->name ?? '—' }}</dd>
+                    <dd class="text-ink-900">{{ $payment->meetingPack?->name ?? '—' }}</dd>
                     <dt class="text-ink-500">面談回数</dt>
                     <dd class="text-ink-900 tabular-nums">{{ $payment->quantity }} 回</dd>
                     <dt class="text-ink-500">金額</dt>

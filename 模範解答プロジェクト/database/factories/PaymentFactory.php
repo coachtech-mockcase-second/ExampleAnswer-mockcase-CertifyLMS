@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Enums\PaymentStatus;
-use App\Models\MeetingQuotaPlan;
+use App\Models\MeetingPack;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,7 +22,7 @@ class PaymentFactory extends Factory
         return [
             'user_id' => User::factory()->student(),
             'type' => 'extra_meeting_quota',
-            'meeting_quota_plan_id' => MeetingQuotaPlan::factory()->published(),
+            'meeting_pack_id' => MeetingPack::factory()->published(),
             'stripe_payment_intent_id' => null,
             'stripe_checkout_session_id' => 'cs_test_'.fake()->bothify('??????????????????'),
             'amount' => 3000,

@@ -107,41 +107,35 @@ class IndexTest extends TestCase
             ->assertRedirect(route('chat.show', $room));
     }
 
-    public function test_coach_index_filters_unread_by_default(): void
+    public function test_coach_index_redirects_to_latest_room_regardless_of_unread_status(): void
     {
         $coach = User::factory()->coach()->inProgress()->create();
         $student = User::factory()->student()->inProgress()->create();
-        $certification = Certification::factory()->published()->create();
-        $certification->coaches()->attach($coach->id, [
-            'id' => (string) Str::ulid(),
-            'assigned_by_user_id' => User::factory()->admin()->inProgress()->create()->id,
-            'assigned_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $enrollment = Enrollment::factory()->for($student)->for($certification)->create();
-        $room = ChatRoom::factory()->for($enrollment)->create();
+        $enrollment = Enrollment::factory()->for($student)->create();
+        $room = ChatRoom::factory()
+            ->for($enrollment)
+            ->withMessageAt(Carbon::now()->subMinutes(5))
+            ->create();
         ChatMember::factory()->create([
             'chat_room_id' => $room->id,
             'user_id' => $coach->id,
-        ]);
-        ChatMember::factory()->create([
-            'chat_room_id' => $room->id,
-            'user_id' => $student->id,
+            'last_read_at' => Carbon::now(), // 全部既読 (= unread フィルタは 0 件)
         ]);
 
-        ChatMessage::factory()->create([
-            'chat_room_id' => $room->id,
-            'sender_user_id' => $student->id,
-        ]);
+        // 既読でもサイドバーから飛んだら最新参加ルームへ即 redirect
+        $this->actingAs($coach)
+            ->get(route('coach.chat.index'))
+            ->assertRedirect(route('chat.show', $room));
+    }
 
-        $response = $this->actingAs($coach)->get(route('coach.chat.index'));
+    public function test_coach_index_renders_empty_state_when_coach_has_no_rooms(): void
+    {
+        $coach = User::factory()->coach()->inProgress()->create();
 
-        $response->assertOk();
-        $response->assertViewIs('chat.coach-index');
-        $response->assertViewHas('rooms', function ($rooms) use ($room) {
-            return $rooms->getCollection()->pluck('id')->contains($room->id);
-        });
+        $this->actingAs($coach)->get(route('coach.chat.index'))
+            ->assertOk()
+            ->assertViewIs('chat.coach-empty-state');
+
+        $this->assertNotNull(Str::ulid()); // Str use 抑止
     }
 }

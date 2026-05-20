@@ -66,7 +66,8 @@ class CertificationPolicyTest extends TestCase
 
         $this->assertTrue($policy->view($coach, $assignedCert));
         $this->assertFalse($policy->view($coach, $otherCert));
-        $this->assertFalse($policy->viewAny($coach));
+        // viewAny は admin/coach 共通許可。表示行は Certification::scopeForUser で絞り込む設計。
+        $this->assertTrue($policy->viewAny($coach));
         $this->assertFalse($policy->create($coach));
         $this->assertFalse($policy->update($coach, $assignedCert));
         $this->assertFalse($policy->attachCoach($coach, $assignedCert));

@@ -60,11 +60,38 @@ resources/views/
 │   ├── admin.blade.php
 │   ├── coach.blade.php
 │   └── student.blade.php
+├── admin/                  # URL prefix `/admin/...` 配下の管理画面群（admin / coach が共通利用するものを含む）
+│   ├── certifications/     #   /admin/certifications/* (admin+coach 共通 + admin only 操作)
+│   ├── mock-exams/         #   /admin/mock-exams/* (同上)
+│   ├── enrollments/        #   /admin/enrollments/* (現状 admin only、Coach は /coach/students/)
+│   └── ...
+├── coach/                  # URL prefix `/coach/...` 配下の coach 専用画面群
+│   └── students/           #   /coach/students/* (担当受講生管理)
 └── {feature}/              # Feature 単位（enrollment / mock-exam / chat 等）
     ├── index.blade.php
     ├── show.blade.php
     └── form.blade.php
 ```
+
+### ディレクトリ命名規則(重要)
+
+Blade のディレクトリ命名は **URL prefix or Feature 名** で行う。「画面がどの URL から呼ばれるか」を反映するのが目的:
+
+| パターン | 例 | 採用可否 |
+|---|---|---|
+| **URL prefix 由来** | `admin/certifications/` (`/admin/certifications/*`) / `coach/students/` (`/coach/students/*`) / `auth/login.blade.php` (`/login`) | ✅ **OK**(routes/web.php の `prefix(...)` と対応) |
+| **Feature 名由来** | `enrollment/index.blade.php` (`/enrollments`) / `mock-exam/show.blade.php` (`/mock-exams/{id}`) | ✅ **OK**(Feature 単位、prefix なしの画面) |
+| **ロール名そのもの** | `views/student/.../` / `views/coach-only/.../` 等の **意味的ロール命名** | ❌ **避ける**(機能領域でなくロールで区切ると、共通画面化時に大規模リネームが必要になる) |
+
+#### `admin/` ディレクトリは Admin 専用 view ではない
+
+`resources/views/admin/` 配下に Coach も使う view が含まれる(例: `admin/certifications/index.blade.php` は admin + coach 両方がアクセス、`@can` で操作 UI を出し分け)。これは **URL prefix `/admin/...` 配下の画面** という意味であって、ロール限定を表すものではない。
+
+[backend-http.md](./backend-http.md) で **Controller のロール別 namespace**(`App\Http\Controllers\Admin\UserController` 等)は禁止しているが、これは **Class FQN(PHP namespace)** に対する規約。Blade のディレクトリ命名は URL に対応した別領域の慣習で、Laravel コミュニティ標準でも `resources/views/admin/` のような URL prefix 由来のディレクトリは広く採用されている。混同しないこと。
+
+#### 共通画面の責務出し分けは Blade 内 `@can` で実現
+
+`admin/certifications/show.blade.php` のように **admin / coach が共通利用** する画面では、操作ボタンを `@can('update', $cert)` 等で個別判定し、ロールに応じて UI を出し分ける。view ファイルそのものをロール別に複製しない。詳細は [frontend-ui-foundation.md](./frontend-ui-foundation.md) の「複数ロール共通画面の 4 層認可」も参照。
 
 ## 必須事項
 

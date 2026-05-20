@@ -10,7 +10,7 @@ use App\Models\User;
 
 /**
  * 受講生向けの面談回数操作(購入 / 履歴閲覧)に関する認可。
- * SKU マスタ CRUD は MeetingQuotaPlanPolicy が担当する。
+ * SKU マスタ CRUD は MeetingPackPolicy が担当する。
  */
 class MeetingQuotaPolicy
 {

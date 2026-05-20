@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\AdminAnnouncement;
+use App\Models\AiChatConversation;
 use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\CertificationCategory;
@@ -18,7 +19,7 @@ use App\Models\Invitation;
 use App\Models\LearningHourTarget;
 use App\Models\LearningSession;
 use App\Models\Meeting;
-use App\Models\MeetingQuotaPlan;
+use App\Models\MeetingPack;
 use App\Models\MockExam;
 use App\Models\MockExamQuestion;
 use App\Models\MockExamSession;
@@ -34,6 +35,7 @@ use App\Models\SectionQuestionAnswer;
 use App\Models\SectionQuestionAttempt;
 use App\Models\User;
 use App\Policies\AdminAnnouncementPolicy;
+use App\Policies\AiChatConversationPolicy;
 use App\Policies\CertificatePolicy;
 use App\Policies\CertificationCategoryPolicy;
 use App\Policies\CertificationPolicy;
@@ -49,7 +51,7 @@ use App\Policies\InvitationPolicy;
 use App\Policies\LearningHourTargetPolicy;
 use App\Policies\LearningSessionPolicy;
 use App\Policies\MeetingPolicy;
-use App\Policies\MeetingQuotaPlanPolicy;
+use App\Policies\MeetingPackPolicy;
 use App\Policies\MeetingQuotaPolicy;
 use App\Policies\MockExamPolicy;
 use App\Policies\MockExamQuestionPolicy;
@@ -93,7 +95,7 @@ class AuthServiceProvider extends ServiceProvider
         SectionImage::class => SectionImagePolicy::class,
         SectionQuestion::class => SectionQuestionPolicy::class,
         QuestionCategory::class => QuestionCategoryPolicy::class,
-        MeetingQuotaPlan::class => MeetingQuotaPlanPolicy::class,
+        MeetingPack::class => MeetingPackPolicy::class,
         MockExam::class => MockExamPolicy::class,
         MockExamQuestion::class => MockExamQuestionPolicy::class,
         MockExamSession::class => MockExamSessionPolicy::class,
@@ -111,6 +113,7 @@ class AuthServiceProvider extends ServiceProvider
         QaReply::class => QaReplyPolicy::class,
         DatabaseNotification::class => NotificationPolicy::class,
         AdminAnnouncement::class => AdminAnnouncementPolicy::class,
+        AiChatConversation::class => AiChatConversationPolicy::class,
     ];
 
     /**

@@ -17,25 +17,25 @@
 
 ## Phase 2: マイグレーション
 
-- [x] `database/migrations/{ts}_create_meeting_quota_plans_table.php`(ULID + SoftDeletes + name + description + meeting_count + price + stripe_price_id nullable + status enum + sort_order + created_by + updated_by + INDEX (status, sort_order))
+- [x] `database/migrations/{ts}_create_meeting_packs_table.php`(ULID + SoftDeletes + name + description + meeting_count + price + stripe_price_id nullable + status enum + sort_order + created_by + updated_by + INDEX (status, sort_order))
 - [x] `database/migrations/{ts}_create_meeting_quota_transactions_table.php`(ULID + `user_id` FK restrict + `type` enum 5 値(granted_initial / purchased / consumed / refunded / admin_grant) + `amount` int signed + **`related_meeting_id` ULID nullable**(FK 制約は本 Migration では付けない、mentoring の `meetings` テーブル未作成時の依存回避) + `related_payment_id` FK nullable to `payments`(同一 Feature) + `granted_by_user_id` FK nullable to `users` + `note` varchar:500 + `occurred_at` datetime + INDEX (user_id, occurred_at) + (related_meeting_id) + (related_payment_id) + (type)、SoftDelete 不採用)
 - [x] `database/migrations/{ts}_add_related_meeting_fk_to_meeting_quota_transactions.php`(**N6**: mentoring の `meetings` テーブル作成後に別 Migration で `related_meeting_id` に FK 制約追加、`restrictOnDelete`、mentoring Step 1 完了後に走らせる)
-- [x] `database/migrations/{ts}_create_payments_table.php`(ULID + SoftDeletes + `user_id` FK + `type` enum + `meeting_quota_plan_id` FK restrict + `stripe_payment_intent_id` UNIQUE nullable + `stripe_checkout_session_id` UNIQUE NOT NULL + `amount` unsigned + `quantity` unsigned smallint + `status` enum 4 値(pending / succeeded / failed / refunded) + `paid_at` nullable + INDEX (user_id) + (status, paid_at))
+- [x] `database/migrations/{ts}_create_payments_table.php`(ULID + SoftDeletes + `user_id` FK + `type` enum + `meeting_pack_id` FK restrict + `stripe_payment_intent_id` UNIQUE nullable + `stripe_checkout_session_id` UNIQUE NOT NULL + `amount` unsigned + `quantity` unsigned smallint + `status` enum 4 値(pending / succeeded / failed / refunded) + `paid_at` nullable + INDEX (user_id) + (status, paid_at))
 - [x] `users.max_meetings` カラム追加は [[plan-management]] の Migration に合流
 
 ## Phase 3: Enum / Model
 
-- [x] `app/Enums/MeetingQuotaPlanStatus.php`(`Draft` / `Published` / `Archived` + `label()`)
+- [x] `app/Enums/MeetingPackStatus.php`(`Draft` / `Published` / `Archived` + `label()`)
 - [x] `app/Enums/MeetingQuotaTransactionType.php`(`GrantedInitial` / `Purchased` / `Consumed` / `Refunded` / `AdminGrant` + `label()`)
 - [x] `app/Enums/PaymentStatus.php`(`Pending` / `Succeeded` / `Failed` / `Refunded` + `label()`)
-- [x] `app/Models/MeetingQuotaPlan.php`(`HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['status'=>MeetingQuotaPlanStatus, 'meeting_count'=>'integer', 'price'=>'integer', 'sort_order'=>'integer']` + `belongsTo(User, createdBy)` + `belongsTo(User, updatedBy)` + `hasMany(Payment)` + `scopePublished` / `scopeOrdered`)
+- [x] `app/Models/MeetingPack.php`(`HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['status'=>MeetingPackStatus, 'meeting_count'=>'integer', 'price'=>'integer', 'sort_order'=>'integer']` + `belongsTo(User, createdBy)` + `belongsTo(User, updatedBy)` + `hasMany(Payment)` + `scopePublished` / `scopeOrdered`)
 - [x] `app/Models/MeetingQuotaTransaction.php`(`HasUlids` + `HasFactory`、SoftDelete 不採用 + fillable + `$casts['type'=>MeetingQuotaTransactionType, 'amount'=>'integer', 'occurred_at'=>'datetime']` + **`belongsTo(User)`** + **`belongsTo(Meeting, related_meeting_id, relatedMeeting)`** + **`belongsTo(Payment, related_payment_id, relatedPayment)`** + **`belongsTo(User, granted_by_user_id, grantedBy)`**(D-3 で history 用 Eager Loading に必要))
-- [x] `app/Models/Payment.php`(`HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['status'=>PaymentStatus, 'amount'=>'integer', 'quantity'=>'integer', 'paid_at'=>'datetime']` + `belongsTo(User)` + `belongsTo(MeetingQuotaPlan)` + `hasMany(MeetingQuotaTransaction, related_payment_id)`)
+- [x] `app/Models/Payment.php`(`HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['status'=>PaymentStatus, 'amount'=>'integer', 'quantity'=>'integer', 'paid_at'=>'datetime']` + `belongsTo(User)` + `belongsTo(MeetingPack)` + `hasMany(MeetingQuotaTransaction, related_payment_id)`)
 - [x] `app/Models/User.php` 拡張: `hasMany(MeetingQuotaTransaction)` 追加
 
 ## Phase 4: Policy / Middleware
 
-- [x] `app/Policies/MeetingQuotaPlanPolicy.php`(admin only、viewAny / view / create / update / delete / publish / archive / unarchive)
+- [x] `app/Policies/MeetingPackPolicy.php`(admin only、viewAny / view / create / update / delete / publish / archive / unarchive)
 - [x] `app/Policies/MeetingQuotaPolicy.php`(受講生向け、`purchase(User)` / `viewHistory(User auth, User target)`)
 - [x] `app/Http/Middleware/VerifyStripeSignature.php`(`Stripe\Webhook::constructEvent` で署名検証 + 失敗時 `StripeWebhookSignatureInvalidException` throw + 成功時 `$request->merge(['stripe_event' => ...])`)
 - [x] `app/Http/Kernel.php` の `$middlewareAliases` に `'stripe.signature' => VerifyStripeSignature::class` 登録
@@ -44,18 +44,18 @@
 ## Phase 5: ドメイン例外
 
 - [x] `app/Exceptions/MeetingQuota/InsufficientMeetingQuotaException.php`(409)
-- [x] `app/Exceptions/MeetingQuota/MeetingQuotaPlanNotDeletableException.php`(409)
-- [x] `app/Exceptions/MeetingQuota/MeetingQuotaPlanNotPublishedException.php`(422)
-- [x] `app/Exceptions/MeetingQuota/MeetingQuotaPlanInvalidTransitionException.php`(409)
+- [x] `app/Exceptions/MeetingQuota/MeetingPackNotDeletableException.php`(409)
+- [x] `app/Exceptions/MeetingQuota/MeetingPackNotPublishedException.php`(422)
+- [x] `app/Exceptions/MeetingQuota/MeetingPackInvalidTransitionException.php`(409)
 - [x] `app/Exceptions/MeetingQuota/UserNotInProgressException.php`(403)
 - [x] `app/Exceptions/MeetingQuota/StripeWebhookSignatureInvalidException.php`(400)
 
 ## Phase 6: FormRequest
 
-- [x] `app/Http/Requests/MeetingQuotaPlan/StoreRequest.php`(`name` / `description` / `meeting_count: 1..100` / `price: 0..1000000` / `sort_order`)
-- [x] `app/Http/Requests/MeetingQuotaPlan/UpdateRequest.php`(同 rules)
-- [x] `app/Http/Requests/MeetingQuotaPlan/IndexRequest.php`(`status` / `keyword` 任意フィルタ)
-- [x] `app/Http/Requests/MeetingQuota/CheckoutRequest.php`(`meeting_quota_plan_id: required ulid + exists where status=published`)
+- [x] `app/Http/Requests/MeetingPack/StoreRequest.php`(`name` / `description` / `meeting_count: 1..100` / `price: 0..1000000` / `sort_order`)
+- [x] `app/Http/Requests/MeetingPack/UpdateRequest.php`(同 rules)
+- [x] `app/Http/Requests/MeetingPack/IndexRequest.php`(`status` / `keyword` 任意フィルタ)
+- [x] `app/Http/Requests/MeetingQuota/CheckoutRequest.php`(`meeting_pack_id: required ulid + exists where status=published`)
 - [x] `app/Http/Requests/MeetingQuota/HistoryIndexRequest.php`(`type` 任意フィルタ + `page`)
 
 > **`AdminGrantQuotaRequest` は [[user-management]] 所有**(本 Feature では `AdminGrantQuotaAction` のみ提供)
@@ -64,14 +64,14 @@
 
 - [x] **`app/Services/MeetingQuotaService.php`(D-3 で `history` 詳細設計)**
   - `remaining(User $user): int` — `max_meetings + SUM(consumed + refunded + purchased + admin_grant)`(`granted_initial` 除外、二重カウント防止)
-  - **`history(User $user, ?MeetingQuotaTransactionType $type = null, int $perPage = 20): LengthAwarePaginator`** — `with(['relatedMeeting.enrollment.certification', 'relatedPayment.meetingQuotaPlan', 'grantedBy'])` Eager Loading + `when($type, ...)` フィルタ + `orderByDesc('occurred_at')` + paginate
+  - **`history(User $user, ?MeetingQuotaTransactionType $type = null, int $perPage = 20): LengthAwarePaginator`** — `with(['relatedMeeting.enrollment.certification', 'relatedPayment.meetingPack', 'grantedBy'])` Eager Loading + `when($type, ...)` フィルタ + `orderByDesc('occurred_at')` + paginate
 
 ## Phase 8: UseCase / Action
 
 ### Plan CRUD
 
-- [x] `app/UseCases/MeetingQuotaPlan/IndexAction.php` / `ShowAction.php` / `StoreAction.php` / `UpdateAction.php` / `DestroyAction.php`(`participants` 確認、参照中で 409)
-- [x] `app/UseCases/MeetingQuotaPlan/PublishAction.php` / `ArchiveAction.php` / `UnarchiveAction.php`
+- [x] `app/UseCases/MeetingPack/IndexAction.php` / `ShowAction.php` / `StoreAction.php` / `UpdateAction.php` / `DestroyAction.php`(`participants` 確認、参照中で 409)
+- [x] `app/UseCases/MeetingPack/PublishAction.php` / `ArchiveAction.php` / `UnarchiveAction.php`
 
 ### Quota Actions(D-1 で統一シグネチャ)
 
@@ -83,7 +83,7 @@
 
 ### Stripe Actions
 
-- [x] `app/UseCases/MeetingQuota/CreateCheckoutSessionAction.php`(`__invoke(User, MeetingQuotaPlan): array`、Stripe Checkout Session 作成 + Payment pending INSERT)
+- [x] `app/UseCases/MeetingQuota/CreateCheckoutSessionAction.php`(`__invoke(User, MeetingPack): array`、Stripe Checkout Session 作成 + Payment pending INSERT)
 - [x] **`app/UseCases/MeetingQuota/StripeWebhook\HandleAction.php`(D-3 で 5 ステップ明示)**
   - `__invoke(array $event): void` シグネチャ
   - `match ($event['type'])` で 3 イベント分岐: `checkout.session.completed` / `checkout.session.expired` / `payment_intent.payment_failed`
@@ -92,8 +92,8 @@
 
 ## Phase 9: Controller
 
-- [x] `app/Http/Controllers/Admin/MeetingQuotaPlanController.php`(`index` / `create` / `store` / `show` / `edit` / `update` / `destroy`)
-- [x] `app/Http/Controllers/Admin/MeetingQuotaPlanStatusController.php`(`publish` / `archive` / `unarchive`)
+- [x] `app/Http/Controllers/Admin/MeetingPackController.php`(`index` / `create` / `store` / `show` / `edit` / `update` / `destroy`)
+- [x] `app/Http/Controllers/Admin/MeetingPackStatusController.php`(`publish` / `archive` / `unarchive`)
 - [x] `app/Http/Controllers/MeetingQuota/CheckoutController.php`(`select` Blade描画 / `create(CheckoutRequest, CreateCheckoutSessionAction)` / `success` 決済完了画面)
 - [x] `app/Http/Controllers/MeetingQuota/HistoryController.php`(`index(HistoryIndexRequest)` → `MeetingQuotaService::history` 呼出)
 - [x] `app/Http/Controllers/Webhooks/StripeWebhookController.php`(`handle(Request $request, StripeWebhook\HandleAction $action)`、`$request->input('stripe_event')` を Action に渡す)
@@ -104,8 +104,8 @@
 
 - [x] `routes/web.php`:
   - **admin**(`auth + role:admin` group + `prefix('admin')`):
-    - `Route::resource('meeting-quota-plans', Admin\MeetingQuotaPlanController::class)`
-    - `Route::post('meeting-quota-plans/{plan}/publish'|'archive'|'unarchive', Admin\MeetingQuotaPlanStatusController::class, ...)`
+    - `Route::resource('meeting-packs', Admin\MeetingPackController::class)`
+    - `Route::post('meeting-packs/{plan}/publish'|'archive'|'unarchive', Admin\MeetingPackStatusController::class, ...)`
   - **student**(`auth + role:student + EnsureActiveLearning` group + `prefix('meeting-quota')`):
     - `Route::get('checkout', CheckoutController::select)`
     - `Route::post('checkout', CheckoutController::create)`
@@ -117,9 +117,9 @@
 
 ## Phase 11: Blade
 
-- [x] `resources/views/admin/meeting-quota-plans/index.blade.php`(SKU 一覧)
-- [x] `resources/views/admin/meeting-quota-plans/create.blade.php` / `edit.blade.php`(フォーム)
-- [x] `resources/views/admin/meeting-quota-plans/show.blade.php`(詳細 + 購入履歴)
+- [x] `resources/views/admin/meeting-packs/index.blade.php`(SKU 一覧)
+- [x] `resources/views/admin/meeting-packs/create.blade.php` / `edit.blade.php`(フォーム)
+- [x] `resources/views/admin/meeting-packs/show.blade.php`(詳細 + 購入履歴)
 - [x] `resources/views/meeting-quota/checkout-select.blade.php`(受講生 SKU 選択、dashboard プラン情報パネルから遷移)
 - [x] `resources/views/meeting-quota/success.blade.php`
 - [x] `resources/views/meeting-quota/history.blade.php`(受講生用、type フィルタ + paginate + 各 transaction の関連 Meeting / Payment / admin 名表示)
@@ -130,7 +130,7 @@
 
 ### Plan CRUD
 
-- [x] `tests/Feature/Http/Admin/MeetingQuotaPlanControllerTest.php`(CRUD + 状態遷移 + 認可)
+- [x] `tests/Feature/Http/Admin/MeetingPackControllerTest.php`(CRUD + 状態遷移 + 認可)
 
 ### Checkout / Webhook
 
@@ -158,7 +158,7 @@
 
 ## Phase 13: ファクトリ + シーダー
 
-- [x] `database/factories/MeetingQuotaPlanFactory.php`(`published()` / `draft()` / `archived()` state、`withCount(int)` / `withPrice(int)` state)
+- [x] `database/factories/MeetingPackFactory.php`(`published()` / `draft()` / `archived()` state、`withCount(int)` / `withPrice(int)` state)
 - [x] `database/factories/MeetingQuotaTransactionFactory.php`(各 type state: `grantedInitial()` / `purchased()` / `consumed()` / `refunded()` / `adminGrant(User $admin)`)
 - [x] `database/factories/PaymentFactory.php`(各 status state)
-- [x] `database/seeders/MeetingQuotaPlanSeeder.php`(開発用、例: 1 回 ¥3,000 / 5 回パック ¥12,000 / 10 回パック ¥22,000)
+- [x] `database/seeders/MeetingPackSeeder.php`(開発用、例: 1 回 ¥3,000 / 5 回パック ¥12,000 / 10 回パック ¥22,000)

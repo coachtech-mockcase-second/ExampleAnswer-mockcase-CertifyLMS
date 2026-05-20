@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * stripe_checkout_session_id を UNIQUE 制約しており、Webhook の重複到着時の冪等性ガードとして機能する。
  * 決済完了で MeetingQuotaTransaction(type=purchased) が hasMany 経由で 1 件 INSERT される。
  *
- * 関連: User(購入者) / MeetingQuotaPlan(購入 SKU) / MeetingQuotaTransaction(履歴)
+ * 関連: User(購入者) / MeetingPack(購入 SKU) / MeetingQuotaTransaction(履歴)
  */
 class Payment extends Model
 {
@@ -28,7 +28,7 @@ class Payment extends Model
     protected $fillable = [
         'user_id',
         'type',
-        'meeting_quota_plan_id',
+        'meeting_pack_id',
         'stripe_payment_intent_id',
         'stripe_checkout_session_id',
         'amount',
@@ -53,11 +53,11 @@ class Payment extends Model
     }
 
     /**
-     * @return BelongsTo<MeetingQuotaPlan, $this>
+     * @return BelongsTo<MeetingPack, $this>
      */
-    public function meetingQuotaPlan(): BelongsTo
+    public function meetingPack(): BelongsTo
     {
-        return $this->belongsTo(MeetingQuotaPlan::class);
+        return $this->belongsTo(MeetingPack::class);
     }
 
     /**

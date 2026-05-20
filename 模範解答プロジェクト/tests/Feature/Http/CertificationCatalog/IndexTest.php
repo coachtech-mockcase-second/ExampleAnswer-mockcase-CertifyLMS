@@ -57,7 +57,7 @@ class IndexTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_enrolled_tab_only_shows_student_own_enrolled_certifications(): void
+    public function test_enrolled_ids_contain_only_student_own_enrollments(): void
     {
         $student = User::factory()->student()->create();
         $other = User::factory()->student()->create();
@@ -68,11 +68,15 @@ class IndexTest extends TestCase
         Enrollment::factory()->learning()->create(['user_id' => $student->id, 'certification_id' => $myCert->id]);
         Enrollment::factory()->learning()->create(['user_id' => $other->id, 'certification_id' => $otherCert->id]);
 
-        $response = $this->actingAs($student)->get(route('certifications.index', ['tab' => 'enrolled']));
+        $response = $this->actingAs($student)->get(route('certifications.index'));
 
         $response->assertOk();
         $response->assertSee('My Enrolled Cert');
-        $response->assertDontSee('Other Cert');
+        $response->assertSee('Other Cert');
+
+        $enrolledIds = $response->viewData('enrolledIds');
+        $this->assertTrue($enrolledIds->contains($myCert->id));
+        $this->assertFalse($enrolledIds->contains($otherCert->id));
     }
 
     public function test_guest_cannot_access(): void

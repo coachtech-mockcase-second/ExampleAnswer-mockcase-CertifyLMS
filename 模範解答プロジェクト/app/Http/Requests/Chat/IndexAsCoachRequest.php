@@ -38,7 +38,7 @@ class IndexAsCoachRequest extends FormRequest
     public function filters(): array
     {
         return [
-            'filter' => $this->string('filter', 'unread')->toString(),
+            'filter' => $this->string('filter', 'all')->toString(),
             'certification_id' => $this->input('certification_id'),
             'keyword' => $this->input('keyword'),
         ];

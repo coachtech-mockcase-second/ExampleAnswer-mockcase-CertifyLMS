@@ -7,15 +7,18 @@ namespace App\UseCases\Certification;
 use App\Enums\CertificationDifficulty;
 use App\Enums\CertificationStatus;
 use App\Models\Certification;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * admin 用の資格マスタ一覧をフィルタ付きで取得するユースケース。
+ * admin / coach 用の資格マスタ一覧をフィルタ付きで取得するユースケース。
  * 公開中 → 下書き → アーカイブ の順で並び、同 status 内は最終更新の降順。
+ * 表示行は `Certification::scopeForUser($viewer)` でロール別に絞り込む(admin = 全件 / coach = 担当のみ)。
  */
 final class IndexAction
 {
     public function __invoke(
+        User $viewer,
         ?string $keyword,
         ?CertificationStatus $status,
         ?string $categoryId,
@@ -23,6 +26,7 @@ final class IndexAction
         int $perPage = 20,
     ): LengthAwarePaginator {
         $query = Certification::query()
+            ->forUser($viewer)
             ->with('category')
             ->withCount(['coaches', 'certificates']);
 

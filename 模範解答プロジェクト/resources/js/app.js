@@ -9,6 +9,7 @@ import { initTextareaCounter } from './components/textarea-counter';
 import { initEnrollmentSwitchers } from './components/enrollment-switcher';
 import { initNotificationPopover } from './notification/notification-popover';
 import './notification/realtime';
+import { initAiChatWidget } from './ai-chat/floating-widget';
 
 document.addEventListener('DOMContentLoaded', () => {
     initModals();
@@ -19,4 +20,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initTextareaCounter();
     initEnrollmentSwitchers();
     initNotificationPopover();
+    initAiChatWidget();
 });

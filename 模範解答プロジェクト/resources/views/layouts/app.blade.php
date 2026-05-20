@@ -45,6 +45,39 @@
     {{-- Toast: body 直下に置いて fixed 配置(コンテンツのレイアウトに影響しない) --}}
     <x-flash />
 
+    {{-- AI 相談フローティングウィジェット: 受講中の student のみ、ai-chat 機能 ON のみ表示。
+         AI 相談 Feature 自身の画面では非表示(重複防止)。
+         教材閲覧画面の Section コンテキストは learning Controller が view()->share('pageMeta', [...]) で渡す。
+         資格コンテキスト (certification_name) は default_enrollment 経由でフォールバック解決される。 --}}
+    @php
+        $aiChatPageMeta = $pageMeta ?? [];
+        $aiChatUser = auth()->user();
+        $aiChatVisible = (bool) config('ai-chat.enabled', false)
+            && $aiChatUser
+            && $aiChatUser->role === \App\Enums\UserRole::Student
+            && $aiChatUser->status === \App\Enums\UserStatus::InProgress
+            && ! request()->routeIs('ai-chat.*');
+
+        // 資格コンテキスト: pageMeta 指定があれば優先 (教材画面の Controller が明示)、
+        // なければ default_enrollment (learning / passed のみ) にフォールバック
+        $aiChatDefaultEnrollment = $aiChatUser?->defaultEnrollment;
+        $aiChatCertName = $aiChatPageMeta['certification_name'] ?? (
+            $aiChatDefaultEnrollment !== null && in_array($aiChatDefaultEnrollment->status, [
+                \App\Enums\EnrollmentStatus::Learning,
+                \App\Enums\EnrollmentStatus::Passed,
+            ], true)
+                ? $aiChatDefaultEnrollment->certification?->name
+                : null
+        );
+    @endphp
+    @if ($aiChatVisible)
+        <x-ai-chat.floating-widget
+            :section-id="$aiChatPageMeta['section_id'] ?? null"
+            :section-title="$aiChatPageMeta['section_title'] ?? null"
+            :certification-name="$aiChatCertName"
+        />
+    @endif
+
     @stack('scripts')
 </body>
 </html>

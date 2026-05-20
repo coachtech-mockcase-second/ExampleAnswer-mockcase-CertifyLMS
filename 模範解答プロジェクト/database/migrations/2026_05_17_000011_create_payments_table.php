@@ -14,7 +14,7 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->foreignUlid('user_id')->constrained('users')->restrictOnDelete();
             $table->string('type', 30);
-            $table->foreignUlid('meeting_quota_plan_id')->constrained('meeting_quota_plans')->restrictOnDelete();
+            $table->foreignUlid('meeting_pack_id')->constrained('meeting_packs')->restrictOnDelete();
             $table->string('stripe_payment_intent_id', 255)->nullable()->unique();
             $table->string('stripe_checkout_session_id', 255)->unique();
             $table->unsignedInteger('amount');

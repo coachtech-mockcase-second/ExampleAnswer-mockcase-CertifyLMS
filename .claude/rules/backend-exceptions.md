@@ -106,7 +106,7 @@ final class UserNotInProgressException extends AccessDeniedHttpException
 ### テスト方針
 
 - **ドメイン例外の HTTP ステータスを検証する**: `deleteJson` / `postJson` / `patchJson` を使って JSON 期待にする → `assertStatus(409)` で素直に書ける
-- **HTML 経由の redirect+flash 挙動を検証する**: `->from(route(...))->delete(route(...))` でリファラを設定 → `assertRedirect(route(...))` + `assertSessionHas('error')` で確認(Plan / MeetingQuotaPlan に各 1 件サンプル実装あり、参考)
+- **HTML 経由の redirect+flash 挙動を検証する**: `->from(route(...))->delete(route(...))` でリファラを設定 → `assertRedirect(route(...))` + `assertSessionHas('error')` で確認(Plan / MeetingPack に各 1 件サンプル実装あり、参考)
 - 同じドメイン例外を JSON と HTML の両方で検証する必要はない(Handler のロジックが共通なので、片方で十分)。ステータスコード検証 → JSON 経由 / リダイレクト挙動検証 → HTML 経由、で役割分担する
 
 ## メッセージ責務は例外クラスが所有する（必須）

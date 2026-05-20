@@ -25,7 +25,7 @@
     <div
         class="mt-4 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] bg-surface-raised border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-sm h-[calc(100vh-180px)] min-h-[560px]"
     >
-        @include('chat._partials.rooms-pane', ['navRooms' => $navRooms, 'currentRoom' => $room])
+        @include('chat._partials.rooms-pane', ['navRooms' => $navRooms, 'currentRoom' => $room, 'coachFilters' => $coachFilters ?? null])
 
         <section class="flex flex-col overflow-hidden bg-surface-canvas min-w-0">
             <header class="px-6 py-3 bg-surface-raised border-b border-[var(--border-subtle)] flex items-center gap-3">

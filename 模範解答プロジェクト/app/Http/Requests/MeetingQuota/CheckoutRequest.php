@@ -20,10 +20,10 @@ class CheckoutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'meeting_quota_plan_id' => [
+            'meeting_pack_id' => [
                 'required',
                 'ulid',
-                Rule::exists('meeting_quota_plans', 'id')
+                Rule::exists('meeting_packs', 'id')
                     ->where('status', 'published')
                     ->whereNull('deleted_at'),
             ],
@@ -36,7 +36,7 @@ class CheckoutRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'meeting_quota_plan_id' => '追加面談プラン',
+            'meeting_pack_id' => '面談パック',
         ];
     }
 }

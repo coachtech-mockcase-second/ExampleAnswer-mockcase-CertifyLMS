@@ -80,9 +80,9 @@ paths:
 │ ユーザー管理         [users]                       │ → admin.users.index
 │ 受講登録管理 [clipboard-document-list]             │ → admin.enrollments.index
 │ プラン管理      [credit-card]                      │ → admin.plans.index
-│ 追加面談プラン管理 [banknotes]                     │ → admin.meeting-quota-plans.index
+│ 面談パック管理 [banknotes]                     │ → admin.meeting-packs.index
 │ 資格マスタ管理 [academic-cap]                      │ → admin.certifications.index
-│ カテゴリ管理         [tag]                         │ → admin.certification-categories.index
+│   ※ 画面内タブで「資格マスタ」/「カテゴリ」を切替    │
 ├─────────────────────────────────┤
 │ 分析                            │
 │ 運用統計      [chart-bar]       │ → admin.stats.index

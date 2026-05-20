@@ -93,7 +93,7 @@
                         <x-table.cell>
                             <div class="text-sm text-ink-700">
                                 @if ($tx->relatedPayment)
-                                    {{ $tx->relatedPayment->meetingQuotaPlan?->name ?? '—' }}
+                                    {{ $tx->relatedPayment->meetingPack?->name ?? '—' }}
                                 @elseif ($tx->note)
                                     {{ $tx->note }}
                                 @else

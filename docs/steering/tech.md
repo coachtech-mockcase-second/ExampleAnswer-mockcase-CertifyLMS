@@ -101,6 +101,19 @@ alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'
   - DB 専用には作らない（Eloquent Model のスコープで十分）
   - 外部API（Gemini / GoogleCalendar / Pusher）の依存切り離し / モック化用に限定
 - **Policy 主役**: 「コーチは担当資格のみ」「受講生は自分のリソースのみ」等のリソース固有認可は **Policy で表現**。Middleware は「ロール存在確認」止め
+- **複数ロール共通画面の 4 層認可 (業界標準)**: admin / coach が同じ管理画面を共有し coach は担当資格のみ見える、というスコープ制御は以下の 4 層に責務分離する。共通画面 + データフィルタで出し分けが Laravel/Rails コミュニティの基本パターン:
+
+  1. **Route middleware**(`routes/web.php`) — 到達可能な最大ロール集合を表現する。例: `Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(...)`。**「admin only」「admin+coach 共有」「coach only」を group 単位で物理的に分離** し、ロール存在確認だけを担う。リソース固有判定は Policy へ委譲
+  2. **Policy::viewAny(User)** — 一覧画面到達の認可。共通画面なら admin / coach 両ロールに対して `true`。個別レコード認可 (`view` / `update` / `delete` 等) は Policy で個別判定 (admin は全許可、coach は assignedCoach 判定、CRUD 系は admin 限定 等)
+  3. **Eloquent local scope `scopeForUser(Builder, User)`** — 表示行のクエリ絞込。Controller / Action で `Model::query()->forUser($viewer)->...` を呼ぶ。admin = 全件 / coach = 担当のみ / その他 = 空集合
+  4. **Blade `@can` ディレクティブ** — UI 上の操作ボタン (編集 / 削除 / 公開 / コーチ割当 等) を `@can('update', $resource)` / `@can('attachCoach', $resource)` で囲み、認可されないロールにはそもそもボタンを表示しない
+
+  この 4 層により、**「Policy で viewAny を拒否 = 一覧画面に到達できない」「ボタンを表示するが押すと 403」といった古い / 中途半端な実装** を避け、Laravel コミュニティ標準の「共通画面 + ロール別フィルタ + 操作 UI 出し分け」パターンに揃う。`Route::resource(...)->only([])` / `->except([])` を使って Resource を group 分割するのが定石。
+
+  採用例:
+  - 資格マスタ管理: route で `index/show` を admin+coach 共有 group、`create/store/edit/update/destroy/publish/unpublish/archive/coaches.{attach,detach}` を admin only group に分離 + `CertificationPolicy::viewAny` 両ロール許可 + `Certification::scopeForUser` (admin 全件 / coach `assignedTo`) + Blade で `@can('update', $cert)` 等で UI 出し分け
+  - 教材管理 (Part/Chapter/Section): route 全体を admin+coach 共有 + Policy で Resource 付き viewAny (`viewAny(User, Certification)`) + 担当判定。CRUD UI は Coach にもボタンを表示 (担当資格内なら操作可能)
+  - 担当受講生管理 (coach): coach 専用 group (`coach.students.*`) + `Enrollment::scopeForUser` を admin / coach / student のロール別 dispatcher に拡張
 
 ### モデルの推奨パターン（COACHTECH LMS 流）
 

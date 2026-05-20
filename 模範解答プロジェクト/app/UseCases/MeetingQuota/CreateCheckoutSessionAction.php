@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\UseCases\MeetingQuota;
 
-use App\Enums\MeetingQuotaPlanStatus;
+use App\Enums\MeetingPackStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserStatus;
-use App\Exceptions\MeetingQuota\MeetingQuotaPlanNotPublishedException;
+use App\Exceptions\MeetingQuota\MeetingPackNotPublishedException;
 use App\Exceptions\MeetingQuota\UserNotInProgressException;
-use App\Models\MeetingQuotaPlan;
+use App\Models\MeetingPack;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -32,13 +32,13 @@ final class CreateCheckoutSessionAction
     /**
      * @return array{checkout_url: string, payment_id: string}
      *
-     * @throws MeetingQuotaPlanNotPublishedException
+     * @throws MeetingPackNotPublishedException
      * @throws UserNotInProgressException
      */
-    public function __invoke(User $user, MeetingQuotaPlan $plan): array
+    public function __invoke(User $user, MeetingPack $plan): array
     {
-        if ($plan->status !== MeetingQuotaPlanStatus::Published) {
-            throw new MeetingQuotaPlanNotPublishedException;
+        if ($plan->status !== MeetingPackStatus::Published) {
+            throw new MeetingPackNotPublishedException;
         }
 
         if ($user->status !== UserStatus::InProgress) {
@@ -62,14 +62,14 @@ final class CreateCheckoutSessionAction
                 'cancel_url' => route('dashboard.index'),
                 'metadata' => [
                     'user_id' => $user->id,
-                    'meeting_quota_plan_id' => $plan->id,
+                    'meeting_pack_id' => $plan->id,
                 ],
             ]);
 
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'type' => 'extra_meeting_quota',
-                'meeting_quota_plan_id' => $plan->id,
+                'meeting_pack_id' => $plan->id,
                 'stripe_checkout_session_id' => $session->id,
                 'amount' => $plan->price,
                 'quantity' => $plan->meeting_count,

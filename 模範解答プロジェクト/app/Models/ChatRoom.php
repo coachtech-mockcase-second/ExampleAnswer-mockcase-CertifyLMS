@@ -85,4 +85,67 @@ class ChatRoom extends Model
     {
         return $query->orderByDesc('last_message_at')->orderByDesc('created_at');
     }
+
+    /**
+     * コーチが参加しているルームのうち、検索条件 (certification_id / keyword) と
+     * 「未読あり」フィルタを適用する scope。`coach.chat.index` / `chat.show` の
+     * rooms-pane 両方で利用する。
+     *
+     * @param  array{filter?: string, certification_id?: ?string, keyword?: ?string}  $filters
+     */
+    public function scopeFilterForCoach(Builder $query, User $coach, array $filters): Builder
+    {
+        if (! empty($filters['certification_id'])) {
+            $certId = $filters['certification_id'];
+            $query->whereHas('enrollment', fn (Builder $q) => $q->where('certification_id', $certId));
+        }
+
+        if (! empty($filters['keyword'])) {
+            $keyword = $filters['keyword'];
+            $query->whereHas('enrollment.user', function (Builder $q) use ($keyword): void {
+                $q->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('email', 'like', "%{$keyword}%");
+            });
+        }
+
+        if (($filters['filter'] ?? null) === 'unread') {
+            $query->whereExists(function ($q) use ($coach): void {
+                $q->select(\DB::raw(1))
+                    ->from('chat_messages')
+                    ->whereColumn('chat_messages.chat_room_id', 'chat_rooms.id')
+                    ->where('chat_messages.sender_user_id', '!=', $coach->id)
+                    ->whereNull('chat_messages.deleted_at')
+                    ->whereRaw(
+                        'chat_messages.created_at > COALESCE((SELECT last_read_at FROM chat_members WHERE chat_members.chat_room_id = chat_rooms.id AND chat_members.user_id = ? AND chat_members.deleted_at IS NULL LIMIT 1), "1970-01-01")',
+                        [$coach->id]
+                    );
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * 管理者向け chat 監査の検索条件 (certification_id / keyword) を適用する scope。
+     * `admin.chat-rooms.index` / `admin.chat-rooms.show` の rooms-pane 両方で利用する。
+     *
+     * @param  array{certification_id?: ?string, keyword?: ?string}  $filters
+     */
+    public function scopeFilterForAdmin(Builder $query, array $filters): Builder
+    {
+        if (! empty($filters['certification_id'])) {
+            $certId = $filters['certification_id'];
+            $query->whereHas('enrollment', fn (Builder $q) => $q->where('certification_id', $certId));
+        }
+
+        if (! empty($filters['keyword'])) {
+            $keyword = $filters['keyword'];
+            $query->whereHas('enrollment.user', function (Builder $q) use ($keyword): void {
+                $q->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('email', 'like', "%{$keyword}%");
+            });
+        }
+
+        return $query;
+    }
 }

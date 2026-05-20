@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\TermType;
+use App\Enums\UserRole;
 use Database\Factories\EnrollmentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * 関連: User(受講生) / Certification / Certificate(発行済修了証) / EnrollmentGoal / EnrollmentNote / EnrollmentStatusLog / MockExamSession
  * 逆リレーション: defaultedByUser(受講生がデフォルト資格として指している場合のみ存在)
- * scope: learning() / passed() / failed() / forUser(User)
+ * scope: learning() / passed() / failed() / forUser(User)(admin = 全件 / coach = 担当資格の Enrollment / student = 自分の Enrollment)
  */
 class Enrollment extends Model
 {
@@ -173,8 +174,24 @@ class Enrollment extends Model
         return $query->where('status', EnrollmentStatus::Failed->value);
     }
 
+    /**
+     * 操作者ロールに応じて表示行を絞り込む scope。
+     *
+     * - admin: 全件
+     * - coach: 自分が担当として割り当てられた資格に属する Enrollment のみ
+     * - student: 自分の Enrollment のみ (user_id = self.id)
+     * - その他: 空集合
+     */
     public function scopeForUser(Builder $query, User $user): Builder
     {
-        return $query->where('user_id', $user->id);
+        return match ($user->role) {
+            UserRole::Admin => $query,
+            UserRole::Coach => $query->whereHas(
+                'certification.coaches',
+                fn (Builder $q) => $q->where('users.id', $user->id),
+            ),
+            UserRole::Student => $query->where('user_id', $user->id),
+            default => $query->whereRaw('1 = 0'),
+        };
     }
 }

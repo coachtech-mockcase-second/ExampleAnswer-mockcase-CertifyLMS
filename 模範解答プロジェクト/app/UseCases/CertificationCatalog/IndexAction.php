@@ -7,7 +7,6 @@ namespace App\UseCases\CertificationCatalog;
 use App\Enums\EnrollmentStatus;
 use App\Models\Certification;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 
@@ -16,29 +15,30 @@ use Illuminate\Support\Collection as SupportCollection;
  *
  * 戻り値:
  * - `catalog`: 公開中の全資格（カテゴリ / 難易度フィルタ適用後）
- * - `enrolled`: 受講生が登録済の資格（catalog の部分集合）
  * - `enrolled_ids`: 受講登録済資格 ID（カード上の「受講中」バッジ判定用）
  */
 final class IndexAction
 {
     /**
-     * @param array{category_id?: string|null, difficulty?: string|null, tab?: string|null} $filter
+     * @param array{category_id?: string|null, difficulty?: string|null} $filter
      *
-     * @return array{catalog: Collection<int, Certification>, enrolled: Collection<int, Certification>, enrolled_ids: SupportCollection<int, string>}
+     * @return array{catalog: Collection<int, Certification>, enrolled_ids: SupportCollection<int, string>}
      */
     public function __invoke(User $student, array $filter): array
     {
-        $base = fn (): Builder => Certification::query()
+        $catalog = Certification::query()
             ->published()
             ->with(['category', 'coaches'])
             ->when(
                 $filter['category_id'] ?? null,
-                fn (Builder $q, string $id) => $q->where('category_id', $id),
+                fn ($q, string $id) => $q->where('category_id', $id),
             )
             ->when(
                 $filter['difficulty'] ?? null,
-                fn (Builder $q, string $d) => $q->where('difficulty', $d),
-            );
+                fn ($q, string $d) => $q->where('difficulty', $d),
+            )
+            ->orderBy('name')
+            ->get();
 
         $enrolledIds = $student->enrollments()
             ->whereIn('status', [
@@ -48,12 +48,8 @@ final class IndexAction
             ])
             ->pluck('certification_id');
 
-        $catalog = $base()->orderBy('name')->get();
-        $enrolled = $base()->whereIn('id', $enrolledIds)->orderBy('name')->get();
-
         return [
             'catalog' => $catalog,
-            'enrolled' => $enrolled,
             'enrolled_ids' => $enrolledIds,
         ];
     }
