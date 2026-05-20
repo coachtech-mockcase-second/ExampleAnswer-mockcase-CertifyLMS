@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Notification;
 
-use App\Models\AdminAnnouncement;
+use App\Models\Announcement;
 use App\Models\User;
-use App\Notifications\AdminAnnouncement\AdminAnnouncementNotification;
+use App\Notifications\Announcement\AnnouncementNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,10 +17,10 @@ class MarkAllAsReadTest extends TestCase
     public function test_marks_all_own_unread_notifications_as_read(): void
     {
         $user = User::factory()->student()->inProgress()->create();
-        $announcement = AdminAnnouncement::factory()->allStudents()->dispatched()->create();
-        $user->notify(new AdminAnnouncementNotification($announcement));
-        $user->notify(new AdminAnnouncementNotification($announcement));
-        $user->notify(new AdminAnnouncementNotification($announcement));
+        $announcement = Announcement::factory()->allStudents()->dispatched()->create();
+        $user->notify(new AnnouncementNotification($announcement));
+        $user->notify(new AnnouncementNotification($announcement));
+        $user->notify(new AnnouncementNotification($announcement));
 
         $this->assertSame(3, $user->unreadNotifications()->count());
 
@@ -34,9 +34,9 @@ class MarkAllAsReadTest extends TestCase
     {
         $user = User::factory()->student()->inProgress()->create();
         $other = User::factory()->student()->inProgress()->create();
-        $announcement = AdminAnnouncement::factory()->allStudents()->dispatched()->create();
-        $user->notify(new AdminAnnouncementNotification($announcement));
-        $other->notify(new AdminAnnouncementNotification($announcement));
+        $announcement = Announcement::factory()->allStudents()->dispatched()->create();
+        $user->notify(new AnnouncementNotification($announcement));
+        $other->notify(new AnnouncementNotification($announcement));
 
         $this->actingAs($user)->post(route('notifications.markAllAsRead'));
 

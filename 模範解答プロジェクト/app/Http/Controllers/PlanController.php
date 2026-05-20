@@ -28,7 +28,7 @@ class PlanController extends Controller
             status: isset($validated['status']) ? PlanStatus::from($validated['status']) : null,
         );
 
-        return view('admin.plans.index', [
+        return view('plan.management.index', [
             'plans' => $plans,
             'keyword' => $validated['keyword'] ?? '',
             'status' => $validated['status'] ?? '',
@@ -39,7 +39,7 @@ class PlanController extends Controller
     {
         $this->authorize('view', $plan);
 
-        return view('admin.plans.show', [
+        return view('plan.management.show', [
             'plan' => $action($plan),
         ]);
     }
@@ -48,7 +48,7 @@ class PlanController extends Controller
     {
         $this->authorize('create', Plan::class);
 
-        return view('admin.plans.create');
+        return view('plan.management.create');
     }
 
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse
@@ -64,7 +64,7 @@ class PlanController extends Controller
     {
         $this->authorize('update', $plan);
 
-        return view('admin.plans.edit', [
+        return view('plan.management.edit', [
             'plan' => $plan,
         ]);
     }

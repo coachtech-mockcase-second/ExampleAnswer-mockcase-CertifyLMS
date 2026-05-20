@@ -10,10 +10,10 @@
 
 - [x] migration: `change_notifications_id_to_ulid`(Laravel 標準 `notifications` テーブルの `id` を ULID 型に変更、`(notifiable_type, notifiable_id, read_at)` 複合 INDEX + `created_at` 単体 INDEX 追加)(REQ-notification-001, REQ-notification-002)
 - [x] migration: `create_admin_announcements_table`(ULID 主キー / `created_by_user_id` ulid FK / `title` string 200 / `body` text / `target_type` string / `target_certification_id` ulid nullable FK / `target_user_id` ulid nullable FK / `dispatched_count` unsignedInteger default 0 / `dispatched_at` datetime nullable / SoftDeletes / `(target_type, dispatched_at)` 複合 INDEX)(REQ-notification-010)
-- [x] Enum: `App\Enums\AdminAnnouncementTargetType`(`AllStudents` / `Certification` / `User`、`label()`)(REQ-notification-011)
+- [x] Enum: `App\Enums\AnnouncementTargetType`(`AllStudents` / `Certification` / `User`、`label()`)(REQ-notification-011)
 - [x] Enum: `App\Enums\MeetingReminderWindow`(`Eve` / `OneHourBefore`、`label()`)(REQ-notification-073)
-- [x] Model: `App\Models\AdminAnnouncement`(`HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(User, 'created_by_user_id', 'createdBy')` / `belongsTo(Certification, 'target_certification_id', 'targetCertification')` / `belongsTo(User, 'target_user_id', 'targetUser')`)(REQ-notification-010)
-- [x] Factory: `AdminAnnouncementFactory`(`allStudents()` / `forCertification` / `forUser` / `dispatched()` state)
+- [x] Model: `App\Models\Announcement`(`HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(User, 'created_by_user_id', 'createdBy')` / `belongsTo(Certification, 'target_certification_id', 'targetCertification')` / `belongsTo(User, 'target_user_id', 'targetUser')`)(REQ-notification-010)
+- [x] Factory: `AnnouncementFactory`(`allStudents()` / `forCertification` / `forUser` / `dispatched()` state)
 
 ## Step 2: Notification 共通基盤
 
@@ -29,7 +29,7 @@
 - [x] **`App\Notifications\Mentoring\MeetingReservedNotification`(v3 新規、コーチ宛のみ)** — コンストラクタ `Meeting $meeting`、Mail 本文に `scheduled_at` + 受講生名 + `topic` + `meeting_url_snapshot`(REQ-notification-070)
 - [x] `App\Notifications\Mentoring\MeetingCanceledNotification`(コンストラクタ `Meeting $meeting, User $actor`、actor で文面分岐)(REQ-notification-071)
 - [x] `App\Notifications\Mentoring\MeetingReminderNotification`(コンストラクタ `Meeting $meeting, MeetingReminderWindow $window`)(REQ-notification-072)
-- [x] `App\Notifications\AdminAnnouncement\AdminAnnouncementNotification`(コンストラクタ `AdminAnnouncement $announcement`)(REQ-notification-085)
+- [x] `App\Notifications\Announcement\AnnouncementNotification`(コンストラクタ `Announcement $announcement`)(REQ-notification-085)
 
 ### 明示的に持たない Notification クラス(v3 撤回)
 
@@ -40,15 +40,15 @@
 ## Step 4: Policy & FormRequest
 
 - [x] `App\Policies\NotificationPolicy`(`view` / `update`、自分宛のみ true)(REQ-notification-111)
-- [x] `App\Policies\AdminAnnouncementPolicy`(`viewAny` / `view` / `create`、admin のみ)(REQ-notification-113)
+- [x] `App\Policies\AnnouncementPolicy`(`viewAny` / `view` / `create`、admin のみ)(REQ-notification-113)
 - [x] `AuthServiceProvider` 登録
 - [x] `App\Http\Requests\Notification\IndexRequest`(`tab: in:all,unread` / `page`)
-- [x] `App\Http\Requests\AdminAnnouncement\StoreRequest`(`title` / `body` / `target_type` / `target_certification_id required_if` / `target_user_id required_if`)
+- [x] `App\Http\Requests\Announcement\StoreRequest`(`title` / `body` / `target_type` / `target_certification_id required_if` / `target_user_id required_if`)
 
 ## Step 5: HTTP 層
 
 - [x] `App\Http\Controllers\NotificationController`(`index` / `popover` / `markAsRead` / `markAllAsRead`)
-- [x] `App\Http\Controllers\AdminAnnouncementController`(`index` / `create` / `store` / `show`)
+- [x] `App\Http\Controllers\AnnouncementController`(`index` / `create` / `store` / `show`)
 - [x] `routes/web.php`:
   - `auth` group: `notifications.index` / `notifications.popover` / `notifications.markAsRead` / `notifications.markAllAsRead`
   - `auth + role:admin` group: `Route::resource('announcements')->only(['index', 'create', 'store', 'show'])`
@@ -64,7 +64,7 @@
 - [x] **`NotifyMeetingReservedAction`(v3 新規)** — コーチ宛のみ dispatch、受講生宛は発火しない(REQ-notification-070)
 - [x] `NotifyMeetingCanceledAction`(actor で相手方解決)(REQ-notification-071)
 - [x] `NotifyMeetingReminderAction`(`(meeting_id, window)` 重複排除 + 受講生 + コーチ両方通知)(REQ-notification-072, NFR-notification-007)
-- [x] `NotifyAdminAnnouncementAction`(受信者 status 検査 + 通知)(REQ-notification-082)
+- [x] `NotifyAnnouncementAction`(受信者 status 検査 + 通知)(REQ-notification-082)
 
 ### 明示的に持たないラッパー Action(v3 撤回)
 
@@ -80,14 +80,14 @@
 
 ### 管理者お知らせ Action 群
 
-- [x] `AdminAnnouncement\IndexAction`
-- [x] `AdminAnnouncement\StoreAction`(target 整合性検査 + Announcement INSERT + 対象 User 解決 + 各 User へ NotifyAdminAnnouncementAction 呼出 + `dispatched_count` / `dispatched_at` UPDATE、1 トランザクション)
-- [x] `AdminAnnouncement\ShowAction`
+- [x] `Announcement\IndexAction`
+- [x] `Announcement\StoreAction`(target 整合性検査 + Announcement INSERT + 対象 User 解決 + 各 User へ NotifyAnnouncementAction 呼出 + `dispatched_count` / `dispatched_at` UPDATE、1 トランザクション)
+- [x] `Announcement\ShowAction`
 
 ## Step 7: ドメイン例外
 
-- [x] `app/Exceptions/Notification/AdminAnnouncementInvalidTargetException`(HTTP 422)
-- [x] `app/Exceptions/Notification/AdminAnnouncementTargetNotFoundException`(HTTP 404)
+- [x] `app/Exceptions/Notification/AnnouncementInvalidTargetException`(HTTP 422)
+- [x] `app/Exceptions/Notification/AnnouncementTargetNotFoundException`(HTTP 404)
 
 ## Step 8: View Composer & Blade
 
@@ -157,17 +157,17 @@
 - [x] **`NotifyMeetingReservedActionTest` 相当** — 既存 `tests/Feature/UseCases/Meeting/StoreActionTest.php` でカバー(Meeting StoreAction 経由)
 - [x] `NotifyMeetingCanceledActionTest` 相当 — 既存 `tests/Feature/UseCases/Meeting/CancelActionTest.php` でカバー
 - [x] `NotifyMeetingReminderActionTest`(eve / one_hour_before / 重複排除)
-- [x] `NotifyAdminAnnouncementActionTest`(in_progress 通知 / withdrawn skip / graduated skip)
+- [x] `NotifyAnnouncementActionTest`(in_progress 通知 / withdrawn skip / graduated skip)
 
 ### 明示的に持たないテスト(v3 撤回)
 
 - `NotifyMeetingRequestedActionTest` / `NotifyMeetingApprovedActionTest` / `NotifyMeetingRejectedActionTest`
 - `NotifyStagnationReminderActionTest`
 
-### 通知一覧 / 管理者お知らせ HTTP(`tests/Feature/Http/Notification/`、`Admin/AdminAnnouncement/`)
+### 通知一覧 / 管理者お知らせ HTTP(`tests/Feature/Http/Notification/`、`Admin/Announcement/`)
 
 - [x] `Notification/{Index,MarkAsRead,MarkAllAsRead,Popover}Test.php`(`PopoverTest`: tab フィルタ別件数 / 自分宛のみ取得 / 認証)
-- [x] `Admin/AdminAnnouncement/{Index,Store,Show}Test.php`(target_type 別配信件数 / 不整合 422 / 非 admin 403)
+- [x] `Admin/Announcement/{Index,Store,Show}Test.php`(target_type 別配信件数 / 不整合 422 / 非 admin 403)
 
 ### Schedule Command(`tests/Feature/Commands/Notification/`)
 
@@ -175,7 +175,7 @@
 
 ### Policy / View Composer
 
-- [x] `NotificationPolicyTest` / `AdminAnnouncementPolicyTest`
+- [x] `NotificationPolicyTest` / `AnnouncementPolicyTest`
 - [x] `NotificationBadgeComposerTest`(未認証 0 / 未読件数集計)
 
 ## Step 12.5: Factory + Seeder

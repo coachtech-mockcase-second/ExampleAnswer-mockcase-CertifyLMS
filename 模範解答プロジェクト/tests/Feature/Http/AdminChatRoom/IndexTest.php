@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Http\AdminChatRoom;
+namespace Tests\Feature\Http\Chat\Moderation;
 
 use App\Models\ChatRoom;
 use App\Models\Enrollment;
@@ -44,7 +44,7 @@ class IndexTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.chat-rooms.index'))
             ->assertOk()
-            ->assertViewIs('admin.chat-rooms.empty-state');
+            ->assertViewIs('chat-room.management.empty-state');
     }
 
     public function test_coach_forbidden(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Dashboard\ViewModels;
 
+use App\Models\MeetingPack;
 use Illuminate\Support\Collection;
 
 /**
@@ -15,7 +16,7 @@ use Illuminate\Support\Collection;
 final readonly class PlanInfoPanel
 {
     /**
-     * @param  Collection<int, \App\Models\MeetingPack>  $meetingPacks  購入動線で表示する published 状態の SKU 一覧
+     * @param Collection<int, MeetingPack> $meetingPacks 購入動線で表示する published 状態の SKU 一覧
      */
     public function __construct(
         public ?string $planName,

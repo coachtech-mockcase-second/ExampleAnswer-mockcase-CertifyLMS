@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Http\AdminChatRoom;
+namespace Tests\Feature\Http\Chat\Moderation;
 
 use App\Models\ChatRoom;
 use App\Models\Enrollment;
@@ -23,6 +23,6 @@ class ShowTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.chat-rooms.show', $room));
 
         $response->assertOk();
-        $response->assertViewIs('admin.chat-rooms.show');
+        $response->assertViewIs('chat-room.management.show');
     }
 }

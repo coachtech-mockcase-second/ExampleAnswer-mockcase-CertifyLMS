@@ -51,7 +51,7 @@
 
 - [x] `App\Http\Controllers\MockExamController`(全 CRUD + publish / unpublish / reorder)
 - [x] `App\Http\Controllers\MockExamQuestionController`(v3 で独立 CRUD、`index($mockExam)` / `create($mockExam)` / `store($mockExam, StoreRequest)` / `show($question)` / `edit($question)` / `update($question)` / `destroy($question)` / `reorder($mockExam)`)
-- [x] `App\Http\Controllers\AdminMockExamSessionController`(`index` / `show`、`Admin\` namespace は使わずフラット命名)
+- [x] `App\Http\Controllers\MockExamSessionMonitorController`(`index` / `show`、`Admin\` namespace は使わずフラット命名)
 
 ### Controller(student 用)
 
@@ -70,7 +70,7 @@
 - [x] `MockExamQuestion\ReorderRequest`(`items.*.id ulid` / `items.*.order integer min:0`)
 - [x] `MockExamSession\IndexRequest`(`certification_id` / `mock_exam_id` / `pass` 任意フィルタ)
 - [x] **`MockExamAnswer\UpdateRequest`(E-3 簡素化)** — `mock_exam_question_id required ulid exists` / `selected_option_id required ulid exists`、authorize で `Policy::saveAnswer` 委譲、ドメイン整合性は UpdateAction で検証(MockExamQuestionNotInSessionException / MockExamOptionMismatchException)
-- [x] `AdminMockExamSession\IndexRequest`(`certification_id` / `user_id` / `status` / `pass`、coach 絞込は IndexAction 内で `certification.coaches` 経由)
+- [x] `MockExamSession\Monitor\IndexRequest`(`certification_id` / `user_id` / `status` / `pass`、coach 絞込は IndexAction 内で `certification.coaches` 経由)
 
 ### Resource(API)
 
@@ -81,7 +81,7 @@
 - [x] `routes/web.php` に admin / coach 系ルート定義(`auth + role:admin,coach` group + prefix `/admin`):
   - `Route::resource('mock-exams', MockExamController::class)` + `publish` / `unpublish` / `reorder`
   - 模試問題 shallow CRUD + `reorder`
-  - `AdminMockExamSessionController` の `index` / `show`
+  - `MockExamSessionMonitorController` の `index` / `show`
 - [x] `routes/web.php` に student 系ルート定義(`auth + role:student + active-learning` group):
   - 模試カタログ: `/learning/enrollments/{enrollment}/mock-exams` 配下 (v3.5)
   - 受験セッション CRUD + `start` / `submit` / `destroy`(セッション ID 直接参照)
@@ -127,7 +127,7 @@
 - [x] `IndexAction`(Enrollment 単位の公開模試一覧 + 進行中セッションマップ)
 - [x] `ShowAction`(模試詳細 + 進行中セッション lookup)
 
-### AdminMockExamSession Action
+### MockExamSession\Monitor Action
 
 - [x] `IndexAction`(admin 全件、coach は `certification.coaches` 経由絞込)
 - [x] `ShowAction`(認可後、`WeaknessAnalysisService::getHeatmap` + `getPassProbabilityBand` 同梱)

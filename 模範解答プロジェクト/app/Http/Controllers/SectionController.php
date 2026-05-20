@@ -32,7 +32,7 @@ class SectionController extends Controller
     {
         $this->authorize('view', $section);
 
-        return view('admin.contents.sections.show', [
+        return view('section.management.show', [
             'section' => $action($section),
         ]);
     }

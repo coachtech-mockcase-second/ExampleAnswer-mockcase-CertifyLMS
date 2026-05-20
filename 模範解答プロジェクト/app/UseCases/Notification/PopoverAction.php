@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UseCases\Notification;
 
 use App\Models\User;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 
 /**
@@ -27,7 +28,7 @@ final class PopoverAction
             $query = $user->unreadNotifications();
         }
 
-        /** @var Collection<int, \Illuminate\Notifications\DatabaseNotification> $items */
+        /** @var Collection<int, DatabaseNotification> $items */
         $items = $query
             ->orderByDesc('created_at')
             ->limit(self::POPOVER_LIMIT)
@@ -43,7 +44,7 @@ final class PopoverAction
     /**
      * @return array<string, mixed>
      */
-    private function serialize(\Illuminate\Notifications\DatabaseNotification $notification): array
+    private function serialize(DatabaseNotification $notification): array
     {
         $data = is_array($notification->data) ? $notification->data : [];
 

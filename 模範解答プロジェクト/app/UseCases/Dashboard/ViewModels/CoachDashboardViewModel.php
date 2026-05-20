@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace App\UseCases\Dashboard\ViewModels;
 
+use App\Models\ChatRoom;
+use App\Models\Enrollment;
+use App\Models\Meeting;
+use App\Models\QaThread;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 
 /**
@@ -16,11 +21,11 @@ use Illuminate\Support\Collection;
 final readonly class CoachDashboardViewModel
 {
     /**
-     * @param  EloquentCollection<int, \App\Models\Enrollment>  $assignedEnrollments  担当資格に登録した受講生(certification.coaches 経由) + last_activity_at(withMax)
-     * @param  EloquentCollection<int, \App\Models\Meeting>  $todayAndTomorrowMeetings  今日 / 明日の面談予約
-     * @param  ?Collection<int, \App\Models\ChatRoom>  $recentUnreadChatRooms  未読 chat ルーム上位 5(取得失敗時 null)
-     * @param  ?Collection<int, \App\Models\QaThread>  $recentQaThreads  未回答 Q&A 上位 5(取得失敗時 null)
-     * @param  EloquentCollection<int, \Illuminate\Notifications\DatabaseNotification>  $recentNotifications  直近通知 5 件
+     * @param EloquentCollection<int, Enrollment> $assignedEnrollments 担当資格に登録した受講生(certification.coaches 経由) + last_activity_at(withMax)
+     * @param EloquentCollection<int, Meeting> $todayAndTomorrowMeetings 今日 / 明日の面談予約
+     * @param ?Collection<int, ChatRoom> $recentUnreadChatRooms 未読 chat ルーム上位 5(取得失敗時 null)
+     * @param ?Collection<int, QaThread> $recentQaThreads 未回答 Q&A 上位 5(取得失敗時 null)
+     * @param EloquentCollection<int, DatabaseNotification> $recentNotifications 直近通知 5 件
      */
     public function __construct(
         public EloquentCollection $assignedEnrollments,

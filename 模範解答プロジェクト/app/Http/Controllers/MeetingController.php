@@ -44,7 +44,7 @@ class MeetingController extends Controller
         $filter = $request->validated('filter') ?? 'upcoming';
         $meetings = $action($request->user(), $filter);
 
-        return view('meetings.index', [
+        return view('meeting.index', [
             'meetings' => $meetings,
             'filter' => $filter,
         ]);
@@ -58,7 +58,7 @@ class MeetingController extends Controller
         $filters = $request->validated();
         $meetings = $action($request->user(), $filters);
 
-        return view('coach.meetings.index', [
+        return view('meeting.coach.index', [
             'meetings' => $meetings,
             'filter' => $filters['filter'] ?? 'upcoming',
             'studentFilter' => $filters['student'] ?? null,
@@ -73,7 +73,7 @@ class MeetingController extends Controller
     {
         $this->authorize('view', $meeting);
 
-        return view('meetings.show', [
+        return view('meeting.show', [
             'meeting' => $action($meeting),
         ]);
     }
@@ -90,7 +90,7 @@ class MeetingController extends Controller
 
         $enrollment->loadMissing('certification');
 
-        return view('meetings.create', [
+        return view('meeting.create', [
             'enrollment' => $enrollment,
         ]);
     }
@@ -109,7 +109,7 @@ class MeetingController extends Controller
             ->with('certification')
             ->get();
 
-        return view('meetings.empty-state', [
+        return view('meeting.empty-state', [
             'enrollments' => $enrollments ?? collect(),
         ]);
     }

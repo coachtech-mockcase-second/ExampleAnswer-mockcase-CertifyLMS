@@ -20,7 +20,7 @@
 | 5 | `MeetingReservedNotification` | **担当コーチ宛のみ**（受講生宛は予約 UI で即時確認のため不要） | [[mentoring]] `Meeting\StoreAction` |
 | 6 | `MeetingCanceledNotification` | 相手方（受講生がキャンセルしたらコーチ、コーチがキャンセルしたら受講生） | [[mentoring]] `Meeting\CancelAction` |
 | 7 | `MeetingReminderNotification` | 受講生 + コーチ両方 | 本 Feature の `SendMeetingRemindersCommand`（前日 18:00 + 1h 前の 2 回） |
-| 8 | `AdminAnnouncementNotification` | 対象 student 集合 | 本 Feature の `AdminAnnouncement\StoreAction` |
+| 8 | `AnnouncementNotification` | 対象 student 集合 | 本 Feature の `Announcement\StoreAction` |
 
 **撤回された通知**:
 - `MockExamGradedNotification` / `NotifyMockExamGradedAction`（[[mock-exam]] 側で提出後の Controller redirect で結果画面に遷移するため、通知不要と判断）
@@ -43,7 +43,7 @@
 - **REQ-notification-003**: The system shall `notifications.data` JSON 内に共通キー（`notification_type` / `title` / `message` / `link_route` / `link_params`）を必ず含める。
 - **REQ-notification-004**: The system shall `notifications.data` JSON 内に種別固有キーを併存させる。
 - **REQ-notification-010**: The system shall 管理者お知らせ用に `admin_announcements` テーブル（ULID 主キー / `title` / `body` / `target_type` enum / `target_certification_id` ulid nullable / `target_user_id` ulid nullable / `created_by_user_id` ulid / `dispatched_count` / `dispatched_at` / SoftDeletes）を新設する。
-- **REQ-notification-011**: The system shall `admin_announcements.target_type` を `App\Enums\AdminAnnouncementTargetType` Enum（`AllStudents` / `Certification` / `User`）で管理する。
+- **REQ-notification-011**: The system shall `admin_announcements.target_type` を `App\Enums\AnnouncementTargetType` Enum（`AllStudents` / `Certification` / `User`）で管理する。
 
 ### 機能要件 — Notification クラス共通基盤
 
@@ -87,12 +87,12 @@
 
 ### 機能要件 — 管理者お知らせ配信（変更なし）
 
-- **REQ-notification-080**: The system shall `App\Http\Controllers\AdminAnnouncementController` を提供し、`index` / `create` / `store` / `show` の 4 メソッドを持つ。
-- **REQ-notification-081**: The system shall `App\UseCases\AdminAnnouncement\StoreAction` を提供し、`__invoke(User $admin, array $validated): AdminAnnouncement` で AdminAnnouncement INSERT + 対象 User Collection 解決 + 各 User へ `NotifyAdminAnnouncementAction` 実行 + `dispatched_count` / `dispatched_at` UPDATE を 1 トランザクションで実行する。
+- **REQ-notification-080**: The system shall `App\Http\Controllers\AnnouncementController` を提供し、`index` / `create` / `store` / `show` の 4 メソッドを持つ。
+- **REQ-notification-081**: The system shall `App\UseCases\Announcement\StoreAction` を提供し、`__invoke(User $admin, array $validated): Announcement` で Announcement INSERT + 対象 User Collection 解決 + 各 User へ `NotifyAnnouncementAction` 実行 + `dispatched_count` / `dispatched_at` UPDATE を 1 トランザクションで実行する。
 - **REQ-notification-082**: When `target_type=AllStudents` の場合, the system shall `User::where('role', UserRole::Student)->where('status', UserStatus::InProgress)->get()` を対象とする。
 - **REQ-notification-083**: When `target_type=Certification` の場合, the system shall `User::query()->where('role', UserRole::Student)->where('status', UserStatus::InProgress)->whereHas('enrollments', fn ($q) => $q->where('certification_id', $announcement->target_certification_id)->where('status', EnrollmentStatus::Learning))->get()` を対象とする。
 - **REQ-notification-084**: When `target_type=User` の場合, the system shall `User::where('id', $announcement->target_user_id)->where('role', UserRole::Student)->where('status', UserStatus::InProgress)->get()` を対象とする。
-- **REQ-notification-086**: The system shall AdminAnnouncement 通知の data に `admin_announcement_id` / `title` / `body` / `dispatched_at` / `target_type` / `link_route='notifications.index'` を格納する。
+- **REQ-notification-086**: The system shall Announcement 通知の data に `admin_announcement_id` / `title` / `body` / `dispatched_at` / `target_type` / `link_route='notifications.index'` を格納する。
 - **REQ-notification-089**: The system shall 配信済お知らせの再配信 / 取消 / 削除を提供しない。
 
 ### 機能要件 — 通知一覧・既読化（変更なし）
@@ -130,7 +130,7 @@
 
 - **NFR-notification-001**: The system shall すべての状態変更を `DB::transaction()` で囲み、子通知 dispatch のいずれかが失敗した場合は親レコードもロールバックする。
 - **NFR-notification-002**: The system shall 通知一覧クエリに N+1 を発生させず、`data` JSON 内のキャッシュ（`sender_name` / `certification_name` 等）で関連 Model の eager load を不要とする。
-- **NFR-notification-003**: The system shall ドメイン例外を `app/Exceptions/Notification/` 配下に配置する（`AdminAnnouncementInvalidTargetException` / `AdminAnnouncementTargetNotFoundException`）。
+- **NFR-notification-003**: The system shall ドメイン例外を `app/Exceptions/Notification/` 配下に配置する（`AnnouncementInvalidTargetException` / `AnnouncementTargetNotFoundException`）。
 - **NFR-notification-005**: The system shall 通知ベルバッジ集計を 1 リクエスト 1 回の `count()` クエリに抑える。
 - **NFR-notification-006**: The system shall Mail テンプレを日本語で構成し、件名 prefix を `【Certify LMS】` で統一する。
 - **NFR-notification-007**: The system shall Schedule Command の重複起動下でも `notifications:send-meeting-reminders` が同一通知を重複配信しないようガードする。

@@ -6,6 +6,7 @@ namespace App\UseCases\Dashboard;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\MeetingStatus;
+use App\Http\Controllers\DashboardController;
 use App\Models\Enrollment;
 use App\Models\EnrollmentGoal;
 use App\Models\Meeting;
@@ -32,7 +33,7 @@ use Illuminate\Support\Collection;
  * - 受講中資格カードの進捗集計は `ProgressService::batchCalculate` で N+1 回避
  * - 各セクション build は `safe()` で包み、Service 例外で画面全体が 500 化するのを防ぐ
  *
- * @see \App\Http\Controllers\DashboardController::index()
+ * @see DashboardController::index()
  */
 final class FetchStudentDashboardAction
 {
@@ -83,7 +84,8 @@ final class FetchStudentDashboardAction
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Collection<int, Enrollment>  $activeEnrollments
+     * @param \Illuminate\Database\Eloquent\Collection<int, Enrollment> $activeEnrollments
+     *
      * @return Collection<int, StudentEnrollmentCard>
      */
     private function buildEnrollmentCards($activeEnrollments): Collection

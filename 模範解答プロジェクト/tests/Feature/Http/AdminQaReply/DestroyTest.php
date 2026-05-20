@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Http\AdminQaReply;
+namespace Tests\Feature\Http\QaReply\Moderation;
 
 use App\Enums\QaThreadStatus;
 use App\Models\Certification;

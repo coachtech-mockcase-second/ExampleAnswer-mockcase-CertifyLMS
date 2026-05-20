@@ -30,7 +30,7 @@ class PartController extends Controller
     {
         $this->authorize('viewAny', [Part::class, $certification]);
 
-        return view('admin.contents.parts.index', [
+        return view('part.management.index', [
             'certification' => $certification,
             'parts' => $action($certification),
         ]);
@@ -40,7 +40,7 @@ class PartController extends Controller
     {
         $this->authorize('view', $part);
 
-        return view('admin.contents.parts.show', [
+        return view('part.management.show', [
             'part' => $action($part),
         ]);
     }

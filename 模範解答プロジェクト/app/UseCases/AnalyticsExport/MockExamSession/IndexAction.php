@@ -26,7 +26,7 @@ final class IndexAction
 
     /**
      * @param array{mock_exam_id?: string|null, pass?: string|null, status?: string|null, from?: string|null, to?: string|null, per_page?: int|null, page?: int|null} $validated
-     * @param array<int, string> $includes  Eager Loading リレーション名 (camelCase)
+     * @param array<int, string> $includes Eager Loading リレーション名 (camelCase)
      *
      * @return LengthAwarePaginator<MockExamSession>
      */

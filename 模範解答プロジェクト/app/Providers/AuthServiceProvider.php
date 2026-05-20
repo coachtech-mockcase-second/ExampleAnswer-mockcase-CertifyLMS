@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Models\AdminAnnouncement;
 use App\Models\AiChatConversation;
+use App\Models\Announcement;
 use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\CertificationCategory;
@@ -34,12 +34,11 @@ use App\Models\SectionQuestion;
 use App\Models\SectionQuestionAnswer;
 use App\Models\SectionQuestionAttempt;
 use App\Models\User;
-use App\Policies\AdminAnnouncementPolicy;
 use App\Policies\AiChatConversationPolicy;
+use App\Policies\AnnouncementPolicy;
 use App\Policies\CertificatePolicy;
 use App\Policies\CertificationCategoryPolicy;
 use App\Policies\CertificationPolicy;
-use App\Policies\NotificationPolicy;
 use App\Policies\ChapterPolicy;
 use App\Policies\ChapterViewPolicy;
 use App\Policies\ChatRoomPolicy;
@@ -50,12 +49,13 @@ use App\Policies\EnrollmentPolicy;
 use App\Policies\InvitationPolicy;
 use App\Policies\LearningHourTargetPolicy;
 use App\Policies\LearningSessionPolicy;
-use App\Policies\MeetingPolicy;
 use App\Policies\MeetingPackPolicy;
+use App\Policies\MeetingPolicy;
 use App\Policies\MeetingQuotaPolicy;
 use App\Policies\MockExamPolicy;
 use App\Policies\MockExamQuestionPolicy;
 use App\Policies\MockExamSessionPolicy;
+use App\Policies\NotificationPolicy;
 use App\Policies\PartPolicy;
 use App\Policies\PartViewPolicy;
 use App\Policies\QaReplyPolicy;
@@ -112,7 +112,7 @@ class AuthServiceProvider extends ServiceProvider
         QaThread::class => QaThreadPolicy::class,
         QaReply::class => QaReplyPolicy::class,
         DatabaseNotification::class => NotificationPolicy::class,
-        AdminAnnouncement::class => AdminAnnouncementPolicy::class,
+        Announcement::class => AnnouncementPolicy::class,
         AiChatConversation::class => AiChatConversationPolicy::class,
     ];
 

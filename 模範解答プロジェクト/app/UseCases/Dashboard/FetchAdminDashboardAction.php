@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Dashboard;
 
+use App\Http\Controllers\DashboardController;
 use App\Models\User;
 use App\Services\EnrollmentStatsService;
 use App\UseCases\Dashboard\ViewModels\AdminDashboardViewModel;
@@ -15,7 +16,7 @@ use App\UseCases\Dashboard\ViewModels\AdminDashboardViewModel;
  * 修了申請待ち一覧 / プラン期限切れ / 滞留検知 / 直近通知は本ロールでは表示しない
  * (admin 宛通知は notification spec で発火しないため、admin 通知導線は実用上死に機能になる)。
  *
- * @see \App\Http\Controllers\DashboardController::index()
+ * @see DashboardController::index()
  */
 final class FetchAdminDashboardAction
 {
