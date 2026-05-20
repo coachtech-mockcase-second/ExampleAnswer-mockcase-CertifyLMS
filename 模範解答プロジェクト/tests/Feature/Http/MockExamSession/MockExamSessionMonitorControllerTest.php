@@ -13,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-class AdminTest extends TestCase
+class MockExamSessionMonitorControllerTest extends TestCase
 {
     use RefreshDatabase;
 

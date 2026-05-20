@@ -52,7 +52,7 @@ class DashboardSidebarConsistencyTest extends TestCase
             'student_id' => $student->id,
             'enrollment_id' => $enrollment->id,
             'status' => MeetingStatus::Reserved,
-            'scheduled_at' => now()->addHours(2),
+            'scheduled_at' => today()->setHour(15),
         ])->create();
         Meeting::factory()->state([
             'coach_id' => $coach->id,
@@ -81,7 +81,7 @@ class DashboardSidebarConsistencyTest extends TestCase
             'student_id' => $student->id,
             'enrollment_id' => $enrollment->id,
             'status' => MeetingStatus::Reserved,
-            'scheduled_at' => now()->addHours(2),
+            'scheduled_at' => today()->setHour(15),
         ])->create();
 
         $this->actingAs($coach);
