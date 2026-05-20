@@ -2,7 +2,7 @@
     'head' => null,
 ])
 
-<div {{ $attributes->merge(['class' => 'overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-surface-raised']) }}>
+<div {{ $attributes->merge(['class' => 'rounded-lg border border-[var(--border-subtle)] bg-surface-raised']) }}>
     <table class="w-full">
         @isset($head)
             <thead class="bg-surface-sunken/60 border-b border-[var(--border-subtle)]">
