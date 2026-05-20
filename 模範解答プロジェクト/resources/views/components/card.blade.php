@@ -24,7 +24,7 @@
     $cardShadow = $shadows[$shadow] ?? $shadows['sm'];
 @endphp
 
-<div {{ $attributes->merge(['class' => "bg-surface-raised border border-[var(--border-subtle)] rounded-2xl $cardShadow overflow-hidden transition-colors duration-fast hover:border-primary-200 hover:shadow-md"]) }}>
+<div {{ $attributes->merge(['class' => "bg-surface-raised border border-[var(--border-subtle)] rounded-2xl $cardShadow transition-colors duration-fast hover:border-primary-200 hover:shadow-md"]) }}>
     @if ($header)
         <div class="border-b border-[var(--border-subtle)] px-6 py-4 font-semibold text-ink-900">
             {{ $header }}
