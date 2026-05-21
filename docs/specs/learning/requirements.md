@@ -58,8 +58,8 @@
 - **REQ-learning-040**: When 受講生が `GET /learning/sections/{section}` で Section 詳細ページを表示する際, the system shall `BrowseController::showSection` の処理内で同期的に `LearningSession\StartAction::__invoke($student, $section)` を呼び、`learning_sessions` に新規行を INSERT する。**JS / クライアント側からの API 呼出は不要**(サーバ側 auto-start、本 Feature は `POST /learning/sessions/start` エンドポイントを持たない)。
 - **REQ-learning-041**: When 新規セッション INSERT 直前, the system shall 同一 `user_id` の未終了セッションを `SessionCloseService::closeOpenSessions(User, asAutoClosed: true)` で一括クローズする(別 Section 遷移時の自動切替)。
 - **REQ-learning-042**: The system shall `max_session_seconds` を `config('learning.max_session_seconds', 3600)` で設定可能とする（デフォルト 60 分、Schedule Command 閾値と同期）。
-- **REQ-learning-047**: When Schedule Command `learning:close-stale-sessions` が日次 00:30 に起動する, the system shall 未終了 + 経過時間 `> max_session_seconds` のセッションを `auto_closed=true` で一括クローズする(ブラウザ閉じ / PC スリープ等の不可避ケースの保険)。
-- **REQ-learning-048**: If `BrowseController::showSection` 内の auto-start 時、対応する Enrollment が `status = failed` の場合, then the system shall `EnrollmentInactiveException`（HTTP 409）で拒否する。`learning` / `passed` は許容。
+- **REQ-learning-047**: When Schedule Command `learning:close-stale-sessions` が `config('learning.close_stale_schedule', '01:00')` で設定された時刻に日次起動する, the system shall 未終了 + 経過時間 `> max_session_seconds` のセッションを `auto_closed=true` で一括クローズする(ブラウザ閉じ / PC スリープ等の不可避ケースの保険)。
+- **REQ-learning-048**: If 受講生が `GET /learning/sections/{section}` で `status = failed` の Enrollment 配下の Section 詳細ページを表示しようとした場合, then the system shall `SectionViewPolicy::view` で 403 を返し、Section ページの表示および `LearningSession\StartAction` の呼出をいずれもブロックする。`learning` / `passed` は許容。
 - **REQ-learning-049**: The system shall **JavaScript / `navigator.sendBeacon` / `pagehide` / `visibilitychange` / heartbeat / タブ可視性検知を採用しない**(2026-05-16 確定)。**「学習を一旦終える」明示停止ボタンも撤回**(v3.5、UX 観点で不要と判断)。学習時間トラッキングの整合性は「サーバ側 auto-start による別 Section 遷移時の自動切替 + Schedule Command の `max_session_seconds` clamp auto-close」の 2 重保険で担保する。LearningSessionController / LearningSession\StopAction / `POST /learning/sessions/{session}/stop` ルートはすべて持たない。
 
 ### 機能要件 — D2. 教材/演習問題タブ + 前後 Section 遷移 + Switcher 埋込 (v3.5)

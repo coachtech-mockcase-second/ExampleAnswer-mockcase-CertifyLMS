@@ -22,7 +22,6 @@ sequenceDiagram
     participant CSN as CertificateSerialNumberService
     participant PDF as DomPdf
     participant Storage as Storage private
-    participant Notif as NotifyCompletionApprovedAction (notification)
     participant DB
 
     Student->>EC: POST /enrollments/{enrollment}/receive-certificate
@@ -50,8 +49,6 @@ sequenceDiagram
     end
     ICA-->>RCA: Certificate
     RCA->>DB: COMMIT
-    RCA->>Notif: DB::afterCommit → NotifyCompletionApprovedAction($enrollment, $certificate)
-    Notif->>Student: Database + Mail 通知(PDF DL URL 含む)
     RCA-->>EC: Certificate
     EC-->>Student: redirect /enrollments/{id} + flash「修了証を受け取りました」
 ```

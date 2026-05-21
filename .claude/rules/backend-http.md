@@ -136,8 +136,8 @@ class StoreRequest extends FormRequest
 
 ## Route
 
-- `routes/web.php` に画面遷移ルート、`routes/api.php` に **API キー認証エンドポイント**（analytics-export 等、`ApiKeyMiddleware` 経由）
-- **Sanctum SPA / 公開 JSON API は LMS 全体で不採用**（`steering/tech.md` 参照）。Blade + Form POST + Redirect で完結する純 Laravel 標準パターンに統一
+- `routes/web.php` に画面遷移ルート、`routes/api.php` に **Sanctum 認証 JSON API**（`auth:sanctum` 経由、通知 API 等）
+- 通常 CRUD・画面遷移は Blade + Form POST + Redirect の純 Laravel 標準パターンを基本とする。JSON API + JS フロントが必要な機能（通知の動的表示等）のみ `routes/api.php` + Sanctum Cookie 認証で実装
 - リソースルート優先（`Route::resource()`）
 - ミドルウェアでロール分岐: `Route::middleware(['auth', 'role:coach'])->group(...)`
 - ルート名は `{entity}.{action}` 形式（例: `enrollments.index`）
@@ -228,7 +228,7 @@ Route::post('webhooks/stripe', [StripeWebhookController::class, 'handle'])
 ## Resource — 公開API用レスポンス整形
 
 - `app/Http/Resources/{Entity}Resource.php`
-- **API キー認証エンドポイント**（[[analytics-export]] 等）でのみ使う
+- **Sanctum 認証 JSON API エンドポイント**（[[notification]] の通知 API 等）でのみ使う
 - Blade では Model 直接渡しで OK
 - **Web Ajax の JSON 返却は inline 配列**（`response()->json([...])`）で十分、Resource は不要
 - Eager Loading 前提（N+1 注意）

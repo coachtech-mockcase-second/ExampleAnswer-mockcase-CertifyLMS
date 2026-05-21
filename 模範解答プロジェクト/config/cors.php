@@ -21,7 +21,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // Cookie 認証では Access-Control-Allow-Origin: * と Access-Control-Allow-Credentials: true は併存不可。
+    // BE-FE 別オリジン構成では具体的なオリジンを設定する。同一オリジン実装の場合も .env で
+    // CORS_ALLOWED_ORIGINS を上書きできるようにしておく。
+    'allowed_origins' => explode(',', (string) env('CORS_ALLOWED_ORIGINS', 'http://localhost:8000')),
 
     'allowed_origins_patterns' => [],
 
@@ -31,6 +34,7 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    // Cookie 認証で必須。fetch(..., { credentials: 'include' }) のリクエストを受け入れる。
+    'supports_credentials' => true,
 
 ];

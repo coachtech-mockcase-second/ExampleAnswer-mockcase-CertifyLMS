@@ -303,7 +303,7 @@ admin 監査用、横断検索 + 閲覧(`last_read_at` 更新せず)。
 ### Service
 
 - **`ChatMemberSyncService`** — 担当コーチ集合 ↔ ChatMember 集合の整合。`syncForRoom(ChatRoom)`(受講登録時の eager 生成 / 担当コーチ変更時の差分追加に使用、受講生 + 担当コーチ集合を `ChatMember` に upsert)/ `syncForCertification(Certification)`(該当資格の全 ChatRoom に対し `syncForRoom` を反復)。
-- **`ChatUnreadCountService`** — `ChatMember.last_read_at` 基準の **個人別** 未読件数集計。`messageCountInRoom(ChatRoom, User)` / `roomCountForUser(User)`。
+- **`ChatUnreadCountService`** — `ChatMember.last_read_at` 基準の **個人別** 未読件数集計。`messageCountInRoom(ChatRoom, User)` / `messageCountsByRoomForUser(iterable<ChatRoom>, User)`(rooms-pane 表示用、1 集約クエリで N+1 回避)/ `roomCountForUser(User)`。
 
 ### Event / Broadcast
 
@@ -502,6 +502,7 @@ if (window.chatRoomId) {
 | REQ-chat-032 | `App\UseCases\Chat\ShowAction`(**viewer 自身の `ChatMember.last_read_at` のみ UPDATE**、個人別既読) |
 | REQ-chat-040〜045 | `App\Events\ChatMessageSent` + `routes/channels.php` + `resources/js/chat/realtime.js` |
 | REQ-chat-050〜054 | `App\UseCases\Chat\IndexAction` / `IndexAsCoachAction` + Blade |
+| REQ-chat-050.5 | `App\Services\ChatUnreadCountService::messageCountsByRoomForUser` + `chat-room/_partials/rooms-pane.blade.php` バッジ |
 | REQ-chat-060 | `App\Policies\ChatRoomPolicy::view` |
 | REQ-chat-061 | `App\Policies\ChatRoomPolicy::sendMessage`(coaches > 0 検査) |
 | REQ-chat-062 | `App\Policies\ChatRoomPolicy` に `sendMessageForEnrollment` メソッドを **追加しない**(E-3 撤回) |

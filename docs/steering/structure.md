@@ -213,7 +213,7 @@ Seeder 内部を 2 種類に分けて書く:
 | **① ユーザー基盤** | auth | `UserSeeder` — 固定 4 アカウント(admin / coach × 2 / student、全 `password`) + 状態網羅 demo(`invited` × 2 / `in_progress` × 8 / `graduated` × 3 / `withdrawn` × 2) |
 | **② マスタ系**(admin が CRUD) | plan-management / certification-management / certification-category / content-management(Part/Chapter/Section/SectionQuestion) / mock-exam / meeting-quota / qa-board(カテゴリ) | `{Entity}Seeder` — **status 網羅**(published / draft / archived の全 status を最低 1 件ずつ)+ 受講生に紐づけ可能な published × 3 件以上 |
 | **③ 派生・運用系**(マスタ + ユーザーに乗る) | enrollment / learning(LearningSession) / chat / mentoring(Meeting / CoachAvailability) | `{Entity}Seeder` — 状態網羅 + 上流 Seeder が作った demo ユーザーに紐づけ |
-| **④ 集計・読み取り専用系** | dashboard / analytics-export / notification(他 Feature から発火)/ ai-chat | **Seeder 不要**(他 Feature の Seeder で投入されたデータを表示するのみ)|
+| **④ 集計・読み取り専用系** | dashboard / notification(他 Feature から発火)/ ai-chat | **Seeder 不要**(他 Feature の Seeder で投入されたデータを表示するのみ)|
 | **⑤ 自己リソース系**(ユーザー自身の編集) | settings-profile / user-management(改修のみ) | **Seeder 不要**(`UserSeeder` のユーザーで動作確認できる) |
 
 ### 状態網羅の具体パターン

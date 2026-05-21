@@ -135,10 +135,17 @@
                         @else
                             <span></span>
                         @endif
-                        <x-link-button href="{{ route('enrollments.show', $enrollment) }}" variant="ghost" size="sm">
-                            <x-icon name="arrow-right" class="w-4 h-4" />
-                            詳細
-                        </x-link-button>
+                        <div class="flex items-center gap-1.5">
+                            <x-link-button href="{{ route('enrollments.show', $enrollment) }}" variant="ghost" size="sm">
+                                詳細
+                            </x-link-button>
+                            @if ($canBeDefault)
+                                <x-link-button href="{{ route('learning.enrollments.show', $enrollment) }}" variant="primary" size="sm">
+                                    <x-icon name="book-open" class="w-4 h-4" />
+                                    教材へ
+                                </x-link-button>
+                            @endif
+                        </div>
                     </div>
                 </x-card>
             @endforeach

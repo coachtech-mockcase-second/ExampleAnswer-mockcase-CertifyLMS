@@ -169,7 +169,7 @@ $durationSeconds = min(
 
 | 理由 | 詳細 |
 |---|---|
-| **集計クエリの高速化** | `SUM(duration_seconds) GROUP BY user_id` / `GROUP BY enrollment_id` を [[learning]] 学習時間目標ゲージや [[dashboard]] 集計 / [[analytics-export]] GAS で頻繁に実行する。`SUM(TIMESTAMPDIFF(SECOND, started_at, ended_at))` でも可能だが、index 利用と JOIN 計画が複雑化 |
+| **集計クエリの高速化** | `SUM(duration_seconds) GROUP BY user_id` / `GROUP BY enrollment_id` を [[learning]] 学習時間目標ゲージや [[dashboard]] 集計で頻繁に実行する。`SUM(TIMESTAMPDIFF(SECOND, started_at, ended_at))` でも可能だが、index 利用と JOIN 計画が複雑化 |
 | **上限 clamp の物理表現** | `min($diffInSeconds, max_session_seconds)` の clamp 結果を `duration_seconds` に焼き込む。`ended_at - started_at` で都度計算するとアプリ層・クエリ層の両方で clamp を再現する必要があり、不整合リスクあり |
 | **`open` セッション識別** | `duration_seconds IS NULL` で `open`(未終了)を即時判別可能。`ended_at IS NULL` でも同等だが、`SUM(duration_seconds)` 集計時に `WHERE duration_seconds IS NOT NULL` で `open` を除外できる(2 段階チェック不要) |
 
@@ -191,7 +191,7 @@ denormalize による不整合リスク: `learning_sessions.user_id` は INSERT 
 
 ### Schedule Command 自動クローズ
 
-- **`learning:close-stale-sessions`** — 日次 00:30 起動。`learning_sessions WHERE ended_at IS NULL AND started_at < now() - max_session_seconds` を一括取得 → 各 session を `ended_at = started_at + max_session_seconds, duration_seconds = max_session_seconds, auto_closed = true` でクローズ。
+- **`learning:close-stale-sessions`** — 日次起動 (`config('learning.close_stale_schedule', '01:00')`、他バッチと時刻ずらし)。`learning_sessions WHERE ended_at IS NULL AND started_at < now() - max_session_seconds` を一括取得 → 各 session を `ended_at = started_at + max_session_seconds, duration_seconds = max_session_seconds, auto_closed = true` でクローズ。
 - 目的:
   - ブラウザ閉じ / PC スリープ / ネット断 等で「stop ボタンも別 Section auto-start も発火しなかった」ケースの残存 open session 救済。
   - 集計クエリで `open` session が含まれて NULL 集約されるバグの予防。
@@ -228,7 +228,7 @@ denormalize による不整合リスク: `learning_sessions.user_id` は INSERT 
 // config/learning.php
 return [
     'max_session_seconds' => env('LEARNING_MAX_SESSION_SECONDS', 3600), // 1 セッション上限 60 分
-    'close_stale_schedule' => env('LEARNING_CLOSE_STALE_SCHEDULE', '00:30'), // Schedule Command 起動時刻
+    'close_stale_schedule' => env('LEARNING_CLOSE_STALE_SCHEDULE', '01:00'), // Schedule Command 起動時刻(他バッチと時刻ずらし)
 ];
 ```
 
@@ -313,7 +313,7 @@ erDiagram
 - `Learning\ShowPartAction` / `ShowChapterAction` / `ShowSectionAction`
 - `SectionProgress\MarkReadAction` — cascade visibility 検証 + Enrollment 状態検証(`learning + passed` 許容) + UPSERT
 - `SectionProgress\UnmarkReadAction` — SoftDelete
-- `LearningSession\StartAction` — `BrowseController::showSection` から呼ばれる(JS / API エンドポイント経由ではない)。`SessionCloseService::closeOpenSessions` で既存 open を `auto_closed=true` で閉じる + 新規 INSERT、`enrollment.status === failed` で `EnrollmentInactiveException`(v3 で `passed` 許容)
+- `LearningSession\StartAction` — `BrowseController::showSection` から呼ばれる(JS / API エンドポイント経由ではない)。`SessionCloseService::closeOpenSessions` で既存 open を `auto_closed=true` で閉じる + 新規 INSERT。`enrollment.status` 検証は呼出元の `SectionViewPolicy` 側(`learning` / `passed` 許容、`failed` で 403)で完了している前提のため Action 内では再検査しない
 - ~~`LearningSession\StopAction`~~ — **v3.5 で削除**(明示停止ボタン撤回に伴う)
 - `LearningSession\CloseStaleSessionsAction` — Schedule Command `learning:close-stale-sessions` のエントリポイント
 - `LearningHourTarget\ShowAction` / `UpsertAction` / `DestroyAction`
@@ -323,7 +323,7 @@ erDiagram
 `app/Services/`:
 
 - `SessionCloseService` — `closeOpenSessions(User, asAutoClosed: bool)` / `closeOne(LearningSession)` / `closeStaleSessions(): int`
-- `ProgressService` — `summarize(Enrollment): ProgressSummary` / `sectionRatio(Enrollment, ?Part|?Chapter): float` / `batchCalculate(Collection<Enrollment>): array<string, float>`([[analytics-export]] / [[dashboard]] 用)
+- `ProgressService` — `summarize(Enrollment): ProgressSummary` / `sectionRatio(Enrollment, ?Part|?Chapter): float` / `batchCalculate(Collection<Enrollment>): array<string, float>`([[dashboard]] 用)
 - `StreakService` — `calculate(User): StreakSummary`(`DISTINCT DATE` ベース連続日数)
 - `LearningHourTargetService` — `compute(Enrollment): LearningHourTargetSummary`
 
@@ -375,7 +375,7 @@ Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])
 
 ## Schedule Command
 
-- **`learning:close-stale-sessions`** — `app/Console/Commands/Learning/CloseStaleSessionsCommand`、日次 00:30、`learning_sessions WHERE ended_at IS NULL AND started_at < now()-max_session_seconds` を一括クローズ
+- **`learning:close-stale-sessions`** — `app/Console/Commands/Learning/CloseStaleSessionsCommand`、日次起動 (`config('learning.close_stale_schedule', '01:00')`)、`learning_sessions WHERE ended_at IS NULL AND started_at < now()-max_session_seconds` を一括クローズ
 - **明示的に持たない**: `learning:detect-stagnations`(v3 撤回)
 
 ## エラーハンドリング
@@ -383,7 +383,7 @@ Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])
 `app/Exceptions/Learning/`:
 
 - `SectionUnavailableForProgressException`(409、cascade visibility 違反)
-- `EnrollmentInactiveException`(409、`status === failed` のみ、v3 で `passed` は許容に変更)
+- `EnrollmentInactiveException`(409、`SectionProgress\MarkReadAction` で `status === failed` の Enrollment に対する読了マークを拒否。`LearningSession\StartAction` 側は `SectionViewPolicy` の 403 が先に作用するため本例外は throw しない)
 - `LearningHourTargetInvalidException`(422、FormRequest 二重ガード用)
 
 ## 関連要件マッピング

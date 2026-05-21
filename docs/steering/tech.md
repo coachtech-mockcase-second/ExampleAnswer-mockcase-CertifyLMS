@@ -15,7 +15,7 @@
 | フレームワーク | Laravel 10 |
 | DB | MySQL 8.0 |
 | ORM | Eloquent |
-| 認証 | Laravel Fortify（Web セッション）。**Laravel Sanctum SPA 認証 / 自前 FE SPA / `HasApiTokens` Personal Access Token は LMS 全体で不採用**（2026-05-16 確定、Web Blade で完結する純 Laravel パターンを徹底）。外部 API（[[analytics-export]]）は **共通 API キー方式**（`X-API-KEY` ヘッダ + `.env` 管理、独自 `ApiKeyMiddleware`、Sanctum 不経由のシンプル構成）|
+| 認証 | Laravel Fortify（Web セッション）+ **Laravel Sanctum SPA Cookie 認証**（`Sanctum::stateful()` で Web セッション cookie を流用、`auth:sanctum` ミドルウェアで保護された JSON API + JS フロントで利用、[[notification]] の通知 API 等）。`HasApiTokens` trait / Personal Access Token は採用しない（SPA Cookie 認証のみ）|
 | **FE** | **Blade + Tailwind CSS + 素のJavaScript**（Vite ビルド）。**Alpine.js / Livewire は不採用** |
 | ビルド | Vite（Laravel 10 標準）。`resources/js/` `resources/css/` を `sail npm run dev` / `sail npm run build` でバンドル |
 | **PDF生成** | `barryvdh/laravel-dompdf`（修了証 PDF 出力、Blade テンプレート + dompdf による同期生成、Basic 範囲）|
@@ -40,9 +40,9 @@
 | 動的フィルタ（一覧の絞込等） | 素のJS + fetch（必要時、ただし基本は GET パラメータでサーバ再描画を優先）|
 | リアルタイムチャット（[[chat]] Advance）| Pusher / Echo.js（Laravel Broadcasting）|
 | Google Calendar OAuth（[[mentoring]] Advance）| Laravel Socialite + Google OAuth |
-| 外部データエクスポート API（[[analytics-export]] Advance）| GAS から `X-API-KEY` ヘッダで叩く（独自 `ApiKeyMiddleware` + `.env` 共通キー、Sanctum 不経由）|
+| 通知 JSON API + JS フロント動的表示（[[notification]] Advance）| `routes/api.php` + `auth:sanctum` ミドルウェア + `Sanctum::stateful()` + JS `fetch`（`credentials: 'include'`）+ `/sanctum/csrf-cookie` 取得 |
 
-> **Sanctum SPA / 自前 FE SPA は不採用**(2026-05-16 確定): 当初 [[quiz-answering]] で Sanctum SPA を Advance スコープとして検討したが、ドメイン的動機がなく Blade + Form POST + Redirect で十分実装可能なため撤回。LMS 全体で Cookie ベース Sanctum SPA / `HasApiTokens` / 自前 FE SPA を持たない。Pro 生レベルの公開 API / 認証パターン学習は [[analytics-export]] の API キー方式 / [[mentoring]] の OAuth / [[chat]] の Broadcasting で養成する。
+> **Sanctum SPA Cookie 認証 + JS フロント**: [[notification]] の Advance で「BE-FE 別オリジン構成への参画練習」目的として `Sanctum::stateful()` を採用し、既存通知ベルのポップオーバー UI を Sanctum Cookie 認証で動かす。実装は同一オリジンで模擬する（要件シートで意図を明記）。`HasApiTokens` / Personal Access Token は採用せず、SPA Cookie 認証のみ。Pro 生レベルの認証 + FE パターン学習は [[notification]] の Sanctum + JS / [[mentoring]] の OAuth / [[chat]] の Broadcasting で養成。
 
 採用しないもの:
 - **Alpine.js** — 受講生に教材経験なし、Advance で純粋JSを学ぶので役割が重複
@@ -136,7 +136,7 @@ alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'
 | ロール制御 | Middleware `EnsureUserRole`（ロール存在確認のみ）+ Policy（リソース固有認可）|
 | 設定値 | `.env` で管理。コード内ハードコーディング禁止 |
 | Basic API | フロント連携対象は Blade版 + JSON API版の二本立て（認証は Fortify セッション + CSRF）|
-| 外部 API | [[analytics-export]] は共通 API キー方式（`ApiKeyMiddleware` + `.env`、Action / Service / Policy / Sanctum なしのシンプル構成、Controller + Resource + IndexRequest のみ）。**Sanctum SPA 認証 / Personal Access Token / 個人トークン管理 UI / `HasApiTokens` trait は LMS 全体で不採用**（2026-05-16 確定、[[quiz-answering]] の Advance SPA 案は撤回） |
+| JSON API | [[notification]] の通知 API は `routes/api.php` + `auth:sanctum` ミドルウェア + Sanctum SPA Cookie 認証で実装（Controller + Resource + FormRequest + UseCase 構成）。`HasApiTokens` trait / Personal Access Token は採用しない（SPA Cookie 認証のみ）|
 | 例外 | ドメイン例外は `app/Exceptions/{Domain}/` に配置（例: `app/Exceptions/Enrollment/EnrollmentNotFoundException.php`）|
 
 ## テスト方針

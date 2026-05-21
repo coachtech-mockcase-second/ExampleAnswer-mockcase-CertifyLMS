@@ -63,6 +63,35 @@ class ShowTest extends TestCase
         $this->actingAs($stranger)->get(route('chat.show', $room))->assertForbidden();
     }
 
+    public function test_rooms_pane_renders_unread_badge_for_room_with_unread_messages(): void
+    {
+        $student = User::factory()->student()->inProgress()->create();
+        $coach = User::factory()->coach()->inProgress()->create();
+
+        $enrollmentCurrent = Enrollment::factory()->for($student)->create();
+        $roomCurrent = ChatRoom::factory()->for($enrollmentCurrent)->create();
+        ChatMember::factory()->create([
+            'chat_room_id' => $roomCurrent->id,
+            'user_id' => $student->id,
+            'last_read_at' => null,
+        ]);
+
+        $enrollmentOther = Enrollment::factory()->for($student)->create();
+        $roomOther = ChatRoom::factory()->for($enrollmentOther)->create();
+        ChatMember::factory()->create([
+            'chat_room_id' => $roomOther->id,
+            'user_id' => $student->id,
+            'last_read_at' => null,
+        ]);
+        ChatMessage::factory()->create(['chat_room_id' => $roomOther->id, 'sender_user_id' => $coach->id]);
+        ChatMessage::factory()->create(['chat_room_id' => $roomOther->id, 'sender_user_id' => $coach->id]);
+
+        $response = $this->actingAs($student)->get(route('chat.show', $roomCurrent));
+
+        $response->assertOk();
+        $response->assertSee('aria-label="未読 2 件"', false);
+    }
+
     public function test_admin_can_view_via_admin_route_without_updating_last_read_at(): void
     {
         $student = User::factory()->student()->inProgress()->create();

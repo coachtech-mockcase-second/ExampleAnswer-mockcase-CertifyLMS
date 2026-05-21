@@ -1,7 +1,7 @@
 # notification タスクリスト
 
 > 1 タスク = 1 コミット粒度。Step 単位で順次実装し、完了したものから `[x]` に更新する。
-> **v3 改修反映**: `CompletionApprovedNotification` 発火元変更 / `MeetingRequested/Approved/Rejected` 撤回 / `MeetingReserved` 新規(コーチ宛のみ) / chat 双方向通知 / `StagnationReminder` 撤回 / `PlanExpireSoon` 撤回。
+> **v3 改修反映**: `MeetingRequested/Approved/Rejected` 撤回 / `MeetingReserved` 新規(コーチ宛のみ) / chat 双方向通知 / `StagnationReminder` 撤回 / `PlanExpireSoon` 撤回。
 > **2026-05-18 UX 改修**: 通知ベルクリック時の UI を ドロップダウン → 通知ポップオーバー(ベル横アンカー Popover、Stripe / Jira 風) に変更。`Notification\DropdownAction` → `PopoverAction`、`_partials/dropdown.blade.php` → `_partials/notification-popover.blade.php`、ルート `notifications.dropdown` → `notifications.popover`、テストは `DropdownTest` → `PopoverTest`、`realtime.js` はポップオーバー open 時 DOM prepend に拡張。
 > 関連要件 ID は `requirements.md` の `REQ-notification-NNN` / `NFR-notification-NNN` を参照。
 > コマンドはすべて `sail` プレフィックス。
@@ -25,7 +25,6 @@
 
 - [x] `App\Notifications\Chat\ChatMessageReceivedNotification`(コンストラクタ `ChatMessage $message, bool $mailEnabled = true`、**v3 で `$mailEnabled` 追加**(コーチ間は false))(REQ-notification-030)
 - [x] `App\Notifications\QaBoard\QaReplyReceivedNotification`(REQ-notification-040)
-- [x] **`App\Notifications\Enrollment\CompletionApprovedNotification`(v3 で発火元変更)** — コンストラクタ `Enrollment $enrollment, Certificate $certificate`、Mail 本文に `route('certificates.download', $certificate)` 含む(REQ-notification-060)
 - [x] **`App\Notifications\Mentoring\MeetingReservedNotification`(v3 新規、コーチ宛のみ)** — コンストラクタ `Meeting $meeting`、Mail 本文に `scheduled_at` + 受講生名 + `topic` + `meeting_url_snapshot`(REQ-notification-070)
 - [x] `App\Notifications\Mentoring\MeetingCanceledNotification`(コンストラクタ `Meeting $meeting, User $actor`、actor で文面分岐)(REQ-notification-071)
 - [x] `App\Notifications\Mentoring\MeetingReminderNotification`(コンストラクタ `Meeting $meeting, MeetingReminderWindow $window`)(REQ-notification-072)
@@ -33,6 +32,7 @@
 
 ### 明示的に持たない Notification クラス(v3 撤回)
 
+- `CompletionApprovedNotification`(受講生の自己操作で完結、遷移先画面の PDF DL リンクで通知冗長)
 - `MeetingRequestedNotification` / `MeetingApprovedNotification` / `MeetingRejectedNotification`(mentoring 自動割当によりフロー撤回)
 - `PlanExpireSoonNotification`(MVP 外)
 - `StagnationReminderNotification`(滞留検知 v3 撤回)
@@ -60,7 +60,6 @@
 
 - [x] **`NotifyChatMessageReceivedAction`(v3 で双方向化)** — sender role で相手方解決、受講生→全コーチ DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ **Database のみ**、担当コーチ未割当 skip、`graduated/withdrawn` skip(REQ-notification-030〜033)
 - [x] `NotifyQaReplyReceivedAction`(自己回答 skip)(REQ-notification-040)
-- [x] **`NotifyCompletionApprovedAction`(v3 で発火元変更)** — 受講生通知、シグネチャ `__invoke(Enrollment, Certificate)`、**[[enrollment]] の `ReceiveCertificateAction` から呼ばれる**(旧 `ApproveCompletionAction` ではない)(REQ-notification-060)
 - [x] **`NotifyMeetingReservedAction`(v3 新規)** — コーチ宛のみ dispatch、受講生宛は発火しない(REQ-notification-070)
 - [x] `NotifyMeetingCanceledAction`(actor で相手方解決)(REQ-notification-071)
 - [x] `NotifyMeetingReminderAction`(`(meeting_id, window)` 重複排除 + 受講生 + コーチ両方通知)(REQ-notification-072, NFR-notification-007)
@@ -68,6 +67,7 @@
 
 ### 明示的に持たないラッパー Action(v3 撤回)
 
+- `NotifyCompletionApprovedAction`(受講生の自己操作で完結、遷移先画面の PDF DL リンクで通知冗長)
 - `NotifyMeetingRequestedAction` / `NotifyMeetingApprovedAction` / `NotifyMeetingRejectedAction`(mentoring 申請承認フロー撤回)
 - `NotifyStagnationReminderAction` / `NotifyPlanExpireSoonAction`
 
@@ -122,7 +122,6 @@
 
 - [x] [[chat]] `App\UseCases\Chat\StoreMessageAction` の `DB::afterCommit` 内に `NotifyChatMessageReceivedAction` を DI 経由で呼出 (sender role 判定は Notify*Action 側で実施、双方向通知)
 - [x] [[qa-board]] `App\UseCases\QaReply\StoreAction` に `NotifyQaReplyReceivedAction` を DI 経由で組込
-- [x] **[[enrollment]] `App\UseCases\Enrollment\ReceiveCertificateAction`(v3 新規)** に `NotifyCompletionApprovedAction` を DI、`DB::afterCommit` 内で `($this->notify)($enrollment, $certificate)` を呼出
 - [x] **[[mentoring]] `App\UseCases\Meeting\StoreAction`** に `NotifyMeetingReservedAction` を DI、`DB::afterCommit` 内で `($this->notify)($meeting)` を呼出(**コーチ宛のみ**)
 - [x] [[mentoring]] `App\UseCases\Meeting\CancelAction` 内に `NotifyMeetingCanceledAction` を DI 経由で組込
 
@@ -153,7 +152,6 @@
 
 - [x] **`NotifyChatMessageReceivedActionTest`(v3)** — 受講生→コーチ全員 DB+Mail / コーチ→受講生 DB+Mail / コーチ→他コーチ DB only / withdrawn recipient skip
 - [x] `NotifyQaReplyReceivedActionTest`(既存、自己回答 skip / withdrawn skip)
-- [x] **`NotifyCompletionApprovedActionTest`(v3 発火元変更)** — Mail 内修了証番号含有 / withdrawn skip
 - [x] **`NotifyMeetingReservedActionTest` 相当** — 既存 `tests/Feature/UseCases/Meeting/StoreActionTest.php` でカバー(Meeting StoreAction 経由)
 - [x] `NotifyMeetingCanceledActionTest` 相当 — 既存 `tests/Feature/UseCases/Meeting/CancelActionTest.php` でカバー
 - [x] `NotifyMeetingReminderActionTest`(eve / one_hour_before / 重複排除)
@@ -161,6 +159,7 @@
 
 ### 明示的に持たないテスト(v3 撤回)
 
+- `NotifyCompletionApprovedActionTest`
 - `NotifyMeetingRequestedActionTest` / `NotifyMeetingApprovedActionTest` / `NotifyMeetingRejectedActionTest`
 - `NotifyStagnationReminderActionTest`
 
@@ -198,7 +197,7 @@
 - [ ] `sail artisan migrate:fresh --seed` + ブラウザシナリオ:
   - [ ] 受講生で chat 送信 → コーチ全員に DB + Mail 通知(Mailpit 確認)
   - [ ] コーチで chat 返信 → 受講生に DB + Mail、他コーチに **DB only** (Mailpit に他コーチ向けメールが届かないこと)
-  - [ ] 受講生で **「修了証を受け取る」**(v3 自己発火) → 自分自身に DB + Mail(PDF DL URL 含む)、admin 宛通知 **0 件**
+  - [ ] 受講生で **「修了証を受け取る」**(v3 自己発火) → 通知は発火しない(画面遷移先で PDF DL リンクを提示するため、通知は冗長)
   - [ ] 受講生で面談予約 → **コーチ宛のみ**に DB + Mail、受講生宛は **0 件**(予約 UI で即時確認のため)
   - [ ] 受講生で面談キャンセル → コーチに DB + Mail
   - [ ] コーチで面談キャンセル → 受講生に DB + Mail

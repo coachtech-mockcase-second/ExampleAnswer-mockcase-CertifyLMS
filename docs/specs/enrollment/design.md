@@ -60,7 +60,7 @@ INDEX (enrollment_id, changed_at)
 
 > **設計判断**(2026-05-16): 認可は Controller の `$this->authorize('receiveCertificate', $enrollment)` で `EnrollmentPolicy::receiveCertificate` 経由に集約(本人検証 + status == Learning は Policy 側で判定)。Action 内では `auth()->id()` を参照せず、**データ整合性チェック**(`CompletionEligibilityService` の合格判定)のみ実施。依存 Service / Action はすべて **constructor injection** で受ける(`app()` ヘルパは Service Locator アンチパターンのため不採用、`backend-usecases.md` 規約準拠)。
 >
-> **設計判断**(2026-05-18): 修了通知 (Database / Mail) は送らない。受講生がボタンを押した直後のリダイレクト先画面に PDF DL リンクが表示されるため、通知は冗長。`NotifyCompletionApprovedAction` への dispatch は削除する。
+> **設計判断**: 修了通知 (Database / Mail) は送らない。受講生がボタンを押した直後のリダイレクト先画面に PDF DL リンクが表示されるため、通知は冗長。
 
 ```php
 namespace App\UseCases\Enrollment;

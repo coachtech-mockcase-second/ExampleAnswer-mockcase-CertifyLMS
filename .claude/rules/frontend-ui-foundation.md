@@ -130,9 +130,9 @@ paths:
 │ 担当受講生  [user-group]        │ → coach.students.index
 ├─────────────────────────────────┤
 │ コンテンツ                      │
-│ 教材管理     [book-open]        │ → admin.certifications.index
-│   ※ admin 共有 URL              │
-│ 模試マスタ [clipboard-document-check] │ → admin.mock-exams.index
+│ 資格マスタ管理 [academic-cap]   │ → admin.certifications.index
+│   ※ admin 共有 URL (coach は担当資格のみ Policy + scope で絞込) │
+│ 模試マスタ管理 [clipboard-document-check] │ → admin.mock-exams.index
 ├─────────────────────────────────┤
 │ 対応                            │
 │ chat 対応 [chat-bubble-left-right] (N) │ → coach.chat.index
@@ -155,7 +155,7 @@ paths:
 │ 資格カタログ [magnifying-glass]                    │ → certifications.index
 │ 受講中資格 [clipboard-document-list]               │ → enrollments.index
 │ 教材          [book-open]                          │ → contents.index
-│ 模試 [clipboard-document-check] (N)                │ → mock-exams.index
+│ 模試 [clipboard-document-check]                    │ → mock-exams.index
 ├─────────────────────────────────┤
 │ 相談                            │
 │ chat (コーチへ) [chat-bubble-left-right] (N) │ → chat.index

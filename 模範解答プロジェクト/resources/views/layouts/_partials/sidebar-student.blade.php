@@ -6,7 +6,7 @@
         <x-nav.item route="certifications.index" icon="magnifying-glass" label="資格カタログ" />
         <x-nav.item route="enrollments.index" icon="clipboard-document-list" label="受講中資格" />
         <x-nav.item route="learning.index" icon="book-open" label="教材・演習" />
-        <x-nav.item route="mock-exam.fallback.index" icon="clipboard-document-check" label="模試" :badge="$sidebarBadges['unfinishedMockExams'] ?? 0" />
+        <x-nav.item route="mock-exam.fallback.index" icon="clipboard-document-check" label="模試" />
 
         <x-nav.section title="相談" :routes="['chat.index', 'qa-board.index', 'ai-chat.index', 'meetings.index', 'meetings.fallback.create', 'meetings.create', 'meetings.show']" />
         <x-nav.item route="chat.index" icon="chat-bubble-left-right" label="chat" :badge="$sidebarBadges['unattendedChat'] ?? 0" />

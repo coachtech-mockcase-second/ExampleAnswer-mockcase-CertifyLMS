@@ -3,6 +3,7 @@
     'currentRoom',
     'coachFilters' => null,
     'adminFilters' => null,
+    'navRoomUnreadCounts' => [],
 ])
 
 @php
@@ -69,6 +70,7 @@
                 $previewBody = $latest?->body
                     ? \Illuminate\Support\Str::limit($latest->body, 38)
                     : null;
+                $unreadCount = $navRoomUnreadCounts[$r->id] ?? 0;
             @endphp
             <a
                 href="{{ route($linkRouteName, array_merge(['room' => $r], $linkQuery)) }}"
@@ -79,17 +81,24 @@
                 <div class="min-w-0">
                     <div class="flex items-baseline justify-between gap-2">
                         <span class="text-sm font-semibold text-ink-900 truncate">{{ $certName }}</span>
-                        @if ($r->last_message_at)
-                            <span class="text-[11px] text-ink-500 font-mono shrink-0">
-                                {{ $r->last_message_at->diffForHumans(syntax: \Carbon\CarbonInterface::DIFF_ABSOLUTE, short: true) }}
-                            </span>
-                        @endif
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            @if ($unreadCount > 0)
+                                <x-badge variant="danger" size="sm" aria-label="未読 {{ $unreadCount }} 件">
+                                    {{ $unreadCount > 99 ? '99+' : $unreadCount }}
+                                </x-badge>
+                            @endif
+                            @if ($r->last_message_at)
+                                <span class="text-[11px] text-ink-500 font-mono">
+                                    {{ $r->last_message_at->diffForHumans(syntax: \Carbon\CarbonInterface::DIFF_ABSOLUTE, short: true) }}
+                                </span>
+                            @endif
+                        </div>
                     </div>
                     <div class="text-[11px] text-ink-500 truncate {{ $viewerIsStudent && $coaches->isEmpty() ? 'text-warning-700 font-semibold' : '' }}">
                         {{ $secondary }}
                     </div>
                     @if ($previewBody !== null)
-                        <p class="text-xs text-ink-600 mt-1 truncate">{{ $previewBody }}</p>
+                        <p class="text-xs text-ink-600 mt-1 truncate {{ $unreadCount > 0 ? 'font-semibold text-ink-900' : '' }}">{{ $previewBody }}</p>
                     @else
                         <p class="text-xs text-ink-400 italic mt-1">まだメッセージなし</p>
                     @endif

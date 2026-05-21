@@ -1,6 +1,6 @@
 # notification 要件定義
 
-> **v3 改修反映**（2026-05-16）: `CompletionApproved` 通知の発火元を admin 承認 → 受講生 `ReceiveCertificateAction` に変更、`MeetingApproved` / `MeetingRejected` / `MeetingRequested` 通知撤回（自動割当のため）、`MeetingReserved` 通知をコーチ宛のみに変更、`PlanExpireSoon` 通知撤回（MVP 外）、`StagnationReminder` 通知撤回（滞留検知 v3 撤回）、chat 通知の双方向化（コーチ→受講生 + 受講生→コーチ全員）+ コーチ間は Database のみ。
+> **v3 改修反映**（2026-05-16）: `MeetingApproved` / `MeetingRejected` / `MeetingRequested` 通知撤回（自動割当のため）、`MeetingReserved` 通知をコーチ宛のみに変更、`PlanExpireSoon` 通知撤回（MVP 外）、`StagnationReminder` 通知撤回（滞留検知 v3 撤回）、chat 通知の双方向化（コーチ→受講生 + 受講生→コーチ全員）+ コーチ間は Database のみ。
 >
 > **2026-05-18 UX 改修**: TopBar ベルクリック時の UI を「ドロップダウン（最近 5 件）」→ **「通知ポップオーバー（ベル横アンカー、最新 20 件 + 全件/未読タブ + バルク既読）」** に変更（Stripe / Jira / GitHub 等の業界標準パターン準拠）。`/notifications` フルページは併存（サイドバー「通知」ナビ / ポップオーバー フッターリンクから到達、URL アドレッサブル / 深掘り用）。
 
@@ -16,7 +16,6 @@
 |---|---|---|---|
 | 1 | `ChatMessageReceivedNotification` | 受講生 → コーチ全員（DB+Mail）、コーチ → 受講生（DB+Mail）、コーチ間 Database のみ | [[chat]] `StoreMessageAction` |
 | 2 | `QaReplyReceivedNotification` | スレッド投稿者（受講生） | [[qa-board]] `QaReply\StoreAction` |
-| 4 | `CompletionApprovedNotification` | 受講生本人 | [[enrollment]] `ReceiveCertificateAction`（受講生自己発火） |
 | 5 | `MeetingReservedNotification` | **担当コーチ宛のみ**（受講生宛は予約 UI で即時確認のため不要） | [[mentoring]] `Meeting\StoreAction` |
 | 6 | `MeetingCanceledNotification` | 相手方（受講生がキャンセルしたらコーチ、コーチがキャンセルしたら受講生） | [[mentoring]] `Meeting\CancelAction` |
 | 7 | `MeetingReminderNotification` | 受講生 + コーチ両方 | 本 Feature の `SendMeetingRemindersCommand`（前日 18:00 + 1h 前の 2 回） |
@@ -24,13 +23,14 @@
 
 **撤回された通知**:
 - `MockExamGradedNotification` / `NotifyMockExamGradedAction`（[[mock-exam]] 側で提出後の Controller redirect で結果画面に遷移するため、通知不要と判断）
+- `CompletionApprovedNotification` / `NotifyCompletionApprovedAction`（受講生の自己操作で完結、遷移先画面の PDF DL リンクで通知冗長）
 - `MeetingApprovedNotification` / `MeetingRejectedNotification` / `MeetingRequestedNotification`（mentoring 申請承認フロー撤回）
 - `PlanExpireSoonNotification`（MVP 外）
 - `StagnationReminderNotification`（滞留検知 v3 撤回）
 
 ## ロールごとのストーリー
 
-- **受講生（student）**: ログイン後 TopBar 通知ベルで未読件数を確認し、`/notifications` で時系列に通知を読む。受信種別は #1（コーチからの chat 新着）/ #2 / #4 / #6 / #7 / #8。
+- **受講生（student）**: ログイン後 TopBar 通知ベルで未読件数を確認し、`/notifications` で時系列に通知を読む。受信種別は #1（コーチからの chat 新着）/ #2 / #6 / #7 / #8。
 - **コーチ（coach）**: 通知種別 #1（受講生からの chat 新着 + 他コーチ間 DB のみ）/ #5（自動割当された面談予約）/ #6（受講生による面談キャンセル）/ #7 を受信。
 - **管理者（admin）**: 通知の **配信元** + 管理者お知らせ配信 UI 操作。**自分宛の通知は受信しない**。
 
@@ -69,12 +69,6 @@
 - **REQ-notification-042**: The system shall Q&A 通知を Database + Mail channel の両方で発行する。
 - **REQ-notification-043**: The system shall data に `qa_thread_id` / `qa_reply_id` / `replier_user_id` / `replier_name` / `thread_title` / `body_preview` / `link_route='qa-board.show'` を格納する。
 
-### 機能要件 — 修了証発行通知（自己発火型に変更）
-
-- **REQ-notification-060**: The system shall `App\UseCases\Notification\NotifyCompletionApprovedAction` を提供し、`__invoke(Enrollment $enrollment, Certificate $certificate)` シグネチャで **受講生本人** への通知を発火する。
-- **REQ-notification-061**: **発火元は [[enrollment]] の `ReceiveCertificateAction`**（受講生「修了証を受け取る」ボタン押下時、admin 承認フローではない）。Mail 本文に修了証 PDF DL URL（`route('certificates.download', $certificate)`）を含める。
-- **REQ-notification-062**: The system shall data に `enrollment_id` / `certification_id` / `certification_name` / `certificate_id` / `certificate_serial_no` / `passed_at` / `link_route='certificates.show'` を格納する。
-
 ### 機能要件 — mentoring 通知（撤回・変更）
 
 - **REQ-notification-070**: The system shall `App\UseCases\Notification\NotifyMeetingReservedAction` を提供し、`__invoke(Meeting $meeting)` で **担当コーチ宛のみ** に通知を発火する（受講生宛は予約 UI で即時確認のため不要）。Mail 本文には `Meeting.scheduled_at` / 受講生名 / `topic` / `meeting_url_snapshot` を含める。
@@ -110,7 +104,7 @@
 - **REQ-notification-102**: When 未読件数 > 99 の場合, the system shall `99+` に固定する。
 - **REQ-notification-103**: The system shall TopBar 通知ベルクリック時に **通知ポップオーバー（ベル横アンカー、Stripe / Jira / GitHub 風のドロップダウン Popover）** を開閉する。ポップオーバーには以下を表示する: (1) ヘッダ: 「全件」/「未読」の 2 タブ + 「全件既読」ボタン、(2) ボディ: 最新 20 件の通知行（種別アイコン + タイトル + プレビュー + 経過時間 + 未読ドット）、(3) フッター: 「すべての通知を見る →」リンク（→ `route('notifications.index')`）。ポップオーバーは ESC キー / 外側クリック / フッターリンク遷移で close する。行クリック時は REQ-notification-093 に従い既読化 + `data.link_route` への遷移を実行し、遷移前にポップオーバーを close する。
 - **REQ-notification-104**: The system shall 通知ポップオーバーをベルアイコンの右下にアンカーし、固定幅 380-420px（デスクトップ・モバイル共通）+ 画面端から最小 8px の余白を確保する。コンテンツは `max-height: 70vh` で内部スクロール、`shadow-lg` / `rounded-lg` / `border` で浮遊感を付与する。
-- **REQ-notification-105**: The system shall 通知ポップオーバー内容取得用に `GET /notifications/popover?tab={all|unread}` エンドポイント（route 名 `notifications.popover`）を提供し、最新 20 件 + 未読件数を返す。
+- **REQ-notification-105**: The system shall 通知ポップオーバー内容取得用に `GET /api/v1/notifications?tab={all|unread}&per_page=20` エンドポイント（route 名 `api.v1.notifications.index`、`auth:sanctum` ミドルウェアで保護される Sanctum SPA Cookie 認証）を提供し、最新 20 件 + 未読件数（meta 情報）を返す。JS フロントは `/sanctum/csrf-cookie` を初回取得後、`fetch(..., { credentials: 'include' })` で叩く。
 - **REQ-notification-106**: When Pusher broadcast を受信した場合, the system shall TopBar / サイドバーバッジを +1 更新し、通知ポップオーバーが open 状態であれば先頭に新規行を prepend する（リロード不要）。
 
 ### 機能要件 — 認可・スコープ
@@ -152,9 +146,7 @@
 - **依存元**:
   - [[chat]] — `StoreMessageAction` から `NotifyChatMessageReceivedAction` を呼ぶ
   - [[qa-board]] — `QaReply\StoreAction` から `NotifyQaReplyReceivedAction` を呼ぶ
-  - [[enrollment]] — `ReceiveCertificateAction` の `DB::afterCommit` から `NotifyCompletionApprovedAction` を呼ぶ
   - [[mentoring]] — `Meeting\StoreAction` / `Meeting\CancelAction` + Schedule Command `meetings:remind` / `meetings:remind-eve` から `NotifyMeeting*Action` を呼ぶ
   - [[dashboard]] — TopBar 通知ベル / サイドバー通知バッジを `NotificationBadgeComposer` から取得
 - **依存先**:
   - [[auth]] — `User` Model
-  - [[certification-management]] — `Certificate` Model（修了承認通知の DL URL 用）

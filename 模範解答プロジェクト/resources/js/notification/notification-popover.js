@@ -1,31 +1,13 @@
-/**
- * 通知ポップオーバー: TopBar ベルクリックで開閉する Stripe/Jira/GitHub 風のドロップダウン Popover。
- *
- * 仕様:
- * - ベルクリックで toggle / ESC / 外側クリック / フッターリンク遷移で close
- * - タブ切替 (全件 / 未読) で `GET /notifications/popover?tab=...` を fetch して内容を差し替える
- * - 行クリックで該当 `POST /notifications/{id}/read` を発火 → close → `link_route` に遷移
- * - Pusher broadcast 受信時に open であれば先頭に prepend、close であればバッジのみ更新 (realtime.js から bumpBadge を呼ぶ)
- *
- * DOM 契約:
- * - root: `[data-notification-popover-root]` (ベルとパネルを包む position:relative の親)
- * - trigger: `[data-notification-popover-trigger]` (ベルボタン)
- * - panel: `[data-notification-popover-panel]` (ポップオーバー本体)
- * - badge: `[data-notification-popover-badge]` (TopBar ベル横の未読件数)
- * - tabs: `[data-notification-popover-tab="all|unread"]`
- * - list / items: `[data-notification-popover-list]` / `[data-notification-popover-items]`
- * - row template: `<template data-notification-popover-row-template>`
- */
-
 import { getJson, postJson } from '../utils/fetch-json';
 
 const TRANSITION_MS = 150;
-const POPOVER_URL = '/notifications/popover';
+const NOTIFICATIONS_URL = '/api/v1/notifications';
+const CSRF_COOKIE_URL = '/sanctum/csrf-cookie';
+const PER_PAGE = 20;
 
 let rootEl = null;
 let triggerEl = null;
 let panelEl = null;
-let listEl = null;
 let itemsEl = null;
 let templateEl = null;
 let loadingEl = null;
@@ -35,6 +17,7 @@ let badgeEl = null;
 let currentTab = 'all';
 let isOpen = false;
 let isLoading = false;
+let csrfCookieFetched = false;
 
 export function initNotificationPopover() {
     rootEl = document.querySelector('[data-notification-popover-root]');
@@ -44,7 +27,6 @@ export function initNotificationPopover() {
 
     triggerEl = rootEl.querySelector('[data-notification-popover-trigger]');
     panelEl = rootEl.querySelector('[data-notification-popover-panel]');
-    listEl = rootEl.querySelector('[data-notification-popover-list]');
     itemsEl = rootEl.querySelector('[data-notification-popover-items]');
     templateEl = rootEl.querySelector('[data-notification-popover-row-template]');
     loadingEl = rootEl.querySelector('[data-notification-popover-loading]');
@@ -69,25 +51,22 @@ export function initNotificationPopover() {
         });
     });
 
-    // 「全件既読」ボタン: form submit を hijack して fetch + UI 更新
-    const markAllForm = rootEl.querySelector('[data-notification-popover-mark-all]');
-    markAllForm?.addEventListener('submit', async (event) => {
+    const markAllBtn = rootEl.querySelector('[data-notification-popover-mark-all]');
+    markAllBtn?.addEventListener('click', async (event) => {
         event.preventDefault();
         try {
-            await postJson(markAllForm.action, {});
+            await ensureCsrfCookie();
+            await postJson(`${NOTIFICATIONS_URL}/read-all`, {}, { credentials: 'include' });
             setUnreadCount(0);
             await refresh();
         } catch (error) {
             console.error('Failed to mark all as read', error);
-            markAllForm.submit();
         }
     });
 
-    // フッターリンク: 遷移前に close
     const footerLink = rootEl.querySelector('[data-notification-popover-footer-link]');
     footerLink?.addEventListener('click', () => close());
 
-    // 外側クリックで close
     document.addEventListener('click', (event) => {
         if (!isOpen) return;
         if (event.target instanceof Node && rootEl.contains(event.target)) {
@@ -102,6 +81,13 @@ export function initNotificationPopover() {
             triggerEl?.focus();
         }
     });
+}
+
+// Sanctum SPA Cookie 認証: 初回呼出時に XSRF-TOKEN cookie をセットする
+async function ensureCsrfCookie() {
+    if (csrfCookieFetched) return;
+    await fetch(CSRF_COOKIE_URL, { credentials: 'include' });
+    csrfCookieFetched = true;
 }
 
 function toggle() {
@@ -119,7 +105,6 @@ async function open() {
     panelEl.style.display = 'flex';
     triggerEl?.setAttribute('aria-expanded', 'true');
 
-    // 1 フレーム後にアニメーション用のクラスを切替
     requestAnimationFrame(() => {
         panelEl.classList.remove('opacity-0', '-translate-y-1');
         panelEl.classList.add('opacity-100', 'translate-y-0');
@@ -165,10 +150,17 @@ async function refresh() {
 
     setLoading(true);
     try {
-        const url = `${POPOVER_URL}?tab=${encodeURIComponent(currentTab)}`;
-        const payload = await getJson(url);
-        renderItems(payload?.items ?? []);
-        setUnreadCount(payload?.unread_count ?? 0);
+        await ensureCsrfCookie();
+        const url = `${NOTIFICATIONS_URL}?tab=${encodeURIComponent(currentTab)}&per_page=${PER_PAGE}`;
+        const payload = await getJson(url, { credentials: 'include' });
+        const items = Array.isArray(payload?.data) ? payload.data : [];
+        renderItems(items);
+        if (currentTab === 'unread') {
+            setUnreadCount(payload?.meta?.total ?? items.length);
+        } else if (unreadCountEl !== null) {
+            const unreadFromList = items.filter((item) => item.read_at === null).length;
+            unreadCountEl.textContent = String(unreadFromList);
+        }
     } catch (error) {
         console.error('Failed to fetch notifications', error);
         renderItems([]);
@@ -226,15 +218,30 @@ function applyItem(node, item) {
         message.textContent = item.message ?? '';
     }
     if (time !== null) {
-        time.textContent = item.created_at_relative ?? '';
+        time.textContent = formatRelativeTime(item.created_at);
     }
+}
+
+function formatRelativeTime(iso) {
+    if (typeof iso !== 'string') return '';
+    const date = new Date(iso);
+    const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (diffSec < 60) return 'たった今';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} 分前`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour} 時間前`;
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 7) return `${diffDay} 日前`;
+    return date.toLocaleDateString('ja-JP');
 }
 
 async function handleRowClick(event, item) {
     event.preventDefault();
 
     try {
-        await postJson(`/notifications/${item.id}/read`, {});
+        await ensureCsrfCookie();
+        await postJson(`${NOTIFICATIONS_URL}/${item.id}/read`, {}, { credentials: 'include' });
         bumpBadge(-1);
     } catch (error) {
         console.error('Failed to mark notification read', error);
@@ -254,8 +261,6 @@ function resolveTargetUrl(item) {
     if (typeof item.link_route !== 'string' || item.link_route === '') {
         return null;
     }
-    // route_route + link_params から URL を作る簡易解決 (バックエンドが routes.json を吐かないため、
-    // 主要遷移先のみ列挙 + フォールバックは /notifications にする)
     const params = item.link_params ?? {};
     switch (item.link_route) {
         case 'chat.show':
@@ -291,10 +296,6 @@ function setUnreadCount(count) {
     }
 }
 
-/**
- * Pusher broadcast 受信時に呼ばれるエクスポート関数 (realtime.js から呼ぶ)。
- * delta が正なら未読件数を +、負なら -、リスト open 中なら refresh する。
- */
 export function bumpBadge(delta = 1) {
     if (badgeEl === null && unreadCountEl === null) return;
 

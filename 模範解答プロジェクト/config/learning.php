@@ -8,5 +8,5 @@ declare(strict_types=1);
  */
 return [
     'max_session_seconds' => env('LEARNING_MAX_SESSION_SECONDS', 3600),
-    'close_stale_schedule' => env('LEARNING_CLOSE_STALE_SCHEDULE', '00:30'),
+    'close_stale_schedule' => env('LEARNING_CLOSE_STALE_SCHEDULE', '01:00'),
 ];

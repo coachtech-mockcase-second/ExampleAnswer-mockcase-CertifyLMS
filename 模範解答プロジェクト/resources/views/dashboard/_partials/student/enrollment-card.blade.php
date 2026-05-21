@@ -25,7 +25,10 @@
             <x-icon name="academic-cap" class="w-5 h-5" />
         </span>
         <div class="flex-1 min-w-0">
-            <h3 class="font-display text-lg font-bold text-ink-900 tracking-tight truncate">{{ $card->certificationName }}</h3>
+            <a href="{{ route('learning.enrollments.show', $card->enrollmentId) }}"
+               class="block font-display text-lg font-bold text-ink-900 tracking-tight truncate hover:text-primary-700 transition-colors">
+                {{ $card->certificationName }}
+            </a>
             <div class="flex gap-1.5 items-center mt-1 flex-wrap">
                 <x-badge variant="{{ $termColor }}" size="sm">{{ $card->currentTerm->label() }}</x-badge>
                 @if ($card->isPassed)
@@ -101,6 +104,13 @@
                 </div>
             </div>
         @endif
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-1">
+        <x-link-button :href="route('learning.enrollments.show', $card->enrollmentId)" variant="primary" size="sm">
+            <x-icon name="book-open" class="w-4 h-4" />
+            教材へ
+        </x-link-button>
     </div>
 
     @if ($card->isPassed && $card->certificateDownloadUrl !== null)

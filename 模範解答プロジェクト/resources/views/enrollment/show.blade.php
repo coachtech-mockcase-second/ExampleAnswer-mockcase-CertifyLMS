@@ -30,6 +30,12 @@
                 {{ $enrollment->certification->category?->name ?? '未分類' }} ・ 現在ターム: {{ $enrollment->current_term->label() }}
             </p>
         </div>
+        @if (in_array($enrollment->status, [EnrollmentStatus::Learning, EnrollmentStatus::Passed], true))
+            <x-link-button href="{{ route('learning.enrollments.show', $enrollment) }}" variant="primary">
+                <x-icon name="book-open" class="w-4 h-4" />
+                教材を読む
+            </x-link-button>
+        @endif
     </div>
 
     {{-- 修了証受領パネル(状態と認可に応じて表示) --}}

@@ -25,20 +25,11 @@
                 aria-selected="false"
             >未読 <span data-notification-popover-unread-count class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-primary-50 text-primary-700">0</span></button>
         </div>
-        @if (Route::has('notifications.markAllAsRead'))
-            <form
-                method="POST"
-                action="{{ route('notifications.markAllAsRead') }}"
-                data-notification-popover-mark-all
-                class="m-0"
-            >
-                @csrf
-                <button
-                    type="submit"
-                    class="text-xs font-semibold text-primary-700 hover:text-primary-800 hover:underline transition-colors"
-                >全件既読</button>
-            </form>
-        @endif
+        <button
+            type="button"
+            data-notification-popover-mark-all
+            class="text-xs font-semibold text-primary-700 hover:text-primary-800 hover:underline transition-colors"
+        >全件既読</button>
     </div>
 
     {{-- ボディ: 通知行リスト (内部スクロール) --}}
@@ -47,8 +38,12 @@
         class="flex-1 overflow-y-auto"
         style="max-height: calc(70vh - 7rem);"
     >
-        <div data-notification-popover-loading class="hidden p-6 text-center text-xs text-ink-500">
-            読み込み中...
+        <div data-notification-popover-loading class="hidden flex items-center justify-center p-8">
+            <span
+                role="status"
+                aria-label="読み込み中"
+                class="inline-block h-6 w-6 animate-spin rounded-full border-2 border-ink-200 border-t-primary-600"
+            ></span>
         </div>
         <div data-notification-popover-empty class="hidden p-6 text-center text-xs text-ink-500">
             通知はありません。

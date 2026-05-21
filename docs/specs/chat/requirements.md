@@ -55,6 +55,7 @@
 ### 機能要件 — 一覧・閲覧画面
 
 - **REQ-chat-050**: When 受講生が `GET /chat-rooms` にアクセスした場合, the system shall 自分が ChatMember の全 `ChatRoom` を `enrollment.certification.name` / 担当コーチ名一覧 / 自分宛未読件数 / `last_message_at` / 最終メッセージプレビュー付きで `last_message_at DESC` 順に一覧表示する。
+- **REQ-chat-050.5**: The system shall ルーム一覧（rooms-pane）の各行に **自分宛未読件数バッジ** を `<x-badge variant="danger" size="sm">` で表示する。0 件のときバッジは非表示、100 件以上は `99+` 固定、`aria-label="未読 N 件"` を付与する（NFR-chat-008 アクセシビリティ要件と整合）。未読件数が 1 件以上のとき該当行の最終メッセージプレビューを太字（`font-semibold text-ink-900`）で強調する。
 - **REQ-chat-051**: When コーチが `GET /coach/chat-rooms` にアクセスした場合, the system shall 自分が ChatMember の全 `ChatRoom` を同等のメタ情報付きで、デフォルトは「未読あり」フィルタで表示する。
 - **REQ-chat-052**: The system shall コーチ一覧画面に「未読あり / すべて」フィルタ、資格フィルタ、受講生名キーワード検索を提供する。
 - **REQ-chat-053**: When `admin` が `GET /admin/chat-rooms` にアクセスした場合, the system shall 全 `ChatRoom` を一覧表示し、受講生名 / 担当コーチ名 / 資格名でフィルタ可能とする。

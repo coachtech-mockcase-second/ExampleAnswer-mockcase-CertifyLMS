@@ -5,8 +5,8 @@
     <x-nav.item route="coach.students.index" icon="user-group" label="担当受講生" />
 
     <x-nav.section title="コンテンツ" :routes="['admin.certifications.index', 'admin.mock-exams.index']" />
-    <x-nav.item route="admin.certifications.index" icon="book-open" label="教材管理" />
-    <x-nav.item route="admin.mock-exams.index" icon="clipboard-document-check" label="模試マスタ" />
+    <x-nav.item route="admin.certifications.index" icon="academic-cap" label="資格マスタ管理" />
+    <x-nav.item route="admin.mock-exams.index" icon="clipboard-document-check" label="模試マスタ管理" />
 
     <x-nav.section title="対応" :routes="['coach.chat.index', 'qa-board.index', 'coach.meetings.index']" />
     <x-nav.item route="coach.chat.index" icon="chat-bubble-left-right" label="chat 対応" :badge="$sidebarBadges['unattendedChat'] ?? 0" />

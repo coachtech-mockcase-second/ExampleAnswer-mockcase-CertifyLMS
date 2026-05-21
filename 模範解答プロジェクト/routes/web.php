@@ -101,7 +101,6 @@ Route::middleware('auth')->group(function () {
 
     // 通知
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('notifications/popover', [NotificationController::class, 'popover'])->name('notifications.popover');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 

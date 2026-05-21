@@ -34,6 +34,7 @@
 - [x] `App\Services\ChatMemberSyncService::syncForRoom(ChatRoom)`(REQ-chat-003, REQ-chat-005、受講登録時の eager 生成 / 担当コーチ変更時の差分追加に共用、受講生 + 担当コーチ集合を `ChatMember` に upsert)
 - [x] `App\Services\ChatMemberSyncService::syncForCertification(Certification)`(REQ-chat-005、該当資格の全 ChatRoom に対し `syncForRoom` を反復)
 - [x] `App\Services\ChatUnreadCountService::messageCountInRoom(ChatRoom, User): int`(REQ-chat-030)
+- [x] `App\Services\ChatUnreadCountService::messageCountsByRoomForUser(iterable<ChatRoom>, User): array<string, int>`(REQ-chat-050.5、rooms-pane 用 N+1 回避バルク集計)
 - [x] `App\Services\ChatUnreadCountService::roomCountForUser(User): int`(REQ-chat-031, NFR-chat-002)
 
 > **E-3**: `ChatMemberSyncService::syncForRoom` の **呼出元は本 Feature ではなく [[enrollment]] の `Enrollment\StoreAction` + 本 Feature の `SyncChatMembersOnCoachAssignmentChanged` Listener** の 2 箇所のみ。chat 側 Action からは呼ばない(`StoreMessageAction` は ChatRoom 確定で受け取り、メンバー整合は行わない)。

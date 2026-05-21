@@ -17,7 +17,7 @@ use Illuminate\View\View;
  * サイドバーのバッジ集計を 1 リクエスト 1 回だけ束ねる View Composer。
  *
  * dashboard 本体と同じ Service / クエリを使うことで、サイドバーと dashboard の数字が乖離しないことを構造的に保証する。
- * 未対応 chat / 未読通知 / 今日の面談 / 未対応質問 / 未受験模試 をロール別に集約する。
+ * 未対応 chat / 未読通知 / 今日の面談 / 未対応質問 をロール別に集約する。
  */
 class SidebarBadgeComposer
 {
@@ -43,7 +43,6 @@ class SidebarBadgeComposer
                 'unattendedChat' => 0,
                 'pendingQuestions' => 0,
                 'todayMeetings' => 0,
-                'unfinishedMockExams' => 0,
             ];
         }
 
@@ -52,7 +51,6 @@ class SidebarBadgeComposer
             'unattendedChat' => $this->chatUnreadCount->roomCountForUser($user),
             'pendingQuestions' => $this->pendingQuestionsForCoach($user),
             'todayMeetings' => $this->todayMeetingsFor($user),
-            'unfinishedMockExams' => 0,
         ];
     }
 

@@ -10,6 +10,7 @@ use App\Http\Requests\Chat\IndexAsCoachRequest;
 use App\Http\Requests\Chat\IndexRequest;
 use App\Http\Requests\Chat\StoreMessageRequest;
 use App\Models\ChatRoom;
+use App\Services\ChatUnreadCountService;
 use App\UseCases\Chat\ShowAction;
 use App\UseCases\Chat\StoreMessageAction;
 use Illuminate\Contracts\Support\Renderable;
@@ -63,8 +64,12 @@ class ChatRoomController extends Controller
         return view('chat-room.coach-empty-state', ['filters' => $request->filters()]);
     }
 
-    public function show(ChatRoom $room, ShowAction $action, Request $request): View
-    {
+    public function show(
+        ChatRoom $room,
+        ShowAction $action,
+        Request $request,
+        ChatUnreadCountService $unreadCount,
+    ): View {
         $this->authorize('view', $room);
 
         $viewer = auth()->user();
@@ -94,6 +99,7 @@ class ChatRoomController extends Controller
             'room' => $room,
             'messages' => $room->messages,
             'navRooms' => $navRooms,
+            'navRoomUnreadCounts' => $unreadCount->messageCountsByRoomForUser($navRooms, $viewer),
             'coachFilters' => $coachFilters,
         ]);
     }

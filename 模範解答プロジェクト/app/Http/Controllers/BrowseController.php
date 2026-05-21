@@ -44,34 +44,23 @@ class BrowseController extends Controller
 
     public function showPart(Part $part, ShowPartAction $action): View
     {
-        $user = auth()->user();
+        $this->authorize('learning.part.view', $part);
 
-        if (! $user?->can('learning.part.view', $part)) {
-            abort(403);
-        }
-
-        return view('learning.parts.show', $action($part, $user));
+        return view('learning.parts.show', $action($part, auth()->user()));
     }
 
     public function showChapter(Chapter $chapter, ShowChapterAction $action): View
     {
-        $user = auth()->user();
+        $this->authorize('learning.chapter.view', $chapter);
 
-        if (! $user?->can('learning.chapter.view', $chapter)) {
-            abort(403);
-        }
-
-        return view('learning.chapters.show', $action($chapter, $user));
+        return view('learning.chapters.show', $action($chapter, auth()->user()));
     }
 
     public function showSection(Section $section, ShowSectionAction $action, StartSessionAction $startSession): View
     {
+        $this->authorize('learning.section.view', $section);
+
         $user = auth()->user();
-
-        if (! $user?->can('learning.section.view', $section)) {
-            abort(403);
-        }
-
         $data = $action($section, $user);
 
         try {

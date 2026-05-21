@@ -55,6 +55,17 @@
                 <p class="mt-2 text-xs text-ink-500 tabular-nums">
                     目標 {{ $hourTargetSummary->targetTotalHours }} h / 残り {{ $hourTargetSummary->remainingHours }} h
                 </p>
+                @if ($hourTargetSummary->progressRatio !== null)
+                    <div class="mt-2 h-2 w-full rounded-full bg-ink-100 overflow-hidden">
+                        <div class="h-full bg-primary-600 rounded-full transition-all duration-normal"
+                            style="width: {{ round($hourTargetSummary->progressRatio * 100) }}%"></div>
+                    </div>
+                @endif
+                <p class="mt-2 text-xs">
+                    <a class="text-primary-700 underline" href="{{ route('learning.hourTarget.show', $enrollment) }}">
+                        目標を編集
+                    </a>
+                </p>
             @else
                 <p class="mt-2 text-xs">
                     <a class="text-primary-700 underline" href="{{ route('learning.hourTarget.show', $enrollment) }}">
