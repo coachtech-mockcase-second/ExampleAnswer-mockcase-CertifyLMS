@@ -45,7 +45,7 @@ ExampleAnswer-mockcase-CertifyLMS/
 ├── CLAUDE.md                      # プロジェクトのメタ哲学（WHO/WHY/WHAT/HOW/MAP）
 ├── .claude/                       # 構築側 Claude Code 設定（Skills / rules）
 ├── docs/                          # メタ階層: 構築側のみ参照する完成形仕様
-│   ├── steering/                  #   product / tech / structure / content-authoring
+│   ├── steering/                  #   product / tech / structure
 │   └── specs/                     #   Feature 完成形 SDD × 18 ディレクトリ
 ├── 模範解答プロジェクト/            # 完成版 Laravel PJ（全チケット実装後の状態、specs と整合）
 ├── 提供プロジェクト/                # 模範解答 PJ から引き算変換した受講生 Template 用 Laravel PJ
@@ -65,7 +65,7 @@ ExampleAnswer-mockcase-CertifyLMS/
 
 模範解答 PJ を先行構築 → 要件シートに従って引き算で提供 PJ を作る **引き算方式**。
 
-- [x] **Step 1** — steering 作成（product / tech / structure / content-authoring）+ Feature 18 個確定
+- [x] **Step 1** — steering 作成（product / tech / structure）+ Feature 18 個確定
 - [x] **Step 2** — 全 Feature × spec 3 点セット（requirements / design / tasks）生成
 - [x] **Step 3a** — Wave 0a / 0b: Claude Design ハンドオフ → Laravel 初期化 + Sanctum/Fortify + 共通 UI 基盤
 - [x] **Step 3b** — 模範解答 PJ Feature 実装（18 Feature 完了）
@@ -114,7 +114,6 @@ ExampleAnswer-mockcase-CertifyLMS/
 | [`docs/steering/product.md`](./docs/steering/product.md) | Certify LMS プロダクト定義（事業モデル / ドメイン構造 / 全 Feature） |
 | [`docs/steering/tech.md`](./docs/steering/tech.md) | 技術スタック / Clean Architecture 方針 / PR 規約 |
 | [`docs/steering/structure.md`](./docs/steering/structure.md) | Laravel ディレクトリ構成 / 命名規則 |
-| [`docs/steering/content-authoring.md`](./docs/steering/content-authoring.md) | 教材・模試の執筆規約 |
 | [`docs/specs/{feature}/`](./docs/specs/) | Feature 完成形 SDD（requirements / design / tasks）× 18 |
 | [`.claude/rules/README.md`](./.claude/rules/README.md) | Laravel 実装ルール集（Claude 行動指示） |
 | [`関連ドキュメント/要件シート_詳細度100%/README.md`](./関連ドキュメント/要件シート_詳細度100%/README.md) | 要件シート規約 + 詳細化進捗トラッカー |

@@ -11,6 +11,9 @@ memo/
 /.tmp-design-compare/
 /e2e-*.png
 
+# 構築側の作業ファイル（リポジトリには含めない）
+docs/steering/content-authoring.md
+
 # macOS のノイズ
 .DS_Store
 **/.DS_Store
