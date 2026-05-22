@@ -61,6 +61,107 @@ ExampleAnswer-mockcase-CertifyLMS/
 
 ---
 
+## ローカル環境構築（模範解答プロジェクトの起動）
+
+完成版 Laravel PJ を `模範解答プロジェクト/` で起動して動作確認できる（提供 PJ は Step 4 で引き算変換生成、現状未生成）。
+
+### 前提
+
+- Docker / Docker Compose
+
+> Apple Silicon (M1/M2) Mac で `sail up` がプラットフォームエラーになる場合は `模範解答プロジェクト/compose.yaml` の各サービスに `platform: linux/amd64` を追加する。
+
+### 手順
+
+1. **クローン → 模範解答 PJ に移動**
+
+   ```bash
+   git clone git@github.com:coachtech-mockcase-second/ExampleAnswer-mockcase-CertifyLMS.git
+   cd ExampleAnswer-mockcase-CertifyLMS/模範解答プロジェクト
+   ```
+
+2. **`.env` 準備**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   外部 API（Pusher / Stripe / Google Calendar / Gemini）のキーは **空のままで Basic 機能は動作する**。Advance 機能（リアルタイムチャット / 追加面談購入 / Google Calendar 連携 / AI チャット）を試したい場合のみ各キーを設定する。
+
+3. **Composer install（初回のみ Docker 直叩き、`vendor/` が無いため Sail を使えない）**
+
+   ```bash
+   docker run --rm \
+       -u "$(id -u):$(id -g)" \
+       -v "$(pwd):/var/www/html" \
+       -w /var/www/html \
+       laravelsail/php85-composer:latest \
+       composer install --ignore-platform-reqs
+   ```
+
+4. **Sail 起動**
+
+   ```bash
+   ./vendor/bin/sail up -d
+   ```
+
+   > エイリアス推奨: `alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'`（以降 `sail` で呼べる）
+
+5. **アプリキー生成 + DB 初期化（Seeder 込み）**
+
+   ```bash
+   sail artisan key:generate
+   sail artisan migrate:fresh --seed
+   ```
+
+   `DatabaseSeeder` が全 Seeder（User / Plan / Certification / Content / MockExam / Chat 等）をまとめて投入する。
+
+6. **フロントビルド（開発中は起動したまま）**
+
+   ```bash
+   sail npm install
+   sail npm run dev
+   ```
+
+7. **アクセス**
+
+   | サービス | URL |
+   |---|---|
+   | アプリ | http://localhost:8000 |
+   | phpMyAdmin | http://localhost:8080 |
+   | Mailpit（送信メール確認） | http://localhost:8025 |
+
+### 初期ユーザー
+
+`UserSeeder` が固定アカウントを生成（パスワードはすべて `password`）。
+
+| ロール | Email |
+|---|---|
+| 管理者（admin） | `admin@certify-lms.test` |
+| コーチ | `coach@certify-lms.test` / `coach2@certify-lms.test` |
+| 受講生 | `student@certify-lms.test` |
+
+状態網羅用 demo ユーザー（招待中 / 卒業 / 退会など）も同 Seeder で生成される。
+
+### テスト実行
+
+```bash
+sail artisan test
+```
+
+### ポート競合への配慮
+
+`APP_PORT=8000` / `VITE_PORT=5174` は BookShelf（80 / 5173）等の他案件と衝突しないよう調整済。両プロジェクト同時起動可。
+
+### 停止 / クリーンアップ
+
+```bash
+sail down          # コンテナ停止（DB データは保持）
+sail down -v       # コンテナ停止 + DB ボリューム削除（クリーンな状態に戻す）
+```
+
+---
+
 ## 構築ワークフロー（6 Step）
 
 模範解答 PJ を先行構築 → 要件シートに従って引き算で提供 PJ を作る **引き算方式**。
