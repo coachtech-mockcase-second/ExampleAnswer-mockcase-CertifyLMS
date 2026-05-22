@@ -14,7 +14,7 @@ use App\Models\User;
 /**
  * Gemini に渡すシステムプロンプト + 過去メッセージ履歴を組み立てる Service。
  *
- * - build(): config テンプレ + 動的変数 (受講生名 / 資格名 / Section 本文) を埋め込む
+ * - build(): config テンプレ + 動的変数 (受講生名 / 資格名 / Section パンくず) を埋め込む
  * - buildHistory(): 過去 N 件 (history_window) のメッセージを OpenAI 形式に整形 (error 状態は除外)
  *
  * 資格コンテキストの解決順序: 会話の enrollment_id → user.default_enrollment_id → なし (全般相談)
@@ -97,6 +97,11 @@ final class AiChatPromptBuilderService
         return $isActive ? $candidate : null;
     }
 
+    /**
+     * Section の所在を Part > Chapter > Section のパンくず形式で組み立てる。
+     * Section.body 本文 (longText) は意図的に注入しない: 1 メッセージあたり数千トークンの
+     * 固定削減で Gemini 無料枠を保護しつつ、AI には教材の位置情報だけで十分な文脈が渡る。
+     */
     private function buildSectionContext(AiChatConversation $conversation): string
     {
         $section = $conversation->section;
@@ -104,6 +109,20 @@ final class AiChatPromptBuilderService
             return '';
         }
 
-        return "【教材コンテキスト】\nセクション: {$section->title}\n\n{$section->body}";
+        $chapter = $section->chapter;
+        $part = $chapter?->part;
+
+        $crumbs = [];
+        if ($part !== null) {
+            $crumbs[] = "Part {$part->order}「{$part->title}」";
+        }
+        if ($chapter !== null) {
+            $crumbs[] = "Chapter {$chapter->order}「{$chapter->title}」";
+        }
+        $crumbs[] = "Section {$section->order}「{$section->title}」";
+
+        $breadcrumb = implode(' > ', $crumbs);
+
+        return "【教材コンテキスト】\n受講生が現在閲覧中のセクション: {$breadcrumb}";
     }
 }

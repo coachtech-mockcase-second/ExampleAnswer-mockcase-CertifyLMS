@@ -1,0 +1,193 @@
+---
+name: ticket-detail-100p
+description: Certify LMS 詳細度 100% 要件チケットを高精度に作成する Skill。チケット ID (例 `S-B-03` / `B-B-01` / `T-A-02`) を引数に指定すると、本リポの README チケット一覧 + spec + 模範解答 PJ 実装の懐疑的レビュー + テンプレ + 規約 `.claude/rules/ticket-spec.md` に従って、振る舞いベース受け入れ条件 + BookShelf 級実装方針(参考) を含む完全な 100% 版チケット .md ファイルを `関連ドキュメント/要件シート_詳細度100%/{Story|Bug|Task}/` 配下に生成する。Story / Bug / Task の 3 種別に対応、複数チケットを 1 ターンで連続生成する並列処理にも対応。要件チケット作成・詳細化を依頼されたら必ず本 Skill を使うこと。
+---
+
+# Certify LMS 詳細度 100% チケット作成 Skill
+
+## 入力
+
+`$ARGUMENTS`: チケット ID (1 件 or カンマ区切り複数件)。
+
+- 単一: `S-B-03`
+- 複数: `S-B-03,S-B-04,S-B-05` (1 ターン内で連続生成)
+- なければユーザーに確認
+
+## 出力
+
+`関連ドキュメント/要件シート_詳細度100%/{Story|Bug|Task}/{ID}_{feature略称-連番}.md` を作成 + `_review-log.md` 追記 + README 進捗トラッカー更新。
+
+## 必須読み込み
+
+実行前に以下を Read:
+
+1. **`.claude/rules/ticket-spec.md`** — 詳細化規約 (paths frontmatter で auto-load される、未ロードなら明示 Read) **最重要**
+2. **`関連ドキュメント/要件シート_詳細度100%/README.md`** — チケット一覧 (該当 ID の草案取得) + 進捗トラッカー (更新先)
+3. **`templates/{story|bug|task}.md`** (Skill 配下) — テンプレ
+4. **`関連ドキュメント/要件シート_詳細度100%/Story/S-B-01_qa-board-01.md`** — 詳細化済み Story 参考実例 (粒度・記述スタイルの基準)
+5. **対応する `docs/specs/{feature}/{requirements,design,tasks}.md`** — Feature 完成形 SDD (spec、当初の完成形定義)
+6. **対応する `模範解答プロジェクト/app/` 配下の実装** — 該当 Feature のコード本体
+   - **spec と実装に乖離があれば、実装を最新 / 正 として扱う**(spec 作成後に実装で変更があり得るため。spec は参考、コードが真実)
+
+補助参照(必要時):
+
+- `関連ドキュメント/要件ブレインストーミング.md` § 2 — 草案 fix (README に転記済みだが、Bug の「仕込み方」列など補足情報を引きたい場合)
+- `関連ドキュメント/要件シート_詳細度100%/_review-log.md` — 模範解答 PJ レビュー履歴
+
+複数チケット指定時、上記 1-4 は 1 回読めば全チケットで共有可能。チケット個別の 5-6 は Feature が異なれば都度 Read。
+
+## プロセス
+
+### Step 1: チケット情報取得
+
+README のチケット一覧から該当 ID の以下情報を取得:
+
+- タイトル / Feature / サブカテゴリ / 工数
+
+不足情報 (Bug の「Step 4 仕込み方」等) があれば要件ブレインストーミング.md § 2 を参照。
+
+### Step 2: テンプレ選択
+
+種別に応じて:
+
+- Story: `templates/story.md`
+- Bug: `templates/bug.md`
+- Task: `templates/task.md`
+
+### Step 3: 模範解答 PJ 懐疑的レビュー
+
+> **なぜ懐疑的レビューが必要か**: 模範解答 PJ は **受講生が理想的な実装を学ぶ教材** であるべきため、本チケットを抽出する前に「現在の実装がベストか?」を問い直す。引き算で受講生に渡す前に模範解答 PJ を理想形に修正しておくことで、受講生は正しい設計を学べる。
+
+`模範解答プロジェクト/` 配下の対応 Feature コード (Model / Controller / Action / Service / Policy / Blade) を Read して検証する。
+
+検証ポイント: 画面分割の妥当性 / 認可粒度 / レイヤー配置 / API 設計 / ロール間共通化
+
+判定 (規約 `ticket-spec.md` 参照):
+
+- ✅ 適切 → 現状実装に沿って実装方針 (参考) を記載 (ただし Basic チケットは Basic 範囲で書き直す)
+- ⚠️ 修正必要 → **詳細化を一時停止**、模範解答 PJ を先に修正、その後再開 (引き算前に修正する方が出戻りが少ない)
+- 🕐 Phase D で一括処理 → 結果を `_review-log.md` に追記、詳細化は次に進む
+
+レビュー結果を `関連ドキュメント/要件シート_詳細度100%/_review-log.md` に追記 (`S-B-01` の既存エントリ形式に倣う)。
+
+### Step 4: 実装方針 (参考) の組み立て (BookShelf 級粒度)
+
+> 実装方針はあくまで **参考**。COACHTECH 受講生ごとに正解が異なることを許容する (規約 `ticket-spec.md` 参照)。
+
+#### Story の場合 (実装方針サブセクション 9 個)
+
+| サブセクション | 内容 | BookShelf シート相当 |
+|---|---|---|
+| データモデル | 新規テーブル × カラム × 型 × NOT NULL × FK × 補足 + ER 図 (該当時) | シート 10/11 |
+| 主要画面・操作 | 画面 × 操作 × URL/メソッド × 受け入れ条件サマリ × 使用技術 (URL はここに集約) | シート 4/6 |
+| バリデーション | FormRequest × 入力項目 × ルール × エラーメッセージ | シート 7 |
+| 認可設計 | Policy 方針 (メソッド × ロール × 当事者 × 担当資格) | (Certify 固有) |
+| API 仕様 | エンドポイント × リクエスト × レスポンス × 認証 (該当時のみ) | シート 12 |
+| Seeder 設計 | 新規テーブル追加時の初期データ仕様 (動作確認用シナリオ) | シート 8 |
+| テスト観点 | Unit / Feature / Policy / 通知 等の固有検証 | シート 9 (個別部分) |
+| アーキテクチャ判断 | 採用技術 + 設計判断。**Basic 範囲注記 (Controller 内完結、Action / Service は受講生判断)** | (Certify 固有) |
+| 主要関連ファイル | コードリーディング起点 (Model / Controller / Policy / View 等のパス) | (Certify 固有) |
+
+#### Bug の場合
+
+- 「実装方針 (参考)」セクションは**持たない**(修正方針を渡さないため)
+- 補足セクション内に: 主要 URL / 主要関連ファイル / 想定ヒアリング Q&A
+- **Basic Bug で Action / Service ファイル内バグが構造上避けられない場合**: チケット内に「**※**」記号で例外説明 (例: 「※本 Bug は構造上 Action ファイル内の修正が必要。受講生が Controller 内完結で実装している場合は対応する Controller method を修正対象とする」)
+
+#### Task の場合
+
+- 実装方針サブセクション (6 個): 主要 URL / 対象詳細 / Before/After 計測方針 (Performance 専用) / テスト観点 / アーキテクチャ判断 / 主要関連ファイル
+
+### Step 5: 受け入れ条件 (= 採点項目)
+
+> **受け入れ条件 = 採点項目**。各項目 = 評価シート ① の 1 採点行 と 1:1 対応する。
+
+規約 `.claude/rules/ticket-spec.md` の原則に従い記述。**最重要**:
+
+- **Story / Bug**: 振る舞いベース (具体的なフラッシュ文言・エラーメッセージ文言は含めない。リダイレクト先 URL のパス・HTTP ステータスは振る舞いの一部として含める)
+- **Task**: PR の file Changes で判定する **構造記述** / **Before/After 計測値** が中心 (Refactoring は振る舞い不変 / Performance は計測値で、画面動作では判定不能)
+- 1 項目 1 振る舞い (複合表現は分割)
+- 種別別の項目数目安:
+  - Story: 8〜12 (規模大なら 15-19)
+  - Bug: 共通 DoD 3 + Bug 固有 AC 1〜2
+  - Task: 3〜5
+
+### Step 6: ロール表記 / 想定ヒアリング Q&A
+
+- ロール初出時に「受講生(student) / コーチ(coach) / 管理者(admin)」フル表記、以降日本語のみ
+- 想定ヒアリング Q&A は 3 階層 (必須回答 / 実装判断 / 補足)
+- コーチが受講生のヒアリング応答時に即答できる材料を整備
+
+### Step 7: ファイル作成 + 進捗トラッカー更新
+
+- ファイル作成: `関連ドキュメント/要件シート_詳細度100%/{Story|Bug|Task}/{ID}_{feature略称}-{連番}.md`
+- README 進捗トラッカー更新:
+  - 該当種別 × 難易度 のカウントを +1
+  - 完成済みリストに `✅ {ID} / {feature略称-連番} {タイトル}(YYYY-MM-DD 詳細化)` を追加
+
+### Step 8: 完了報告
+
+ユーザーに以下を簡潔に報告:
+
+- 作成したファイルパス
+- 模範解答 PJ レビュー結果 (✅ / ⚠️ / 🕐)
+- 進捗トラッカー (X / 40 件 完成)
+- Basic 制約注記の有無 (Bug で「※」を使った場合等)
+
+## 並列処理 (複数チケット連続生成)
+
+複数チケット ID をカンマ区切りで指定された場合、1 ターン内で全チケットを順番に生成する連続実行モード。
+
+```
+ユーザー入力: /ticket-detail-100p S-B-03,S-B-04,S-B-05
+Skill 動作:
+  1. 必須読み込み 1-4 を 1 回実行 (全チケットで共有)
+  2. 各チケット ID について Step 1-8 を順番に実行 (Step 5, 6 でのチケット固有 spec / 実装読み込みは個別)
+  3. 全件完了後、まとめて報告 (各チケットのファイルパス + レビュー結果 + 進捗)
+```
+
+規模目安: 1 ターン内で context 圧迫しない範囲 (2-5 件程度)。それ以上は複数ターンに分割推奨。
+
+## 注意事項
+
+### Bug の Basic 例外注記の書き方
+
+Action / Service ファイル内のバグが構造上避けられない Basic Bug の場合、チケット冒頭 (概要直下 or メタ情報下) に以下のような注記を入れる:
+
+```markdown
+> **※ Basic 範囲外への例外注記**: 本 Bug は構造上 `app/UseCases/{Feature}/{Action}.php` 内の修正が必要となる。Basic 受講生は通常 Controller 範囲で実装するが、本チケットでは模範解答 PJ の Action 構造を踏襲しているため、修正対象に Action ファイルが含まれる。受講生が Controller 内完結で実装している場合は、対応する Controller method を修正対象とする。
+```
+
+### 同 Feature 内チケットの整合
+
+同 Feature に複数チケットがある場合 (例: `notification-01` / `notification-02` / `notification-05`)、依存関係 (`S-B-01` qa-board → `S-B-05` notification 基盤) を意識して実装方針の整合を取る。
+
+### 模範解答 PJ + spec の Read 範囲
+
+該当 Feature のディレクトリ全体を Grep / Read。少なくとも:
+
+**実装 (`模範解答プロジェクト/`)**:
+- `app/Models/{Entity}.php` / `app/Enums/`
+- `app/Http/Controllers/` 該当 + `app/Http/Controllers/Admin/` 該当
+- `app/UseCases/{Feature}/` 全 Action
+- `app/Services/{Feature}*.php` (該当時)
+- `app/Policies/` 該当
+- `app/Http/Requests/` 該当
+- `resources/views/{feature}/` 全 Blade
+- `database/migrations/` 該当 + `database/seeders/` 該当
+
+**spec**:
+- `docs/specs/{feature}/{requirements,design,tasks}.md` 全 3 ファイル
+
+**乖離時の優先**: spec と実装に違いがあれば、**実装を最新 / 正 として扱う**。spec は当初設計の参考。
+
+## 参照ドキュメント (優先順)
+
+1. `.claude/rules/ticket-spec.md` — 詳細化規約 **必読**
+2. `関連ドキュメント/要件シート_詳細度100%/README.md` — チケット一覧 + 進捗 + 採点者向け
+3. `関連ドキュメント/要件シート_詳細度100%/Story/S-B-01_qa-board-01.md` — 詳細化済み Story 参考実例
+4. `templates/{story,bug,task}.md` (Skill 配下) — テンプレ
+5. **`模範解答プロジェクト/app/` 配下** — 実装本体 (**spec と乖離あれば実装が最新 / 正**)
+6. `docs/specs/{feature}/{requirements,design,tasks}.md` — Feature 完成形 SDD (spec、当初の完成形定義)
+7. `関連ドキュメント/要件ブレインストーミング.md` § 2 — 草案 fix (補助)
+8. `関連ドキュメント/要件シート_詳細度100%/_review-log.md` — 模範解答 PJ レビュー履歴

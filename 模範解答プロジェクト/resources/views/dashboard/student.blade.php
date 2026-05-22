@@ -27,6 +27,8 @@
     @else
         <div class="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
             <div class="flex flex-col gap-5">
+                @include('dashboard._partials.student.goal-timeline', ['goals' => $viewModel->goalTimeline])
+
                 <section>
                     <div class="flex justify-between items-baseline mb-2.5">
                         <h2 class="font-display text-lg font-bold text-ink-900">受講中の資格</h2>
@@ -40,8 +42,6 @@
                 </section>
 
                 @include('dashboard._partials.student.passed-enrollments', ['enrollments' => $viewModel->passedEnrollments])
-
-                @include('dashboard._partials.student.goal-timeline', ['goals' => $viewModel->goalTimeline])
             </div>
 
             <div class="flex flex-col gap-5">

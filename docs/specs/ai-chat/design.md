@@ -58,14 +58,14 @@ graph TB
 | LLM 呼出の抽象化 | `LlmRepositoryInterface` + `GeminiLlmRepository` 単一実装 | `backend-repositories.md` 規約「外部 API 依存切り離し」に厳格準拠。将来 OpenAI / Claude への差替を 1 行 binding 切替で可能に |
 | 応答方式 | **同期 HTTP のみ** (SSE 不採用) | 業界標準は SSE ストリーミングだが、教材として受講生に必要以上の学習負担(Generator / response()->stream() / fetch ReadableStream / chunk parse の 4 概念)を強いる。同期版で機能要件は十分満たせる |
 | メッセージモデル | `role` enum 分離 (OpenAI 形式) | LangChain / OpenAI SDK / Vercel AI SDK の業界標準。受講生も OpenAI / Claude API 経験との橋渡しが効く |
-| Section コンテキスト注入 | `ai_chat_conversations.section_id` nullable FK + `AiChatPromptBuilderService` で本文埋め込み | Khan Academy Khanmigo / Notion AI の標準パターン。完全 RAG は MySQL ベースの本プロジェクトで過剰、Section 1 件で十分実用的。**本 Feature 最大の学習価値** |
+| Section コンテキスト注入 | `ai_chat_conversations.section_id` nullable FK + `AiChatPromptBuilderService` で Section パンくず (Part > Chapter > Section の order + タイトル) を埋め込み | Section 本文を毎回埋め込むと Gemini 無料枠を圧迫するため、教材の所在情報だけに絞ってコスト最適化。完全 RAG は MySQL ベースの本プロジェクトで過剰、パンくず 1 行で十分実用的。**本 Feature 最大の学習価値** |
 | 資格コンテキスト解決 | 会話の `enrollment_id` → `user.default_enrollment_id` の動的フォールバック | 「資格相談モード」用の UI を持たず、受講生が既にサイドバーで設定済の `default_enrollment_id` を `AiChatPromptBuilderService` が自動解決する。`learning` / `passed` 状態のみ採用。手動選択モーダルを削減しつつ自然な UX を実現 |
 | ウィジェット / フル画面の責務 | 同じ Controller / Action / Endpoint、Blade と JS のみ分離 | コード重複を排除。`chat-client.js` を共通利用、`floating-widget.js` と `full-screen.js` は UI 制御のみに専念 |
 | プロンプト管理 | `config/ai-chat.php` で静的管理、Service で動的変数組立 | LangChain / Vercel AI SDK の業界標準。DB 管理 + admin UI は教育 PJ スコープ過剰 |
 | Rate Limit | Laravel `RateLimiter::for()` + `throttle:ai-chat` ミドルウェアのみ (補正なし) | 標準実装に統一。Gemini 失敗時の補正ロジックは持たず、業界標準どおりに失敗分も日次 50 通にカウントされる |
 | タイトル LLM 自動生成 | 初回 (user, assistant completed) ペア成立時に 1 回のみ呼出、失敗時は fallback タイトル維持 | ChatGPT / Claude.ai 標準の UX パターン。`AI_CHAT_TITLE_GENERATION_ENABLED=false` で無効化可能、Gemini クォータ逼迫環境では off にする選択肢を残す |
 | Gemini API リトライ | 5xx / ConnectionException のみ手動 retry (最大 2 回)、429 はリトライしない | 429 を retry すると Gemini RPM をさらに圧迫して連鎖失敗を招くため即時失敗。Laravel `Http::retry()` のデフォルト挙動では HTTP failed が retry されないので手動 for ループで明示制御 |
-| current_term 等の追加コンテキスト | プロンプトに含めない | 必要最低限の原則。Section 本文 + 資格名で AI は十分賢い。追加のリッチネス情報は将来拡張で検討 |
+| current_term 等の追加コンテキスト | プロンプトに含めない | 必要最低限の原則。Section パンくず + 資格名で AI は十分賢い。追加のリッチネス情報は将来拡張で検討 |
 
 ## システムフロー
 
@@ -470,7 +470,7 @@ class RetryAction
   - 内部処理:
     1. `config('ai-chat.system_prompt_template')` を読み込む
     2. プレースホルダ `{user_name}` / `{certification_name}` / `{section_context}` / `{current_term}` を置換
-    3. `section_id` 紐付け時、`Section.body`（Markdown）を `{section_context}` に埋め込み（HTML 変換せず Markdown のまま、Gemini が解釈する）
+    3. `section_id` 紐付け時、Section パンくず（`Part {order}「{title}」 > Chapter {order}「{title}」 > Section {order}「{title}」` 形式）を `{section_context}` に埋め込む。`Section.body` 本文は Gemini 無料枠保護のため埋め込まない（1 メッセージあたり数千トークンの固定削減、AI には教材の位置情報だけで十分な文脈が渡る）
     4. トークン数チェック: `config('ai-chat.max_context_tokens', 30000)` を超える場合は履歴を古い順に切り詰める（粗い概算: 1 文字 = 1 トークンで計算）
 
 - **`AiChatRateLimiterService`** — Rate Limit のカウント補正

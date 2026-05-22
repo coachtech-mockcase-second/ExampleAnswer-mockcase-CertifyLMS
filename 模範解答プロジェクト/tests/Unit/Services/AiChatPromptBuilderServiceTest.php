@@ -22,15 +22,24 @@ class AiChatPromptBuilderServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_build_includes_user_name_and_section_body_when_section_attached(): void
+    public function test_build_includes_user_name_and_section_breadcrumb_when_section_attached(): void
     {
         $user = User::factory()->create(['role' => UserRole::Student->value, 'name' => '山田 太郎']);
         $cert = Certification::factory()->create(['name' => '基本情報技術者']);
-        $part = Part::factory()->create(['certification_id' => $cert->id]);
-        $chapter = Chapter::factory()->create(['part_id' => $part->id]);
+        $part = Part::factory()->create([
+            'certification_id' => $cert->id,
+            'title' => 'データ構造とアルゴリズム',
+            'order' => 5,
+        ]);
+        $chapter = Chapter::factory()->create([
+            'part_id' => $part->id,
+            'title' => '探索アルゴリズム',
+            'order' => 7,
+        ]);
         $section = Section::factory()->create([
             'chapter_id' => $chapter->id,
-            'title' => '5.7 ハッシュ法',
+            'title' => 'ハッシュ法',
+            'order' => 3,
             'body' => 'ハッシュ法は配列インデックスを計算で求める手法です。',
         ]);
         $enrollment = Enrollment::factory()->create([
@@ -46,10 +55,20 @@ class AiChatPromptBuilderServiceTest extends TestCase
 
         $prompt = (new AiChatPromptBuilderService)->build($conv->fresh(), $user);
 
+        // 基本コンテキスト (受講生名 + 資格)
         $this->assertStringContainsString('山田 太郎', $prompt);
         $this->assertStringContainsString('基本情報技術者', $prompt);
-        $this->assertStringContainsString('5.7 ハッシュ法', $prompt);
-        $this->assertStringContainsString('ハッシュ法は配列インデックス', $prompt);
+
+        // 教材パンくず (Part > Chapter > Section の order + タイトル)
+        $this->assertStringContainsString('Part 5', $prompt);
+        $this->assertStringContainsString('データ構造とアルゴリズム', $prompt);
+        $this->assertStringContainsString('Chapter 7', $prompt);
+        $this->assertStringContainsString('探索アルゴリズム', $prompt);
+        $this->assertStringContainsString('Section 3', $prompt);
+        $this->assertStringContainsString('ハッシュ法', $prompt);
+
+        // Section.body 本文は Gemini 無料枠保護のためプロンプトに含めない
+        $this->assertStringNotContainsString('ハッシュ法は配列インデックス', $prompt);
     }
 
     public function test_build_uses_default_enrollment_for_certification_context_when_conv_has_no_enrollment(): void

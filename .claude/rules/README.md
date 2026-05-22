@@ -21,6 +21,7 @@
 | サイドバー構造 / ロール共通画面責務 / Wave 0a/0b プロセス / デザイントークン要件 | `frontend-ui-foundation.md` |
 | 素のJS（タイマー / fetch 等）実装 | `frontend-javascript.md` |
 | Tailwind CSS スタイリング | `frontend-tailwind.md` |
+| 要件チケット詳細化(`関連ドキュメント/要件シート_詳細度100%/` 配下作業)| `ticket-spec.md`(Skill `ticket-detail-100p` から参照)|
 
 ## 全体原則
 
