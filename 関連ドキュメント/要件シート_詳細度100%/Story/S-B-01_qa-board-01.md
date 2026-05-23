@@ -11,7 +11,7 @@
 | サブカテゴリ | 新規機能の構築 |
 | 難易度 | Basic |
 | 工数 (h) | 13 |
-| 依存チケット | `S-B-05`(notification 基盤、新着回答通知を発火するため) |
+| 依存チケット | (なし) |
 
 ## 概要
 
@@ -19,7 +19,9 @@
 
 ## 背景・目的
 
-現状、受講生は資格学習中の疑問を 1on1 のチャットでコーチに個別質問しているが、同じ疑問が複数受講生で繰り返されることで集合知が蓄積されない。本機能では公開型 Q&A 掲示板を導入し、過去の質問・回答を他受講生も参照可能にして自己解決率を向上させ、コーチの対応工数を削減する。コーチは担当資格の未対応スレッドをサイドバーバッジで把握できる導線も提供する。
+- **現状の問題**: 受講生は資格学習中の疑問を 1on1 のチャット(`chat` Feature、提供 PJ に完成済として同梱)でコーチに個別質問しているが、同じ疑問が複数受講生で繰り返されるため集合知が蓄積されない。コーチも類似質問への対応が重複し工数が膨らむ。
+- **達成したい状態**: 公開型 Q&A 掲示板を導入し、過去の質問・回答が他受講生にも参照可能になる。受講生は自己解決率が向上し、コーチは未対応スレッドだけをフォローすればよい状態にする。
+- **価値・優先度**: 集合知蓄積による **受講生の学習効率向上** + **コーチの対応工数削減** が同時に得られる中核機能。
 
 ## ユーザーストーリー
 
@@ -28,10 +30,37 @@
 - **受講生として**、受講していない資格にも回答したい。なぜなら、自分の知識を他受講生に共有して集合知に貢献したいから。
 - **スレッド投稿者として**、自分の質問を解決済にマークしたい。なぜなら、未解決の質問とスレッドの解決状態を区別したいから。
 - **コーチ(coach)として**、担当資格の未対応スレッドを一覧から消化したい。なぜなら、複数受講生を効率的にフォローしたいから。
-- **コーチとして**、サイドバーで未対応件数を一目で把握したい。なぜなら、対応漏れを防ぎたいから。
 - **管理者(admin)として**、不適切投稿をモデレーション削除したい。なぜなら、コミュニティの健全性を保ちたいから。
 
-## スコープ外
+## やること
+
+### スレッド
+
+- **投稿**: 受講生のみ可(資格選択 + タイトル + 本文)、コーチ / 管理者は 403
+- **編集**: 投稿者本人のみ可(タイトル + 本文、資格は変更不可)、他は 403
+- **削除(自削除)**: 投稿者本人 × 回答 0 件(SoftDelete 含む)のみ可(SoftDelete)、回答ありで 409
+- **削除(モデレーション)**: 管理者は任意のスレッドを無条件で SoftDelete 可
+- **解決マーク・解除**: スレッド投稿者本人のみ可(`status` + `resolved_at` 同時更新)、管理者でも代行不可
+
+### 回答
+
+- **投稿**: 受講生 / コーチ可、管理者は 403
+- **編集・自削除**: 投稿者本人のみ可
+- **削除(モデレーション)**: 管理者は任意の回答を無条件で SoftDelete 可
+
+### 閲覧・検索
+
+- **スレッド一覧 / 詳細閲覧**:
+  - 受講生: 公開済資格すべて
+  - コーチ: 担当資格のみ(担当外資格 ID クエリ指定で 403、列挙攻撃防御)
+  - 管理者: 全資格 + SoftDelete 含むトグル付き閲覧
+- **検索・フィルタ**: 資格別 / 解決状態 / キーワード(`title` / `body` / 回答 `body` の OR LIKE)+ ページネーション(20 件/ページ、フィルタ引き継ぎ)
+
+### 共通の振る舞い
+
+- 公開停止資格のスレッドは 404(資格自体が見えない扱い)
+
+## やらないこと
 
 - 添付ファイル(画像 / PDF) — テキストのみ
 - Section / Question への紐付け — 資格紐付けのみ
@@ -39,34 +68,94 @@
 - FULLTEXT INDEX / 外部検索エンジン — `LIKE` のみ
 - 管理者による投稿内容編集 / 解決マーク代行
 - 同時編集競合の楽観ロック
+- 1on1 チャット機能 — 別 Feature(`chat`)で提供 PJ に完成済として組み込み済み
+- **通知発火** — `notification` Feature のスコープ(S-B-05 で扱う)。本チケットでは扱わない
+- **サイドバーバッジ(未対応件数表示)** — 採点上重要度が低く本機能は廃止
+
+## Seeder 設計
+
+> `migrate:fresh --seed` 直後に動作確認できるよう、シナリオに紐付けたレコード単位で具体化する。
+
+**前提**(他 Seeder で投入される想定): 受講生 A〜D / コーチ X(資格 X 担当) / コーチ Y(資格 Z 担当) / 管理者 / 公開資格 X, Z / 公開停止資格 Y
+
+`QaThreadSeeder`:
+
+| レコード | 内容 | 動作確認用途 |
+|---|---|---|
+| thread_1 | 資格 X / 受講生 A 投稿 / status=open / 回答 0 件 | 投稿者本人による削除可動作(SoftDelete 確認) |
+| thread_2 | 資格 X / 受講生 B 投稿 / status=open / 回答 3 件(`reply_1`〜`reply_3`) | 投稿者本人 × 回答ありでの削除不可動作(409)/ 検索キーワードヒット |
+| thread_3 | 資格 X / 受講生 A 投稿 / status=resolved / `resolved_at` セット済 / 回答 2 件 | 解決済スレッドの編集 / 管理者による無条件削除 / 解決解除 |
+| thread_4 | 公開停止資格 Y / 受講生 A 投稿 / status=open | 公開停止資格スレッドの 404 |
+| thread_5 | 資格 Z(コーチ Y 担当) / 受講生 C 投稿 / status=open / 回答 1 件 | コーチ X からの担当外資格アクセスで 403(列挙攻撃防御) |
+| thread_6 | 資格 X / 受講生 A 投稿 / 既に SoftDelete 済 | 管理者画面の SoftDelete 含むトグル動作 |
+
+`QaReplySeeder`:
+
+| レコード | 内容 | 動作確認用途 |
+|---|---|---|
+| reply_1 | thread_2 への回答(受講生 B = 投稿者の自己回答) | 投稿者本人による回答編集・削除 |
+| reply_2 | thread_2 への回答(受講生 C) | 他受講生の回答に対するアクセス制限 |
+| reply_3 | thread_2 への回答(コーチ X) | コーチによる回答の編集・削除 |
+| reply_4 | thread_3 への回答(受講生 D) | 解決済スレッド配下の回答編集 |
+| reply_5 | thread_3 への回答(管理者 = モデレーション削除済 SoftDelete) | 管理者画面の SoftDelete 含む詳細閲覧 |
+| reply_6 | thread_5 への回答(受講生 D) | 列挙攻撃防御の周辺データ |
+
+- **DatabaseSeeder への追加順序**: `UserSeeder` → `CertificationSeeder` → `QaThreadSeeder` → `QaReplySeeder`
 
 ## 受け入れ条件
 
-- [ ] **スレッド投稿 - 成功時動作**: 受講生が「資格(公開済のみ)+ タイトル + 本文」で投稿成功時、`/qa-board/{thread}` にリダイレクトされフラッシュ「質問を投稿しました」が表示される
+- [ ] **スレッド投稿 - リダイレクト**: 受講生が投稿成功時、`/qa-board/{thread}`(作成されたスレッド詳細画面)にリダイレクトされる
+- [ ] **スレッド投稿 - フラッシュ**: 受講生が投稿成功時、フラッシュメッセージが表示される
 - [ ] **スレッド投稿 - 認可拒否**: コーチ / 管理者が `/qa-board/create` または POST `/qa-board` にアクセスすると 403
 - [ ] **一覧表示 - ロール別フィルタ**: 受講生は公開済資格すべて、コーチは担当資格のみのスレッドが新着順で 20 件/ページ表示される
-- [ ] **一覧表示 - N+1 なし**: 一覧で `with(['certification', 'user'])` + `withCount('replies')` により N+1 が発生しない
-- [ ] **詳細表示**: スレッド詳細画面で配下回答が新着順で全件表示される(ページネーションなし)
+- [ ] **一覧表示 - N+1 なし**: スレッド + 投稿者 + 資格 + 回答数の Eager Loading により N+1 が発生しない
+- [ ] **詳細表示**: スレッド詳細画面で配下回答が新着順で全件表示される(回答はページネーションなし)
 - [ ] **スレッド編集 - 投稿者本人のみ**: 投稿者本人がタイトル・本文を編集できる(資格は変更不可)、投稿者以外がアクセスすると 403
-- [ ] **スレッド編集 - フラッシュ**: 編集成功時フラッシュ「質問を更新しました」が表示される
-- [ ] **スレッド削除 - 投稿者条件**: 投稿者本人が回答 0 件(SoftDelete 含む)のスレッドのみ削除可、削除時 SoftDelete される
-- [ ] **スレッド削除 - 回答ありエラー**: 回答有時は 409 + フラッシュエラー「回答が付いているスレッドは削除できません。」
+- [ ] **スレッド編集 - フラッシュ**: 編集成功時、フラッシュメッセージが表示される
+- [ ] **スレッド削除 - 投稿者条件**: 投稿者本人が回答 0 件(SoftDelete 含む)のスレッドのみ SoftDelete できる
+- [ ] **スレッド削除 - 回答ありエラー**: 回答有のスレッドを投稿者が削除しようとすると 409 + フラッシュエラーが表示される
 - [ ] **スレッド削除 - 管理者無条件**: 管理者は任意のスレッドを無条件で SoftDelete 可能
-- [ ] **回答 CRUD - 受講生・コーチ**: 受講生 / コーチが回答投稿・編集・自削除でき、成功時フラッシュ表示。管理者は回答投稿不可(403)、管理者は任意の回答を削除可
+- [ ] **回答 CRUD - 受講生・コーチ**: 受講生 / コーチが回答投稿・編集・自削除でき、成功時フラッシュ表示
+- [ ] **回答 CRUD - 管理者制限**: 管理者は回答投稿不可(403)、管理者は任意の回答を削除可
 - [ ] **解決マーク・解除 - 認可**: スレッド投稿者本人のみが解決マーク / 解除でき、管理者 / コーチ / 他受講生は 403(管理者であっても代行不可)
-- [ ] **解決マーク・解除 - 状態整合性**: 解決時に `status=resolved` + `resolved_at=now()` を同時更新(逆操作で `status=open` + `resolved_at=null`)、既に解決済 / 未解決に同じ操作で 409
-- [ ] **通知連携**: 回答者がスレッド投稿者と異なる場合に database + mail 両方の channel で通知発火、自己回答時はスキップ
+- [ ] **解決マーク・解除 - 状態整合性**: 解決時に `status=resolved` + `resolved_at=now()` を同時更新(逆操作で `status=open` + `resolved_at=null`)
+- [ ] **解決マーク・解除 - 重複操作エラー**: 既に解決済 / 未解決に同じ操作で 409
 - [ ] **検索・フィルタ**: 資格別 / 解決状態 / キーワード(`title` / `body` / 回答 `body` の OR LIKE)で絞り込みでき、ページネーションにフィルタ状態が引き継がれる
 - [ ] **列挙攻撃防御**: コーチが担当外資格 ID をクエリ指定すると 403(資格存在は隠蔽しない)
 - [ ] **管理者モデレーション**: `/admin/qa-board` で全スレッド一覧 + SoftDelete 含むトグル、`/admin/qa-board/{thread}` で SoftDelete 済の回答も閲覧可、削除は SoftDelete
-- [ ] **サイドバーバッジ**: コーチに「質問対応 (N)」(担当資格 × `status=open` × 回答 0 件 の件数)を表示。受講生サイドバーにはバッジなし
 - [ ] **公開状態と認可**: コーチが担当外資格のスレッド URL 直叩きで 403、受講生 / コーチが公開停止資格のスレッド URL 直叩きで 404
 
-<!-- coach-only:start -->
+## 実装方針
 
-## 実装方針 (参考)
+> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の設計を組み立てる。
 
-> **あくまで参考設計**。様々な実装方法がある前提で、受講生は提供 PJ コード + ヒアリングで自分の設計を組み立てる。
+### 主要 URL
+
+**公開エンドポイント**(受講生 / コーチ):
+
+| メソッド | パス | 振る舞い |
+|---|---|---|
+| GET | `/qa-board` | スレッド一覧(ロール別フィルタ + 新着順 20 件/ページ) |
+| GET | `/qa-board/create` | 投稿フォーム表示(受講生のみ、コーチ/管理者は 403) |
+| POST | `/qa-board` | スレッド投稿、成功時 `/qa-board/{thread}` リダイレクト + フラッシュ「質問を投稿しました」 |
+| GET | `/qa-board/{thread}` | スレッド詳細(配下回答を新着順全件表示) |
+| GET | `/qa-board/{thread}/edit` | 編集フォーム(投稿者本人のみ、他は 403) |
+| PATCH | `/qa-board/{thread}` | スレッド編集(資格は変更不可、フラッシュ「質問を更新しました」) |
+| DELETE | `/qa-board/{thread}` | スレッド削除(投稿者本人 × 回答 0 件 のみ SoftDelete、回答有時 409 + フラッシュエラー「回答が付いているスレッドは削除できません。」) |
+| POST | `/qa-board/{thread}/resolve` | 解決マーク(投稿者本人のみ、`status` + `resolved_at` 同時更新、フラッシュ「解決済にしました」) |
+| POST | `/qa-board/{thread}/unresolve` | 解決解除(投稿者本人のみ、`status=open` + `resolved_at=null` 同時更新、フラッシュ「未解決に戻しました」) |
+| POST | `/qa-board/{thread}/replies` | 回答投稿(受講生/コーチ可、管理者不可、フラッシュ「回答を投稿しました」) |
+| PATCH | `/qa-board/{thread}/replies/{reply}` | 回答編集(投稿者本人のみ、フラッシュ「回答を更新しました」) |
+| DELETE | `/qa-board/{thread}/replies/{reply}` | 回答削除(投稿者本人のみ SoftDelete、フラッシュ「回答を削除しました」) |
+
+**管理者モデレーション**:
+
+| メソッド | パス | 振る舞い |
+|---|---|---|
+| GET | `/admin/qa-board` | 全スレッド一覧(SoftDelete 含むトグル) |
+| GET | `/admin/qa-board/{thread}` | スレッド詳細(SoftDelete 済の回答も閲覧可) |
+| DELETE | `/admin/qa-board/{thread}` | スレッド モデレーション削除(無条件 SoftDelete) |
+| DELETE | `/admin/qa-board/replies/{reply}` | 回答 モデレーション削除(任意の回答を SoftDelete) |
 
 ### データモデル
 
@@ -81,7 +170,7 @@
 | user_id | ulid | ✓ | users.id, ON DELETE CASCADE | `$table->foreignUlid('user_id')->constrained()->cascadeOnDelete()` |
 | title | varchar(200) | ✓ | | |
 | body | text | ✓ | | |
-| status | varchar(20) | ✓ | | `QaThreadStatus` Enum cast (`open` / `resolved`)、デフォルト `open` |
+| status | varchar(20) | ✓ | | `QaThreadStatus` Enum cast(`open` / `resolved`)、デフォルト `open` |
 | resolved_at | timestamp | | | NULL 許可、解決時に `now()` セット |
 | created_at | timestamp | | | `$table->timestamps()` |
 | updated_at | timestamp | | | `$table->timestamps()` |
@@ -104,58 +193,21 @@
 - **リレーション**: User 1-N QaThread / Certification 1-N QaThread / QaThread 1-N QaReply / User 1-N QaReply
 - **SoftDelete**: 両者採用(配下回答は物理 cascade させず個別 SoftDelete 状態保持)
 
-### 主要画面・操作
-
-**公開エンドポイント**(受講生 / コーチ):
-
-| 画面 | 操作 | URL / メソッド | 受け入れ条件サマリ | 使用技術 |
-|---|---|---|---|---|
-| スレッド一覧 | ページ表示 | GET /qa-board | ロール別フィルタ + 新着順 20 件/ページ | `QaThreadController@index`, `with(['certification', 'user'])`, `withCount('replies')` |
-| スレッド投稿 | フォーム表示 | GET /qa-board/create | 受講生のみ表示、コーチ/管理者は 403 | `QaThreadController@create`, `QaThreadPolicy@create` |
-| スレッド投稿 | 送信 | POST /qa-board | バリデーション通過時 `/qa-board/{thread}` リダイレクト + フラッシュ「質問を投稿しました」 | `QaThreadController@store`, `StoreQaThreadRequest`, `CreateQaThreadAction` |
-| スレッド詳細 | 表示 | GET /qa-board/{thread} | 配下回答を新着順全件表示 | `QaThreadController@show`, `$thread->load(['user', 'certification', 'replies.user'])` |
-| スレッド編集 | フォーム表示 | GET /qa-board/{thread}/edit | 投稿者本人のみ、他は 403 | `QaThreadController@edit`, `QaThreadPolicy@update` |
-| スレッド編集 | 送信 | PATCH /qa-board/{thread} | タイトル/本文更新、資格は変更不可、フラッシュ「質問を更新しました」 | `QaThreadController@update`, `UpdateQaThreadRequest`, `UpdateQaThreadAction` |
-| スレッド削除 | 送信 | DELETE /qa-board/{thread} | 投稿者本人 × 回答 0 件 のみ SoftDelete、回答有時 409 | `QaThreadController@destroy`, `QaThreadPolicy@delete`, `DeleteQaThreadAction` |
-| 解決マーク | 送信 | POST /qa-board/{thread}/resolve | 投稿者本人のみ、`status` + `resolved_at` 同時更新 | `QaThreadController@resolve`, `QaThreadPolicy@resolve`, `ResolveQaThreadAction` |
-| 解決解除 | 送信 | POST /qa-board/{thread}/unresolve | 投稿者本人のみ、`status=open` + `resolved_at=null` 同時更新 | `QaThreadController@unresolve`, `QaThreadPolicy@unresolve`, `UnresolveQaThreadAction` |
-| 回答投稿 | 送信 | POST /qa-board/{thread}/replies | 受講生/コーチ可、管理者不可。自己回答スキップ条件で通知発火 | `QaReplyController@store`, `StoreQaReplyRequest`, `CreateQaReplyAction`(通知発火含む) |
-| 回答編集 | 送信 | PATCH /qa-board/{thread}/replies/{reply} | 投稿者本人のみ | `QaReplyController@update`, `UpdateQaReplyRequest`, `UpdateQaReplyAction` |
-| 回答削除 | 送信 | DELETE /qa-board/{thread}/replies/{reply} | 投稿者本人のみ SoftDelete | `QaReplyController@destroy`, `QaReplyPolicy@delete`, `DeleteQaReplyAction` |
-
-**管理者モデレーション**:
-
-| 画面 | 操作 | URL / メソッド | 受け入れ条件サマリ | 使用技術 |
-|---|---|---|---|---|
-| 全スレッド一覧 | 表示 | GET /admin/qa-board | 全資格、SoftDelete 含むトグル | `Admin\QaThreadController@index`, `withTrashed()` |
-| スレッド詳細 (管理者) | 表示 | GET /admin/qa-board/{thread} | SoftDelete 済の回答も閲覧可 | `Admin\QaThreadController@show` |
-| モデレーション削除 (スレッド) | 送信 | DELETE /admin/qa-board/{thread} | 無条件 SoftDelete | `Admin\QaThreadController@destroy`, `QaThreadPolicy@moderationDelete` |
-| モデレーション削除 (回答) | 送信 | DELETE /admin/qa-board/replies/{reply} | 任意の回答を SoftDelete | `Admin\QaReplyController@destroy`, `QaReplyPolicy@moderationDelete` |
-
 ### バリデーション
-
-**FormRequest**: `StoreQaThreadRequest` / `UpdateQaThreadRequest` / `StoreQaReplyRequest` / `UpdateQaReplyRequest`
 
 `StoreQaThreadRequest`:
 
-| 入力項目 | ルール | エラーメッセージ |
+| 入力項目 | ルール | 推奨エラーメッセージ例 |
 |---|---|---|
 | certification_id | required / ulid / exists:certifications,id(公開済のみ) | 資格を選択してください。<br>選択された資格は存在しません。 |
 | title | required / string / max:200 / not_regex:全角空白のみ | タイトルは必須です。<br>タイトルは 200 文字以内で入力してください。<br>タイトルに有効な文字を入力してください。 |
 | body | required / string / max:5000 | 本文は必須です。<br>本文は 5000 文字以内で入力してください。 |
 
-`UpdateQaThreadRequest`:
-
-| 入力項目 | ルール | エラーメッセージ |
-|---|---|---|
-| title | required / string / max:200 | 同上 |
-| body | required / string / max:5000 | 同上 |
-
-> 注: `certification_id` は受け取らない(資格変更不可)。
+`UpdateQaThreadRequest`: `title` / `body` のみ受け取り(資格変更不可)、ルールは Store と同じ。
 
 `StoreQaReplyRequest` / `UpdateQaReplyRequest`:
 
-| 入力項目 | ルール | エラーメッセージ |
+| 入力項目 | ルール | 推奨エラーメッセージ例 |
 |---|---|---|
 | body | required / string / max:5000 | 本文は必須です。<br>本文は 5000 文字以内で入力してください。 |
 
@@ -184,56 +236,48 @@
 | delete | 投稿者本人のみ ✅ / 管理者: 任意の回答 ✅ |
 | moderationDelete | 管理者のみ ✅ |
 
-### Seeder 設計
-
-| Seeder | 投入データ | 件数目安 | 備考 |
-|---|---|---|---|
-| `QaThreadSeeder` | 動作確認用シナリオ: 受講生 A の自己投稿(解決済 / 未解決)+ 受講生 B の投稿 + 回答 0 件(削除可テスト用)+ 回答ありで削除不可テスト用 + 公開停止資格スレッド(404 テスト用) | 6〜8 件 | `create` |
-| `QaReplySeeder` | 各スレッドに 0〜3 件の回答。自己回答スキップシナリオ(投稿者 = 回答者)を 1 件含める。回答有スレッドは削除不可テスト用に必ず 1 件以上回答を持たせる | 10〜15 件 | `create` |
-
-- **DatabaseSeeder への追加順序**: `UserSeeder` → `CertificationSeeder` → `QaThreadSeeder` → `QaReplySeeder`
-
 ### テスト観点
 
 | 種別 | 観点 |
 |---|---|
 | Unit | `QaThreadStatus` Enum(cast / `label()` 日本語)/ QaThread リレーション(user, certification, replies)/ QaReply リレーション(qaThread, user) |
-| Feature | 各エンドポイントの認可分岐(受講生 / コーチ / 管理者)/ 副作用(DB 行追加・更新、SoftDelete、通知発火)/ フラッシュ文言 / リダイレクト先 / 列挙攻撃(担当外資格 ID クエリ指定で 403)/ 検索・フィルタのページネーション引き継ぎ |
+| Feature | 各エンドポイントの認可分岐(受講生 / コーチ / 管理者)/ 副作用(DB 行追加・更新、SoftDelete)/ フラッシュ表示有無 / リダイレクト先パス / 列挙攻撃(担当外資格 ID クエリ指定で 403)/ 検索・フィルタのページネーション引き継ぎ |
 | Policy | 三重判定(ロール × 当事者 × 担当資格)のネットワーク・ケース網羅 / `resolve` は管理者代行不可 / `delete` は投稿者 × 回答 0 件 / 管理者無条件 |
-| 通知 | `Notification::fake()` で発火を検証 / 自己回答時はスキップ / 回答者 ≠ 投稿者で database + mail 両 channel 発火 |
 
 ### アーキテクチャ判断
 
-- **採用技術**: Eloquent + UseCases(Action)+ Policy + FormRequest + Blade(提供済み)+ Notification(database + mail channel)+ `DB::transaction`
-- **設計判断**:
-  1. **エンドポイント分離**: 公開(受講生 / コーチ)と管理者モデレーションで Controller / Action / Policy メソッドを分離(認可ルールの違いを設計レベルで明示)
-  2. **状態整合性**: `status` Enum + `resolved_at` datetime を Action 内同時更新で「status=resolved ⇔ resolved_at != null」担保(他 Feature の `Enrollment.status + passed_at` と整合)
-  3. **通知連携**: 自己回答スキップは notification 側ラッパー Action 内で処理、channel は database + mail 固定送信(ユーザー設定 UI なし)
-  4. **列挙攻撃防御**: コーチ担当外資格 ID 指定時は 404 ではなく 403(資格存在は隠蔽しない)。一方、公開停止資格は 404(資格自体が見えない = リソース存在しない扱い)
-  5. **XSS 防御**: `{!! nl2br(e($body)) !!}` パターン、Markdown レンダリングしない
-  6. **検索**: `LIKE` のみ(FULLTEXT INDEX / 外部全文検索エンジン不採用)、検索対象は `QaThread.title` / `body` / `QaReply.body` の OR 部分一致
-  7. **SoftDelete**: スレッド・回答とも SoftDelete、配下回答は物理 cascade させない(個別 SoftDelete 状態保持で履歴閲覧可)
+> **Basic 範囲制約(規約 `ticket-spec.md` 参照)**: Service クラスは使わない。Action(UseCases)も教材範囲外なので **Controller 内完結を前提** とする。Action 採用は **受講生の判断で推奨**(チャレンジするなら歓迎)、ただし必須ではない。模範解答 PJ は Action パターンを採用しているが、Basic 受講生が Controller 内で実装している場合も振る舞いが受け入れ条件を満たせば OK。
 
-### 主要関連ファイル
+- **採用技術**: Eloquent + Controller(受講生判断で Action 分割可) + Policy + FormRequest + Blade(提供済み) + `DB::transaction`
+- **設計判断**:
+  1. **エンドポイント分離**: 公開(受講生 / コーチ)と管理者モデレーションで Controller を分離(認可ルールの違いを設計レベルで明示)
+  2. **状態整合性**: `status` Enum + `resolved_at` datetime を同時更新で「status=resolved ⇔ resolved_at != null」担保(他 Feature の `Enrollment.status + passed_at` と整合)
+  3. **列挙攻撃防御**: コーチ担当外資格 ID 指定時は 404 ではなく 403(資格存在は隠蔽しない)。一方、公開停止資格は 404(資格自体が見えない = リソース存在しない扱い)
+  4. **XSS 防御**: `{!! nl2br(e($body)) !!}` パターン、Markdown レンダリングしない
+  5. **検索**: `LIKE` のみ(FULLTEXT INDEX / 外部全文検索エンジン不採用)、検索対象は `QaThread.title` / `body` / `QaReply.body` の OR 部分一致
+  6. **SoftDelete**: スレッド・回答とも SoftDelete、配下回答は物理 cascade させない(個別 SoftDelete 状態保持で履歴閲覧可)
+
+### 関連ファイルメモ(コーチ用、受講生に直接教えない)
+
+> **コーチが実装範囲のコードを事前把握しておく材料**。受講生のヒアリング応答時は **ファイルパスを直接教えない**(教育上 NG、受講生は提供 PJ コードを自分で読解するのが学習目的)。「○○の責務はどこに置くべきと考えた?」「既存パターン(Enrollment / MockExam 等)を踏襲するならどのファイルを参考にする?」のような **問い返し / 方向性ヒント** で受講生のコードリーディングを促すための材料として使う。
+> 模範解答 PJ は Action パターンを採用しているが、Basic 範囲では Controller 内完結も許容(規約 `ticket-spec.md` Basic 制約参照)。
 
 - `app/Models/QaThread.php` / `app/Models/QaReply.php`
 - `app/Enums/QaThreadStatus.php`
 - `app/Http/Controllers/QaThreadController.php` / `app/Http/Controllers/QaReplyController.php`
 - `app/Http/Controllers/Admin/QaThreadController.php` / `app/Http/Controllers/Admin/QaReplyController.php`
-- `app/UseCases/QaThread/{Create,Update,Delete,Resolve,Unresolve}QaThreadAction.php`
-- `app/UseCases/QaReply/{Create,Update,Delete}QaReplyAction.php`
+- `app/UseCases/QaThread/{Create,Update,Delete,Resolve,Unresolve}QaThreadAction.php` / `app/UseCases/QaReply/{Create,Update,Delete}QaReplyAction.php`(※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
 - `app/Policies/QaThreadPolicy.php` / `app/Policies/QaReplyPolicy.php`
 - `app/Http/Requests/{Store,Update}QaThread{,Reply}Request.php`
 - `app/Exceptions/QaBoard/{QaThreadHasReplies,QaThreadAlreadyResolved,QaThreadNotResolved}Exception.php`
 - `resources/views/qa-thread/*.blade.php` / `resources/views/admin/qa-thread/*.blade.php`
 - `database/migrations/*_create_qa_threads_table.php` / `database/migrations/*_create_qa_replies_table.php`
-- `app/View/Composers/SidebarBadgeComposer.php`(コーチサイドバーバッジ集計)
 
 ## 補足
 
 ### 想定ヒアリング Q&A
 
-> 3 階層(必須回答 / 実装判断 / 補足)で記述。コーチが受講生からヒアリングされた時の即答材料。
+> 3 階層(必須回答 / 実装判断 / 補足)で記述。受講生の **仮説提案型ヒアリング**(「○○と設計しましたが問題ないですか?」)に対して OK / NG / 別案 を返すスタイル。
 
 #### 必須回答(バリデーション・認可・文言)
 
@@ -242,7 +286,7 @@
 | タイトル / 本文の最大文字数は? | タイトル 200 文字 / 本文 5000 文字 / 回答本文 5000 文字、全角空白のみは `not_regex` で拒否 |
 | コーチが担当外資格のスレッドを直叩きしたら 403 / 404? | **403**(担当外であることを明示、資格存在は隠蔽しない) |
 | 公開停止資格のスレッドにアクセスしたら 403 / 404? | **404**(資格自体が見えない = リソース存在しない扱い) |
-| フラッシュメッセージの文言は? | 投稿「質問を投稿しました」/ 編集「質問を更新しました」/ 削除「質問を削除しました」/ 削除エラー「回答が付いているスレッドは削除できません。」/ 回答投稿「回答を投稿しました」/ 解決「解決済にしました」/ 解除「未解決に戻しました」 |
+| フラッシュメッセージの推奨文言は? | 投稿「質問を投稿しました」/ 編集「質問を更新しました」/ 削除「質問を削除しました」/ 削除エラー「回答が付いているスレッドは削除できません。」/ 回答投稿「回答を投稿しました」/ 解決「解決済にしました」/ 解除「未解決に戻しました」(適切な日本語であれば文言の細部は採点対象外) |
 | スレッド削除条件は? | 投稿者本人 × 回答 0 件(SoftDelete 含む)のみ。管理者は無条件 |
 | 解決マーク / 解除は管理者も代行できる? | いいえ、投稿者本人のみ(管理者であっても代行不可) |
 
@@ -251,21 +295,17 @@
 | 質問 | 回答 |
 |---|---|
 | 削除は SoftDelete / 物理削除? | SoftDelete(履歴保持)、配下回答は物理 cascade させない(個別 SoftDelete 状態保持) |
-| 通知は database / mail どちらの channel? | 両方固定送信(ユーザー設定 UI なし) |
-| 自己回答時に通知発火させる? | いいえ、スキップ(回答者 = 投稿者の場合) |
 | キーワード検索は LIKE / FULLTEXT? | `LIKE` のみ、検索対象は `QaThread.title` / `body` / `QaReply.body` の OR 部分一致 |
 | ページネーションは何件 / ページ? | 20 件(回答はページネーションなし、詳細画面で全件表示) |
-| 一覧 Eager Loading は何を指定? | `with(['certification', 'user'])` + `withCount('replies')` |
+| 一覧 Eager Loading は何を指定? | `with(['certification', 'user'])` + `withCount('replies')`(受講生判断、振る舞いが N+1 なしを満たせば OK) |
+| Action / Service を使うべき? | Basic 範囲では Controller 内完結を前提。Action 採用は推奨(模範解答 PJ もそうしている)だが、教材範囲外なので必須ではない。受講生が Controller 内で実装している場合も振る舞いが受け入れ条件を満たせば OK |
 
 #### 補足
 
 | 質問 | 回答 |
 |---|---|
 | Policy はクラス分割する? | はい、`QaThreadPolicy` / `QaReplyPolicy` の 2 つ |
-| サイドバーバッジ集計はどこで? | `SidebarBadgeComposer` の coach 分岐に COUNT クエリ追加 |
 | テストは Feature / Unit どっち? | 両方。Feature で各エンドポイント認可 + 副作用 + フラッシュ、Unit で Policy の三重判定 |
 | 管理者はスレッド / 回答の内容編集できる? | いいえ、閲覧 + 削除のみ |
 | `EnsureActiveLearning` Middleware の影響は? | 全受講生 / コーチルートに適用(graduated 受講生をブロック、コーチは影響なし) |
 | 同時編集競合の楽観ロックは? | 持たない(教育 PJ スコープ外) |
-
-<!-- coach-only:end -->

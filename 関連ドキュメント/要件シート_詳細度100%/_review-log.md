@@ -44,3 +44,26 @@
 |---|---|---|---|
 | 1 | Controller 命名規約(`Admin\` サブディレクトリ vs `Moderation` 接尾辞) | S-B-01 ほか admin 機能を持つ全 Feature | 全 18 Feature の Controller を横断調査 → 規約確定 → リネーム |
 | 2 | View ディレクトリ名規約(Feature 名 vs エンティティ名) | S-B-01 ほか | 全 18 Feature の `resources/views/` を横断調査 → 規約確定 → リネーム |
+
+---
+
+## S-B-01 / qa-board-01 追加レビュー(2026-05-23、書き直し時)
+
+### ⚠️ サイドバーバッジ機能の廃止 → 模範解答 PJ から削除
+
+- **判定**: ⚠️ 修正必要(Phase D で模範解答 PJ も削除)
+- **背景**: S-B-01 書き直し時、ユーザー判断で「コーチ用サイドバーバッジ(担当資格 × 未解決 × 回答 0 件 の件数表示)」を本チケットのスコープから除外。採点上の重要度が低く、機能としても廃止する判断。
+- **影響範囲**(Phase D 一括処理):
+  - `app/View/Composers/SidebarBadgeComposer.php` の coach 分岐から qa-board 関連の COUNT クエリ削除
+  - `resources/views/components/sidebar.blade.php`(または相当する Blade)から「質問対応 (N)」バッジ表示削除
+  - 関連テストがあれば削除
+- **本チケット側**: 受け入れ条件 / 実装方針 / Q&A から全削除済み、やらないことに明示
+
+### ⚠️ 通知発火を `notification` Feature(S-B-05)に移管
+
+- **判定**: ⚠️ 修正必要(Phase D で模範解答 PJ も再整理)
+- **背景**: S-B-01 書き直し時、ユーザー判断で「回答時の通知発火」を本チケットのスコープ外とした。本来 qa-board 側で発火呼び出しを書く実装になっていたが、`notification`(S-B-05)のスコープに移管する。
+- **影響範囲**(Phase D 一括処理):
+  - 模範解答 PJ で qa-board 側の Action から `Notification::send()` 呼び出しを削除し、`notification` Feature 側のラッパー or イベント駆動構成に整理
+  - 関連テスト・Q&A の所在見直し
+- **本チケット側**: 依存チケット `S-B-05` も解除済み(本チケット内では通知関連を一切扱わない)、受け入れ条件 / やること / 実装方針 / Q&A から全削除済み
