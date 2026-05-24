@@ -24,36 +24,35 @@
 
 ### 機能要件 — QaThread 基本エンティティ
 
-- **REQ-qa-board-001**: The system shall ULID 主キー / SoftDeletes を備えた `qa_threads` テーブルを提供する。
-- **REQ-qa-board-002**: The system shall `qa_threads` に `certification_id`（NOT NULL, `certifications.id` 参照）/ `user_id`（NOT NULL, `users.id` 参照, 投稿者）/ `title`（VARCHAR(200), NOT NULL）/ `body`（TEXT, NOT NULL, 最大 5000 文字）/ `status`（string Enum, `open` / `resolved`, default `open`, NOT NULL）/ `resolved_at`（nullable datetime, `status = resolved` 時のみセット）/ `created_at` / `updated_at` / `deleted_at` カラムを保持する。
-- **REQ-qa-board-003**: The system shall `qa_threads` に `(certification_id, status)` 複合 INDEX / `(user_id)` INDEX / `(deleted_at)` INDEX を付与する。
+- **REQ-qa-board-001**: The system shall ULID 主キーを備えた `qa_threads` テーブルを提供する。
+- **REQ-qa-board-002**: The system shall `qa_threads` に `certification_id`（NOT NULL, `certifications.id` 参照）/ `user_id`（NOT NULL, `users.id` 参照, 投稿者）/ `title`（VARCHAR(200), NOT NULL）/ `body`（TEXT, NOT NULL, 最大 5000 文字）/ `status`（string Enum, `open` / `resolved`, default `open`, NOT NULL）/ `resolved_at`（nullable datetime, `status = resolved` 時のみセット）/ `created_at` / `updated_at` カラムを保持する。
+- **REQ-qa-board-003**: The system shall `qa_threads` に `(certification_id, status)` 複合 INDEX / `(user_id)` INDEX を付与する。
 - **REQ-qa-board-004**: The system shall `QaThread.status` を `App\Enums\QaThreadStatus`（`Open` / `Resolved`）として表現し、各値に日本語ラベル（`未解決` / `解決済`）を `label()` メソッドで返す。
 - **REQ-qa-board-005**: The system shall `QaThread` モデルに `belongsTo(Certification)` / `belongsTo(User, 'user_id')` / `hasMany(QaReply)` / `scopeResolved()`（`status = resolved`）/ `scopeUnresolved()`（`status = open`）/ `scopeForCertification($id)` を実装し、`isResolved(): bool` を `status === QaThreadStatus::Resolved` で判定するヘルパとして公開する。
 - **REQ-qa-board-006**: The system shall `QaThread.status` と `resolved_at` の整合性を Action 側で同時更新により担保する（`status = resolved` 時は `resolved_at != null`、`status = open` 時は `resolved_at = null` を必ず満たす）。
 
 ### 機能要件 — QaReply 基本エンティティ
 
-- **REQ-qa-board-010**: The system shall ULID 主キー / SoftDeletes を備えた `qa_replies` テーブルを提供する。
-- **REQ-qa-board-011**: The system shall `qa_replies` に `qa_thread_id`（NOT NULL, `qa_threads.id` 参照）/ `user_id`（NOT NULL, `users.id` 参照, 回答者）/ `body`（TEXT, NOT NULL, 最大 5000 文字）/ `created_at` / `updated_at` / `deleted_at` カラムを保持する。
-- **REQ-qa-board-012**: The system shall `qa_replies` に `(qa_thread_id, created_at)` 複合 INDEX / `(user_id)` INDEX / `(deleted_at)` INDEX を付与する。
+- **REQ-qa-board-010**: The system shall ULID 主キーを備えた `qa_replies` テーブルを提供する。
+- **REQ-qa-board-011**: The system shall `qa_replies` に `qa_thread_id`（NOT NULL, `qa_threads.id` 参照）/ `user_id`（NOT NULL, `users.id` 参照, 回答者）/ `body`（TEXT, NOT NULL, 最大 5000 文字）/ `created_at` / `updated_at` カラムを保持する。
+- **REQ-qa-board-012**: The system shall `qa_replies` に `(qa_thread_id, created_at)` 複合 INDEX / `(user_id)` INDEX を付与する。
 - **REQ-qa-board-013**: The system shall `QaReply` モデルに `belongsTo(QaThread)` / `belongsTo(User, 'user_id')` を実装する。
-- **REQ-qa-board-014**: The system shall `QaThread` 削除時に紐付く `QaReply` を **物理的に cascade させず**、SoftDelete されたスレッド配下の回答は閲覧経路から除外するのみとする（履歴は保持）。
 
 ### 機能要件 — スレッド投稿（student のみ）
 
 - **REQ-qa-board-020**: When 受講生が `POST /qa-board` にスレッドを投稿する, the system shall `certification_id` / `title` / `body` を必須入力させ、`user_id = 受講生.id` / `status = open` / `resolved_at = null` で `qa_threads` に INSERT する。
 - **REQ-qa-board-021**: If 投稿者が `User.role != student` の場合, then the system shall HTTP 403 を返す。
-- **REQ-qa-board-022**: If 指定された `certification_id` の `Certification.status != published` または SoftDelete 済の場合, then the system shall HTTP 422（バリデーションエラー）を返す。
+- **REQ-qa-board-022**: If 指定された `certification_id` の `Certification.status != published` の場合, then the system shall HTTP 422（バリデーションエラー）を返す。
 - **REQ-qa-board-023**: If `title` が 200 文字を超える / 空文字 / 全角空白のみの場合, then the system shall HTTP 422 を返す。
 - **REQ-qa-board-024**: If `body` が 5000 文字を超える / 空文字 / 全角空白のみの場合, then the system shall HTTP 422 を返す。
 - **REQ-qa-board-025**: When スレッド投稿が成功する, the system shall `/qa-board/{thread}` に redirect し flash success メッセージを表示する。
-- **REQ-qa-board-026**: The system shall スレッド投稿フォームで `certification_id` の選択肢を「公開済資格すべて（`Certification.status = published` かつ SoftDelete 除外）」とする。受講中資格に限定しない。
+- **REQ-qa-board-026**: The system shall スレッド投稿フォームで `certification_id` の選択肢を「公開済資格すべて（`Certification.status = published`）」とする。受講中資格に限定しない。
 
 ### 機能要件 — スレッド一覧・閲覧
 
 - **REQ-qa-board-030**: When 受講生が `GET /qa-board` にアクセスする, the system shall `Certification.status = published` の資格に紐付くスレッドすべてを `created_at DESC` でページネーション（20 件 / ページ）して返す。
 - **REQ-qa-board-031**: When コーチが `GET /qa-board` にアクセスする, the system shall ログインコーチが `certification_coach_assignments` で担当する資格のスレッドのみを `created_at DESC` でページネーション（20 件 / ページ）して返す。担当外資格のスレッドは一切返さない。
-- **REQ-qa-board-032**: When admin が `GET /admin/qa-board` にアクセスする, the system shall 全スレッド（公開停止資格・SoftDelete 含む選択可能フィルタ）を `created_at DESC` でページネーションして返す。
+- **REQ-qa-board-032**: When admin が `GET /admin/qa-board` にアクセスする, the system shall 全スレッド（公開停止資格を含む選択可能フィルタ）を `created_at DESC` でページネーションして返す。
 - **REQ-qa-board-033**: When 受講生が `GET /qa-board/{thread}` にアクセスする, the system shall 対象スレッドの `Certification.status = published` を検証し、未公開なら HTTP 404 を返す。
 - **REQ-qa-board-034**: When コーチが `GET /qa-board/{thread}` にアクセスする, the system shall 対象スレッドの `certification_id` が担当資格に含まれない場合 HTTP 403 を返す。
 - **REQ-qa-board-035**: When スレッド詳細画面が描画される, the system shall 配下の `QaReply` を `created_at ASC` で **全件表示**（ページネーションなし）する。
@@ -70,11 +69,11 @@
 
 ### 機能要件 — スレッド削除
 
-- **REQ-qa-board-050**: When スレッド投稿者本人が `DELETE /qa-board/{thread}` で削除する, the system shall 対象スレッドに **回答が 1 件も付いていない**（`QaReply` が物理 0 件、SoftDelete 済を含む）かを検証する。
+- **REQ-qa-board-050**: When スレッド投稿者本人が `DELETE /qa-board/{thread}` で削除する, the system shall 対象スレッドに **回答が 1 件も付いていない**（`QaReply` が 0 件）かを検証する。
 - **REQ-qa-board-051**: If 投稿者本人による削除で `QaReply` が 1 件以上存在する場合, then the system shall `QaThreadHasRepliesException`（HTTP 409）を返す。
 - **REQ-qa-board-052**: When admin が `DELETE /admin/qa-board/{thread}` で削除する, the system shall 回答有無に関わらず削除を許可する。
 - **REQ-qa-board-053**: If 投稿者本人以外かつ admin 以外（coach / 他 student）が削除しようとした場合, then the system shall HTTP 403 を返す。
-- **REQ-qa-board-054**: The system shall スレッド削除を SoftDelete（`deleted_at = now()`）で実装し、配下の `QaReply` は物理 cascade させない（個別の SoftDelete 状態を保持）。
+- **REQ-qa-board-054**: The system shall スレッド削除を物理削除で実装し、配下の `QaReply` も FK の cascade で同時に物理削除する。
 
 ### 機能要件 — 回答投稿
 
@@ -94,11 +93,10 @@
 
 ### 機能要件 — 回答削除
 
-- **REQ-qa-board-080**: When 回答投稿者本人が `DELETE /qa-board/{thread}/replies/{reply}` で削除する, the system shall 当該回答を SoftDelete する。
-- **REQ-qa-board-081**: When admin が `DELETE /admin/qa-board/replies/{reply}` で削除する, the system shall 当該回答を SoftDelete する（モデレーション、回答数のカウントから除外される）。
+- **REQ-qa-board-080**: When 回答投稿者本人が `DELETE /qa-board/{thread}/replies/{reply}` で削除する, the system shall 当該回答を物理削除する。
+- **REQ-qa-board-081**: When admin が `DELETE /admin/qa-board/replies/{reply}` で削除する, the system shall 当該回答を物理削除する（モデレーション、回答数のカウントから除外される）。
 - **REQ-qa-board-082**: If 投稿者本人以外かつ admin 以外（coach / 他 student）が削除しようとした場合, then the system shall HTTP 403 を返す。
 - **REQ-qa-board-083**: The system shall 回答削除によりスレッドの状態（`status` / `resolved_at`）は変更しない（質問者の解決判断を尊重）。
-- **REQ-qa-board-084**: The system shall 回答が SoftDelete されてもスレッド削除可否（REQ-qa-board-050）には影響させ、SoftDelete 済を含めた回答件数で判定する（投稿者は SoftDelete 履歴があるスレッドを削除できない）。
 
 ### 機能要件 — 解決マーク
 
@@ -132,9 +130,9 @@
 
 ### 機能要件 — admin モデレーション
 
-- **REQ-qa-board-130**: When admin が `GET /admin/qa-board` にアクセスする, the system shall 全スレッド一覧（資格別フィルタ / 解決状態フィルタ / キーワード検索 / SoftDelete 含むかのトグル）を提供する。
-- **REQ-qa-board-131**: When admin が `GET /admin/qa-board/{thread}` にアクセスする, the system shall 配下回答（SoftDelete 含む）を含めて閲覧可能とする。
-- **REQ-qa-board-132**: When admin がスレッド / 回答を削除する, the system shall SoftDelete のみで物理削除しない（履歴保持）。
+- **REQ-qa-board-130**: When admin が `GET /admin/qa-board` にアクセスする, the system shall 全スレッド一覧（資格別フィルタ / 解決状態フィルタ / キーワード検索）を提供する。
+- **REQ-qa-board-131**: When admin が `GET /admin/qa-board/{thread}` にアクセスする, the system shall 配下回答を含めて閲覧可能とする。
+- **REQ-qa-board-132**: When admin がスレッド / 回答を削除する, the system shall 物理削除を実行する。
 - **REQ-qa-board-133**: The system shall admin に対してスレッド / 回答の内容編集 UI / API を **提供しない**（投稿者本人のみ編集可、admin は削除でのみ介入）。
 
 ### 非機能要件

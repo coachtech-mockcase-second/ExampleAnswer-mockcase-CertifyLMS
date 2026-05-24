@@ -69,10 +69,10 @@
 
 ### 機能要件 — 個人目標（EnrollmentGoal）
 
-- **REQ-enrollment-070**: The system shall ULID 主キー / SoftDeletes を備えた `enrollment_goals` テーブルを提供し、`enrollment_id` / `title`（max 100）/ `description`（nullable, max 1000）/ `target_date`（nullable, DATE）/ `achieved_at`（nullable, datetime）/ `created_at` / `updated_at` / `deleted_at` カラムを保持する。
+- **REQ-enrollment-070**: The system shall ULID 主キーを備えた `enrollment_goals` テーブルを提供し、`enrollment_id` / `title`（max 100）/ `description`（nullable, max 1000）/ `target_date`（nullable, DATE）/ `achieved_at`（nullable, datetime）/ `created_at` / `updated_at` カラムを保持する。
 - **REQ-enrollment-071**: When 受講生が自身の Enrollment 配下に目標を追加する, the system shall `EnrollmentGoal` を INSERT し、`achieved_at = null` を初期値とする。
 - **REQ-enrollment-072**: When 受講生が自身の目標を編集する, the system shall `title` / `description` / `target_date` の更新を許可する。
-- **REQ-enrollment-073**: When 受講生が自身の目標を削除する, the system shall SoftDelete する。
+- **REQ-enrollment-073**: When 受講生が自身の目標を削除する, the system shall 物理削除する。
 - **REQ-enrollment-074**: When 受講生が自身の目標を達成マークする, the system shall `achieved_at = now()` を UPDATE する。
 - **REQ-enrollment-075**: When 受講生が自身の達成マークを取消する, the system shall `achieved_at = null` を UPDATE する。
 - **REQ-enrollment-076**: While 個人目標を閲覧する状況, the system shall 当該 Enrollment が SoftDelete 済の場合は目標も非表示にする（一覧で除外）。
@@ -80,7 +80,7 @@
 
 ### 機能要件 — コーチ用受講生メモ（EnrollmentNote）
 
-- **REQ-enrollment-080**: The system shall ULID 主キー / SoftDeletes を備えた `enrollment_notes` テーブルを提供し、`enrollment_id` / `coach_user_id`（NOT NULL, `users.id` 参照, 作成者）/ `body`（max 2000）/ `created_at` / `updated_at` / `deleted_at` カラムを保持する。
+- **REQ-enrollment-080**: The system shall ULID 主キーを備えた `enrollment_notes` テーブルを提供し、`enrollment_id` / `coach_user_id`（NOT NULL, `users.id` 参照, 作成者）/ `body`（max 2000）/ `created_at` / `updated_at` カラムを保持する。
 - **REQ-enrollment-081**: When coach が **担当資格に登録した受講生の Enrollment**（`certification_coach_assignments` 経由判定）配下にノートを追加する, the system shall `EnrollmentNote` を INSERT し、`coach_user_id = 操作 coach.id` を記録する。
 - **REQ-enrollment-082**: When admin が任意 Enrollment 配下にノートを追加する, the system shall `EnrollmentNote` を INSERT し、`coach_user_id = 操作 admin.id` を記録する。
 - **REQ-enrollment-083**: When coach が自身が作成したノートを編集 / 削除する, the system shall 当該操作を許可する。

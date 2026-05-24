@@ -24,10 +24,8 @@ return new class extends Migration
                 ->restrictOnDelete();
             $table->timestamp('last_message_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index('last_message_at');
-            $table->index('deleted_at');
         });
     }
 

@@ -54,7 +54,6 @@ final class StoreAction
             $existing = AiChatConversation::query()
                 ->where('user_id', $user->id)
                 ->where('section_id', $section->id)
-                ->whereNull('deleted_at')
                 ->orderByDesc('last_message_at')
                 ->first();
             if ($existing !== null) {

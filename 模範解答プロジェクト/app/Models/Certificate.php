@@ -53,14 +53,11 @@ class Certificate extends Model
     }
 
     /**
-     * 修了証は永続データだが資格マスタ自体は SoftDelete されうるため、`withTrashed()` で削除済資格も解決可能にする。
-     * これがないと資格削除後に PDF DL 経路で `certification` が null になり、Coach 認可判定が破綻する。
-     *
      * @return BelongsTo<Certification, $this>
      */
     public function certification(): BelongsTo
     {
-        return $this->belongsTo(Certification::class)->withTrashed();
+        return $this->belongsTo(Certification::class);
     }
 
     public function scopeIssuedThisMonth(Builder $query): Builder

@@ -190,8 +190,8 @@ sequenceDiagram
 
 ### Eloquent モデル一覧
 
-- **`SectionQuestionAnswer`**(v3 で `Answer` から rename) — 個別解答ログ。`HasUlids` + `HasFactory` + `SoftDeletes`、`is_correct` boolean / `source` `AnswerSource` enum / `answered_at` datetime cast、`belongsTo(User)` / **`belongsTo(SectionQuestion, section_question_id)`** / `belongsTo(SectionQuestionOption, selected_option_id)`。スコープ: `scopeForUser` / `scopeForEnrollment` / `scopeForSection` / `scopeForCategory` / `scopeBySource` / `scopeCorrect` / `scopeIncorrect`。
-- **`SectionQuestionAttempt`**(v3 で `QuestionAttempt` から rename) — SectionQuestion 単位サマリ。`HasUlids` + `HasFactory` + `SoftDeletes`、`attempt_count` / `correct_count` integer cast、`last_is_correct` boolean、`last_answered_at` datetime cast、`belongsTo(User)` / **`belongsTo(SectionQuestion, section_question_id)`**。`(user_id, section_question_id)` UNIQUE。`accuracy()` accessor で `correct_count / attempt_count` を返す。
+- **`SectionQuestionAnswer`**(v3 で `Answer` から rename) — 個別解答ログ。`HasUlids` + `HasFactory`、`is_correct` boolean / `source` `AnswerSource` enum / `answered_at` datetime cast、`belongsTo(User)` / **`belongsTo(SectionQuestion, section_question_id)`** / `belongsTo(SectionQuestionOption, selected_option_id)`。スコープ: `scopeForUser` / `scopeForEnrollment` / `scopeForSection` / `scopeForCategory` / `scopeBySource` / `scopeCorrect` / `scopeIncorrect`。
+- **`SectionQuestionAttempt`**(v3 で `QuestionAttempt` から rename) — SectionQuestion 単位サマリ。`HasUlids` + `HasFactory`、`attempt_count` / `correct_count` integer cast、`last_is_correct` boolean、`last_answered_at` datetime cast、`belongsTo(User)` / **`belongsTo(SectionQuestion, section_question_id)`**。`(user_id, section_question_id)` UNIQUE。`accuracy()` accessor で `correct_count / attempt_count` を返す。
 
 ### ER 図
 
@@ -213,7 +213,6 @@ erDiagram
         string source "section_quiz / weak_drill"
         timestamp answered_at
         timestamps
-        timestamp deleted_at "nullable"
     }
     SECTION_QUESTION_ATTEMPTS {
         ulid id PK
@@ -224,7 +223,6 @@ erDiagram
         boolean last_is_correct
         timestamp last_answered_at
         timestamps
-        timestamp deleted_at "nullable"
     }
 ```
 
@@ -241,12 +239,10 @@ erDiagram
 - `(user_id, section_question_id)`: 複合 INDEX
 - `(section_question_id, is_correct)`: 複合 INDEX
 - `source`: 単体 INDEX
-- `deleted_at`: 単体 INDEX
 
 `section_question_attempts`(v3 で命名・参照変更):
 - `(user_id, section_question_id)`: UNIQUE INDEX(UPSERT 用)
 - `(user_id, last_answered_at)`: 複合 INDEX
-- `deleted_at`: 単体 INDEX
 
 ## コンポーネント
 
@@ -615,7 +611,7 @@ public function store(SectionQuestion $question, StoreRequest $request): Redirec
 `app/Exceptions/QuizAnswering/`:
 
 - **`EnrollmentInactiveForAnswerException`**(409) — Enrollment が `learning + passed` 以外
-- **`SectionQuestionUnavailableForAnswerException`**(409、v3 rename) — SectionQuestion が SoftDelete or Draft、cascade visibility 違反
+- **`SectionQuestionUnavailableForAnswerException`**(409、v3 rename) — SectionQuestion が Draft、または cascade visibility 違反
 - **`SectionQuestionOptionMismatchException`**(422、v3 rename) — option の `section_question_id` が question.id と不一致
 - **`WeakDrillCategoryMismatchException`**(404) — category の certification_id が enrollment.certification_id と不一致
 
@@ -658,7 +654,7 @@ public function store(SectionQuestion $question, StoreRequest $request): Redirec
 
 ### Feature(UseCases)
 
-- `SectionQuestionAnswer/StoreActionTest.php`(AnswerResult / 新規 attempt / 既存 attempt UPDATE / SoftDeleted restore / トランザクション原子性)
+- `SectionQuestionAnswer/StoreActionTest.php`(AnswerResult / 新規 attempt / 既存 attempt UPDATE / トランザクション原子性)
 - `WeakDrill/IndexActionTest.php`(`is_weak` フラグ / NullObject fallback)
 
 ### Unit(Services / Policy)

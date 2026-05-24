@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 教材階層の最上位 Part を表す Model。資格マスタ(Certification)直下の章立てを担う。
@@ -23,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Part extends Model
 {
     /** @use HasFactory<PartFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'certification_id',

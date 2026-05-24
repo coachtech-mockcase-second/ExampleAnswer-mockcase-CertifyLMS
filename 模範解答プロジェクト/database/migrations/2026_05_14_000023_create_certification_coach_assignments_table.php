@@ -24,10 +24,8 @@ return new class extends Migration
             $table->timestamp('assigned_at');
             $table->timestamp('unassigned_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->unique(['certification_id', 'user_id'], 'cert_coach_assign_uq');
-            $table->index('deleted_at');
         });
     }
 

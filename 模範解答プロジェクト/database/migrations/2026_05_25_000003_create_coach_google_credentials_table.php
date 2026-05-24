@@ -25,7 +25,6 @@ return new class extends Migration
             $table->string('calendar_id', 255)->default('primary');
             $table->dateTime('connected_at');
             $table->timestamps();
-            $table->softDeletes();
         });
     }
 

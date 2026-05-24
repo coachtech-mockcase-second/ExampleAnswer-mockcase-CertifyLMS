@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * 学習時間目標の UPSERT を行う Action。
- * SoftDelete 済の既存行があれば restore + UPDATE、無ければ新規 INSERT (冪等)。
+ * 既存行があれば UPDATE、無ければ新規 INSERT (冪等)。
  *
  * FormRequest が一次バリデーション (1..9999h) を担うが、内部呼出経路の保険として二重ガード。
  *
@@ -32,7 +32,6 @@ final class UpsertAction
 
         return DB::transaction(function () use ($enrollment, $hours) {
             $target = LearningHourTarget::query()
-                ->withTrashed()
                 ->where('enrollment_id', $enrollment->id)
                 ->lockForUpdate()
                 ->first();
@@ -42,10 +41,6 @@ final class UpsertAction
                     'enrollment_id' => $enrollment->id,
                     'target_total_hours' => $hours,
                 ]);
-            }
-
-            if ($target->trashed()) {
-                $target->restore();
             }
 
             $target->update(['target_total_hours' => $hours]);

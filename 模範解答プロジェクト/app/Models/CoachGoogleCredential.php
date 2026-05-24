@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * コーチの Google Calendar OAuth 認証情報を表す Model。1 コーチ : 1 認証情報。
@@ -23,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class CoachGoogleCredential extends Model
 {
     /** @use HasFactory<CoachGoogleCredentialFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'coach_id',

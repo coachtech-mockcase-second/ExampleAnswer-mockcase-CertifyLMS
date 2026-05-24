@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 出題分野マスタを表す Model。演習問題(SectionQuestion) と模試問題(MockExamQuestion) の共有マスタ。
@@ -23,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class QuestionCategory extends Model
 {
     /** @use HasFactory<QuestionCategoryFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'certification_id',

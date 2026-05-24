@@ -113,9 +113,9 @@ sequenceDiagram
 
 ### Eloquent モデル一覧
 
-- **`Meeting`** — 面談予約。`HasUlids` + `SoftDeletes`、`MeetingStatus` enum cast。リレーション 6 つ: `belongsTo(Enrollment)` / `belongsTo(User, 'coach_id', 'coach')` / `belongsTo(User, 'student_id', 'student')` / `belongsTo(User, 'canceled_by_user_id', 'canceledBy')`（NULL 許容、`withTrashed()`）/ `hasOne(MeetingMemo)` / `belongsTo(MeetingQuotaTransaction, 'meeting_quota_transaction_id')`。スコープ: `scopeUpcoming()`（`status = reserved AND scheduled_at >= now()`）/ `scopePast()`（残り）/ `scopeForCoach($coachId)` / `scopeForStudent($studentId)`。
-- **`MeetingMemo`** — 面談メモ（1 Meeting : 1 Memo）。`HasUlids` + `SoftDeletes`、`belongsTo(Meeting)`。author は `meeting.coach` で一意。
-- **`CoachAvailability`** — コーチの面談可能時間枠。`HasUlids` + `SoftDeletes`、`belongsTo(User, 'coach_id', 'coach')`。スコープ: `scopeActive()` / `scopeForDay($dow)`。
+- **`Meeting`** — 面談予約。`HasUlids`、`MeetingStatus` enum cast。リレーション 6 つ: `belongsTo(Enrollment)` / `belongsTo(User, 'coach_id', 'coach')` / `belongsTo(User, 'student_id', 'student')` / `belongsTo(User, 'canceled_by_user_id', 'canceledBy')`（NULL 許容）/ `hasOne(MeetingMemo)` / `belongsTo(MeetingQuotaTransaction, 'meeting_quota_transaction_id')`。スコープ: `scopeUpcoming()`（`status = reserved AND scheduled_at >= now()`）/ `scopePast()`（残り）/ `scopeForCoach($coachId)` / `scopeForStudent($studentId)`。
+- **`MeetingMemo`** — 面談メモ（1 Meeting : 1 Memo）。`HasUlids`、`belongsTo(Meeting)`。author は `meeting.coach` で一意。
+- **`CoachAvailability`** — コーチの面談可能時間枠。`HasUlids`、`belongsTo(User, 'coach_id', 'coach')`。スコープ: `scopeActive()` / `scopeForDay($dow)`。
 - **`User`**（[[auth]] 所有、`meeting_url` カラムは [[auth]] の Migration で追加、本 Feature は読み取り側）— `meeting_url` は role=coach のみ意味、オンボーディング時必須入力。
 
 ### ER 図
@@ -143,7 +143,6 @@ erDiagram
         boolean is_active "default true"
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at "nullable"
     }
     MEETINGS_AS_COACH {
         ulid id PK
@@ -160,7 +159,6 @@ erDiagram
         ulid meeting_quota_transaction_id FK "consumed transaction"
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at "nullable"
     }
     MEETING_MEMOS {
         ulid id PK
@@ -168,7 +166,6 @@ erDiagram
         text body
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at "nullable"
     }
 ```
 

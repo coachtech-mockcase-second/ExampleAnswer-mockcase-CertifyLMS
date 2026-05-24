@@ -43,13 +43,12 @@ class DetachTest extends TestCase
             'certification_id' => $cert->id,
             'user_id' => $coach->id,
         ]);
-        $assignment = CertificationCoachAssignment::withTrashed()
+        $assignment = CertificationCoachAssignment::query()
             ->where('certification_id', $cert->id)
             ->where('user_id', $coach->id)
             ->first();
         $this->assertNotNull($assignment);
         $this->assertNotNull($assignment->unassigned_at);
-        $this->assertNotNull($assignment->deleted_at);
 
         Event::assertDispatched(CertificationCoachDetached::class);
     }

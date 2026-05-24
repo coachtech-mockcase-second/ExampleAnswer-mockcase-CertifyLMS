@@ -28,8 +28,7 @@ class CertificationPolicy
         return match ($auth->role) {
             UserRole::Admin => true,
             UserRole::Coach => $certification->coaches->contains('id', $auth->id),
-            UserRole::Student => $certification->status === CertificationStatus::Published
-                && $certification->deleted_at === null,
+            UserRole::Student => $certification->status === CertificationStatus::Published,
         };
     }
 

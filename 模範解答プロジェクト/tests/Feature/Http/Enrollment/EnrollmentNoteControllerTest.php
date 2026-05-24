@@ -114,7 +114,7 @@ class EnrollmentNoteControllerTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('enrollment-notes.destroy', $note));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('enrollment_notes', ['id' => $note->id]);
+        $this->assertDatabaseMissing('enrollment_notes', ['id' => $note->id]);
     }
 
     public function test_coach_can_delete_own_note(): void
@@ -128,6 +128,6 @@ class EnrollmentNoteControllerTest extends TestCase
         $response = $this->actingAs($coach)->delete(route('enrollment-notes.destroy', $note));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('enrollment_notes', ['id' => $note->id]);
+        $this->assertDatabaseMissing('enrollment_notes', ['id' => $note->id]);
     }
 }

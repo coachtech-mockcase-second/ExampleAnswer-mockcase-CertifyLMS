@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 面談メモ(1 面談 : 1 メモ)を表す Model。
@@ -22,7 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class MeetingMemo extends Model
 {
     /** @use HasFactory<MeetingMemoFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'meeting_id',

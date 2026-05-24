@@ -76,7 +76,7 @@ sequenceDiagram
     MEQC-->>Actor: redirect + flash
 ```
 
-> 編集は `UpdateAction` で `body` / `explanation` / `category_id` を UPDATE + `mock_exam_question_options` を delete-and-insert で同期。削除は `DestroyAction` で SoftDelete。
+> 編集は `UpdateAction` で `body` / `explanation` / `category_id` を UPDATE + `mock_exam_question_options` を delete-and-insert で同期。削除は `DestroyAction` で物理削除(配下の options は cascade、採点済 answer が存在する場合は `restrictOnDelete` で削除阻止)。
 
 ### 3. 受験セッション作成 → 開始 → ターム自動切替(E-3 で時間制限なし)
 
@@ -179,7 +179,7 @@ sequenceDiagram
     SubA->>DB: BEGIN
     SubA->>DB: UPDATE mock_exam_sessions SET status=Submitted submitted_at=now
     SubA->>GrA: __invoke session
-    GrA->>DB: SELECT mock_exam_answers JOIN mock_exam_question_options<br/>WITHTRASHED ON answer.selected_option_id = option.id
+    GrA->>DB: SELECT mock_exam_answers JOIN mock_exam_question_options<br/>ON answer.selected_option_id = option.id (NULL の場合は false 確定)
     GrA->>DB: UPDATE mock_exam_answers SET is_correct = option.is_correct true
     GrA->>DB: SELECT total_correct = COUNT WHERE is_correct=true
     GrA->>DB: UPDATE mock_exam_sessions SET<br/>status=Graded graded_at=now total_correct score_percentage pass
@@ -215,13 +215,13 @@ sequenceDiagram
 
 ### Eloquent モデル一覧
 
-- **`MockExam`** — 模試マスタ。`HasUlids` + `HasFactory` + `SoftDeletes`、`is_published` boolean / `published_at` datetime cast、`belongsTo(Certification)` / `belongsTo(User, createdBy)` / `belongsTo(User, updatedBy)` / `hasMany(MockExamQuestion::class)` / `hasMany(MockExamSession)`。**`time_limit_minutes` プロパティなし**(E-3)。
-- **`MockExamQuestion`**(独立リソース化) — `HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(MockExam)` / `belongsTo(QuestionCategory)` / `hasMany(MockExamQuestionOption)`。**`difficulty` 持たない**。
-- **`MockExamQuestionOption`**(新設) — `HasUlids` + `HasFactory` + `SoftDeletes`、`is_correct` boolean cast、`belongsTo(MockExamQuestion)`。
-- **`MockExamSession`** — `HasUlids` + `HasFactory` + `SoftDeletes`、`status` cast / `generated_question_ids` array cast / `started_at` / `submitted_at` / `graded_at` / `canceled_at` datetime cast / `pass` boolean cast、`belongsTo(MockExam)` / `belongsTo(Enrollment)` / `belongsTo(User)` / `hasMany(MockExamAnswer)`。**`time_limit_minutes_snapshot` / `time_limit_ends_at` プロパティなし**(E-3)。
-- **`MockExamAnswer`** — `HasUlids` + `HasFactory`(SoftDelete 非採用)、`belongsTo(MockExamSession)` / `belongsTo(MockExamQuestion)` / `belongsTo(MockExamQuestionOption, selected_option_id)`。
+- **`MockExam`** — 模試マスタ。`HasUlids` + `HasFactory`、`is_published` boolean / `published_at` datetime cast、`belongsTo(Certification)` / `belongsTo(User, createdBy)` / `belongsTo(User, updatedBy)` / `hasMany(MockExamQuestion::class)` / `hasMany(MockExamSession)`。**`time_limit_minutes` プロパティなし**(E-3)。
+- **`MockExamQuestion`**(独立リソース化) — `HasUlids` + `HasFactory`、`belongsTo(MockExam)` / `belongsTo(QuestionCategory)` / `hasMany(MockExamQuestionOption)`。**`difficulty` 持たない**。
+- **`MockExamQuestionOption`**(新設) — `HasUlids` + `HasFactory`、`is_correct` boolean cast、`belongsTo(MockExamQuestion)`。
+- **`MockExamSession`** — `HasUlids` + `HasFactory`、`status` cast / `generated_question_ids` array cast / `started_at` / `submitted_at` / `graded_at` / `canceled_at` datetime cast / `pass` boolean cast、`belongsTo(MockExam)` / `belongsTo(Enrollment)` / `belongsTo(User)` / `hasMany(MockExamAnswer)`。**`time_limit_minutes_snapshot` / `time_limit_ends_at` プロパティなし**(E-3)。
+- **`MockExamAnswer`** — `HasUlids` + `HasFactory`、`belongsTo(MockExamSession)` / `belongsTo(MockExamQuestion)` / `belongsTo(MockExamQuestionOption, selected_option_id)`。
 
-### ER 図(E-3 で time_limit 関連 3 カラム削除)
+### ER 図
 
 ```mermaid
 erDiagram
@@ -248,7 +248,6 @@ erDiagram
         ulid created_by_user_id FK
         ulid updated_by_user_id FK
         timestamps
-        timestamp deleted_at "nullable"
     }
     MOCK_EXAM_QUESTIONS {
         ulid id PK
@@ -258,7 +257,6 @@ erDiagram
         text explanation "nullable"
         unsignedSmallInteger order
         timestamps
-        timestamp deleted_at "nullable"
     }
     MOCK_EXAM_QUESTION_OPTIONS {
         ulid id PK
@@ -267,7 +265,6 @@ erDiagram
         boolean is_correct
         unsignedSmallInteger order
         timestamps
-        timestamp deleted_at "nullable"
     }
     MOCK_EXAM_SESSIONS {
         ulid id PK
@@ -286,7 +283,6 @@ erDiagram
         decimal score_percentage "5,2 nullable"
         boolean pass "nullable"
         timestamps
-        timestamp deleted_at "nullable"
     }
     MOCK_EXAM_ANSWERS {
         ulid id PK
@@ -364,7 +360,7 @@ class PublishAction
     public function __invoke(MockExam $mockExam): MockExam
     {
         return DB::transaction(function () use ($mockExam) {
-            $count = MockExamQuestion::where('mock_exam_id', $mockExam->id)->whereNull('deleted_at')->count();
+            $count = MockExamQuestion::where('mock_exam_id', $mockExam->id)->count();
             if ($count === 0) throw new MockExamPublishNotAllowedException();
             $mockExam->update([
                 'is_published' => true,
@@ -456,7 +452,7 @@ class SubmitAction
     }
 }
 
-class GradeAction { /* 変更なし、is_correct 確定 + total_correct / score_percentage / pass UPDATE */ }
+class GradeAction { /* 変更なし、is_correct 確定 + total_correct / score_percentage / pass UPDATE、selected_option_id が NULL なら is_correct=false */ }
 class DestroyAction { /* キャンセル、NotStarted のみ */ }
 ```
 

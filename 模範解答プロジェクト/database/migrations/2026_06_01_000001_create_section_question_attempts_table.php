@@ -27,11 +27,9 @@ return new class extends Migration
             $table->boolean('last_is_correct')->default(false);
             $table->timestamp('last_answered_at');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->unique(['user_id', 'section_question_id']);
             $table->index(['user_id', 'last_answered_at']);
-            $table->index('deleted_at');
         });
     }
 

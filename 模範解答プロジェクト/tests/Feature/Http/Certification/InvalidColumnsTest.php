@@ -39,6 +39,6 @@ class InvalidColumnsTest extends TestCase
 
         $created = Certification::query()->where('name', '余分フィールド付き資格')->first();
         $this->assertNotNull($created);
-        $this->assertSame(['id', 'name', 'category_id', 'difficulty', 'description', 'status', 'created_by_user_id', 'updated_by_user_id', 'published_at', 'archived_at', 'created_at', 'updated_at', 'deleted_at'], array_keys($created->getAttributes()));
+        $this->assertSame(['id', 'name', 'category_id', 'difficulty', 'description', 'status', 'created_by_user_id', 'updated_by_user_id', 'published_at', 'archived_at', 'created_at', 'updated_at'], array_keys($created->getAttributes()));
     }
 }

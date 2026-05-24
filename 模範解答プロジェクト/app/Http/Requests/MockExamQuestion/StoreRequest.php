@@ -33,7 +33,7 @@ class StoreRequest extends FormRequest
         return [
             'body' => ['required', 'string', 'max:5000'],
             'explanation' => ['nullable', 'string', 'max:5000'],
-            'category_id' => ['required', 'ulid', 'exists:question_categories,id,deleted_at,NULL'],
+            'category_id' => ['required', 'ulid', 'exists:question_categories,id'],
             'options' => ['required', 'array', 'min:2', 'max:6'],
             'options.*.body' => ['required', 'string', 'max:1000'],
             'options.*.is_correct' => ['required', 'boolean'],

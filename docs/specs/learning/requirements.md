@@ -7,7 +7,7 @@
 受講生の日々の学習体験（**教材ブラウジング / Section 読了マーク / 学習セッション時間トラッキング / 進捗集計 / 学習ストリーク / 学習時間目標**）を一体で提供する Feature。Certify LMS のドメイン構造 4 軸のうち **「学習量と継続のメーター係」** として機能し、[[dashboard]] / [[mock-exam]] / [[quiz-answering]] から消費される **3 集計 Service**（`ProgressService` / `StreakService` / `LearningHourTargetService`）を所有する。**滞留検知（`StagnationDetectionService`）は v3 撤回**（MVP 外、保持しない）。
 
 - 教材階層（Part → Chapter → Section）は [[content-management]] が所有する Eloquent Model を受講生視点で **読み取り再利用** する
-- Section の読了は `section_progresses` テーブルで 1 Enrollment × 1 Section の最大 1 行（再マークは UPDATE）で管理する
+- Section の読了は `section_progresses` テーブルで 1 Enrollment × 1 Section の最大 1 行（取消後の再マークも UPDATE で `completed_at` を更新）で管理する
 - 学習時間は **Section 詳細ページ滞在時間** を `learning_sessions` で記録する
 - `status = passed` の Enrollment も `status = learning` と同等に閲覧・読了マーク・学習時間記録が可能（プラン期間内であれば復習として活用）
 
@@ -21,9 +21,9 @@
 
 ### 機能要件 — A. データモデル
 
-- **REQ-learning-001**: The system shall ULID 主キー / `SoftDeletes` / `(enrollment_id, section_id)` UNIQUE 制約を備えた `section_progresses` テーブルを提供し、`enrollment_id` / `section_id` / `completed_at`（NOT NULL, datetime）/ `created_at` / `updated_at` / `deleted_at` を保持する。
-- **REQ-learning-002**: The system shall ULID 主キー / `SoftDeletes` を備えた `learning_sessions` テーブルを提供し、`user_id`（NOT NULL, denormalized）/ `enrollment_id`（NOT NULL）/ `section_id`（NOT NULL）/ `started_at`（NOT NULL）/ `ended_at`（nullable）/ `duration_seconds`（nullable, unsigned int）/ `auto_closed`（boolean, default false）/ `created_at` / `updated_at` / `deleted_at` を保持する。
-- **REQ-learning-003**: The system shall ULID 主キー / `SoftDeletes` / `enrollment_id` UNIQUE 制約を備えた `learning_hour_targets` テーブルを提供し、`enrollment_id` / `target_total_hours`（NOT NULL, 1..9999）/ `created_at` / `updated_at` / `deleted_at` を保持する。
+- **REQ-learning-001**: The system shall ULID 主キー / `(enrollment_id, section_id)` UNIQUE 制約を備えた `section_progresses` テーブルを提供し、`enrollment_id` / `section_id` / `completed_at`（NOT NULL, datetime）/ `created_at` / `updated_at` を保持する。
+- **REQ-learning-002**: The system shall ULID 主キーを備えた `learning_sessions` テーブルを提供し、`user_id`（NOT NULL, denormalized）/ `enrollment_id`（NOT NULL）/ `section_id`（NOT NULL）/ `started_at`（NOT NULL）/ `ended_at`（nullable）/ `duration_seconds`（nullable, unsigned int）/ `auto_closed`（boolean, default false）/ `created_at` / `updated_at` を保持する。
+- **REQ-learning-003**: The system shall ULID 主キー / `enrollment_id` UNIQUE 制約を備えた `learning_hour_targets` テーブルを提供し、`enrollment_id` / `target_total_hours`（NOT NULL, 1..9999）/ `created_at` / `updated_at` を保持する。
 - **REQ-learning-004**: The system shall 各テーブルの外部キーで Enrollment / Section / User の物理削除を抑止する（restrictOnDelete）。
 - **REQ-learning-007**: The system shall 各モデルの $casts で datetime / integer / boolean を適切にキャストする。
 
@@ -37,15 +37,15 @@
 - **REQ-learning-015**: While 受講生が Section 詳細ページに滞在している間, the system shall ページ読み込み完了時に **学習セッション自動開始** を実行する。
 - **REQ-learning-016**: If 受講生が Section 詳細を閉じる / 他 URL に遷移する / タブを閉じる / 別 Section に遷移する場合, then the system shall 当該学習セッションを終了する。
 - **REQ-learning-017**: If 受講生が登録していない資格に属する Part / Chapter / Section の URL に直接アクセスした場合, then the system shall HTTP 403 を返す。
-- **REQ-learning-018**: If 親 Part / Chapter / Section のいずれかが `Draft` 状態または SoftDelete 済の場合, then the system shall 受講生視点では HTTP 404 を返す。
+- **REQ-learning-018**: If 親 Part / Chapter / Section のいずれかが `Draft` 状態の場合, then the system shall 受講生視点では HTTP 404 を返す。
 - **REQ-learning-019**: When 受講生のログインユーザーが `User.status != UserStatus::InProgress` の場合, then the system shall **`EnsureActiveLearning` Middleware** で 403 を返す（`graduated` ユーザーは教材閲覧不可、修了済資格の閲覧も含めて全部ロック）。
 
 ### 機能要件 — C. Section 読了マーク
 
 - **REQ-learning-020**: When 受講生が `POST /learning/sections/{section}/read` を呼んだ際, the system shall ログイン受講生が所有する Enrollment と当該 Section の親 Certification の整合を検証し、未一致なら HTTP 403 を返す。
-- **REQ-learning-021**: When 検証を通過した際, the system shall `section_progresses` を UPSERT（既存があれば `completed_at = now()` で UPDATE、SoftDelete 済なら restore してから UPDATE）する。
-- **REQ-learning-022**: When 受講生が `DELETE /learning/sections/{section}/read` を呼んだ際, the system shall 当該 `SectionProgress` を SoftDelete する。
-- **REQ-learning-023**: If 対象 Section が非公開（Section / 親 Chapter / 親 Part のいずれかが `Draft` または SoftDelete 済）の場合, then the system shall 読了マーク操作を `SectionUnavailableForProgressException`（HTTP 409）で拒否する。
+- **REQ-learning-021**: When 検証を通過した際, the system shall `section_progresses` を UPSERT（既存があれば `completed_at = now()` で UPDATE、未存在なら新規 INSERT）する。
+- **REQ-learning-022**: When 受講生が `DELETE /learning/sections/{section}/read` を呼んだ際, the system shall 当該 `SectionProgress` を物理削除する。
+- **REQ-learning-023**: If 対象 Section が非公開（Section / 親 Chapter / 親 Part のいずれかが `Draft`）の場合, then the system shall 読了マーク操作を `SectionUnavailableForProgressException`（HTTP 409）で拒否する。
 - **REQ-learning-024**: If 対象 Enrollment が `status = failed` の場合, then the system shall 読了マーク操作を `EnrollmentInactiveException`（HTTP 409）で拒否する。`learning` / `passed` は許容（passed も復習として読了マーク可）。
 - **REQ-learning-025**: When 受講生が読了マーク POST (`POST /learning/sections/{section}/read`) に成功した直後, the system shall Section 詳細画面にリダイレクトし、セッションフラッシュ `section_just_completed = $section->id` を付与する。Blade 側で `@if(session('section_just_completed') === $section->id)` 判定により「読了おめでとうモーダル」を自動表示する(iField LMS `CongratulationsModal` 相当)。
 - **REQ-learning-026**: When 読了モーダルが表示される際, the system shall モーダル内に以下のネクストアクション動線を表示する: (a)「次の Section へ」リンク(同 Chapter 内の sibling、`order` で次がある場合)、(b)「Section 紐づき問題演習へ」リンク([[quiz-answering]] の Section 演習画面、当該 Section に SectionQuestion が存在する場合のみ表示)、(c)「Chapter 一覧へ戻る」リンク。
@@ -74,7 +74,7 @@
 
 - **REQ-learning-060**: The system shall `App\Services\ProgressService` を提供し、`summarize(Enrollment): ProgressSummary` / `sectionRatio(Enrollment, Part|Chapter|null): float` を公開する。
 - **REQ-learning-061**: The system shall `summarize` で `sections_total` / `sections_completed` / `section_completion_ratio` / `chapters_total` / `chapters_completed` / `chapter_completion_ratio` / `parts_total` / `parts_completed` / `part_completion_ratio` / `overall_completion_ratio` を含む DTO を返す。
-- **REQ-learning-062**: The system shall 進捗集計の対象を **公開済かつ SoftDelete 済でない** Section に限定する。
+- **REQ-learning-062**: The system shall 進捗集計の対象を **公開済** Section に限定する。
 - **REQ-learning-065**: The system shall 1 ショット SQL（LEFT JOIN + GROUP BY）で集計する。
 - **REQ-learning-067**: The system shall 結果をキャッシュしない（クエリ時集計）。
 
@@ -89,7 +89,7 @@
 
 - **REQ-learning-090**: When 受講生が `GET /learning/enrollments/{enrollment}/hour-target` を呼んだ際, the system shall 自身の Enrollment 配下の `LearningHourTarget`（0 or 1 件）と集計値を返す。
 - **REQ-learning-091**: When `PUT` を呼んだ際, the system shall upsert する。
-- **REQ-learning-092**: When `DELETE` を呼んだ際, the system shall SoftDelete する。
+- **REQ-learning-092**: When `DELETE` を呼んだ際, the system shall 物理削除する。
 - **REQ-learning-094**: The system shall `LearningHourTargetService::compute(Enrollment)` で `target_total_hours` / `studied_total_seconds` / `studied_total_hours` / `remaining_hours` / `remaining_days` / `daily_recommended_hours` / `progress_ratio` を返す。
 - **REQ-learning-097**: The system shall `LearningHourTargetPolicy` で受講生本人のみ CRUD 許可、coach / admin は閲覧のみ。
 

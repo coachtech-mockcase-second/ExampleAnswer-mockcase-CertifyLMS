@@ -13,7 +13,7 @@ class DestroyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_soft_delete_draft_certification(): void
+    public function test_admin_can_delete_draft_certification(): void
     {
         $admin = User::factory()->admin()->create();
         $cert = Certification::factory()->draft()->create();
@@ -21,7 +21,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('admin.certifications.destroy', $cert));
 
         $response->assertRedirect(route('admin.certifications.index'));
-        $this->assertSoftDeleted('certifications', ['id' => $cert->id]);
+        $this->assertDatabaseMissing('certifications', ['id' => $cert->id]);
     }
 
     public function test_cannot_delete_published_certification(): void
@@ -34,7 +34,6 @@ class DestroyTest extends TestCase
         $response->assertStatus(409);
         $this->assertDatabaseHas('certifications', [
             'id' => $cert->id,
-            'deleted_at' => null,
         ]);
     }
 

@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 受講生が公開模試を受験するときに生成される受験セッションを表す Model。
@@ -29,7 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class MockExamSession extends Model
 {
     /** @use HasFactory<MockExamSessionFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'mock_exam_id',

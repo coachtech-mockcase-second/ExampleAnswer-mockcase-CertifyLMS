@@ -113,7 +113,7 @@ class CrudTest extends TestCase
             ->deleteJson(route('admin.mock-exams.destroy', $mockExam))
             ->assertStatus(409);
 
-        $this->assertDatabaseHas('mock_exams', ['id' => $mockExam->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('mock_exams', ['id' => $mockExam->id]);
     }
 
     public function test_destroy_rejects_when_active_session_exists(): void
@@ -126,20 +126,18 @@ class CrudTest extends TestCase
             ->deleteJson(route('admin.mock-exams.destroy', $mockExam))
             ->assertStatus(409);
 
-        $this->assertDatabaseHas('mock_exams', ['id' => $mockExam->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('mock_exams', ['id' => $mockExam->id]);
     }
 
-    public function test_destroy_succeeds_when_unpublished_and_no_active_session(): void
+    public function test_destroy_succeeds_when_unpublished_and_no_session(): void
     {
         $admin = User::factory()->admin()->create();
         $mockExam = MockExam::factory()->create();
-        // canceled セッションは active 扱いではないので削除可能
-        MockExamSession::factory()->forMockExam($mockExam)->canceled()->create();
 
         $this->actingAs($admin)
             ->delete(route('admin.mock-exams.destroy', $mockExam))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('mock_exams', ['id' => $mockExam->id]);
+        $this->assertDatabaseMissing('mock_exams', ['id' => $mockExam->id]);
     }
 }

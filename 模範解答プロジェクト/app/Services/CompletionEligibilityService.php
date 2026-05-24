@@ -11,7 +11,7 @@ use App\Models\MockExamSession;
 /**
  * Enrollment の修了可否を判定する Service。
  *
- * 判定ロジック: 対象資格に紐付く公開模試(is_published=true、未 SoftDelete) の件数と、
+ * 判定ロジック: 対象資格に紐付く公開模試(is_published=true) の件数と、
  * 当該 Enrollment 配下の MockExamSession で pass=true かつ DISTINCT な mock_exam_id の件数が
  * 一致したとき eligible とする。公開模試が 1 件もない場合は常に false(取得すべき修了証がない)。
  *
@@ -28,7 +28,6 @@ class CompletionEligibilityService
         $publishedCount = MockExam::query()
             ->where('certification_id', $enrollment->certification_id)
             ->where('is_published', true)
-            ->whereNull('deleted_at')
             ->count();
 
         if ($publishedCount === 0) {

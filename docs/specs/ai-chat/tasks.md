@@ -11,18 +11,18 @@
 ## Step 1: Migration + Model + Enum
 
 - [x] `database/migrations/{date}_create_ai_chat_conversations_table.php` 作成（REQ-ai-chat-010）
-  - ULID 主キー / `user_id` cascade FK / `enrollment_id` set null FK / `section_id` set null FK / `title` string(100) / `last_message_at` nullable timestamp / `created_at` / `updated_at` / `deleted_at`
+  - ULID 主キー / `user_id` cascade FK / `enrollment_id` set null FK / `section_id` set null FK / `title` string(100) / `last_message_at` nullable timestamp / `created_at` / `updated_at`
   - 複合 INDEX: `(user_id, last_message_at)` + `(user_id, section_id)`
 - [x] `database/migrations/{date}_create_ai_chat_messages_table.php` 作成（REQ-ai-chat-011）
   - ULID 主キー / `ai_chat_conversation_id` cascade FK / `role` string / `content` text / `status` string / `model` nullable string / `input_tokens` `output_tokens` `response_time_ms` unsignedInt nullable / `error_detail` nullable text / `created_at` / `updated_at`
   - 複合 INDEX: `(ai_chat_conversation_id, created_at)`
 - [x] `app/Models/AiChatConversation.php` 作成（REQ-ai-chat-010）
-  - `use HasFactory, HasUlids, SoftDeletes`
+  - `use HasFactory, HasUlids`
   - `fillable`: `['user_id', 'enrollment_id', 'section_id', 'title', 'last_message_at']`
   - `casts`: `['last_message_at' => 'datetime']`
   - リレーション: `user()` `enrollment()` `section()` `messages()` `latestMessage()`（hasOne の最新 created_at）
 - [x] `app/Models/AiChatMessage.php` 作成（REQ-ai-chat-011）
-  - `use HasFactory, HasUlids`（SoftDeletes 不要、cascade で削除）
+  - `use HasFactory, HasUlids`（会話本体の物理削除に cascade で連動削除）
   - `fillable`: `['ai_chat_conversation_id', 'role', 'content', 'status', 'model', 'input_tokens', 'output_tokens', 'response_time_ms', 'error_detail']`
   - `casts`: `['role' => AiChatMessageRole::class, 'status' => AiChatMessageStatus::class, 'input_tokens' => 'integer', 'output_tokens' => 'integer', 'response_time_ms' => 'integer']`
   - リレーション: `conversation()`
@@ -74,7 +74,7 @@
 
 - [x] `app/UseCases/AiChat/IndexAction.php` 作成（REQ-ai-chat-030）
   - Eager Load: `enrollment.certification` / `section` / `latestMessage`
-  - `whereNull('deleted_at')` + `orderByDesc('last_message_at')` + `paginate(20)->withQueryString()`
+  - `orderByDesc('last_message_at')` + `paginate(20)->withQueryString()`
 - [x] `app/UseCases/AiChat/ShowAction.php` 作成
   - Eager Load: `enrollment.certification` / `section.chapter.part` / `messages` (orderBy created_at)
 - [x] `app/UseCases/AiChat/StoreAction.php` 作成（REQ-ai-chat-013 / 022 / 031 / 034）
@@ -88,7 +88,7 @@
 - [x] `app/UseCases/AiChat/UpdateAction.php` 作成（REQ-ai-chat-032）
   - `__invoke(AiChatConversation $conversation, array $validated): AiChatConversation`
 - [x] `app/UseCases/AiChat/DestroyAction.php` 作成（REQ-ai-chat-033）
-  - `$conversation->delete()`（SoftDelete）
+  - `$conversation->delete()`（物理削除、配下の `ai_chat_messages` は FK cascadeOnDelete で連動削除）
 - [x] `app/UseCases/AiChatMessage/StoreAction.php` 作成（REQ-ai-chat-040 / 061 / 091）
   - constructor で `LlmRepositoryInterface $llm`、`AiChatPromptBuilderService $promptBuilder`、`AiChatRateLimiterService $rateLimiter` を DI
   - `DB::transaction()` 内:

@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 教材階層の最小単位 Section を表す Model。Markdown 本文と紐づき演習問題・教材内画像を保持する。
@@ -23,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Section extends Model
 {
     /** @use HasFactory<SectionFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'chapter_id',

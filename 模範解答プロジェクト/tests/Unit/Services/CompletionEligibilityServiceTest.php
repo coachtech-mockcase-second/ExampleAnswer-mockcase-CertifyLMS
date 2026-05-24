@@ -81,19 +81,4 @@ class CompletionEligibilityServiceTest extends TestCase
         $this->assertTrue($this->service->isEligible($enrollment));
     }
 
-    public function test_soft_deleted_published_mock_exam_is_excluded_from_required_count(): void
-    {
-        $certification = Certification::factory()->published()->create();
-        $enrollment = Enrollment::factory()->for($certification)->create();
-
-        $exam = MockExam::factory()->for($certification)->create(['is_published' => true]);
-        $deletedExam = MockExam::factory()->for($certification)->create([
-            'is_published' => true,
-            'deleted_at' => now(),
-        ]);
-
-        MockExamSession::factory()->for($enrollment)->for($exam)->create(['pass' => true]);
-
-        $this->assertTrue($this->service->isEligible($enrollment));
-    }
 }

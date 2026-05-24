@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Section 本文(Markdown)に埋め込む教材内画像のメタデータを表す Model。
@@ -20,7 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class SectionImage extends Model
 {
     /** @use HasFactory<SectionImageFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'section_id',

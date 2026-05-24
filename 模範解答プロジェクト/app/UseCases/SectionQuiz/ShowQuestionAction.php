@@ -29,7 +29,7 @@ final class ShowQuestionAction
             throw new SectionQuestionUnavailableForAnswerException;
         }
 
-        if ($question->status !== ContentStatus::Published || $question->trashed()) {
+        if ($question->status !== ContentStatus::Published) {
             throw new SectionQuestionUnavailableForAnswerException;
         }
 

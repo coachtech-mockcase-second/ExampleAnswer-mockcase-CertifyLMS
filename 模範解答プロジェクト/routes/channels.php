@@ -23,7 +23,6 @@ Broadcast::channel('chat-room.{chatRoomId}', function (User $user, string $chatR
     return ChatMember::query()
         ->where('chat_room_id', $chatRoomId)
         ->where('user_id', $user->id)
-        ->whereNull('deleted_at')
         ->exists();
 });
 

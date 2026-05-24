@@ -19,8 +19,8 @@ use Illuminate\Support\Str;
  *
  * 業務分岐:
  * - 指定ユーザーがコーチロール以外: NotCoachUserException（422）
- * - 既に active な担当行が存在: 何もしない（冪等）+ イベント発火なし
- * - 過去に解除されて soft delete されている: restore + `unassigned_at` をリセット + イベント発火
+ * - 既に active な担当行が存在(unassigned_at IS NULL): 何もしない（冪等）+ イベント発火なし
+ * - 過去に解除されている(unassigned_at にタイムスタンプ): assigned_at / unassigned_at をリセット + イベント発火
  * - 新規割当: INSERT + イベント発火
  *
  * 同時呼出による UNIQUE 違反は冪等扱いとして catch し、イベントを発火しない。
@@ -37,15 +37,14 @@ final class AttachAction
         }
 
         $changed = DB::transaction(function () use ($certification, $coach, $admin) {
-            $existing = CertificationCoachAssignment::withTrashed()
+            $existing = CertificationCoachAssignment::query()
                 ->where('certification_id', $certification->id)
                 ->where('user_id', $coach->id)
                 ->lockForUpdate()
                 ->first();
 
             if ($existing !== null) {
-                if ($existing->trashed() || $existing->unassigned_at !== null) {
-                    $existing->restore();
+                if ($existing->unassigned_at !== null) {
                     $existing->update([
                         'assigned_by_user_id' => $admin->id,
                         'assigned_at' => now(),

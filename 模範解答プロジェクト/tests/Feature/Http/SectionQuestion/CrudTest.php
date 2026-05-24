@@ -182,6 +182,6 @@ class CrudTest extends TestCase
             ->delete(route('admin.section-questions.destroy', $question))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('section_questions', ['id' => $question->id]);
+        $this->assertDatabaseMissing('section_questions', ['id' => $question->id]);
     }
 }

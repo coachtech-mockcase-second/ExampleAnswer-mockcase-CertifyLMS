@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 教材階層の中段 Chapter を表す Model。Part 配下を更に章立てし、Section を束ねる。
@@ -23,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Chapter extends Model
 {
     /** @use HasFactory<ChapterFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'part_id',

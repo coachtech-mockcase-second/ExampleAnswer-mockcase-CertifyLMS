@@ -52,7 +52,6 @@ final class ShowEnrollmentAction
             ->get() ?? collect();
 
         $sectionProgresses = $enrollment->sectionProgresses()
-            ->whereNull('deleted_at')
             ->pluck('section_id')
             ->all();
 

@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 1 Enrollment = 1 ChatRoom のグループ chat ルーム。
@@ -26,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ChatRoom extends Model
 {
     /** @use HasFactory<ChatRoomFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'enrollment_id',
@@ -114,9 +113,8 @@ class ChatRoom extends Model
                     ->from('chat_messages')
                     ->whereColumn('chat_messages.chat_room_id', 'chat_rooms.id')
                     ->where('chat_messages.sender_user_id', '!=', $coach->id)
-                    ->whereNull('chat_messages.deleted_at')
                     ->whereRaw(
-                        'chat_messages.created_at > COALESCE((SELECT last_read_at FROM chat_members WHERE chat_members.chat_room_id = chat_rooms.id AND chat_members.user_id = ? AND chat_members.deleted_at IS NULL LIMIT 1), "1970-01-01")',
+                        'chat_messages.created_at > COALESCE((SELECT last_read_at FROM chat_members WHERE chat_members.chat_room_id = chat_rooms.id AND chat_members.user_id = ? LIMIT 1), "1970-01-01")',
                         [$coach->id]
                     );
             });

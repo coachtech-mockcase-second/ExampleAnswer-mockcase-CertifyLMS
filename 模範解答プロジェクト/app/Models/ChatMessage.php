@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * ChatRoom に投稿された個別メッセージ。テキスト本文のみ(添付ファイル非対応)。
@@ -22,7 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ChatMessage extends Model
 {
     /** @use HasFactory<ChatMessageFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'chat_room_id',

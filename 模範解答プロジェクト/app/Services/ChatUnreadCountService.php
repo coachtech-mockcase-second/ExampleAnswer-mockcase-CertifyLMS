@@ -66,7 +66,6 @@ class ChatUnreadCountService
         $members = ChatMember::query()
             ->whereIn('chat_room_id', $roomIds)
             ->where('user_id', $user->id)
-            ->whereNull('deleted_at')
             ->get(['chat_room_id', 'last_read_at']);
 
         if ($members->isEmpty()) {
@@ -75,7 +74,6 @@ class ChatUnreadCountService
 
         $counts = ChatMessage::query()
             ->whereIn('chat_room_id', $members->pluck('chat_room_id')->all())
-            ->whereNull('deleted_at')
             ->where('sender_user_id', '!=', $user->id)
             ->where(function ($q) use ($members): void {
                 foreach ($members as $member) {
@@ -115,10 +113,9 @@ class ChatUnreadCountService
                     ->from('chat_messages')
                     ->whereColumn('chat_messages.chat_room_id', 'chat_rooms.id')
                     ->where('chat_messages.sender_user_id', '!=', $user->id)
-                    ->whereNull('chat_messages.deleted_at')
                     ->where(function ($inner) use ($user): void {
                         $inner->whereRaw(
-                            'chat_messages.created_at > COALESCE((SELECT last_read_at FROM chat_members WHERE chat_members.chat_room_id = chat_rooms.id AND chat_members.user_id = ? AND chat_members.deleted_at IS NULL LIMIT 1), "1970-01-01")',
+                            'chat_messages.created_at > COALESCE((SELECT last_read_at FROM chat_members WHERE chat_members.chat_room_id = chat_rooms.id AND chat_members.user_id = ? LIMIT 1), "1970-01-01")',
                             [$user->id]
                         );
                     });

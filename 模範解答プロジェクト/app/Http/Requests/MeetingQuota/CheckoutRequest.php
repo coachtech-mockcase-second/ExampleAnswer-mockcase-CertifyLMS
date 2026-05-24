@@ -24,8 +24,7 @@ class CheckoutRequest extends FormRequest
                 'required',
                 'ulid',
                 Rule::exists('meeting_packs', 'id')
-                    ->where('status', 'published')
-                    ->whereNull('deleted_at'),
+                    ->where('status', 'published'),
             ],
         ];
     }

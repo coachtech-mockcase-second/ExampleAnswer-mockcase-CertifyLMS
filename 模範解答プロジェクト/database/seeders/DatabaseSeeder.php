@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             MeetingPackSeeder::class,
             CertificationCategorySeeder::class,
             CertificationSeeder::class,
+            InvitationSeeder::class,
             EnrollmentSeeder::class,
             MentoringSeeder::class,
             ContentSeeder::class,
@@ -27,6 +28,12 @@ class DatabaseSeeder extends Seeder
             QuizAnsweringSeeder::class,
             MockExamSeeder::class,
             ChatSeeder::class,
+            QaBoardSeeder::class,
+            AiChatSeeder::class,
+            AnnouncementSeeder::class,
+            CertificateSeeder::class,
+            PaymentSeeder::class,
+            NotificationSeeder::class,
         ]);
     }
 }

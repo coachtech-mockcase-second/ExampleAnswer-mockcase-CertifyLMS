@@ -36,7 +36,6 @@ return new class extends Migration
             $table->unsignedInteger('duration_seconds')->nullable();
             $table->boolean('auto_closed')->default(false);
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['user_id', 'started_at']);
             $table->index(['enrollment_id', 'started_at']);

@@ -65,11 +65,6 @@ final class SectionQuestionAttemptStatsService
             ->join('chapters', 'chapters.id', '=', 'sections.chapter_id')
             ->join('parts', 'parts.id', '=', 'chapters.part_id')
             ->where('parts.certification_id', $enrollment->certification_id)
-            ->whereNull('section_question_attempts.deleted_at')
-            ->whereNull('section_questions.deleted_at')
-            ->whereNull('sections.deleted_at')
-            ->whereNull('chapters.deleted_at')
-            ->whereNull('parts.deleted_at')
             ->groupBy('section_questions.category_id')
             ->select([
                 'section_questions.category_id as category_id',

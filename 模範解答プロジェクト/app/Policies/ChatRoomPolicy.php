@@ -35,7 +35,6 @@ class ChatRoomPolicy
         return ChatMember::query()
             ->where('chat_room_id', $room->id)
             ->where('user_id', $user->id)
-            ->whereNull('deleted_at')
             ->exists();
     }
 

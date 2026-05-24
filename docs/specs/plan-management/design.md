@@ -56,8 +56,8 @@ plans
 ├ sort_order unsigned int NOT NULL DEFAULT 0
 ├ created_by_user_id ULID FK NOT NULL → users.id (restrict)
 ├ updated_by_user_id ULID FK NOT NULL → users.id (restrict)
-├ created_at / updated_at / deleted_at
-INDEX (status, sort_order), (deleted_at)
+├ created_at / updated_at
+INDEX (status, sort_order)
 ※ price カラムなし(LMS 内で価格を持たない、決済 LMS 外)
 
 users (本 Feature の Migration で追加)
@@ -67,7 +67,7 @@ users (本 Feature の Migration で追加)
 ├ max_meetings unsigned smallint NOT NULL DEFAULT 0
 INDEX (plan_id), (status, plan_expires_at)
 
-user_plan_logs (履歴、INSERT only、SoftDelete 不採用)
+user_plan_logs (履歴、INSERT only)
 ├ id ULID PK
 ├ user_id ULID FK NOT NULL → users.id (restrict)
 ├ plan_id ULID FK NOT NULL → plans.id (restrict)

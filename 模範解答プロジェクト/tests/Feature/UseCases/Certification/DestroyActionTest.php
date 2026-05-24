@@ -20,7 +20,7 @@ class DestroyActionTest extends TestCase
 
         (new DestroyAction)($cert);
 
-        $this->assertSoftDeleted('certifications', ['id' => $cert->id]);
+        $this->assertDatabaseMissing('certifications', ['id' => $cert->id]);
     }
 
     public function test_throws_when_published(): void

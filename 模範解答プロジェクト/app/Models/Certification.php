@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 資格マスタを表す Model。受講生カタログ・admin マスタ管理・修了証発行・教材階層の親として参照される。
@@ -26,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Certification extends Model
 {
     /** @use HasFactory<CertificationFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'name',
@@ -72,10 +71,7 @@ class Certification extends Model
     }
 
     /**
-     * 担当コーチ一覧。active 行のみを返す。
-     *
-     * BelongsToMany は Pivot Model の SoftDeletes グローバルスコープを pivot join 句に自動適用しないため、
-     * `deleted_at IS NULL` と `unassigned_at IS NULL` を両方明示する必要がある。
+     * 担当コーチ一覧。active 行のみを返す(unassigned_at IS NULL で現役判定)。
      *
      * @return BelongsToMany<User, $this>
      */
@@ -90,7 +86,6 @@ class Certification extends Model
             ->using(CertificationCoachAssignment::class)
             ->withPivot(['id', 'assigned_by_user_id', 'assigned_at', 'unassigned_at'])
             ->withTimestamps()
-            ->wherePivotNull('deleted_at')
             ->wherePivot('unassigned_at', null);
     }
 

@@ -7,10 +7,10 @@
 
 ## Step 1: Migration
 
-- [x] migration: `create_chat_rooms_table`(ULID 主キー、`enrollment_id` UNIQUE 外部キー `restrictOnDelete`、`last_message_at` nullable datetime、`last_message_at` 単体 INDEX、`SoftDeletes`)(REQ-chat-001)
+- [x] migration: `create_chat_rooms_table`(ULID 主キー、`enrollment_id` UNIQUE 外部キー `restrictOnDelete`、`last_message_at` nullable datetime、`last_message_at` 単体 INDEX)(REQ-chat-001)
   - **`status` カラムは持たない**(v3 撤回)
-- [x] migration: `create_chat_members_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`user_id` 外部キー `restrictOnDelete`、`last_read_at` nullable datetime、`joined_at` datetime NOT NULL、`(chat_room_id, user_id)` UNIQUE、`(user_id, last_read_at)` 複合 INDEX、`SoftDeletes`)(REQ-chat-002)
-- [x] migration: `create_chat_messages_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`sender_user_id` 外部キー `restrictOnDelete`、`body` text、`(chat_room_id, created_at)` 複合 INDEX、`sender_user_id` 単体 INDEX、`SoftDeletes`)(REQ-chat-010)
+- [x] migration: `create_chat_members_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`user_id` 外部キー `restrictOnDelete`、`last_read_at` nullable datetime、`joined_at` datetime NOT NULL、`(chat_room_id, user_id)` UNIQUE、`(user_id, last_read_at)` 複合 INDEX)(REQ-chat-002)
+- [x] migration: `create_chat_messages_table`(ULID 主キー、`chat_room_id` 外部キー `cascadeOnDelete`、`sender_user_id` 外部キー `restrictOnDelete`、`body` text、`(chat_room_id, created_at)` 複合 INDEX、`sender_user_id` 単体 INDEX)(REQ-chat-010)
 
 ### 明示的に持たない migration(E-2 撤回)
 
@@ -18,9 +18,9 @@
 
 ## Step 2: Model / Factory / Seeder
 
-- [x] Model: `App\Models\ChatRoom`(`HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `casts: last_message_at => datetime`、リレーション `enrollment` / `messages` / `members` / `latestMessage`、スコープ `scopeForUser(User)` / `scopeOrderByLastMessage`)
-- [x] Model: `App\Models\ChatMember`(`HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `casts: last_read_at => datetime, joined_at => datetime`、リレーション `chatRoom` / `user`、スコープ `scopeForRoom` / `scopeForUser` / `scopeUnread`)
-- [x] Model: `App\Models\ChatMessage`(`HasUlids` + `HasFactory` + `SoftDeletes`、リレーション `chatRoom` / `sender`、`booted()::created` フックで `chat_rooms.last_message_at` UPDATE、**`hasMany(ChatAttachment)` 削除**(E-2))
+- [x] Model: `App\Models\ChatRoom`(`HasUlids` + `HasFactory`、`fillable` / `casts: last_message_at => datetime`、リレーション `enrollment` / `messages` / `members` / `latestMessage`、スコープ `scopeForUser(User)` / `scopeOrderByLastMessage`)
+- [x] Model: `App\Models\ChatMember`(`HasUlids` + `HasFactory`、`fillable` / `casts: last_read_at => datetime, joined_at => datetime`、リレーション `chatRoom` / `user`、スコープ `scopeForRoom` / `scopeForUser` / `scopeUnread`)
+- [x] Model: `App\Models\ChatMessage`(`HasUlids` + `HasFactory`、リレーション `chatRoom` / `sender`、`booted()::created` フックで `chat_rooms.last_message_at` UPDATE、**`hasMany(ChatAttachment)` 削除**(E-2))
 - [x] Factory: `ChatRoomFactory`(`coachUnassigned()` state)、`ChatMemberFactory`(`asStudent()` / `asCoach()` / `unread()` / `read()` state)、`ChatMessageFactory`(`fromStudent()` / `fromCoach()` state)
 - [x] Seeder: `ChatSeeder`(各 Enrollment ごとに ChatRoom + 全 ChatMember + サンプルメッセージ)
 

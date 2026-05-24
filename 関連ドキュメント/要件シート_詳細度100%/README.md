@@ -79,7 +79,7 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 → Story Advance (5) → Bug Advance (3) → Task Advance (4) → ★ 全件完成
 ```
 
-- **Basic → Advance**: Advance は Basic 上に積む拡張(例: S-A-06 Sanctum は S-B-06 認証なし API の上に後付け)。Basic 確定後に Advance を詳細化するほうが整合が取りやすい
+- **Basic → Advance**: Advance は Basic 上に積む拡張(例: S-A-05 Sanctum は S-B-05 認証なし API の上に後付け)。Basic 確定後に Advance を詳細化するほうが整合が取りやすい
 - **Story → Bug → Task**: 記述スタイルが異なる(特に Bug は実装方針なし)ため、種別単位で進める
 
 ## チケット一覧(40 件)
@@ -91,44 +91,46 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
 |---|---|---|---|---|
 | `S-B-01` | `qa-board-01` | 質問掲示板の実装 | 新規機能の構築 | 13h |
-| `S-B-03` | `meeting-quota-01` | 面談パックマスタ管理(admin マスタ CRUD) | 既存機能の拡張 | 6h |
-| `S-B-04` | `plan-management-01` | プラン管理 Admin マスタ UI | 既存機能の拡張 | 6h |
-| `S-B-05` | `notification-01` | 通知(Laravel Notification、DB + Mail) | 新規機能の構築 | 12h |
-| `S-B-06` | `notification-02` | 通知 JSON API(認証なし) | 新規機能の構築 | 6h |
-| `S-B-07` | `enrollment-03` | 個人目標(EnrollmentGoal)CRUD | 新規機能の構築 | 8h |
-| `S-B-08` | `settings-profile-01` | 設定・プロフィール画面 | 既存機能の拡張 | 7h |
-| `S-B-09` | `mentoring-06` | コーチ用 受講生メモ(EnrollmentNote)編集 | 新規機能の構築 | 6h |
-| `S-B-10` | `notification-05` | admin お知らせ配信機能 | 新規機能の構築 | 8h |
+| `S-B-02` | `meeting-quota-01` | 面談パックマスタ管理(admin マスタ CRUD) | 既存機能の拡張 | 6h |
+| `S-B-03` | `plan-management-01` | プラン管理 Admin マスタ UI | 既存機能の拡張 | 6h |
+| `S-B-04` | `notification-01` | 通知(Laravel Notification、DB + Mail) | 新規機能の構築 | 12h |
+| `S-B-05` | `notification-02` | 通知 JSON API(認証なし) | 新規機能の構築 | 6h |
+| `S-B-06` | `enrollment-03` | 個人目標(EnrollmentGoal)CRUD | 新規機能の構築 | 8h |
+| `S-B-07` | `settings-profile-01` | 設定・プロフィール画面 | 既存機能の拡張 | 7h |
+| `S-B-08` | `mentoring-06` | コーチ用 受講生メモ(EnrollmentNote)編集 | 新規機能の構築 | 6h |
+| `S-B-09` | `notification-05` | admin お知らせ配信機能 | 新規機能の構築 | 8h |
 
 ### Story Advance(5 件)
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
 |---|---|---|---|---|
-| `S-A-02` | `mentoring-01` | Google Calendar 連携(面談予約) | 既存機能の拡張 | 16.5h |
-| `S-A-03` | `ai-chat-01` | Gemini AI チャットボット | 新規機能の構築 | 12h |
-| `S-A-04` | `meeting-quota-02` | Stripe 連携(追加面談購入) | 新規機能の構築 | 16h |
-| `S-A-05` | `certification-management-01` | 修了証 PDF 出力 | 既存機能の拡張 | 6h |
-| `S-A-06` | `notification-03` | Sanctum Cookie 認証追加 + JS フロント通知表示 | 既存機能の拡張 | 13.5h |
+| `S-A-01` | `mentoring-01` | Google Calendar 連携(面談予約) | 既存機能の拡張 | 16.5h |
+| `S-A-02` | `ai-chat-01` | Gemini AI チャットボット | 新規機能の構築 | 12h |
+| `S-A-03` | `meeting-quota-02` | Stripe 連携(追加面談購入) | 新規機能の構築 | 16h |
+| `S-A-04` | `certification-management-01` | 修了証 PDF 出力 | 既存機能の拡張 | 6h |
+| `S-A-05` | `notification-03` | Sanctum Cookie 認証追加 + JS フロント通知表示 | 既存機能の拡張 | 13.5h |
 
 ### Bug Basic(16 件)
+
+> **Step 4 仕込み方の前提**: 模範解答 PJ は `backend-http.md` の規約(Controller は薄く / メソッド内ビジネスロジック原則 0 行 / 1 Controller method = 1 Action)に従って、ビジネスロジックを Action / Service / FormRequest / Policy / Middleware に分散している。「Step 4 仕込み方」列は **模範解答 PJ の実装レイヤー基準** で記述し、Step 4 引き算実装時の指示書として正確な仕込み箇所を示す。
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 | Step 4 仕込み方 |
 |---|---|---|---|---|---|
 | `B-B-01` | `content-management-01` | コーチ教材アクセス 403 → 編集可能化 | 認可・認証 | 4h | コーチ Policy で `denied` を返す |
-| `B-B-02` | `content-management-02` | 教材一覧 ソート順無視 | 機能(ソート) | 2.5h | Controller の `orderBy('order')` 追加忘れ |
-| `B-B-03` | `content-management-03` | 教材一覧で archived 資格も表示 | データ(クエリ漏れ) | 3h | Controller の `where('status', 'published')` 条件漏れ |
-| `B-B-04` | `user-management-02` | admin 受講生一覧で withdrawn も表示 | データ(クエリ漏れ) | 3h | Controller の `where('status', '!=', 'withdrawn')` 条件漏れ |
+| `B-B-02` | `content-management-02` | 教材一覧 ソート順無視 | 機能(ソート) | 2.5h | `Part\IndexAction` の `orderBy('order')` 追加忘れ |
+| `B-B-03` | `content-management-03` | 教材一覧で archived 資格も表示 | データ(クエリ漏れ) | 3h | `Part\IndexAction`(or Model scope)の `where('status', 'published')` 条件漏れ |
+| `B-B-04` | `user-management-02` | admin 受講生一覧で withdrawn も表示 | データ(クエリ漏れ) | 3h | `User\IndexAction` の `where('status', '!=', 'withdrawn')` 条件漏れ |
 | `B-B-05` | `user-management-03` | ユーザー招待で重複 email 可能 | データ(バリデーション) | 2.5h | FormRequest の `unique:users,email` ルール漏れ |
-| `B-B-06` | `auth-01` | 招待トークン使い回し可能 | セキュリティ(トークン期限管理) | 3h | Controller / Action で `used_at` UPDATE 忘れ + `expires_at >= now()` を `>` 境界ミス |
+| `B-B-06` | `auth-01` | 招待トークン使い回し可能 | セキュリティ(トークン期限管理) | 3h | `Auth\OnboardAction` で `used_at` UPDATE 忘れ + `expires_at >= now()` を `>` 境界ミス |
 | `B-B-07` | `quiz-answering-01` | 解答後フラッシュメッセージ表示忘れ | UI/UX(フラッシュ) | 2h | Controller の `redirect()->with('success', ...)` 漏れ |
 | `B-B-08` | `settings-profile-02` | 設定保存後のリダイレクト先誤り | UI/UX(リダイレクト) | 2h | Controller の `redirect()` 先誤り |
-| `B-B-09` | `content-management-04` | 受講生が未登録資格の教材詳細を直叩き閲覧可 | 認可・認証(IDOR) | 3h | Controller の `$this->authorize()` 漏れ |
-| `B-B-10` | `meeting-quota-04` | 面談キャンセル時に残数が返却されない | データ(Tx 漏れ) | 3h | `CancelMeetingAction` 内で `MeetingQuotaTransaction.refunded` INSERT 漏れ(※Basic 範囲外、Skill 生成時に「※」注記) |
-| `B-B-11` | `user-management-04` | 招待中ユーザー一覧で誤った status 条件 | データ(クエリ条件誤り) | 3h | Controller の where 条件を誤ったコピペ |
-| `B-B-12` | `auth-02` | オンボーディング完了時の status 遷移漏れ | 機能(状態遷移) | 3h | Controller の `$user->update(['status' => UserStatus::InProgress])` 行を削除 |
+| `B-B-09` | `content-management-04` | 受講生が未登録資格の教材詳細を直叩き閲覧可 | 認可・認証(IDOR) | 3h | Controller の `$this->authorize()` 呼び出し漏れ |
+| `B-B-10` | `meeting-quota-04` | 面談キャンセル時に残数が返却されない | データ(Tx 漏れ) | 3h | `Meeting\CancelAction` 内で `MeetingQuotaTransaction.refunded` INSERT 漏れ(※Basic 範囲外、Skill 生成時に「※」注記) |
+| `B-B-11` | `user-management-04` | 招待中ユーザー一覧で誤った status 条件 | データ(クエリ条件誤り) | 3h | `User\IndexAction` の where 条件を誤ったコピペ(招待中フィルタが他 status とずれる) |
+| `B-B-12` | `auth-02` | オンボーディング完了時の status 遷移漏れ | 機能(状態遷移) | 3h | `Auth\OnboardAction` の `$user->update(['status' => UserStatus::InProgress])` 行を削除 |
 | `B-B-13` | `auth-03` | オンボーディングで `password_confirmation` 漏れ | データ(バリデーション) | 2h | FormRequest の `'password' => 'confirmed'` ルールを抜く |
-| `B-B-14` | `chat-01` | chat 未読バッジで自分の発言もカウント | データ(クエリ条件誤り) | 3h | Controller の未読集計 query で `where('sender_id', '!=', auth()->id())` 漏れ |
-| `B-B-15` | `auth-04` | withdrawn ユーザーがログイン可能 | 認可・認証(認証チェック漏れ) | 3h | Fortify の `AuthenticateUser` に status チェックを書かない |
+| `B-B-14` | `chat-01` | chat 未読バッジで自分の発言もカウント | データ(クエリ条件誤り) | 3h | `ChatUnreadCountService` の未読集計 query で `where('sender_id', '!=', auth()->id())` 漏れ |
+| `B-B-15` | `auth-04` | withdrawn ユーザーがログイン可能 | 認可・認証(認証チェック漏れ) | 3h | Fortify の `AuthenticateUser`(`app/Actions/Fortify/`)に status チェックを書かない |
 | `B-B-16` | `auth-05` | graduated ユーザーがプラン機能アクセス可 | 認可・認証(Middleware チェック漏れ) | 3h | 既存 `EnsureActiveLearning` Middleware から status 判定行を削除 |
 
 ### Bug Advance(3 件)
@@ -160,14 +162,16 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 
 | 種別 | Basic | Advance | 計 |
 |---|---:|---:|---:|
-| Story | 1 / 9 | 0 / 5 | 1 / 14 |
-| Bug | 0 / 16 | 0 / 3 | 0 / 19 |
+| Story | 2 / 9 | 0 / 5 | 2 / 14 |
+| Bug | 1 / 16 | 0 / 3 | 1 / 19 |
 | Task | 0 / 3 | 0 / 4 | 0 / 7 |
-| **計** | **1 / 28** | **0 / 12** | **1 / 40** |
+| **計** | **3 / 28** | **0 / 12** | **3 / 40** |
 
 ### 完成済み
 
-- ✅ `S-B-01 / qa-board-01` 質問掲示板の実装(2026-05-23 サイドバーバッジ機能廃止 / 通知発火スコープ外 [`S-B-05` に移管] / やること構造化 / Seeder 設計を採点シナリオ紐付けで具体化 で再書き直し済、依存チケット解除)
+- ✅ `S-B-01 / qa-board-01` 質問掲示板の実装(2026-05-23 サイドバーバッジ機能廃止 / 通知発火スコープ外 [`S-B-04` に移管] / やること構造化 / Seeder 設計を採点シナリオ紐付けで具体化 で再書き直し済、依存チケット解除)
+- ✅ `S-B-02 / meeting-quota-01` 面談パックマスタ管理(admin マスタ CRUD)(2026-05-23 詳細化、Basic 範囲で Controller 内完結を前提に記述、状態遷移 3 種(publish / archive / unarchive)+ 公開中削除ガード(409)、依存チケットなし)
+- ✅ `B-B-01 / content-management-01` コーチが担当資格の教材管理にアクセスすると 403(2026-05-24 詳細化、Step 4 仕込み = 6 Policy [Part / Chapter / Section / SectionQuestion / SectionImage / QuestionCategory] の coach 判定を `false` 固定に置換、Basic 範囲で Policy 修正のみで完結 → 「※」例外注記なし、依存チケットなし)
 
 ## 関連ドキュメント
 

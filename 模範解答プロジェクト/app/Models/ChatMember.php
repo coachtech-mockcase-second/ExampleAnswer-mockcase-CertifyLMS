@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * ChatRoom 参加者の中間 Model。受講生 + 担当コーチ集合の参加状態と既読時刻を保持する。
@@ -24,7 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ChatMember extends Model
 {
     /** @use HasFactory<ChatMemberFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'chat_room_id',

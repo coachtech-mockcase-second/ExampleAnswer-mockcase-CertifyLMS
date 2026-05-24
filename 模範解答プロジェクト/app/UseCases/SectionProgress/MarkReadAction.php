@@ -17,11 +17,11 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 /**
  * Section の読了マーク UPSERT を行う Action。
  *
- * - cascade visibility 検証 (Section / 親 Chapter / 親 Part が全て Published かつ SoftDelete されていない)
+ * - cascade visibility 検証 (Section / 親 Chapter / 親 Part が全て Published)
  * - Enrollment 状態検証 (`learning` / `passed` 許容、`failed` で 409)
- * - SoftDelete 済 SectionProgress があれば restore + completed_at UPDATE、無ければ INSERT (冪等)
+ * - 既存 SectionProgress があれば completed_at UPDATE、無ければ INSERT (冪等)
  *
- * @throws SectionUnavailableForProgressException Section / 親が Draft / SoftDelete
+ * @throws SectionUnavailableForProgressException Section / 親が Draft
  * @throws EnrollmentInactiveException Enrollment が failed 状態
  */
 final class MarkReadAction
@@ -37,9 +37,9 @@ final class MarkReadAction
             throw new SectionUnavailableForProgressException;
         }
 
-        if ($section->status !== ContentStatus::Published || $section->deleted_at !== null
-            || $chapter->status !== ContentStatus::Published || $chapter->deleted_at !== null
-            || $part->status !== ContentStatus::Published || $part->deleted_at !== null) {
+        if ($section->status !== ContentStatus::Published
+            || $chapter->status !== ContentStatus::Published
+            || $part->status !== ContentStatus::Published) {
             throw new SectionUnavailableForProgressException;
         }
 
@@ -57,7 +57,6 @@ final class MarkReadAction
 
         return DB::transaction(function () use ($enrollment, $section) {
             $progress = SectionProgress::query()
-                ->withTrashed()
                 ->where('enrollment_id', $enrollment->id)
                 ->where('section_id', $section->id)
                 ->lockForUpdate()
@@ -69,10 +68,6 @@ final class MarkReadAction
                     'section_id' => $section->id,
                     'completed_at' => now(),
                 ]);
-            }
-
-            if ($progress->trashed()) {
-                $progress->restore();
             }
 
             $progress->update(['completed_at' => now()]);

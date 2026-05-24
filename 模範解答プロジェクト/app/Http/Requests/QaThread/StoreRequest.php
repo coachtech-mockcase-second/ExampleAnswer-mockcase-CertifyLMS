@@ -31,8 +31,7 @@ class StoreRequest extends FormRequest
                 'required',
                 'ulid',
                 Rule::exists('certifications', 'id')
-                    ->where('status', CertificationStatus::Published->value)
-                    ->whereNull('deleted_at'),
+                    ->where('status', CertificationStatus::Published->value),
             ],
             'title' => ['required', 'string', 'max:200', 'not_regex:/\A[\s\x{3000}]*\z/u'],
             'body' => ['required', 'string', 'max:5000', 'not_regex:/\A[\s\x{3000}]*\z/u'],

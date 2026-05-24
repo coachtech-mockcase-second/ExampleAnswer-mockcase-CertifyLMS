@@ -94,7 +94,7 @@ sequenceDiagram
         CA-->>FB: 403 (AiChatConversationCreationDeniedException)
     end
     CA->>DB: BEGIN
-    CA->>DB: SELECT ai_chat_conversations WHERE user_id=? AND section_id=? AND deleted_at IS NULL ORDER BY last_message_at DESC LIMIT 1
+    CA->>DB: SELECT ai_chat_conversations WHERE user_id=? AND section_id=? ORDER BY last_message_at DESC LIMIT 1
     alt 既存会話あり
         CA-->>CC: 既存 conversation
     else 既存なし
@@ -214,8 +214,8 @@ flowchart LR
 
 ### Eloquent モデル
 
-- **`AiChatConversation`** — 会話。`HasUlids` + `SoftDeletes`。`belongsTo(User::class)` + `belongsTo(Enrollment::class)` + `belongsTo(Section::class)` + `hasMany(AiChatMessage::class)`。
-- **`AiChatMessage`** — メッセージ。`HasUlids`（SoftDeletes 不要、cascade で削除）。`belongsTo(AiChatConversation::class)`。
+- **`AiChatConversation`** — 会話。`HasUlids`。`belongsTo(User::class)` + `belongsTo(Enrollment::class)` + `belongsTo(Section::class)` + `hasMany(AiChatMessage::class)`。
+- **`AiChatMessage`** — メッセージ。`HasUlids`（会話本体の物理削除に cascade で連動削除）。`belongsTo(AiChatConversation::class)`。
 
 ### ER 図
 
@@ -235,7 +235,6 @@ erDiagram
         timestamp last_message_at_nullable
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at_nullable
     }
 
     AI_CHAT_MESSAGES {
@@ -328,7 +327,6 @@ class IndexAction
     {
         return $user->aiChatConversations()
             ->with(['enrollment.certification', 'section', 'latestMessage'])
-            ->whereNull('deleted_at')
             ->orderByDesc('last_message_at')
             ->paginate($perPage)
             ->withQueryString();
@@ -380,6 +378,7 @@ class DestroyAction
 {
     public function __invoke(AiChatConversation $conversation): void
     {
+        // 物理削除。配下の ai_chat_messages は FK cascadeOnDelete で連動削除される
         $conversation->delete();
     }
 }
@@ -978,7 +977,7 @@ SSE の `event: error` を受信した場合、JS は:
 
 | 要件 ID | 実装ポイント |
 |---|---|
-| REQ-ai-chat-010 | `database/migrations/{date}_create_ai_chat_conversations_table.php` / `App\Models\AiChatConversation`（ULID + SoftDeletes + fillable + casts + リレーション）|
+| REQ-ai-chat-010 | `database/migrations/{date}_create_ai_chat_conversations_table.php` / `App\Models\AiChatConversation`（ULID + fillable + casts + リレーション、SoftDelete 不採用で常に物理削除）|
 | REQ-ai-chat-011 | `database/migrations/{date}_create_ai_chat_messages_table.php` / `App\Models\AiChatMessage`（ULID + fillable + casts + リレーション）|
 | REQ-ai-chat-012 | `App\Enums\AiChatMessageRole` / `App\Enums\AiChatMessageStatus`（`label()` メソッド含む）|
 | REQ-ai-chat-013 | `App\UseCases\AiChat\StoreAction::__invoke` 内で `Enrollment` 自動補完 + 未登録時の `AiChatConversationCreationDeniedException` throw |
@@ -988,7 +987,7 @@ SSE の `event: error` を受信した場合、JS は:
 | REQ-ai-chat-030 | `AiChatConversationController::index` / `App\UseCases\AiChat\IndexAction` (Eager Load + paginate + orderByDesc) |
 | REQ-ai-chat-031 | `AiChatConversationController::store` / `App\Http\Requests\AiChat\StoreRequest` / `App\UseCases\AiChat\StoreAction` (Accept: application/json なら JSON、それ以外は redirect) |
 | REQ-ai-chat-032 | `AiChatConversationController::update` / `App\Http\Requests\AiChat\UpdateRequest` / `App\UseCases\AiChat\UpdateAction` |
-| REQ-ai-chat-033 | `AiChatConversationController::destroy` / `App\UseCases\AiChat\DestroyAction` + Model の `SoftDeletes` trait |
+| REQ-ai-chat-033 | `AiChatConversationController::destroy` / `App\UseCases\AiChat\DestroyAction` で物理削除 + 配下 `ai_chat_messages` は FK cascadeOnDelete で連動削除 |
 | REQ-ai-chat-034 | `App\UseCases\AiChat\StoreAction::__invoke` の `$reuseExisting=true` 経路 + `(user_id, section_id)` INDEX |
 | REQ-ai-chat-040 | `AiChatMessageController::store` / `App\Http\Requests\AiChatMessage\StoreRequest` / `App\UseCases\AiChatMessage\StoreAction` (先行 DB::transaction で user/assistant INSERT → Gemini 呼出 → UPDATE。Controller 側で `AiChatLlmFailedException` を catch して 502 + upstream_status JSON 化) |
 | REQ-ai-chat-042 | `StoreAction` の先行 DB::transaction COMMIT で user メッセージ + error 状態 assistant メッセージを永続化 → 再送信ボタンで復旧可能 |

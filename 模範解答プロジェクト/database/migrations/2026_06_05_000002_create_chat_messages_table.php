@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * ChatRoom に投稿される個別メッセージ。テキスト本文のみ(添付ファイル非対応)。
  *
- * 編集 / 削除エンドポイントは提供しないため、deleted_at は管理者監査用の論理削除に限り使用する。
+ * 編集 / 削除エンドポイントは提供しない(append only)。
  */
 return new class extends Migration
 {
@@ -25,11 +25,9 @@ return new class extends Migration
                 ->restrictOnDelete();
             $table->text('body');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['chat_room_id', 'created_at']);
             $table->index('sender_user_id');
-            $table->index('deleted_at');
         });
     }
 

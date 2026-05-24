@@ -144,7 +144,7 @@ class PlanControllerTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('admin.plans.destroy', $plan));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('plans', ['id' => $plan->id]);
+        $this->assertDatabaseMissing('plans', ['id' => $plan->id]);
     }
 
     public function test_destroy_returns_409_for_published_plan(): void
@@ -155,7 +155,7 @@ class PlanControllerTest extends TestCase
         $response = $this->actingAs($admin)->deleteJson(route('admin.plans.destroy', $plan));
 
         $this->assertSame(409, $response->status());
-        $this->assertDatabaseHas('plans', ['id' => $plan->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('plans', ['id' => $plan->id]);
     }
 
     public function test_destroy_returns_409_for_archived_plan(): void
@@ -166,7 +166,7 @@ class PlanControllerTest extends TestCase
         $response = $this->actingAs($admin)->deleteJson(route('admin.plans.destroy', $plan));
 
         $this->assertSame(409, $response->status());
-        $this->assertDatabaseHas('plans', ['id' => $plan->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('plans', ['id' => $plan->id]);
     }
 
     public function test_destroy_returns_409_for_draft_plan_with_users(): void
@@ -178,7 +178,7 @@ class PlanControllerTest extends TestCase
         $response = $this->actingAs($admin)->deleteJson(route('admin.plans.destroy', $plan));
 
         $this->assertSame(409, $response->status());
-        $this->assertDatabaseHas('plans', ['id' => $plan->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('plans', ['id' => $plan->id]);
     }
 
     public function test_destroy_via_browser_redirects_back_with_flash_error_for_published_plan(): void
@@ -192,7 +192,7 @@ class PlanControllerTest extends TestCase
 
         $response->assertRedirect(route('admin.plans.show', $plan));
         $response->assertSessionHas('error');
-        $this->assertDatabaseHas('plans', ['id' => $plan->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('plans', ['id' => $plan->id]);
     }
 
     public function test_publish_transitions_draft_to_published(): void

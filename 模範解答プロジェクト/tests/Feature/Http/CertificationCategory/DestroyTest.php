@@ -22,7 +22,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('admin.certification-categories.destroy', $category));
 
         $response->assertRedirect(route('admin.certification-categories.index'));
-        $this->assertSoftDeleted('certification_categories', ['id' => $category->id]);
+        $this->assertDatabaseMissing('certification_categories', ['id' => $category->id]);
     }
 
     public function test_cannot_delete_category_in_use(): void
@@ -34,6 +34,6 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($admin)->deleteJson(route('admin.certification-categories.destroy', $category));
 
         $response->assertStatus(409);
-        $this->assertDatabaseHas('certification_categories', ['id' => $category->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('certification_categories', ['id' => $category->id]);
     }
 }

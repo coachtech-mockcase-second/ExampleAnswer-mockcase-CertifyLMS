@@ -37,7 +37,7 @@ class UpdateRequest extends FormRequest
                 'regex:/^[a-z0-9-]+$/',
                 Rule::unique('question_categories', 'slug')
                     ->ignore($category?->id)
-                    ->where(fn ($q) => $q->where('certification_id', $category?->certification_id)->whereNull('deleted_at')),
+                    ->where(fn ($q) => $q->where('certification_id', $category?->certification_id)),
             ],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'description' => ['nullable', 'string', 'max:500'],

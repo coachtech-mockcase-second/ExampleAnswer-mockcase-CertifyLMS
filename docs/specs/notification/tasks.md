@@ -9,10 +9,10 @@
 ## Step 1: Migration & Enum & Model
 
 - [x] migration: `change_notifications_id_to_ulid`(Laravel 標準 `notifications` テーブルの `id` を ULID 型に変更、`(notifiable_type, notifiable_id, read_at)` 複合 INDEX + `created_at` 単体 INDEX 追加)(REQ-notification-001, REQ-notification-002)
-- [x] migration: `create_admin_announcements_table`(ULID 主キー / `created_by_user_id` ulid FK / `title` string 200 / `body` text / `target_type` string / `target_certification_id` ulid nullable FK / `target_user_id` ulid nullable FK / `dispatched_count` unsignedInteger default 0 / `dispatched_at` datetime nullable / SoftDeletes / `(target_type, dispatched_at)` 複合 INDEX)(REQ-notification-010)
+- [x] migration: `create_admin_announcements_table`(ULID 主キー / `created_by_user_id` ulid FK / `title` string 200 / `body` text / `target_type` string / `target_certification_id` ulid nullable FK / `target_user_id` ulid nullable FK / `dispatched_count` unsignedInteger default 0 / `dispatched_at` datetime nullable / `(target_type, dispatched_at)` 複合 INDEX)(REQ-notification-010)
 - [x] Enum: `App\Enums\AnnouncementTargetType`(`AllStudents` / `Certification` / `User`、`label()`)(REQ-notification-011)
 - [x] Enum: `App\Enums\MeetingReminderWindow`(`Eve` / `OneHourBefore`、`label()`)(REQ-notification-073)
-- [x] Model: `App\Models\Announcement`(`HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(User, 'created_by_user_id', 'createdBy')` / `belongsTo(Certification, 'target_certification_id', 'targetCertification')` / `belongsTo(User, 'target_user_id', 'targetUser')`)(REQ-notification-010)
+- [x] Model: `App\Models\Announcement`(`HasUlids` + `HasFactory`、`belongsTo(User, 'created_by_user_id', 'createdBy')` / `belongsTo(Certification, 'target_certification_id', 'targetCertification')` / `belongsTo(User, 'target_user_id', 'targetUser')`)(REQ-notification-010)
 - [x] Factory: `AnnouncementFactory`(`allStudents()` / `forCertification` / `forUser` / `dispatched()` state)
 
 ## Step 2: Notification 共通基盤

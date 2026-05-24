@@ -121,16 +121,6 @@ class QaThreadPolicyTest extends TestCase
         $this->assertFalse($this->policy()->delete($author, $threadWithReplies));
     }
 
-    public function test_delete_author_cannot_delete_when_only_soft_deleted_replies_exist(): void
-    {
-        $author = User::factory()->student()->create();
-        $thread = QaThread::factory()->byUser($author)->create();
-        $reply = QaReply::factory()->forThread($thread)->create();
-        $reply->delete();
-
-        $this->assertFalse($this->policy()->delete($author, $thread->fresh()));
-    }
-
     public function test_delete_disallows_non_author_non_admin(): void
     {
         $author = User::factory()->student()->create();

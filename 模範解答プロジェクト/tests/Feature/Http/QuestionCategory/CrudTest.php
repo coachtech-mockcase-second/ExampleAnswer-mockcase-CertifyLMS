@@ -89,7 +89,7 @@ class CrudTest extends TestCase
             ->delete(route('admin.question-categories.destroy', $category))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('question_categories', ['id' => $category->id]);
+        $this->assertDatabaseMissing('question_categories', ['id' => $category->id]);
     }
 
     public function test_non_assigned_coach_cannot_view(): void

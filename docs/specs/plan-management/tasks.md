@@ -8,7 +8,7 @@
 
 ## Step 1: Migration(D-2 で UserStatus enum 拡張同梱)
 
-- [x] `database/migrations/{timestamp}_create_plans_table.php`(ULID + SoftDeletes + name + description + duration_days + default_meeting_quota + status enum + sort_order + created_by + updated_by + INDEX (status, sort_order))
+- [x] `database/migrations/{timestamp}_create_plans_table.php`(ULID + name + description + duration_days + default_meeting_quota + status enum + sort_order + created_by + updated_by + INDEX (status, sort_order))
 - [x] **`database/migrations/{timestamp}_extend_user_status_enum.php`(D-2 新規)** — `users.status` enum 拡張: `('invited', 'active', 'withdrawn')` → `('invited', 'active', 'in_progress', 'graduated', 'withdrawn')` の **5 値暫定**(両立期、データ移行のため)
 - [x] **`database/migrations/{timestamp}_migrate_user_status_active_to_in_progress.php`(D-2 新規)** — `UPDATE users SET status='in_progress' WHERE status='active'`(全 active を in_progress に移行)
 - [x] **`database/migrations/{timestamp}_finalize_user_status_enum.php`(D-2 新規)** — enum から `'active'` を削除し `('invited', 'in_progress', 'graduated', 'withdrawn')` の **4 値最終形** に確定
@@ -20,8 +20,8 @@
 - [x] `app/Enums/PlanStatus.php`(`Draft` / `Published` / `Archived` + `label()`)
 - [x] `app/Enums/UserPlanLogEventType.php`(`Assigned` / `Renewed` / `Canceled` / `Expired` + `label()`)
 - [x] **`app/Enums/UserStatus.php` を更新(D-2)** — 旧 `Invited` / `Active` / `Withdrawn` → **`Invited` / `InProgress`**(v3 で `Active` から rename) / **`Graduated`**(v3 新規) / `Withdrawn`(本 Feature が責任を持つ enum 拡張、[[auth]] が利用)
-- [x] `app/Models/Plan.php`(`HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['status'=>PlanStatus, 'duration_days'=>'integer', 'default_meeting_quota'=>'integer', 'sort_order'=>'integer']` + `belongsTo(User, created_by_user_id, createdBy)` + `belongsTo(User, updated_by_user_id, updatedBy)` + `hasMany(User)` + `hasMany(UserPlanLog)` + `scopePublished` / `scopeOrdered`)
-- [x] `app/Models/UserPlanLog.php`(`HasUlids` + `HasFactory`、SoftDelete 不採用 + fillable + `$casts['event_type'=>UserPlanLogEventType, 'plan_started_at'=>'datetime', 'plan_expires_at'=>'datetime', 'occurred_at'=>'datetime']` + `belongsTo(User)` + `belongsTo(Plan)` + `belongsTo(User, changed_by_user_id, changedBy)`)
+- [x] `app/Models/Plan.php`(`HasUlids` + `HasFactory` + fillable + `$casts['status'=>PlanStatus, 'duration_days'=>'integer', 'default_meeting_quota'=>'integer', 'sort_order'=>'integer']` + `belongsTo(User, created_by_user_id, createdBy)` + `belongsTo(User, updated_by_user_id, updatedBy)` + `hasMany(User)` + `hasMany(UserPlanLog)` + `scopePublished` / `scopeOrdered`)
+- [x] `app/Models/UserPlanLog.php`(`HasUlids` + `HasFactory` + fillable + `$casts['event_type'=>UserPlanLogEventType, 'plan_started_at'=>'datetime', 'plan_expires_at'=>'datetime', 'occurred_at'=>'datetime']` + `belongsTo(User)` + `belongsTo(Plan)` + `belongsTo(User, changed_by_user_id, changedBy)`)
 - [x] `app/Models/User.php` 拡張(`plan_id` / `plan_started_at` / `plan_expires_at` / `max_meetings` の fillable + cast + `belongsTo(Plan)`、`hasMany(UserPlanLog)`)
 
 ## Step 3: Policy

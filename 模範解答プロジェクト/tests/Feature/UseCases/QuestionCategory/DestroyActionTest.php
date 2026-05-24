@@ -57,6 +57,6 @@ class DestroyActionTest extends TestCase
         $action = app(DestroyAction::class);
         $action($category);
 
-        $this->assertSoftDeleted('question_categories', ['id' => $category->id]);
+        $this->assertDatabaseMissing('question_categories', ['id' => $category->id]);
     }
 }

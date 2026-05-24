@@ -26,11 +26,9 @@ return new class extends Migration
                 ->restrictOnDelete();
             $table->text('body');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['qa_thread_id', 'created_at']);
             $table->index('user_id');
-            $table->index('deleted_at');
         });
     }
 

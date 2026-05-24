@@ -33,13 +33,11 @@ return new class extends Migration
             $table->string('source', 20);
             $table->timestamp('answered_at');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['user_id', 'answered_at']);
             $table->index(['user_id', 'section_question_id']);
             $table->index(['section_question_id', 'is_correct']);
             $table->index('source');
-            $table->index('deleted_at');
         });
     }
 

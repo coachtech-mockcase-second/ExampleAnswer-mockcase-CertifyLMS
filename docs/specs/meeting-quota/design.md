@@ -55,8 +55,8 @@ meeting_packs
 ├ status enum('draft','published','archived')
 ├ sort_order unsigned int default 0
 ├ created_by_user_id / updated_by_user_id ULID FK restrict
-├ created_at / updated_at / deleted_at
-INDEX (status, sort_order), (deleted_at)
+├ created_at / updated_at
+INDEX (status, sort_order)
 
 meeting_quota_transactions (履歴、INSERT only、SoftDelete 不採用)
 ├ id ULID PK

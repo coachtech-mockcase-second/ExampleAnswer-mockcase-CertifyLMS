@@ -30,8 +30,7 @@ class StoreRequest extends FormRequest
                 'required',
                 'ulid',
                 Rule::exists('certifications', 'id')
-                    ->where('status', CertificationStatus::Published->value)
-                    ->whereNull('deleted_at'),
+                    ->where('status', CertificationStatus::Published->value),
             ],
             'exam_date' => ['nullable', 'date', 'after:today'],
         ];

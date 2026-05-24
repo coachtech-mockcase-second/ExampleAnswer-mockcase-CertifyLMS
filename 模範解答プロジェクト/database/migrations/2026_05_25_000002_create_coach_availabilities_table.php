@@ -28,7 +28,6 @@ return new class extends Migration
             $table->time('end_time');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['coach_id', 'day_of_week']);
             $table->index(['coach_id', 'is_active']);

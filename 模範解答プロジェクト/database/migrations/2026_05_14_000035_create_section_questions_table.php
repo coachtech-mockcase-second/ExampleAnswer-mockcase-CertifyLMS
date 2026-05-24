@@ -24,12 +24,10 @@ return new class extends Migration
             $table->string('status', 20)->default('draft');
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['section_id', 'status']);
             $table->index(['section_id', 'order']);
             $table->index('category_id');
-            $table->index('deleted_at');
         });
     }
 

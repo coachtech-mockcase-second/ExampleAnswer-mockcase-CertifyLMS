@@ -16,8 +16,7 @@ use Illuminate\Support\Facades\DB;
  * `state` に詰められた `coach_id` が認証中のユーザーと一致するかを必ず検証し、
  * 不一致なら GoogleOAuthException を throw する(他人の連携を奪うリスクを防ぐ)。
  *
- * 既存の Credential がある場合は upsert で更新する(再連携シナリオ対応)。SoftDelete されている場合は
- * `restore()` してから値を上書きする。
+ * 既存の Credential がある場合は upsert で更新する(再連携シナリオ対応)。
  */
 final class StoreAction
 {
@@ -44,7 +43,7 @@ final class StoreAction
         }
 
         return DB::transaction(function () use ($authUser, $token) {
-            $credential = CoachGoogleCredential::withTrashed()
+            $credential = CoachGoogleCredential::query()
                 ->where('coach_id', $authUser->id)
                 ->first();
 
@@ -62,9 +61,6 @@ final class StoreAction
                 ]);
             }
 
-            if ($credential->trashed()) {
-                $credential->restore();
-            }
             $credential->update($payload);
 
             return $credential->fresh();

@@ -24,7 +24,7 @@ final class ShowPartAction
      */
     public function __invoke(Part $part, User $student): array
     {
-        if ($part->status !== ContentStatus::Published || $part->deleted_at !== null) {
+        if ($part->status !== ContentStatus::Published) {
             throw new NotFoundHttpException;
         }
 
@@ -33,8 +33,7 @@ final class ShowPartAction
             ->ordered()
             ->withCount([
                 'sections as sections_total_count' => fn ($q) => $q
-                    ->where('status', ContentStatus::Published->value)
-                    ->whereNull('deleted_at'),
+                    ->where('status', ContentStatus::Published->value),
             ])
             ->get();
 
@@ -47,12 +46,10 @@ final class ShowPartAction
             $rows = DB::table('sections')
                 ->join('section_progresses', function ($join) use ($enrollment) {
                     $join->on('section_progresses.section_id', '=', 'sections.id')
-                        ->where('section_progresses.enrollment_id', '=', $enrollment->id)
-                        ->whereNull('section_progresses.deleted_at');
+                        ->where('section_progresses.enrollment_id', '=', $enrollment->id);
                 })
                 ->whereIn('sections.chapter_id', $chapters->pluck('id'))
                 ->where('sections.status', ContentStatus::Published->value)
-                ->whereNull('sections.deleted_at')
                 ->groupBy('sections.chapter_id')
                 ->selectRaw('sections.chapter_id AS chapter_id, COUNT(*) AS done')
                 ->get();

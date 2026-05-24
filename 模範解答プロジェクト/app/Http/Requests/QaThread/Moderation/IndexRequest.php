@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 /**
  * admin モデレーション用の質問掲示板一覧フィルタ FormRequest。
  *
- * 公開側 IndexRequest との違い: `with_trashed` の bool 受付と、`authorize()` での admin ロール検証。
+ * 公開側 IndexRequest との違い: `authorize()` での admin ロール検証。
  */
 class IndexRequest extends FormRequest
 {
@@ -29,7 +29,6 @@ class IndexRequest extends FormRequest
             'certification_id' => ['nullable', 'ulid'],
             'status' => ['nullable', Rule::in(['resolved', 'unresolved'])],
             'keyword' => ['nullable', 'string', 'max:100'],
-            'with_trashed' => ['nullable', 'boolean'],
             'page' => ['nullable', 'integer', 'min:1'],
         ];
     }
@@ -44,10 +43,5 @@ class IndexRequest extends FormRequest
             'status' => $this->input('status'),
             'keyword' => $this->input('keyword'),
         ];
-    }
-
-    public function withTrashed(): bool
-    {
-        return $this->boolean('with_trashed');
     }
 }

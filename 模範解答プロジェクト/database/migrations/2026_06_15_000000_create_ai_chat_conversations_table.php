@@ -34,7 +34,6 @@ return new class extends Migration
             $table->string('title', 100);
             $table->timestamp('last_message_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['user_id', 'last_message_at']);
             $table->index(['user_id', 'section_id']);

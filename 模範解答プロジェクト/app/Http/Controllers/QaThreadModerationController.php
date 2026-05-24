@@ -17,23 +17,20 @@ use Illuminate\View\View;
 /**
  * 管理者向け質問掲示板モデレーション Controller。
  *
- * - index: 全資格 (draft / published / archived 問わず) のスレッドを一覧、`with_trashed` で SoftDelete 含む
- * - show: SoftDelete 済の回答も含めて表示 (モデレーション履歴の確認)
- * - destroy: 回答有無不問でスレッドを SoftDelete (履歴は維持)
+ * - index: 全資格 (draft / published / archived 問わず) のスレッドを一覧
+ * - show: スレッド本文と全回答を表示
+ * - destroy: 回答有無不問でスレッドを削除
  */
 class QaThreadModerationController extends Controller
 {
     public function index(IndexRequest $request, IndexAction $action): View
     {
         $filters = $request->filters();
-        $withTrashed = $request->withTrashed();
-
-        $threads = $action($filters, $withTrashed);
+        $threads = $action($filters);
 
         return view('qa-thread.management.index', [
             'threads' => $threads,
             'filters' => $filters,
-            'withTrashed' => $withTrashed,
             'certifications' => Certification::query()
                 ->orderBy('name')
                 ->get(['id', 'name', 'status']),
@@ -43,7 +40,7 @@ class QaThreadModerationController extends Controller
 
     public function show(QaThread $thread, ShowAction $action): View
     {
-        $thread = $action($thread, withTrashedReplies: true);
+        $thread = $action($thread);
 
         return view('qa-thread.management.show', [
             'thread' => $thread,

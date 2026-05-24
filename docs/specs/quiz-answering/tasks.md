@@ -10,8 +10,8 @@
 
 ### Migration
 
-- [x] **migration: `create_section_question_answers_table`(v3 rename)** — ULID PK + SoftDeletes + `user_id` `restrictOnDelete` + **`section_question_id`** `restrictOnDelete` to `section_questions` + `selected_option_id` `nullable nullOnDelete` to `section_question_options` + `selected_option_body string 2000` + `is_correct boolean` + `source enum section_quiz weak_drill` + `answered_at datetime` + `(user_id, answered_at)` / `(user_id, section_question_id)` / `(section_question_id, is_correct)` 複合 INDEX + `source` / `deleted_at` 単体 INDEX(REQ-quiz-answering-001, REQ-quiz-answering-005, REQ-quiz-answering-007, NFR-quiz-answering-003)
-- [x] **migration: `create_section_question_attempts_table`(v3 rename)** — ULID PK + SoftDeletes + `user_id` `restrictOnDelete` + **`section_question_id`** `restrictOnDelete` + `attempt_count unsigned int default 0` + `correct_count unsigned int default 0` + `last_is_correct boolean default false` + `last_answered_at datetime` + `(user_id, section_question_id)` UNIQUE + `(user_id, last_answered_at)` 複合 INDEX + `deleted_at` 単体 INDEX(REQ-quiz-answering-002, NFR-quiz-answering-003)
+- [x] **migration: `create_section_question_answers_table`(v3 rename)** — ULID PK + `user_id` `restrictOnDelete` + **`section_question_id`** `restrictOnDelete` to `section_questions` + `selected_option_id` `nullable nullOnDelete` to `section_question_options` + `selected_option_body string 2000` + `is_correct boolean` + `source enum section_quiz weak_drill` + `answered_at datetime` + `(user_id, answered_at)` / `(user_id, section_question_id)` / `(section_question_id, is_correct)` 複合 INDEX + `source` 単体 INDEX(REQ-quiz-answering-001, REQ-quiz-answering-005, REQ-quiz-answering-007, NFR-quiz-answering-003)
+- [x] **migration: `create_section_question_attempts_table`(v3 rename)** — ULID PK + `user_id` `restrictOnDelete` + **`section_question_id`** `restrictOnDelete` + `attempt_count unsigned int default 0` + `correct_count unsigned int default 0` + `last_is_correct boolean default false` + `last_answered_at datetime` + `(user_id, section_question_id)` UNIQUE + `(user_id, last_answered_at)` 複合 INDEX(REQ-quiz-answering-002, NFR-quiz-answering-003)
 
 ### 明示的に持たない migration(v3 撤回)
 
@@ -24,8 +24,8 @@
 
 ### Model
 
-- [x] **Model: `App\Models\SectionQuestionAnswer`(v3 rename)** — `HasUlids` + `HasFactory` + `SoftDeletes`、`fillable: user_id / section_question_id / selected_option_id / selected_option_body / is_correct / source / answered_at` / `$casts['is_correct'=>'boolean', 'answered_at'=>'datetime', 'source'=>AnswerSource::class]` / `belongsTo(User)` / **`belongsTo(SectionQuestion)`** / **`belongsTo(SectionQuestionOption, selected_option_id)`** / `scopeForUser` / `scopeForEnrollment` / `scopeForSection` / `scopeForCategory` / `scopeBySource` / `scopeCorrect` / `scopeIncorrect`(REQ-quiz-answering-001)
-- [x] **Model: `App\Models\SectionQuestionAttempt`(v3 rename)** — `HasUlids` + `HasFactory` + `SoftDeletes`、`$casts['attempt_count'=>'integer', 'correct_count'=>'integer', 'last_is_correct'=>'boolean', 'last_answered_at'=>'datetime']` / `belongsTo(User)` / **`belongsTo(SectionQuestion)`** / `accuracy()` accessor / `scopeForUser` / `scopeForEnrollment` / `scopeForSection` / `scopeForCategory` / `scopeLastIs`(REQ-quiz-answering-002)
+- [x] **Model: `App\Models\SectionQuestionAnswer`(v3 rename)** — `HasUlids` + `HasFactory`、`fillable: user_id / section_question_id / selected_option_id / selected_option_body / is_correct / source / answered_at` / `$casts['is_correct'=>'boolean', 'answered_at'=>'datetime', 'source'=>AnswerSource::class]` / `belongsTo(User)` / **`belongsTo(SectionQuestion)`** / **`belongsTo(SectionQuestionOption, selected_option_id)`** / `scopeForUser` / `scopeForEnrollment` / `scopeForSection` / `scopeForCategory` / `scopeBySource` / `scopeCorrect` / `scopeIncorrect`(REQ-quiz-answering-001)
+- [x] **Model: `App\Models\SectionQuestionAttempt`(v3 rename)** — `HasUlids` + `HasFactory`、`$casts['attempt_count'=>'integer', 'correct_count'=>'integer', 'last_is_correct'=>'boolean', 'last_answered_at'=>'datetime']` / `belongsTo(User)` / **`belongsTo(SectionQuestion)`** / `accuracy()` accessor / `scopeForUser` / `scopeForEnrollment` / `scopeForSection` / `scopeForCategory` / `scopeLastIs`(REQ-quiz-answering-002)
 
 ### 明示的に持たない Model(v3 撤回)
 
@@ -35,7 +35,7 @@
 ### 関連 Feature の Model 追加
 
 - [x] [[content-management]] への追加: `App\Models\SectionQuestion` に `hasMany(SectionQuestionAttempt::class)` / `hasMany(SectionQuestionAnswer::class)` リレーション追加
-- [x] [[content-management]] への追加: `App\Models\SectionQuestion::scopeVisibleForStudent()`(`status=Published` + Section / Chapter / Part がすべて Published + SoftDelete でない)
+- [x] [[content-management]] への追加: `App\Models\SectionQuestion::scopeVisibleForStudent()`(`status=Published` + Section / Chapter / Part がすべて Published)
 - [x] [[auth]] への追加: `App\Models\User` に `hasMany(SectionQuestionAnswer::class)` / `hasMany(SectionQuestionAttempt::class)` リレーション追加
 
 ### Config
@@ -97,7 +97,7 @@
 
 ### SectionQuestionAnswer Action(`App\UseCases\SectionQuestionAnswer\`、v3 rename)
 
-- [x] **`StoreAction`** — 3 段ガード `assertQuestionAvailable` / `assertEnrollmentActive`(learning + passed v3) / `option` 検証 → `DB::transaction()` で `SectionQuestionAnswer` INSERT + `SectionQuestionAttempt` UPSERT、`AnswerResult` 戻り値(REQ-quiz-answering-086, NFR-quiz-answering-001)
+- [x] **`StoreAction`** — 3 段ガード `assertQuestionAvailable` / `assertEnrollmentActive`(learning + passed v3) / `option` 検証 → `DB::transaction()` で `SectionQuestionAnswer` INSERT + `SectionQuestionAttempt` UPSERT(`(user_id, section_question_id)` UNIQUE で衝突時は既存レコードを直接 increment)、`AnswerResult` 戻り値(REQ-quiz-answering-086, NFR-quiz-answering-001)
 - [x] `AnswerResult` 値オブジェクト(readonly class、`app/UseCases/SectionQuestionAnswer/AnswerResult.php`)
 
 ### QuizHistory / QuizStats Action
@@ -172,7 +172,7 @@
 
 ### Feature(UseCases)
 
-- [x] **`tests/Feature/UseCases/SectionQuestionAnswer/StoreActionTest.php`(v3 rename)** — `AnswerResult` 値 / 新規 attempt / 既存 attempt UPDATE / SoftDeleted restore / トランザクション原子性
+- [x] **`tests/Feature/UseCases/SectionQuestionAnswer/StoreActionTest.php`(v3 rename)** — `AnswerResult` 値 / 新規 attempt / 既存 attempt UPDATE / トランザクション原子性
 - [x] `tests/Feature/UseCases/WeakDrill/IndexActionTest.php`(カテゴリ統計 / `is_weak` フラグの mock-exam Service 連動 / Null fallback)
 
 ### Unit(Services)
@@ -220,7 +220,7 @@
   - [ ] 未ログインで `POST .../answer` → 302 リダイレクト(`/login`)
   - [ ] 結果画面でブラウザリロード → 同じ結果画面が再描画される(PRG パターンによりリロード安全)
   - [ ] 結果画面でブラウザバック → 出題画面に戻り、再度解答送信できる(answer は別レコードで INSERT、attempt_count += 1)
-- [x] SectionQuestion を SoftDelete / Draft 化 → 解答送信 409、過去履歴は表示維持(`selected_option_body` snapshot で選択肢本文も残る)
+- [x] SectionQuestion を Draft 化 → 解答送信 409、過去履歴は表示維持(`selected_option_body` snapshot で選択肢本文も残る)
 - [x] mock-exam 未実装環境で「おすすめバッジ」が全カテゴリ false 表示になることを確認(NullObject フォールバック)
 
 ## v3.5 改修タスク — 教材画面の「演習問題」タブから到達 URL + スコアサマリ Service 公開

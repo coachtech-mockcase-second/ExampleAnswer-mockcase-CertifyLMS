@@ -28,11 +28,9 @@ return new class extends Migration
             $table->timestamp('last_read_at')->nullable();
             $table->timestamp('joined_at');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->unique(['chat_room_id', 'user_id']);
             $table->index(['user_id', 'last_read_at']);
-            $table->index('deleted_at');
         });
     }
 

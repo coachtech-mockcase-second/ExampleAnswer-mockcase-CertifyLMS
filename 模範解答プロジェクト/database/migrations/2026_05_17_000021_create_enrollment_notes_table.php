@@ -24,7 +24,6 @@ return new class extends Migration
                 ->restrictOnDelete();
             $table->string('body', 2000);
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['enrollment_id', 'created_at']);
             $table->index('coach_user_id');

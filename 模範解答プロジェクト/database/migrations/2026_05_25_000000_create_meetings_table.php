@@ -37,7 +37,6 @@ return new class extends Migration
                 ->constrained('meeting_quota_transactions')
                 ->nullOnDelete();
             $table->timestamps();
-            $table->softDeletes();
 
             // 同コーチ × 同時刻の二重予約禁止(status 問わず、race condition の最終防衛線)
             $table->unique(['coach_id', 'scheduled_at']);

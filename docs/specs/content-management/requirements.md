@@ -18,7 +18,7 @@
 
 ### 機能要件 — A. データモデル
 
-- **REQ-content-management-001**: The system shall ULID 主キーと `SoftDeletes` を備えた `parts` / `chapters` / `sections` / `section_questions` / `section_question_options` / `section_images` テーブルを提供する。**旧 `questions` / `question_options` テーブルは廃止**。
+- **REQ-content-management-001**: The system shall ULID 主キーを備えた `parts` / `chapters` / `sections` / `section_questions` / `section_question_options` / `section_images` テーブルを提供する。**旧 `questions` / `question_options` テーブルは廃止**。
 - **REQ-content-management-002**: The system shall `parts.certification_id` を `certifications.id` への外部キーとして持ち、Part を資格マスタに紐付ける。
 - **REQ-content-management-003**: The system shall `chapters.part_id` / `sections.chapter_id` の外部キーで `Certification → Part → Chapter → Section` の階層を構成する。
 - **REQ-content-management-004**: The system shall `section_questions.section_id` を `sections.id` への外部キー（**NOT NULL**、旧 nullable 撤回）として持つ。`certification_id` カラムは持たず、section から辿る（`Section::part::certification`）。
@@ -33,7 +33,7 @@
 - **REQ-content-management-010**: When 認可された coach または admin が `/admin/certifications/{certification}/parts` にアクセスした際, the system shall 当該資格配下の Part 一覧を `order ASC` 順に表示する。
 - **REQ-content-management-011**: The system shall Part / Chapter / Section の新規作成時に `status=Draft` 固定で INSERT し、`order` は同一親配下の `MAX(order) + 1` を自動採番する。
 - **REQ-content-management-012**: The system shall Part / Chapter / Section の編集時に `title`（required, max 200）/ `description`（nullable, max 1000）を更新する。Section の場合は加えて `body`（required, max 50000 文字、Markdown）を更新する。
-- **REQ-content-management-013**: When 認可された coach または admin が削除操作を行った際, the system shall 対象 Entity を SoftDelete し、配下の子 Entity は物理削除せず親の SoftDelete によって不可視化する。
+- **REQ-content-management-013**: When 認可された coach または admin が削除操作を行った際, the system shall 対象 Entity を物理削除し、配下の子 Entity は外部キーの `cascadeOnDelete` で連動削除する。
 - **REQ-content-management-014**: When 削除対象 Part / Chapter が公開済（`status=Published`）の場合, the system shall `ContentNotDeletableException`（HTTP 409）を throw して削除を拒否する。
 - **REQ-content-management-020**: When 認可された coach または admin が `POST /admin/parts/{part}/publish` を呼んだ際, the system shall `Part.status = Draft` であれば `Published` に遷移させる。`Chapter` / `Section` / `SectionQuestion` も同様の規約に従う。
 - **REQ-content-management-021**: When 認可された coach または admin が `POST /admin/parts/{part}/unpublish` を呼んだ際, the system shall `Part.status = Published` であれば `Draft` に遷移させる。
@@ -48,16 +48,16 @@
 - **REQ-content-management-032**: The system shall SectionQuestion 新規作成時に 2 〜 6 個の `section_question_options[]`（`body` + `is_correct`）を同時受信し、SectionQuestion INSERT と同一トランザクションで SectionQuestionOption を一括 INSERT する。
 - **REQ-content-management-033**: The system shall SectionQuestion 作成・更新時に `section_question_options` の `is_correct=true` がちょうど 1 件であることを検証し、違反時は `QuestionInvalidOptionsException`（HTTP 422）を throw する。
 - **REQ-content-management-034**: When 認可された coach または admin が SectionQuestion を更新した際, the system shall `body` / `explanation` / `category_id` を更新可能とする。`section_id` は変更不可（Section を跨いだ移動は新規作成で対応）。
-- **REQ-content-management-035**: When SectionQuestion 更新ペイロードに `section_question_options` が含まれる場合, the system shall 既存 SectionQuestionOption を全削除（物理削除）→ 新規 SectionQuestionOption を一括 INSERT する **delete-and-insert** 方式で同期する。SoftDelete は不採用（SectionQuestion の SoftDelete で履歴的関連付けは保持）。
+- **REQ-content-management-035**: When SectionQuestion 更新ペイロードに `section_question_options` が含まれる場合, the system shall 既存 SectionQuestionOption を全削除（物理削除）→ 新規 SectionQuestionOption を一括 INSERT する **delete-and-insert** 方式で同期する。
 - **REQ-content-management-036**: When 認可された coach または admin が SectionQuestion の `status` を `Published` に遷移させた際, the system shall `section_question_options` が 2 件以上 AND `is_correct=true` の選択肢が 1 件存在することを確認し、違反時は `QuestionNotPublishableException`（HTTP 409）を throw する。
-- **REQ-content-management-037**: When 認可された coach または admin が SectionQuestion を SoftDelete した際, the system shall `SectionQuestionAttempt` / `SectionQuestionAnswer`（[[quiz-answering]] 所有）が SoftDelete 状態の SectionQuestion を `withTrashed()` で参照できるため削除を阻害しない。
+- **REQ-content-management-037**: When 認可された coach または admin が SectionQuestion を物理削除した際, the system shall `SectionQuestionAttempt` / `SectionQuestionAnswer`（[[quiz-answering]] 所有）の `restrictOnDelete` 外部キー制約により回答履歴が存在する場合は削除を拒否する。
 
 ### 機能要件 — C2. 問題カテゴリマスタ管理（QuestionCategory CRUD、共有マスタ）
 
-- **REQ-content-management-042**: The system shall ULID 主キー、`certification_id` を `certifications.id` への外部キー（必須）、`name`（required, max 50）、`slug`（required, max 60）、`sort_order`（unsigned integer, default 0）、`description`（nullable, max 500）、`SoftDeletes`、`timestamps` を備えた `question_categories` テーブルを提供する。`(certification_id, slug)` で **資格内 UNIQUE** 制約とする。
+- **REQ-content-management-042**: The system shall ULID 主キー、`certification_id` を `certifications.id` への外部キー（必須）、`name`（required, max 50）、`slug`（required, max 60）、`sort_order`（unsigned integer, default 0）、`description`（nullable, max 500）、`timestamps` を備えた `question_categories` テーブルを提供する。`(certification_id, slug)` で **資格内 UNIQUE** 制約とする。
 - **REQ-content-management-043**: When 認可された coach または admin が `/admin/certifications/{certification}/question-categories` にアクセスした際, the system shall 当該資格配下の `QuestionCategory` 一覧を `sort_order ASC, created_at DESC` 順に表示する。
-- **REQ-content-management-044**: When 認可された coach または admin が QuestionCategory を新規作成・更新・削除した際, the system shall FormRequest を通したうえで INSERT / UPDATE / SoftDelete する。
-- **REQ-content-management-046**: When 認可された coach または admin が QuestionCategory を削除しようとした際, the system shall **当該カテゴリに紐付く SectionQuestion または MockExamQuestion が 1 件でも存在する場合** は `QuestionCategoryInUseException`（HTTP 409）を throw して削除を拒否し、ゼロ件のみ SoftDelete を実施する。**両系統からの参照を共有マスタとして確認する**。
+- **REQ-content-management-044**: When 認可された coach または admin が QuestionCategory を新規作成・更新・削除した際, the system shall FormRequest を通したうえで INSERT / UPDATE / 物理削除する。
+- **REQ-content-management-046**: When 認可された coach または admin が QuestionCategory を削除しようとした際, the system shall **当該カテゴリに紐付く SectionQuestion または MockExamQuestion が 1 件でも存在する場合** は `QuestionCategoryInUseException`（HTTP 409）を throw して削除を拒否し、ゼロ件のみ物理削除を実施する。**両系統からの参照を共有マスタとして確認する**。
 - **REQ-content-management-047**: The system shall coach に対しては自分の担当資格配下の `QuestionCategory` のみ CRUD 操作を許可し、admin には全資格配下の操作を許可する。
 - **REQ-content-management-048**: When 認可された coach または admin が SectionQuestion / MockExamQuestion 作成・更新画面で出題分野を選択する際, the system shall **select ボックスで当該 Certification 配下の `QuestionCategory` のみ** を選択肢として提示する。
 
@@ -66,7 +66,7 @@
 - **REQ-content-management-050**: When 認可された coach または admin が `POST /admin/sections/{section}/images`（multipart/form-data）で画像をアップロードした際, the system shall ファイルを `Storage::disk('public')->putFileAs('section-images', '{ulid}.{ext}', $file)` 形式で保存し、`section_images` テーブルに `path` / `original_filename` / `mime_type` / `size_bytes` を INSERT、JSON で `{ id, url, alt_placeholder }` を返却する。
 - **REQ-content-management-051**: The system shall アップロードされたファイルの MIME と拡張子を `.png` / `.jpg` / `.jpeg` / `.webp` のみに制限し、違反時は HTTP 422 を返す。
 - **REQ-content-management-052**: The system shall アップロードされたファイルのサイズを **2MB（2 * 1024 * 1024 bytes）以下** に制限し、違反時は HTTP 422 を返す。
-- **REQ-content-management-053**: When coach または admin が `DELETE /admin/section-images/{image}` を呼んだ際, the system shall Storage 上のファイル削除と `section_images` レコードの SoftDelete を単一トランザクションで実行する。
+- **REQ-content-management-053**: When coach または admin が `DELETE /admin/section-images/{image}` を呼んだ際, the system shall Storage 上のファイル削除と `section_images` レコードの物理削除を単一トランザクションで実行する。
 - **REQ-content-management-054**: The system shall アップロード成功レスポンス内の `url` を `/storage/section-images/{ulid}.{ext}` 形式で返し、コーチがそのまま Markdown 内に `![alt](/storage/section-images/{ulid}.{ext})` として貼り付けできる形式とする。
 
 ### 機能要件 — E. Markdown 安全レンダリング
@@ -80,7 +80,7 @@
 ### 機能要件 — F. 受講生向け教材全文検索
 
 - **REQ-content-management-070**: When 受講生が `GET /contents/search?certification_id={id}&keyword={kw}` にアクセスした際, the system shall `keyword` が `Section.title` または `Section.body` に部分一致する Section を抽出する。
-- **REQ-content-management-071**: The system shall 検索結果を **(1) 受講生が `enrollments` で登録済の資格内、(2) Section / 親 Chapter / 親 Part がすべて `status=Published`、(3) いずれも `deleted_at IS NULL`** の条件で絞り込む。
+- **REQ-content-management-071**: The system shall 検索結果を **(1) 受講生が `enrollments` で登録済の資格内、(2) Section / 親 Chapter / 親 Part がすべて `status=Published`** の条件で絞り込む。
 - **REQ-content-management-072**: The system shall 検索結果の Section に対して、所属 Part / Chapter / Certification の名称と Section ID を返し、受講生は結果クリックで [[learning]] の Section 閲覧画面へ遷移できる。
 - **REQ-content-management-073**: The system shall 検索結果に **マッチした周辺テキストのスニペット**（前後 80 文字 + マッチ箇所をハイライト表示するための区切り情報）を含める。
 - **REQ-content-management-074**: The system shall 検索結果を 1 ページあたり 20 件で `paginate(20)` する。

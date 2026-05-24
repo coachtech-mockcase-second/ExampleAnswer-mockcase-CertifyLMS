@@ -26,10 +26,8 @@ final class ShowChapterAction
         $chapter->loadMissing('part');
 
         if ($chapter->status !== ContentStatus::Published
-            || $chapter->deleted_at !== null
             || $chapter->part === null
-            || $chapter->part->status !== ContentStatus::Published
-            || $chapter->part->deleted_at !== null) {
+            || $chapter->part->status !== ContentStatus::Published) {
             throw new NotFoundHttpException;
         }
 
@@ -47,7 +45,6 @@ final class ShowChapterAction
             $completedSectionIds = SectionProgress::query()
                 ->where('enrollment_id', $enrollment->id)
                 ->whereIn('section_id', $sections->pluck('id'))
-                ->whereNull('deleted_at')
                 ->pluck('section_id')
                 ->all();
         }

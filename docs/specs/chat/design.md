@@ -162,9 +162,9 @@ sequenceDiagram
 
 ### Eloquent モデル一覧
 
-- **`ChatRoom`** — 1 ChatRoom = 1 Enrollment のグループルーム。`HasUlids` + `HasFactory` + `SoftDeletes`、`last_message_at` を `datetime` cast。`belongsTo(Enrollment::class)` / `hasMany(ChatMessage::class)` / `hasMany(ChatMember::class)` / `hasOne(ChatMessage::class)->latestOfMany()` を `latestMessage()` で公開。スコープ: `scopeForUser(User)` / `scopeOrderByLastMessage()`。**`status` は持たない**。
-- **`ChatMember`**(新設) — ChatRoom 参加者中間テーブル。`HasUlids` + `HasFactory` + `SoftDeletes`、`last_read_at` / `joined_at` を `datetime` cast。`belongsTo(ChatRoom::class)` / `belongsTo(User::class)`。スコープ: `scopeForRoom` / `scopeForUser` / `scopeUnread`。`UNIQUE (chat_room_id, user_id)`。
-- **`ChatMessage`** — 個別メッセージ。`HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(ChatRoom)` / `belongsTo(User, sender_user_id)`。`booted()::created` フックで `chat_rooms.last_message_at` UPDATE。
+- **`ChatRoom`** — 1 ChatRoom = 1 Enrollment のグループルーム。`HasUlids` + `HasFactory`、`last_message_at` を `datetime` cast。`belongsTo(Enrollment::class)` / `hasMany(ChatMessage::class)` / `hasMany(ChatMember::class)` / `hasOne(ChatMessage::class)->latestOfMany()` を `latestMessage()` で公開。スコープ: `scopeForUser(User)` / `scopeOrderByLastMessage()`。**`status` は持たない**。
+- **`ChatMember`**(新設) — ChatRoom 参加者中間テーブル。`HasUlids` + `HasFactory`、`last_read_at` / `joined_at` を `datetime` cast。`belongsTo(ChatRoom::class)` / `belongsTo(User::class)`。スコープ: `scopeForRoom` / `scopeForUser` / `scopeUnread`。`UNIQUE (chat_room_id, user_id)`。
+- **`ChatMessage`** — 個別メッセージ。`HasUlids` + `HasFactory`、`belongsTo(ChatRoom)` / `belongsTo(User, sender_user_id)`。`booted()::created` フックで `chat_rooms.last_message_at` UPDATE。
 
 > **E-2 で `ChatAttachment` Model 完全撤回**。`hasMany(ChatAttachment)` 関連も削除。
 
@@ -184,7 +184,6 @@ erDiagram
         timestamp last_message_at "nullable denormalize"
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at "nullable"
     }
     CHAT_MEMBERS {
         ulid id PK
@@ -194,7 +193,6 @@ erDiagram
         timestamp joined_at
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at "nullable"
     }
     CHAT_MESSAGES {
         ulid id PK
@@ -203,7 +201,6 @@ erDiagram
         text body "max 2000"
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at "nullable"
     }
 ```
 
@@ -212,19 +209,16 @@ erDiagram
 `chat_rooms`:
 - `enrollment_id`: 外部キー `->constrained()->restrictOnDelete()` + UNIQUE INDEX
 - `last_message_at`: 単体 INDEX
-- `deleted_at`: 単体 INDEX
 
 `chat_members`(新設):
 - `(chat_room_id, user_id)`: UNIQUE INDEX
 - `chat_room_id`: 外部キー `->constrained()->cascadeOnDelete()`
 - `user_id`: 外部キー `->constrained('users')->restrictOnDelete()`
 - `(user_id, last_read_at)`: 複合 INDEX
-- `deleted_at`: 単体 INDEX
 
 `chat_messages`:
 - `chat_room_id`: 外部キー `->constrained()->cascadeOnDelete()` + `(chat_room_id, created_at)` 複合 INDEX
 - `sender_user_id`: 外部キー `->constrained('users')->restrictOnDelete()` + 単体 INDEX
-- `deleted_at`: 単体 INDEX
 
 ## 状態遷移
 
@@ -345,7 +339,6 @@ class ChatMessageSent implements ShouldBroadcast
 Broadcast::channel('chat-room.{chatRoomId}', function (User $user, string $chatRoomId) {
     return ChatMember::where('chat_room_id', $chatRoomId)
         ->where('user_id', $user->id)
-        ->whereNull('deleted_at')
         ->exists();
 });
 ```
@@ -368,7 +361,6 @@ class ChatRoomPolicy
         if ($user->role === UserRole::Admin) return true;
         return ChatMember::where('chat_room_id', $room->id)
             ->where('user_id', $user->id)
-            ->whereNull('deleted_at')
             ->exists();
     }
 

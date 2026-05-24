@@ -8,21 +8,15 @@ use App\Models\QaThread;
 
 /**
  * admin モデレーション用の質問スレッド詳細取得ユースケース。
- *
- * `withTrashedReplies = true` で SoftDelete 済の回答も含めて Eager Load する
- * (admin はモデレーション履歴として削除済回答の本文も閲覧する)。
  */
 final class ShowAction
 {
-    public function __invoke(QaThread $thread, bool $withTrashedReplies = false): QaThread
+    public function __invoke(QaThread $thread): QaThread
     {
         return $thread->load([
             'certification',
             'user',
-            'replies' => function ($q) use ($withTrashedReplies): void {
-                if ($withTrashedReplies) {
-                    $q->withTrashed();
-                }
+            'replies' => function ($q): void {
                 $q->with('user')->orderBy('created_at');
             },
         ]);

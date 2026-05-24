@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 受講生が Enrollment 単位で立てる個人目標。受講生本人のみ CRUD 可、coach / admin は閲覧専用。
@@ -18,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class EnrollmentGoal extends Model
 {
     /** @use HasFactory<EnrollmentGoalFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'enrollment_id',

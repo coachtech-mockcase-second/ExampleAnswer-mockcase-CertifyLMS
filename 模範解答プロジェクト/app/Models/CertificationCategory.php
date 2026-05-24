@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 資格分類（カテゴリ）マスタを表す Model。受講生カタログのフィルタと admin の分類管理で利用される。
@@ -21,7 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class CertificationCategory extends Model
 {
     /** @use HasFactory<CertificationCategoryFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'slug',

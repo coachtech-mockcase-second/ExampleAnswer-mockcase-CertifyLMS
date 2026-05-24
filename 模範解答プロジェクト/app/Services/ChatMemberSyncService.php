@@ -31,7 +31,6 @@ class ChatMemberSyncService
      *
      * - 既に存在するメンバーは触らない(`last_read_at` を巻き戻さない)
      * - 欠損しているメンバーのみ INSERT(`joined_at = now()`)
-     * - SoftDelete 済の同 user 行があれば復活させて再参加扱いとする
      */
     public function syncForRoom(ChatRoom $room): void
     {
@@ -43,32 +42,20 @@ class ChatMemberSyncService
             ->unique()
             ->values();
 
-        $existing = ChatMember::withTrashed()
+        $existingUserIds = ChatMember::query()
             ->where('chat_room_id', $room->id)
             ->whereIn('user_id', $expectedUserIds)
-            ->get()
-            ->keyBy('user_id');
+            ->pluck('user_id');
 
         $now = now();
 
-        foreach ($expectedUserIds as $userId) {
-            $member = $existing->get($userId);
-
-            if ($member === null) {
-                ChatMember::create([
-                    'chat_room_id' => $room->id,
-                    'user_id' => $userId,
-                    'last_read_at' => null,
-                    'joined_at' => $now,
-                ]);
-
-                continue;
-            }
-
-            if ($member->trashed()) {
-                $member->restore();
-                $member->update(['joined_at' => $now]);
-            }
+        foreach ($expectedUserIds->diff($existingUserIds) as $userId) {
+            ChatMember::create([
+                'chat_room_id' => $room->id,
+                'user_id' => $userId,
+                'last_read_at' => null,
+                'joined_at' => $now,
+            ]);
         }
     }
 

@@ -96,6 +96,6 @@ class EnrollmentGoalControllerTest extends TestCase
         $response = $this->actingAs($student)->delete(route('enrollment-goals.destroy', $goal));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('enrollment_goals', ['id' => $goal->id]);
+        $this->assertDatabaseMissing('enrollment_goals', ['id' => $goal->id]);
     }
 }

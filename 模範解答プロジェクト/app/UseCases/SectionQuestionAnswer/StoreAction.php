@@ -115,10 +115,6 @@ final class StoreAction
             || $part->status !== ContentStatus::Published) {
             throw new SectionQuestionUnavailableForAnswerException;
         }
-
-        if ($question->trashed() || $section->trashed() || $chapter->trashed() || $part->trashed()) {
-            throw new SectionQuestionUnavailableForAnswerException;
-        }
     }
 
     /**

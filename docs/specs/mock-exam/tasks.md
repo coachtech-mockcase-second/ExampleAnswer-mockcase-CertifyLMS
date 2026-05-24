@@ -9,14 +9,14 @@
 
 ### Migration
 
-- [x] **migration: `create_mock_exams_table`(E-3 簡素化)** — ULID PK + SoftDeletes + `certification_id` `restrictOnDelete` + `title string 100` + `description text nullable` + `order unsigned smallint` + `passing_score unsigned tinyint 1..100` + `is_published boolean default false` + `published_at datetime nullable` + `created_by_user_id` / `updated_by_user_id` `restrictOnDelete` + `(certification_id, is_published, order)` 複合 INDEX + `(certification_id, deleted_at)` 複合 INDEX(REQ-mock-exam-001)
+- [x] **migration: `create_mock_exams_table`(E-3 簡素化)** — ULID PK + `certification_id` `restrictOnDelete` + `title string 100` + `description text nullable` + `order unsigned smallint` + `passing_score unsigned tinyint 1..100` + `is_published boolean default false` + `published_at datetime nullable` + `created_by_user_id` / `updated_by_user_id` `restrictOnDelete` + `(certification_id, is_published, order)` 複合 INDEX(REQ-mock-exam-001)
   - **`time_limit_minutes` カラムは持たない**(E-3 撤回)
-- [x] migration: `create_mock_exam_questions_table`(ULID PK + SoftDeletes + `mock_exam_id` `cascadeOnDelete` NOT NULL + `category_id` `restrictOnDelete` + `body text NOT NULL` + `explanation text nullable` + `order unsigned smallint` + 複合 INDEX)(REQ-mock-exam-002)
+- [x] migration: `create_mock_exam_questions_table`(ULID PK + `mock_exam_id` `cascadeOnDelete` NOT NULL + `category_id` `restrictOnDelete` + `body text NOT NULL` + `explanation text nullable` + `order unsigned smallint` + 複合 INDEX)(REQ-mock-exam-002)
   - **`difficulty` カラムは持たない**(v3 撤回)
-- [x] migration: `create_mock_exam_question_options_table`(ULID PK + SoftDeletes + `mock_exam_question_id` `cascadeOnDelete` + `body text` + `is_correct boolean` + `order` + 複合 INDEX)(REQ-mock-exam-003)
-- [x] **migration: `create_mock_exam_sessions_table`(E-3 簡素化)** — ULID PK + SoftDeletes + `mock_exam_id` `restrictOnDelete` + `enrollment_id` `restrictOnDelete` + `user_id` `restrictOnDelete` + `status enum 5 値` + `generated_question_ids json` + `total_questions` + `passing_score_snapshot` + `started_at datetime nullable` + `submitted_at datetime nullable` + `graded_at datetime nullable` + `canceled_at datetime nullable` + `total_correct nullable` + `score_percentage decimal 5,2 nullable` + `pass boolean nullable` + 各種 INDEX(REQ-mock-exam-004)
+- [x] migration: `create_mock_exam_question_options_table`(ULID PK + `mock_exam_question_id` `cascadeOnDelete` + `body text` + `is_correct boolean` + `order` + 複合 INDEX)(REQ-mock-exam-003)
+- [x] **migration: `create_mock_exam_sessions_table`(E-3 簡素化)** — ULID PK + `mock_exam_id` `restrictOnDelete` + `enrollment_id` `restrictOnDelete` + `user_id` `restrictOnDelete` + `status enum 5 値` + `generated_question_ids json` + `total_questions` + `passing_score_snapshot` + `started_at datetime nullable` + `submitted_at datetime nullable` + `graded_at datetime nullable` + `canceled_at datetime nullable` + `total_correct nullable` + `score_percentage decimal 5,2 nullable` + `pass boolean nullable` + 各種 INDEX(REQ-mock-exam-004)
   - **`time_limit_minutes_snapshot` / `time_limit_ends_at` カラムは持たない**(E-3 撤回)
-- [x] migration: `create_mock_exam_answers_table`(ULID PK + SoftDelete 非採用 + `mock_exam_session_id` `cascadeOnDelete` + **`mock_exam_question_id`** `restrictOnDelete` + `selected_option_id nullable nullOnDelete` to `mock_exam_question_options` + `selected_option_body string 2000` + `is_correct boolean default false` + `answered_at datetime` + `(mock_exam_session_id, mock_exam_question_id)` UNIQUE)(REQ-mock-exam-005)
+- [x] migration: `create_mock_exam_answers_table`(ULID PK + `mock_exam_session_id` `cascadeOnDelete` + **`mock_exam_question_id`** `restrictOnDelete` + `selected_option_id nullable nullOnDelete` to `mock_exam_question_options` + `selected_option_body string 2000` + `is_correct boolean default false` + `answered_at datetime` + `(mock_exam_session_id, mock_exam_question_id)` UNIQUE)(REQ-mock-exam-005)
 
 ### Enum
 
@@ -25,11 +25,11 @@
 
 ### Model
 
-- [x] **Model: `App\Models\MockExam`(E-3 簡素化)** — `HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `$casts['is_published'=>'boolean','published_at'=>'datetime']` / リレーション / scope。**`time_limit_minutes` プロパティなし**
-- [x] Model: `App\Models\MockExamQuestion`(独立リソース、`difficulty` なし)
-- [x] Model: `App\Models\MockExamQuestionOption`(新設、`is_correct` boolean cast)
-- [x] **Model: `App\Models\MockExamSession`(E-3 簡素化)** — 各 datetime cast(`started_at` / `submitted_at` / `graded_at` / `canceled_at`)、**`time_limit_ends_at` cast なし**、`generated_question_ids` array、`status` cast、`pass` boolean cast
-- [x] Model: `App\Models\MockExamAnswer`(`mock_exam_question_id` 参照)
+- [x] **Model: `App\Models\MockExam`(E-3 簡素化)** — `HasUlids` + `HasFactory`、`fillable` / `$casts['is_published'=>'boolean','published_at'=>'datetime']` / リレーション / scope。**`time_limit_minutes` プロパティなし**
+- [x] Model: `App\Models\MockExamQuestion`(独立リソース、`difficulty` なし、`HasUlids` + `HasFactory`)
+- [x] Model: `App\Models\MockExamQuestionOption`(新設、`HasUlids` + `HasFactory`、`is_correct` boolean cast)
+- [x] **Model: `App\Models\MockExamSession`(E-3 簡素化)** — `HasUlids` + `HasFactory`、各 datetime cast(`started_at` / `submitted_at` / `graded_at` / `canceled_at`)、**`time_limit_ends_at` cast なし**、`generated_question_ids` array、`status` cast、`pass` boolean cast
+- [x] Model: `App\Models\MockExamAnswer`(`HasUlids` + `HasFactory`、`mock_exam_question_id` 参照)
 - [x] Factory 群(`MockExamFactory` / `MockExamQuestionFactory` / `MockExamQuestionOptionFactory` / `MockExamSessionFactory` / `MockExamAnswerFactory`)、**`MockExamFactory::withTimeLimit()` state なし**(E-3)
 
 ### 関連 Feature への追加
@@ -96,7 +96,7 @@
 - [x] `ShowAction`(Eager Loading + `loadCount('sessions')`)
 - [x] `StoreAction`(`is_published=false` 固定 + `created_by` / `updated_by` セット、**`time_limit_minutes` フィールド受け取らない**(E-3))
 - [x] `UpdateAction`(`certification_id` 不可変、E-3 で `time_limit_minutes` フィールドなし)
-- [x] `DestroyAction`(`is_published=false` + 全 session canceled で SoftDelete、違反で `MockExamInUseException`)
+- [x] `DestroyAction`(`is_published=false` + 全 session canceled で物理削除、配下の `mock_exam_questions` / `mock_exam_question_options` は cascade 削除、違反で `MockExamInUseException`)
 - [x] `PublishAction`(問題 1 件以上検証 + `MockExamPublishNotAllowedException`)
 - [x] `UnpublishAction`(`is_published=true` ガード)
 - [x] `ReorderAction`(同一資格内 `order` 一括 UPDATE)
@@ -105,7 +105,7 @@
 
 - [x] `StoreAction`(category_id × certification 一致検証 + is_correct ちょうど 1 検証 + `lockForUpdate` で MAX(order) + INSERT、`DB::transaction`)
 - [x] `UpdateAction`(`body` / `explanation` / `category_id` UPDATE + options を delete-and-insert 同期)
-- [x] `DestroyAction`(SoftDelete、過去 MockExamSession は `generated_question_ids` snapshot + `withTrashed`)
+- [x] `DestroyAction`(物理削除、採点済 `mock_exam_answers.mock_exam_question_id` の `restrictOnDelete` 制約で削除阻止される設計。過去 MockExamSession は `generated_question_ids` snapshot で参照を保持)
 - [x] `ReorderAction`(同 MockExam 内 `order` 一括 UPDATE)
 
 ### MockExamSession Action(E-3 で time_limit 関連削除)
@@ -115,7 +115,7 @@
 - [x] **`StoreAction`(`MockExamSessionController::store` と一致、E-3 簡素化)** — Enrollment 取得(learning + passed) + 重複進行中ガード + `generated_question_ids` snapshot + `passing_score_snapshot` 固定、**`time_limit_minutes_snapshot` フィールドなし**(E-3)
 - [x] **`StartAction`(`MockExamSessionController::start` と一致、E-3 簡素化)** — `TermJudgementService` 注入、NotStarted ガード + 公開ガード → `status=InProgress` / `started_at=now()` UPDATE + `recalculate`、**`time_limit_ends_at` セットなし**(E-3)、`lockForUpdate`
 - [x] `SubmitAction`(DI: `GradeAction` + `TermJudgementService`、InProgress ガード → Submitted UPDATE → `GradeAction` 呼出 → `recalculate`、通知 dispatch は本 Feature 外)
-- [x] `GradeAction`(internal、`is_correct` 確定 + `total_correct` / `score_percentage` / `pass` 確定 → `Graded` UPDATE、option SoftDelete は `withTrashed`)
+- [x] `GradeAction`(internal、`is_correct` 確定 + `total_correct` / `score_percentage` / `pass` 確定 → `Graded` UPDATE、`selected_option_id` が NULL の場合は `is_correct=false`)
 - [x] `DestroyAction`(キャンセル、NotStarted ガード → Canceled UPDATE + `recalculate`)
 
 ### MockExamAnswer Action(student 用、E-3 で時間検査削除)

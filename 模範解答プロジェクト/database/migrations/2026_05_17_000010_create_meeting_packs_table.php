@@ -22,10 +22,8 @@ return new class extends Migration
             $table->foreignUlid('created_by_user_id')->constrained('users')->restrictOnDelete();
             $table->foreignUlid('updated_by_user_id')->constrained('users')->restrictOnDelete();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['status', 'sort_order']);
-            $table->index('deleted_at');
         });
     }
 

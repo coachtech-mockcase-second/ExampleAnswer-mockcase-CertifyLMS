@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * コーチが Enrollment 単位で受講生の観察を時系列で残すメモ。受講生本人は閲覧不可。
@@ -18,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class EnrollmentNote extends Model
 {
     /** @use HasFactory<EnrollmentNoteFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'enrollment_id',

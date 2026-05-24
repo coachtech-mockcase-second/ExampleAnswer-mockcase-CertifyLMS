@@ -42,7 +42,7 @@
 - **REQ-notification-002**: The system shall `notifications.id` を ULID で発行する（`BaseNotification::__construct` 内で `$this->id = (string) Str::ulid()` 事前確定）。
 - **REQ-notification-003**: The system shall `notifications.data` JSON 内に共通キー（`notification_type` / `title` / `message` / `link_route` / `link_params`）を必ず含める。
 - **REQ-notification-004**: The system shall `notifications.data` JSON 内に種別固有キーを併存させる。
-- **REQ-notification-010**: The system shall 管理者お知らせ用に `admin_announcements` テーブル（ULID 主キー / `title` / `body` / `target_type` enum / `target_certification_id` ulid nullable / `target_user_id` ulid nullable / `created_by_user_id` ulid / `dispatched_count` / `dispatched_at` / SoftDeletes）を新設する。
+- **REQ-notification-010**: The system shall 管理者お知らせ用に `admin_announcements` テーブル（ULID 主キー / `title` / `body` / `target_type` enum / `target_certification_id` ulid nullable / `target_user_id` ulid nullable / `created_by_user_id` ulid / `dispatched_count` / `dispatched_at`）を新設する。
 - **REQ-notification-011**: The system shall `admin_announcements.target_type` を `App\Enums\AnnouncementTargetType` Enum（`AllStudents` / `Certification` / `User`）で管理する。
 
 ### 機能要件 — Notification クラス共通基盤

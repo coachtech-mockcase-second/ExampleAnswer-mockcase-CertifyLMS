@@ -38,7 +38,7 @@ class StoreRequest extends FormRequest
                 'max:60',
                 'regex:/^[a-z0-9-]+$/',
                 Rule::unique('question_categories', 'slug')
-                    ->where(fn ($q) => $q->where('certification_id', $certification?->id)->whereNull('deleted_at')),
+                    ->where(fn ($q) => $q->where('certification_id', $certification?->id)),
             ],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'description' => ['nullable', 'string', 'max:500'],

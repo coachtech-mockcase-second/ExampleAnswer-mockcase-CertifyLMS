@@ -24,7 +24,7 @@ class DestroyTest extends TestCase
             ->delete(route('admin.parts.destroy', $part))
             ->assertRedirect(route('admin.certifications.parts.index', $cert));
 
-        $this->assertSoftDeleted('parts', ['id' => $part->id]);
+        $this->assertDatabaseMissing('parts', ['id' => $part->id]);
     }
 
     public function test_cannot_delete_published_part(): void
@@ -37,6 +37,6 @@ class DestroyTest extends TestCase
             ->deleteJson(route('admin.parts.destroy', $part))
             ->assertStatus(409);
 
-        $this->assertDatabaseHas('parts', ['id' => $part->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('parts', ['id' => $part->id]);
     }
 }

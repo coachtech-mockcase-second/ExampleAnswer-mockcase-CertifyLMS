@@ -23,7 +23,7 @@ class DestroyTest extends TestCase
         $response->assertRedirect(route('settings.profile.edit', ['tab' => 'meeting']));
         $response->assertSessionHas('success', '面談可能時間枠を削除しました。');
 
-        $this->assertSoftDeleted('coach_availabilities', ['id' => $availability->id]);
+        $this->assertDatabaseMissing('coach_availabilities', ['id' => $availability->id]);
     }
 
     public function test_coach_cannot_destroy_other_coachs_availability(): void
@@ -35,7 +35,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($coach)->delete(route('settings.availability.destroy', $availability));
 
         $response->assertForbidden();
-        $this->assertNotSoftDeleted('coach_availabilities', ['id' => $availability->id]);
+        $this->assertDatabaseHas('coach_availabilities', ['id' => $availability->id]);
     }
 
     public function test_student_is_forbidden(): void

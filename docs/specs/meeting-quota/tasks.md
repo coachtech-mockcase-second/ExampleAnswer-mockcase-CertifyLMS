@@ -17,7 +17,7 @@
 
 ## Phase 2: マイグレーション
 
-- [x] `database/migrations/{ts}_create_meeting_packs_table.php`(ULID + SoftDeletes + name + description + meeting_count + price + stripe_price_id nullable + status enum + sort_order + created_by + updated_by + INDEX (status, sort_order))
+- [x] `database/migrations/{ts}_create_meeting_packs_table.php`(ULID + name + description + meeting_count + price + stripe_price_id nullable + status enum + sort_order + created_by + updated_by + INDEX (status, sort_order))
 - [x] `database/migrations/{ts}_create_meeting_quota_transactions_table.php`(ULID + `user_id` FK restrict + `type` enum 5 値(granted_initial / purchased / consumed / refunded / admin_grant) + `amount` int signed + **`related_meeting_id` ULID nullable**(FK 制約は本 Migration では付けない、mentoring の `meetings` テーブル未作成時の依存回避) + `related_payment_id` FK nullable to `payments`(同一 Feature) + `granted_by_user_id` FK nullable to `users` + `note` varchar:500 + `occurred_at` datetime + INDEX (user_id, occurred_at) + (related_meeting_id) + (related_payment_id) + (type)、SoftDelete 不採用)
 - [x] `database/migrations/{ts}_add_related_meeting_fk_to_meeting_quota_transactions.php`(**N6**: mentoring の `meetings` テーブル作成後に別 Migration で `related_meeting_id` に FK 制約追加、`restrictOnDelete`、mentoring Step 1 完了後に走らせる)
 - [x] `database/migrations/{ts}_create_payments_table.php`(ULID + SoftDeletes + `user_id` FK + `type` enum + `meeting_pack_id` FK restrict + `stripe_payment_intent_id` UNIQUE nullable + `stripe_checkout_session_id` UNIQUE NOT NULL + `amount` unsigned + `quantity` unsigned smallint + `status` enum 4 値(pending / succeeded / failed / refunded) + `paid_at` nullable + INDEX (user_id) + (status, paid_at))
@@ -28,7 +28,7 @@
 - [x] `app/Enums/MeetingPackStatus.php`(`Draft` / `Published` / `Archived` + `label()`)
 - [x] `app/Enums/MeetingQuotaTransactionType.php`(`GrantedInitial` / `Purchased` / `Consumed` / `Refunded` / `AdminGrant` + `label()`)
 - [x] `app/Enums/PaymentStatus.php`(`Pending` / `Succeeded` / `Failed` / `Refunded` + `label()`)
-- [x] `app/Models/MeetingPack.php`(`HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['status'=>MeetingPackStatus, 'meeting_count'=>'integer', 'price'=>'integer', 'sort_order'=>'integer']` + `belongsTo(User, createdBy)` + `belongsTo(User, updatedBy)` + `hasMany(Payment)` + `scopePublished` / `scopeOrdered`)
+- [x] `app/Models/MeetingPack.php`(`HasUlids` + `HasFactory` + fillable + `$casts['status'=>MeetingPackStatus, 'meeting_count'=>'integer', 'price'=>'integer', 'sort_order'=>'integer']` + `belongsTo(User, createdBy)` + `belongsTo(User, updatedBy)` + `hasMany(Payment)` + `scopePublished` / `scopeOrdered`)
 - [x] `app/Models/MeetingQuotaTransaction.php`(`HasUlids` + `HasFactory`、SoftDelete 不採用 + fillable + `$casts['type'=>MeetingQuotaTransactionType, 'amount'=>'integer', 'occurred_at'=>'datetime']` + **`belongsTo(User)`** + **`belongsTo(Meeting, related_meeting_id, relatedMeeting)`** + **`belongsTo(Payment, related_payment_id, relatedPayment)`** + **`belongsTo(User, granted_by_user_id, grantedBy)`**(D-3 で history 用 Eager Loading に必要))
 - [x] `app/Models/Payment.php`(`HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['status'=>PaymentStatus, 'amount'=>'integer', 'quantity'=>'integer', 'paid_at'=>'datetime']` + `belongsTo(User)` + `belongsTo(MeetingPack)` + `hasMany(MeetingQuotaTransaction, related_payment_id)`)
 - [x] `app/Models/User.php` 拡張: `hasMany(MeetingQuotaTransaction)` 追加

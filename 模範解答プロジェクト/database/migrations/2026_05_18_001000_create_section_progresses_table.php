@@ -7,8 +7,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Section 単位の読了マーク。1 Enrollment × 1 Section の最大 1 行(UNIQUE)、再マークは UPDATE、
- * 取消は SoftDelete で表現する。Enrollment / Section の物理削除は restrictOnDelete で抑止。
+ * Section 単位の読了マーク。1 Enrollment × 1 Section の最大 1 行(UNIQUE)、再マークは UPDATE。
+ * Enrollment / Section の物理削除は restrictOnDelete で抑止。
  */
 return new class extends Migration
 {
@@ -24,10 +24,8 @@ return new class extends Migration
                 ->restrictOnDelete();
             $table->timestamp('completed_at');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->unique(['enrollment_id', 'section_id']);
-            $table->index(['section_id', 'deleted_at']);
         });
     }
 

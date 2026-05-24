@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 追加面談購入用の SKU マスタ。受講生が dashboard から購入する都度購入型の面談回数パック。
@@ -24,7 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class MeetingPack extends Model
 {
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'name',

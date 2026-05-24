@@ -14,7 +14,6 @@ use App\Models\MockExamSession;
  *
  * 必ず SubmitAction 内の `DB::transaction()` から呼ばれる前提で、自前のトランザクションは持たない。
  * 採点ロジック: 各 MockExamAnswer の selected_option_id を引いて、対応する MockExamQuestionOption の is_correct で is_correct を確定する。
- * SoftDelete された Option は `withTrashed()` で参照(セッション開始後にマスタが変わっても採点は安定)。
  */
 final class GradeAction
 {
@@ -31,7 +30,7 @@ final class GradeAction
             ->values()
             ->all();
 
-        $options = MockExamQuestionOption::withTrashed()
+        $options = MockExamQuestionOption::query()
             ->whereIn('id', $optionIds)
             ->get()
             ->keyBy('id');

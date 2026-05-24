@@ -60,7 +60,7 @@
 - [x] `app/UseCases/Availability/IndexAction.php`(`AvailabilityController::index`、自身の `CoachAvailability` 一覧取得)
 - [x] `app/UseCases/Availability/StoreAction.php`(`AvailabilityController::store`、coach 本人で INSERT)
 - [x] `app/UseCases/Availability/UpdateAction.php`(`AvailabilityController::update`)
-- [x] `app/UseCases/Availability/DestroyAction.php`(`AvailabilityController::destroy`、SoftDelete)
+- [x] `app/UseCases/Availability/DestroyAction.php`(`AvailabilityController::destroy`、物理削除)
 
 ### 明示的に持たない Action(v3 撤回)
 

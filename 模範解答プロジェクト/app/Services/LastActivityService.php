@@ -54,7 +54,6 @@ final class LastActivityService
         $sessionMax = DB::table('learning_sessions')
             ->whereIn('enrollment_id', $enrollmentIds)
             ->whereNotNull('ended_at')
-            ->whereNull('deleted_at')
             ->groupBy('enrollment_id')
             ->selectRaw('enrollment_id, MAX(ended_at) AS last_at')
             ->pluck('last_at', 'enrollment_id');
@@ -69,7 +68,6 @@ final class LastActivityService
                     ->on('e.certification_id', '=', 'p.certification_id');
             })
             ->whereIn('e.id', $enrollmentIds)
-            ->whereNull('sqa.deleted_at')
             ->groupBy('e.id')
             ->selectRaw('e.id AS enrollment_id, MAX(sqa.answered_at) AS last_at')
             ->pluck('last_at', 'enrollment_id');

@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Section に紐づく演習問題を表す Model。
@@ -25,7 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class SectionQuestion extends Model
 {
     /** @use HasFactory<SectionQuestionFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'section_id',

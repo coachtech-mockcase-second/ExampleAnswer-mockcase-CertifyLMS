@@ -140,17 +140,15 @@ class MockExamSessionController extends Controller
     }
 
     /**
-     * 結果画面は SoftDelete された問題も withTrashed で取得し、削除済の表示は淡色で出す前提。
-     *
      * @return Collection<int, MockExamQuestion>
      */
     private function loadQuestionsForResult(MockExamSession $session)
     {
-        return MockExamQuestion::withTrashed()
+        return MockExamQuestion::query()
             ->whereIn('id', $session->generated_question_ids ?? [])
             ->with([
                 'category',
-                'options' => fn ($q) => $q->withTrashed()->orderBy('order'),
+                'options' => fn ($q) => $q->orderBy('order'),
             ])
             ->orderBy('order')
             ->get();

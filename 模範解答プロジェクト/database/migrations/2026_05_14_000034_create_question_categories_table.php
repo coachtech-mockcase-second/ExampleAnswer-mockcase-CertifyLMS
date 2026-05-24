@@ -20,11 +20,9 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(0);
             $table->text('description')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->unique(['certification_id', 'slug'], 'question_categories_cert_slug_uq');
             $table->index(['certification_id', 'sort_order'], 'question_categories_cert_sort_idx');
-            $table->index('deleted_at');
         });
     }
 

@@ -21,11 +21,9 @@ return new class extends Migration
             $table->string('status', 20)->default('draft');
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['certification_id', 'order']);
             $table->index(['certification_id', 'status']);
-            $table->index('deleted_at');
         });
     }
 

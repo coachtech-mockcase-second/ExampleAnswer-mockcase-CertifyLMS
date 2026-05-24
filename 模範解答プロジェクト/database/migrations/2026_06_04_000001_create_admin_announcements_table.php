@@ -28,7 +28,6 @@ return new class extends Migration
             $table->unsignedInteger('dispatched_count')->default(0);
             $table->timestamp('dispatched_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['target_type', 'dispatched_at'], 'admin_announcements_target_dispatched_idx');
             $table->index('created_by_user_id');

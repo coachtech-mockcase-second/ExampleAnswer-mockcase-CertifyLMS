@@ -52,27 +52,6 @@ class LearningHourTargetControllerTest extends TestCase
         $this->assertDatabaseHas('learning_hour_targets', [
             'enrollment_id' => $enrollment->id,
             'target_total_hours' => 150,
-            'deleted_at' => null,
-        ]);
-    }
-
-    public function test_upsert_restores_soft_deleted_target(): void
-    {
-        $student = User::factory()->student()->inProgress()->create();
-        $enrollment = Enrollment::factory()->for($student)->learning()->create();
-        $target = LearningHourTarget::factory()->forEnrollment($enrollment)->hours(100)->create();
-        $target->delete();
-
-        $this->actingAs($student)
-            ->put(route('learning.hourTarget.upsert', $enrollment), [
-                'target_total_hours' => 200,
-            ])
-            ->assertRedirect();
-
-        $this->assertDatabaseHas('learning_hour_targets', [
-            'id' => $target->id,
-            'target_total_hours' => 200,
-            'deleted_at' => null,
         ]);
     }
 
@@ -98,6 +77,6 @@ class LearningHourTargetControllerTest extends TestCase
             ->delete(route('learning.hourTarget.destroy', $enrollment))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('learning_hour_targets', ['id' => $target->id]);
+        $this->assertDatabaseMissing('learning_hour_targets', ['id' => $target->id]);
     }
 }

@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * 担当コーチを資格から解除するユースケース。
  *
- * 該当 active 割当行に `unassigned_at = now()` を設定して SoftDelete する。
- * 過去履歴として行は保持され、`Certification::coaches()` の `wherePivot('unassigned_at', null)` で取得対象外となる。
+ * 該当 active 割当行に `unassigned_at = now()` を設定する(行は履歴として保持)。
+ * `Certification::coaches()` の `wherePivot('unassigned_at', null)` で取得対象外となる。
  *
  * 解除成功時に CertificationCoachDetached イベントを発火する。割当が存在しない場合は no-op。
  */
@@ -34,7 +34,6 @@ final class DetachAction
             }
 
             $assignment->update(['unassigned_at' => now()]);
-            $assignment->delete();
 
             return true;
         });

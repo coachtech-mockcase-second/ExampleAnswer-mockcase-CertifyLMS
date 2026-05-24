@@ -12,7 +12,7 @@
 
 担当資格のコンテンツ階層(**Part → Chapter → Section**)と **Section 紐づき問題(`SectionQuestion` / `SectionQuestionOption`)**、**問題カテゴリマスタ(`QuestionCategory`、共有マスタ)**、**教材内画像(`SectionImage`)** を管理する Feature。Clean Architecture(軽量版)に従い、Controller は薄く、Action(UseCase)が CRUD ロジックと整合性検証を `DB::transaction()` 内に束ねる。受講生向けには **Section の全文検索 API のみ** を提供し、教材閲覧 UI と読了マークは [[learning]] が担う(本 Feature は Model + Policy + `MarkdownRenderingService` の供給に徹する)。
 
-**模試問題は本 Feature では扱わない**([[mock-exam]] が `MockExamQuestion` / `MockExamQuestionOption` を独自管理)。`QuestionCategory` は **両系統の共有マスタ** として本 Feature が CRUD を所有(SectionQuestion と MockExamQuestion 両方で `category_id` で参照)。`QuestionCategory` SoftDelete 時は両系統からの参照を確認する。
+**模試問題は本 Feature では扱わない**([[mock-exam]] が `MockExamQuestion` / `MockExamQuestionOption` を独自管理)。`QuestionCategory` は **両系統の共有マスタ** として本 Feature が CRUD を所有(SectionQuestion と MockExamQuestion 両方で `category_id` で参照)。`QuestionCategory` 削除時は両系統からの参照を確認する。
 
 ### 全体構造
 
@@ -134,12 +134,12 @@ sequenceDiagram
     Coach->>QCC: DELETE /admin/question-categories/{category}
     QCC->>Pol: authorize('delete', $category)
     QCC->>DA: __invoke($category)
-    DA->>DB: SELECT COUNT section_questions WHERE category_id<br/>AND deleted_at IS NULL
-    DA->>DB: SELECT COUNT mock_exam_questions WHERE category_id<br/>AND deleted_at IS NULL
+    DA->>DB: SELECT COUNT section_questions WHERE category_id
+    DA->>DB: SELECT COUNT mock_exam_questions WHERE category_id
     alt いずれか > 0
         DA-->>QCC: QuestionCategoryInUseException (409)
     end
-    DA->>DB: UPDATE question_categories SET deleted_at=now()
+    DA->>DB: DELETE FROM question_categories WHERE id
     DA-->>QCC: void
     QCC-->>Coach: redirect + flash
 ```
@@ -182,7 +182,7 @@ sequenceDiagram
     Student->>CSC: GET /contents/search?certification_id&keyword
     Note over CSC: FormRequest authorize:<br/>auth + EnsureActiveLearning
     CSC->>SA: __invoke($student, $certificationId, $keyword)
-    SA->>DB: SELECT sections WITH chapter.part.certification<br/>WHERE chapter.part.certification_id = ?<br/>AND keyword LIKE title OR body<br/>AND sections.status = Published<br/>AND chapter.status = Published AND part.status = Published<br/>AND enrollment EXISTS WHERE user_id=student.id AND certification_id<br/>AND status IN (learning, passed)<br/>AND deleted_at IS NULL (cascading)
+    SA->>DB: SELECT sections WITH chapter.part.certification<br/>WHERE chapter.part.certification_id = ?<br/>AND keyword LIKE title OR body<br/>AND sections.status = Published<br/>AND chapter.status = Published AND part.status = Published<br/>AND enrollment EXISTS WHERE user_id=student.id AND certification_id<br/>AND status IN (learning, passed)
     SA-->>CSC: LengthAwarePaginator<SectionWithSnippet>
     CSC-->>Student: views/contents/search.blade.php<br/>(スニペット + ハイライト + Section 詳細リンク)
 ```
@@ -191,13 +191,13 @@ sequenceDiagram
 
 ### Eloquent モデル一覧
 
-- **`Part`** — 大単元。`HasUlids` + `HasFactory` + `SoftDeletes`、`status` `ContentStatus` cast / `published_at` datetime cast、`belongsTo(Certification)` / `hasMany(Chapter::class)`。`scopePublished` / `scopeOrdered`。
+- **`Part`** — 大単元。`HasUlids` + `HasFactory`、`status` `ContentStatus` cast / `published_at` datetime cast、`belongsTo(Certification)` / `hasMany(Chapter::class)`。`scopePublished` / `scopeOrdered`。
 - **`Chapter`** — 中単元。`belongsTo(Part)` / `hasMany(Section::class)`。`scopePublished`(親 Part を whereHas 経由) / `scopeOrdered`。
 - **`Section`** — 小単元。`belongsTo(Chapter)` / **`hasMany(SectionQuestion::class)`**(v3) / `hasMany(SectionImage)`。`body` longtext(Markdown)、`scopePublished`(Chapter / Part を連鎖 whereHas) / `scopeOrdered` / `scopeKeyword(?string)`。
-- **`SectionQuestion`**(v3 で `Question` から rename + 構造変更) — `HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(Section)` / `belongsTo(QuestionCategory, category_id)` / `hasMany(SectionQuestionOption::class)` / `hasMany(SectionQuestionAttempt)`([[quiz-answering]] 所有テーブル)。`status` `ContentStatus` cast、**`difficulty` 持たない**、**`certification_id` 持たない**(section から辿る)。
-- **`SectionQuestionOption`**(v3 で `QuestionOption` から rename) — `HasUlids` + `HasFactory`(SoftDelete 不採用、delete-and-insert で同期)、`is_correct` boolean cast、`belongsTo(SectionQuestion)`。
-- **`QuestionCategory`**(共有マスタ、変更なし) — `HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(Certification)` / `hasMany(SectionQuestion::class)` / `hasMany(MockExamQuestion::class)`([[mock-exam]] Model)。
-- **`SectionImage`** — `HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(Section)`。実ファイルは Storage public driver の `section-images/{ulid}.{ext}` に保存。
+- **`SectionQuestion`**(v3 で `Question` から rename + 構造変更) — `HasUlids` + `HasFactory`、`belongsTo(Section)` / `belongsTo(QuestionCategory, category_id)` / `hasMany(SectionQuestionOption::class)` / `hasMany(SectionQuestionAttempt)`([[quiz-answering]] 所有テーブル)。`status` `ContentStatus` cast、**`difficulty` 持たない**、**`certification_id` 持たない**(section から辿る)。
+- **`SectionQuestionOption`**(v3 で `QuestionOption` から rename) — `HasUlids` + `HasFactory`(delete-and-insert で同期)、`is_correct` boolean cast、`belongsTo(SectionQuestion)`。
+- **`QuestionCategory`**(共有マスタ、変更なし) — `HasUlids` + `HasFactory`、`belongsTo(Certification)` / `hasMany(SectionQuestion::class)` / `hasMany(MockExamQuestion::class)`([[mock-exam]] Model)。
+- **`SectionImage`** — `HasUlids` + `HasFactory`、`belongsTo(Section)`。実ファイルは Storage public driver の `section-images/{ulid}.{ext}` に保存。
 
 ### ER 図
 
@@ -222,7 +222,6 @@ erDiagram
         timestamp published_at "nullable"
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at "nullable"
     }
     CHAPTERS {
         ulid id PK
@@ -298,7 +297,6 @@ erDiagram
 `parts`:
 - `(certification_id, order)`: 複合 INDEX
 - `(certification_id, status)`: 複合 INDEX
-- `deleted_at`: 単体 INDEX
 
 `chapters`:
 - `(part_id, order)` / `(part_id, status)`: 複合 INDEX
@@ -323,7 +321,7 @@ erDiagram
 
 `section_images`:
 - `path`: UNIQUE INDEX
-- `(section_id, deleted_at)`: 複合 INDEX
+- `section_id`: 単体 INDEX
 
 ## 状態遷移
 
@@ -334,12 +332,12 @@ stateDiagram-v2
     [*] --> Draft: StoreAction
     Draft --> Published: PublishAction
     Published --> Draft: UnpublishAction
-    Draft --> Deleted: DestroyAction (SoftDelete)
+    Draft --> [*]: DestroyAction (物理削除)
 ```
 
 > **cascade visibility**(REQ-content-management-022): 親 Entity が `Draft` の場合、子 Entity の状態に関わらず受講生向け公開ビューで非公開として扱う。SQL は `whereHas('chapter.part', fn ($q) => $q->where('status', 'published'))` の連鎖で実装。
 
-> **公開ガード**(REQ-content-management-014, 036): 公開済 Part / Chapter は SoftDelete 不可(`ContentNotDeletableException`)。SectionQuestion 公開時は options 2 件以上 + is_correct=1 件を検証(`QuestionNotPublishableException`)。
+> **公開ガード**(REQ-content-management-014, 036): 公開済 Part / Chapter は削除不可(`ContentNotDeletableException`)。SectionQuestion 公開時は options 2 件以上 + is_correct=1 件を検証(`QuestionNotPublishableException`)。
 
 ## コンポーネント
 
@@ -511,7 +509,7 @@ class DestroyAction
 {
     public function __invoke(SectionQuestion $question): void
     {
-        // SoftDelete: SectionQuestionAttempt / SectionQuestionAnswer (quiz-answering 所有) は withTrashed で参照可能
+        // 物理削除: SectionQuestionAttempt / SectionQuestionAnswer (quiz-answering 所有) は restrictOnDelete 外部キー制約で履歴保護
         DB::transaction(fn () => $question->delete());
     }
 }
@@ -526,10 +524,8 @@ class DestroyAction
 {
     public function __invoke(QuestionCategory $category): void
     {
-        $sectionQuestionCount = SectionQuestion::where('category_id', $category->id)
-            ->whereNull('deleted_at')->count();
-        $mockExamQuestionCount = MockExamQuestion::where('category_id', $category->id)
-            ->whereNull('deleted_at')->count();
+        $sectionQuestionCount = SectionQuestion::where('category_id', $category->id)->count();
+        $mockExamQuestionCount = MockExamQuestion::where('category_id', $category->id)->count();
         if ($sectionQuestionCount > 0 || $mockExamQuestionCount > 0) {
             throw new QuestionCategoryInUseException();
         }
@@ -804,7 +800,7 @@ Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])->group(
 
 - `SectionQuestion/StoreActionTest.php`(category_id 不一致 / is_correct 多重 / options delete-and-insert 同期)
 - `SectionQuestion/PublishActionTest.php`(options 1 件で 409 / is_correct ≠ 1 で 409 / 正常 200)
-- `QuestionCategory/DestroyActionTest.php`(SectionQuestion 参照ありで 409 / MockExamQuestion 参照ありで 409 / 両ゼロで SoftDelete)
+- `QuestionCategory/DestroyActionTest.php`(SectionQuestion 参照ありで 409 / MockExamQuestion 参照ありで 409 / 両ゼロで物理削除)
 
 ### Unit(Services)
 

@@ -98,8 +98,8 @@ sequenceDiagram
     SPC->>Pol: authorize('create', SectionProgress::class)
     SPC->>MA: __invoke($student, $section)
     MA->>DB: 認可: enrollment(user, certification) + status IN (learning, passed) v3
-    MA->>DB: cascade visibility(Section / Chapter / Part が Published かつ deleted_at IS NULL)
-    alt Section / 親が Draft or 削除済
+    MA->>DB: cascade visibility(Section / Chapter / Part が Published)
+    alt Section / 親が Draft
         MA-->>SPC: SectionUnavailableForProgressException (409)
     end
     alt enrollment.status = failed
@@ -107,10 +107,8 @@ sequenceDiagram
         Note over MA: passed は通過(復習可、v3)
     end
     MA->>DB: BEGIN
-    MA->>DB: SELECT FOR UPDATE section_progresses<br/>WHERE enrollment_id AND section_id (withTrashed)
-    alt 既存 with deleted_at != NULL
-        MA->>DB: UPDATE restore + completed_at=now()
-    else 既存 with deleted_at = NULL
+    MA->>DB: SELECT FOR UPDATE section_progresses<br/>WHERE enrollment_id AND section_id
+    alt 既存あり
         MA->>DB: UPDATE completed_at=now()
     else 未存在
         MA->>DB: INSERT section_progresses
@@ -187,7 +185,7 @@ $durationSeconds = min(
 
 INDEX 設計: `(user_id, started_at)` / `(user_id, ended_at)` を貼ることで、上記 3 パターンすべてが index range scan で完結。`enrollment_id` 経由クエリは別途 `(enrollment_id, started_at)` INDEX でカバー。
 
-denormalize による不整合リスク: `learning_sessions.user_id` は INSERT 時に `enrollment.user_id` から複製する固定値(以後変更しない)。受講生退会時は `enrollment` ごと SoftDelete されるが、`learning_sessions` 側の `user_id` は `restrictOnDelete` で保護(履歴保持)。
+denormalize による不整合リスク: `learning_sessions.user_id` は INSERT 時に `enrollment.user_id` から複製する固定値(以後変更しない)。`learning_sessions` 側の `user_id` は `restrictOnDelete` で保護(履歴保持)。
 
 ### Schedule Command 自動クローズ
 
@@ -219,7 +217,7 @@ denormalize による不整合リスク: `learning_sessions.user_id` は INSERT 
 | Section 表示中の `StartAction` が失敗(例外) | Controller が `try-catch` で吸収、Section ページ表示は継続。残存 open は Schedule Command で auto_close |
 | 「学習を一旦終える」POST が失敗(CSRF 切れ / network) | 受講生が再度ボタンを押せば redirect で受理。連打で停止しても idempotent(既に `closed` なら no-op + redirect) |
 | ブラウザ閉じ / PC スリープ等で stop ボタンも別 Section auto-start も発火しなかった | Schedule Command で `started_at < now()-max_session_seconds` を auto_close。最大 1 日遅延で確実に閉じる |
-| Section が SoftDelete / 親が Draft 化された後の stop | `LearningSessionController::stop` は session の存在のみ検証(Section の現在状態は問わない)。`ended_at` UPDATE は必ず成功させる(履歴の整合性優先) |
+| Section が物理削除 / 親が Draft 化された後の stop | `LearningSessionController::stop` は session の存在のみ検証(Section の現在状態は問わない)。`ended_at` UPDATE は必ず成功させる(履歴の整合性優先) |
 | 受講生が `graduated` 遷移した瞬間の open session | Schedule Command で auto_close。`EnsureActiveLearning` Middleware は新規 Section 表示を 403 でブロックするが、既存 open の stop ボタンは受理(履歴を閉じる責務) |
 
 ### 関連設定
@@ -238,9 +236,9 @@ return [
 
 ### Eloquent モデル一覧
 
-- `SectionProgress` — `HasUlids` + `HasFactory` + `SoftDeletes`、`completed_at` datetime cast、`belongsTo(Enrollment)` / `belongsTo(Section)`、`scopeCompleted`
-- `LearningSession` — `HasUlids` + `HasFactory` + `SoftDeletes`、`started_at` / `ended_at` datetime cast、`duration_seconds` integer、`auto_closed` boolean、`belongsTo(User)` / `belongsTo(Enrollment)` / `belongsTo(Section)`、`scopeOpen` / `scopeClosed` / `scopeForUser` / `scopeForEnrollment` / `scopeOnDate`
-- `LearningHourTarget` — `HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(Enrollment)`、`scopeActive`
+- `SectionProgress` — `HasUlids` + `HasFactory`、`completed_at` datetime cast、`belongsTo(Enrollment)` / `belongsTo(Section)`、`scopeCompleted`
+- `LearningSession` — `HasUlids` + `HasFactory`、`started_at` / `ended_at` datetime cast、`duration_seconds` integer、`auto_closed` boolean、`belongsTo(User)` / `belongsTo(Enrollment)` / `belongsTo(Section)`、`scopeOpen` / `scopeClosed` / `scopeForUser` / `scopeForEnrollment` / `scopeOnDate`
+- `LearningHourTarget` — `HasUlids` + `HasFactory`、`belongsTo(Enrollment)`、`scopeActive`
 
 ### ER 図
 
@@ -259,7 +257,6 @@ erDiagram
         ulid section_id FK
         timestamp completed_at
         timestamps
-        timestamp deleted_at "nullable"
     }
     LEARNING_SESSIONS {
         ulid id PK
@@ -271,14 +268,12 @@ erDiagram
         unsignedInteger duration_seconds "nullable"
         boolean auto_closed
         timestamps
-        timestamp deleted_at "nullable"
     }
     LEARNING_HOUR_TARGETS {
         ulid id PK
         ulid enrollment_id FK "UNIQUE"
         unsignedSmallInteger target_total_hours
         timestamps
-        timestamp deleted_at "nullable"
     }
 ```
 
@@ -312,7 +307,7 @@ erDiagram
 - `Learning\ShowEnrollmentAction` — Part 一覧 + `ProgressService::summarize`
 - `Learning\ShowPartAction` / `ShowChapterAction` / `ShowSectionAction`
 - `SectionProgress\MarkReadAction` — cascade visibility 検証 + Enrollment 状態検証(`learning + passed` 許容) + UPSERT
-- `SectionProgress\UnmarkReadAction` — SoftDelete
+- `SectionProgress\UnmarkReadAction` — 物理削除
 - `LearningSession\StartAction` — `BrowseController::showSection` から呼ばれる(JS / API エンドポイント経由ではない)。`SessionCloseService::closeOpenSessions` で既存 open を `auto_closed=true` で閉じる + 新規 INSERT。`enrollment.status` 検証は呼出元の `SectionViewPolicy` 側(`learning` / `passed` 許容、`failed` で 403)で完了している前提のため Action 内では再検査しない
 - ~~`LearningSession\StopAction`~~ — **v3.5 で削除**(明示停止ボタン撤回に伴う)
 - `LearningSession\CloseStaleSessionsAction` — Schedule Command `learning:close-stale-sessions` のエントリポイント
@@ -426,9 +421,9 @@ Route::middleware(['auth', 'role:student', EnsureActiveLearning::class])
 ### Feature(UseCases)
 
 - `Learning/ShowEnrollmentActionTest.php`
-- `SectionProgress/MarkReadActionTest.php`(restore + UPDATE 分岐、Draft 連鎖時の例外)
+- `SectionProgress/MarkReadActionTest.php`(UPDATE / 新規 INSERT 分岐、Draft 連鎖時の例外)
 - `LearningSession/{Start,Stop,CloseStaleSessions}ActionTest.php`
-- `LearningHourTarget/UpsertActionTest.php`(SoftDeleted 復元、UNIQUE 制約下の upsert)
+- `LearningHourTarget/UpsertActionTest.php`(UNIQUE 制約下の upsert)
 
 ### Unit(Services / Policies)
 

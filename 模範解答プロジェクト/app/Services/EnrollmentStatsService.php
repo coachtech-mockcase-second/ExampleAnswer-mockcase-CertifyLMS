@@ -96,7 +96,6 @@ class EnrollmentStatsService
         $rows = DB::table('enrollments')
             ->join('certifications', 'enrollments.certification_id', '=', 'certifications.id')
             ->whereNull('enrollments.deleted_at')
-            ->whereNull('certifications.deleted_at')
             ->selectRaw('enrollments.certification_id, certifications.name as certification_name, enrollments.status, COUNT(*) as cnt')
             ->groupBy('enrollments.certification_id', 'certifications.name', 'enrollments.status')
             ->get();

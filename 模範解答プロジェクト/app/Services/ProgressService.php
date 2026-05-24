@@ -31,17 +31,14 @@ class ProgressService
         $partsTotal = Part::query()
             ->where('certification_id', $enrollment->certification_id)
             ->where('status', ContentStatus::Published->value)
-            ->whereNull('deleted_at')
             ->count();
 
         $chaptersTotal = Chapter::query()
             ->whereHas('part', function ($q) use ($enrollment) {
                 $q->where('certification_id', $enrollment->certification_id)
-                    ->where('status', ContentStatus::Published->value)
-                    ->whereNull('deleted_at');
+                    ->where('status', ContentStatus::Published->value);
             })
             ->where('status', ContentStatus::Published->value)
-            ->whereNull('deleted_at')
             ->count();
 
         $sectionsTotal = (int) $totals->sections_total;
@@ -75,16 +72,12 @@ class ProgressService
             ->join('parts', 'parts.id', '=', 'chapters.part_id')
             ->leftJoin('section_progresses', function ($join) use ($enrollment) {
                 $join->on('section_progresses.section_id', '=', 'sections.id')
-                    ->where('section_progresses.enrollment_id', '=', $enrollment->id)
-                    ->whereNull('section_progresses.deleted_at');
+                    ->where('section_progresses.enrollment_id', '=', $enrollment->id);
             })
             ->where('parts.certification_id', $enrollment->certification_id)
             ->where('parts.status', ContentStatus::Published->value)
-            ->whereNull('parts.deleted_at')
             ->where('chapters.status', ContentStatus::Published->value)
-            ->whereNull('chapters.deleted_at')
-            ->where('sections.status', ContentStatus::Published->value)
-            ->whereNull('sections.deleted_at');
+            ->where('sections.status', ContentStatus::Published->value);
 
         if ($scope instanceof Part) {
             $query->where('parts.id', $scope->id);
@@ -127,17 +120,13 @@ class ProgressService
             ->join('enrollments', 'enrollments.certification_id', '=', 'parts.certification_id')
             ->leftJoin('section_progresses', function ($join): void {
                 $join->on('section_progresses.section_id', '=', 'sections.id')
-                    ->on('section_progresses.enrollment_id', '=', 'enrollments.id')
-                    ->whereNull('section_progresses.deleted_at');
+                    ->on('section_progresses.enrollment_id', '=', 'enrollments.id');
             })
             ->whereIn('enrollments.id', $enrollmentIds)
             ->whereIn('parts.certification_id', $certificationIds)
             ->where('parts.status', ContentStatus::Published->value)
-            ->whereNull('parts.deleted_at')
             ->where('chapters.status', ContentStatus::Published->value)
-            ->whereNull('chapters.deleted_at')
             ->where('sections.status', ContentStatus::Published->value)
-            ->whereNull('sections.deleted_at')
             ->groupBy('enrollments.id')
             ->selectRaw('enrollments.id AS enrollment_id, COUNT(sections.id) AS total, COUNT(section_progresses.id) AS done')
             ->get();
@@ -163,16 +152,12 @@ class ProgressService
             ->join('parts', 'parts.id', '=', 'chapters.part_id')
             ->leftJoin('section_progresses', function ($join) use ($enrollment) {
                 $join->on('section_progresses.section_id', '=', 'sections.id')
-                    ->where('section_progresses.enrollment_id', '=', $enrollment->id)
-                    ->whereNull('section_progresses.deleted_at');
+                    ->where('section_progresses.enrollment_id', '=', $enrollment->id);
             })
             ->where('parts.certification_id', $enrollment->certification_id)
             ->where('parts.status', ContentStatus::Published->value)
-            ->whereNull('parts.deleted_at')
             ->where('chapters.status', ContentStatus::Published->value)
-            ->whereNull('chapters.deleted_at')
             ->where('sections.status', ContentStatus::Published->value)
-            ->whereNull('sections.deleted_at')
             ->selectRaw('COUNT(sections.id) AS sections_total, COUNT(section_progresses.id) AS sections_completed')
             ->first() ?? (object) ['sections_total' => 0, 'sections_completed' => 0];
     }
@@ -184,19 +169,15 @@ class ProgressService
             ->join('parts', 'parts.id', '=', 'chapters.part_id')
             ->leftJoin('sections', function ($join) {
                 $join->on('sections.chapter_id', '=', 'chapters.id')
-                    ->where('sections.status', ContentStatus::Published->value)
-                    ->whereNull('sections.deleted_at');
+                    ->where('sections.status', ContentStatus::Published->value);
             })
             ->leftJoin('section_progresses', function ($join) use ($enrollment) {
                 $join->on('section_progresses.section_id', '=', 'sections.id')
-                    ->where('section_progresses.enrollment_id', '=', $enrollment->id)
-                    ->whereNull('section_progresses.deleted_at');
+                    ->where('section_progresses.enrollment_id', '=', $enrollment->id);
             })
             ->where('parts.certification_id', $enrollment->certification_id)
             ->where('parts.status', ContentStatus::Published->value)
-            ->whereNull('parts.deleted_at')
             ->where('chapters.status', ContentStatus::Published->value)
-            ->whereNull('chapters.deleted_at')
             ->groupBy('chapters.id')
             ->selectRaw('chapters.id AS chapter_id, COUNT(sections.id) AS total, COUNT(section_progresses.id) AS done')
             ->get();
@@ -216,22 +197,18 @@ class ProgressService
         $rows = DB::table('parts')
             ->leftJoin('chapters', function ($join) {
                 $join->on('chapters.part_id', '=', 'parts.id')
-                    ->where('chapters.status', ContentStatus::Published->value)
-                    ->whereNull('chapters.deleted_at');
+                    ->where('chapters.status', ContentStatus::Published->value);
             })
             ->leftJoin('sections', function ($join) {
                 $join->on('sections.chapter_id', '=', 'chapters.id')
-                    ->where('sections.status', ContentStatus::Published->value)
-                    ->whereNull('sections.deleted_at');
+                    ->where('sections.status', ContentStatus::Published->value);
             })
             ->leftJoin('section_progresses', function ($join) use ($enrollment) {
                 $join->on('section_progresses.section_id', '=', 'sections.id')
-                    ->where('section_progresses.enrollment_id', '=', $enrollment->id)
-                    ->whereNull('section_progresses.deleted_at');
+                    ->where('section_progresses.enrollment_id', '=', $enrollment->id);
             })
             ->where('parts.certification_id', $enrollment->certification_id)
             ->where('parts.status', ContentStatus::Published->value)
-            ->whereNull('parts.deleted_at')
             ->groupBy('parts.id')
             ->selectRaw('parts.id AS part_id, COUNT(sections.id) AS total, COUNT(section_progresses.id) AS done')
             ->get();

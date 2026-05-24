@@ -7,10 +7,10 @@
 ## Step 1: Migration & Model
 
 - [x] Enum: `app/Enums/QaThreadStatus.php`（backed string、`Open = 'open'` / `Resolved = 'resolved'`、`label()` で `未解決` / `解決済` を返す）（REQ-qa-board-004）
-- [x] migration: `create_qa_threads_table`（ULID 主キー、SoftDeletes、`certification_id` FK [restrict] + INDEX、`user_id` FK [restrict] + INDEX、`title` VARCHAR(200)、`body` TEXT、`status` string NOT NULL default 'open'、`resolved_at` nullable datetime、`(certification_id, status)` 複合 INDEX、`deleted_at` INDEX）（REQ-qa-board-001, REQ-qa-board-002, REQ-qa-board-003）
-- [x] migration: `create_qa_replies_table`（ULID 主キー、SoftDeletes、`qa_thread_id` FK [restrict]、`user_id` FK [restrict]、`body` TEXT、`(qa_thread_id, created_at)` 複合 INDEX、`user_id` INDEX、`deleted_at` INDEX）（REQ-qa-board-010, REQ-qa-board-011, REQ-qa-board-012）
-- [x] Model: `QaThread`（`HasUlids` + `SoftDeletes` + `HasFactory`、fillable、`$casts` で `status => QaThreadStatus::class` / `resolved_at => 'datetime'`、`belongsTo(Certification)` / `belongsTo(User, 'user_id')` / `hasMany(QaReply)`、`scopeResolved()`（`status = Resolved`）/ `scopeUnresolved()`（`status = Open`）/ `scopeForCertification($id)`、`isResolved(): bool` ヘルパ）（REQ-qa-board-004, REQ-qa-board-005, REQ-qa-board-006）
-- [x] Model: `QaReply`（`HasUlids` + `SoftDeletes` + `HasFactory`、fillable、`belongsTo(QaThread)` / `belongsTo(User, 'user_id')`）（REQ-qa-board-013, REQ-qa-board-014）
+- [x] migration: `create_qa_threads_table`（ULID 主キー、`certification_id` FK [restrict] + INDEX、`user_id` FK [restrict] + INDEX、`title` VARCHAR(200)、`body` TEXT、`status` string NOT NULL default 'open'、`resolved_at` nullable datetime、`(certification_id, status)` 複合 INDEX）（REQ-qa-board-001, REQ-qa-board-002, REQ-qa-board-003）
+- [x] migration: `create_qa_replies_table`（ULID 主キー、`qa_thread_id` FK [cascade]、`user_id` FK [restrict]、`body` TEXT、`(qa_thread_id, created_at)` 複合 INDEX、`user_id` INDEX）（REQ-qa-board-010, REQ-qa-board-011, REQ-qa-board-012）
+- [x] Model: `QaThread`（`HasUlids` + `HasFactory`、fillable、`$casts` で `status => QaThreadStatus::class` / `resolved_at => 'datetime'`、`belongsTo(Certification)` / `belongsTo(User, 'user_id')` / `hasMany(QaReply)`、`scopeResolved()`（`status = Resolved`）/ `scopeUnresolved()`（`status = Open`）/ `scopeForCertification($id)`、`isResolved(): bool` ヘルパ）（REQ-qa-board-004, REQ-qa-board-005, REQ-qa-board-006）
+- [x] Model: `QaReply`（`HasUlids` + `HasFactory`、fillable、`belongsTo(QaThread)` / `belongsTo(User, 'user_id')`）（REQ-qa-board-013）
 - [x] Factory: `QaThreadFactory`（`resolved()`（`status=Resolved` + `resolved_at=now()`）/ `unresolved()`（`status=Open` + `resolved_at=null`）state、`forCertification($cert)` / `byUser($user)` ヘルパ）
 - [x] Factory: `QaReplyFactory`（`forThread($thread)` / `byUser($user)` ヘルパ）
 - [x] `sail artisan migrate:fresh --seed` で migration 成功確認
@@ -34,8 +34,8 @@
 - [x] `app/Http/Requests/QaThread/UpdateRequest`（`title` / `body` バリデーション、`authorize()` で Policy 呼出）（REQ-qa-board-040, REQ-qa-board-043）
 - [x] `app/Http/Requests/QaReply/StoreRequest`（`body` バリデーション、`authorize()` で `[QaReply::class, $thread]` Policy 呼出）（REQ-qa-board-061〜063）
 - [x] `app/Http/Requests/QaReply/UpdateRequest`（`body` バリデーション、`authorize()` で Policy 呼出）（REQ-qa-board-070, REQ-qa-board-072）
-- [x] `app/Http/Requests/Admin/QaThread/IndexRequest`（`with_trashed` bool 追加、admin ロール `authorize()`）（REQ-qa-board-130）
-- [x] `routes/web.php` への登録（公開 9 ルート + replies 3 ルート + admin 4 ルート、**student/coach 用ルートには `EnsureActiveLearning` Middleware 追加**（v3、graduated 受講生をブロック）、admin ルートには適用しない、`withTrashed()` ルートバインディングを admin show / destroy に適用）（REQ-qa-board-030, REQ-qa-board-131）
+- [x] `app/Http/Requests/Admin/QaThread/IndexRequest`（admin ロール `authorize()`）（REQ-qa-board-130）
+- [x] `routes/web.php` への登録（公開 9 ルート + replies 3 ルート + admin 4 ルート、**student/coach 用ルートには `EnsureActiveLearning` Middleware 追加**（v3、graduated 受講生をブロック）、admin ルートには適用しない）（REQ-qa-board-030, REQ-qa-board-131）
 
 ## Step 4: Action / Exception
 
@@ -43,16 +43,16 @@
 - [x] `app/UseCases/QaThread/ShowAction`（`QaThread $thread` の `with(['certification', 'user', 'replies.user'])` Eager Loading）（REQ-qa-board-035, REQ-qa-board-037）
 - [x] `app/UseCases/QaThread/StoreAction`（`DB::transaction` で `qa_threads` INSERT、`status = QaThreadStatus::Open` / `resolved_at = null` 初期値）（REQ-qa-board-020）
 - [x] `app/UseCases/QaThread/UpdateAction`（`title` / `body` のみ UPDATE）（REQ-qa-board-040, REQ-qa-board-044）
-- [x] `app/UseCases/QaThread/DestroyAction`（回答 0 件チェック + SoftDelete、`QaThreadHasRepliesException` throw）（REQ-qa-board-050, REQ-qa-board-051, REQ-qa-board-054）
+- [x] `app/UseCases/QaThread/DestroyAction`（回答 0 件チェック + 物理削除、`QaThreadHasRepliesException` throw）（REQ-qa-board-050, REQ-qa-board-051, REQ-qa-board-054）
 - [x] `app/UseCases/QaThread/ResolveAction`（`QaThreadAlreadyResolvedException` ガード + `status = Resolved` / `resolved_at = now()` の同時 UPDATE）（REQ-qa-board-006, REQ-qa-board-090, REQ-qa-board-093）
 - [x] `app/UseCases/QaThread/UnresolveAction`（`QaThreadNotResolvedException` ガード + `status = Open` / `resolved_at = null` の同時 UPDATE）（REQ-qa-board-006, REQ-qa-board-091, REQ-qa-board-094）
 - [x] `app/UseCases/QaReply/StoreAction`（`DB::transaction` 内で INSERT + 自己回答以外なら **`QaReplyReceivedNotification`**（v3 rename）通知 dispatch）（REQ-qa-board-064, REQ-qa-board-065）
 - [x] `app/UseCases/QaReply/UpdateAction`（`body` のみ UPDATE）（REQ-qa-board-070, REQ-qa-board-073）
-- [x] `app/UseCases/QaReply/DestroyAction`（SoftDelete、スレッド状態不変）（REQ-qa-board-080, REQ-qa-board-083）
-- [x] `app/UseCases/QaThread\Moderation/IndexAction`（全資格・全状態・SoftDelete 含む切替で 20 件ページネーション）（REQ-qa-board-130）
-- [x] `app/UseCases/QaThread\Moderation/ShowAction`（`withTrashedReplies` フラグで SoftDelete 済回答も含めて Eager Load）（REQ-qa-board-131）
-- [x] `app/UseCases/QaThread\Moderation/DestroyAction`（回答有無不問で SoftDelete）（REQ-qa-board-052, REQ-qa-board-132）
-- [x] `app/UseCases/QaReply\Moderation/DestroyAction`（SoftDelete のみ）（REQ-qa-board-081, REQ-qa-board-132）
+- [x] `app/UseCases/QaReply/DestroyAction`（物理削除、スレッド状態不変）（REQ-qa-board-080, REQ-qa-board-083）
+- [x] `app/UseCases/QaThread\Moderation/IndexAction`（全資格・全状態で 20 件ページネーション）（REQ-qa-board-130）
+- [x] `app/UseCases/QaThread\Moderation/ShowAction`（回答を Eager Load）（REQ-qa-board-131）
+- [x] `app/UseCases/QaThread\Moderation/DestroyAction`（回答有無不問で物理削除）（REQ-qa-board-052, REQ-qa-board-132）
+- [x] `app/UseCases/QaReply\Moderation/DestroyAction`（物理削除のみ）（REQ-qa-board-081, REQ-qa-board-132）
 - [x] ドメイン例外: `app/Exceptions/QaBoard/QaThreadHasRepliesException` extends `ConflictHttpException`（NFR-qa-board-003）
 - [x] ドメイン例外: `app/Exceptions/QaBoard/QaThreadAlreadyResolvedException` extends `ConflictHttpException`（NFR-qa-board-003）
 - [x] ドメイン例外: `app/Exceptions/QaBoard/QaThreadNotResolvedException` extends `ConflictHttpException`（NFR-qa-board-003）
@@ -72,8 +72,8 @@
 - [x] `resources/views/qa-board/_reply.blade.php`（回答 1 件 partial、編集 / 削除メニューを `@can` でガード）（REQ-qa-board-070, REQ-qa-board-080）
 - [x] `resources/views/qa-board/_reply-form.blade.php`（回答投稿フォーム partial、@can でガード）（REQ-qa-board-060〜063）
 - [x] `resources/views/qa-board/_filter.blade.php`（資格 select + 解決状態 radio + keyword input、`withQueryString` 引継ぎ）（REQ-qa-board-100〜103, REQ-qa-board-105）
-- [x] `resources/views/admin/qa-board/index.blade.php`（admin 用全スレッド一覧 + with_trashed トグル + モデレーション削除導線）（REQ-qa-board-130）
-- [x] `resources/views/admin/qa-board/show.blade.php`（SoftDelete 済回答含む詳細 + 削除ボタン）（REQ-qa-board-131, REQ-qa-board-132）
+- [x] `resources/views/admin/qa-board/index.blade.php`（admin 用全スレッド一覧 + モデレーション削除導線）（REQ-qa-board-130）
+- [x] `resources/views/admin/qa-board/show.blade.php`（詳細 + 削除ボタン）（REQ-qa-board-131, REQ-qa-board-132）
 
 ## Step 7: SidebarBadgeComposer 拡張
 
@@ -84,18 +84,18 @@
 ## Step 8: テスト
 
 - [x] `tests/Feature/Http/QaThread/IndexTest`（student で全公開資格スレッド閲覧 / coach で担当資格のみ / 担当外資格 ID 指定 → 403 / 各フィルタ正常系 / N+1 検知）（REQ-qa-board-030, REQ-qa-board-031, REQ-qa-board-100〜103, NFR-qa-board-002, NFR-qa-board-006）
-- [x] `tests/Feature/Http/QaThread/ShowTest`（student で公開資格スレッド閲覧 / coach 担当外で 403 / SoftDelete 済スレッドで 404 / 未公開資格スレッドで 404）（REQ-qa-board-033, REQ-qa-board-034）
+- [x] `tests/Feature/Http/QaThread/ShowTest`（student で公開資格スレッド閲覧 / coach 担当外で 403 / 未公開資格スレッドで 404）（REQ-qa-board-033, REQ-qa-board-034）
 - [x] `tests/Feature/Http/QaThread/StoreTest`（student で投稿成功 / coach 投稿で 403 / admin 投稿で 403 / 未公開資格指定で 422 / title 全角空白のみで 422 / body max 超過で 422）（REQ-qa-board-020〜025）
 - [x] `tests/Feature/Http/QaThread/UpdateTest`（投稿者本人で編集成功 / 他 student / coach / admin で 403 / 解決済スレッドの編集が可能であること）（REQ-qa-board-040〜042）
-- [x] `tests/Feature/Http/QaThread/DestroyTest`（投稿者本人 × 回答 0 件で削除成功 / 投稿者本人 × 回答ありで 409 / 投稿者本人 × SoftDelete 済回答のみありでも 409 / admin で削除成功 / coach / 他 student で 403）（REQ-qa-board-050〜054, REQ-qa-board-084）
+- [x] `tests/Feature/Http/QaThread/DestroyTest`（投稿者本人 × 回答 0 件で削除成功 / 投稿者本人 × 回答ありで 409 / admin で削除成功 / coach / 他 student で 403）（REQ-qa-board-050〜054）
 - [x] `tests/Feature/Http/QaThread/ResolveTest`（投稿者本人で resolve / 解除 / 重複 resolve で 409 / 未解決 unresolve で 409 / 他者で 403）（REQ-qa-board-090〜094）
 - [x] `tests/Feature/Http/QaReply/StoreTest`（student 公開資格で成功 / coach 担当資格で成功 / coach 担当外で 403 / admin で 403 / body 不正で 422 / 自己回答時に通知が dispatch されないこと / 他者回答時に通知が dispatch されること）（REQ-qa-board-060〜065, REQ-qa-board-110）
 - [x] `tests/Feature/Http/QaReply/UpdateTest`（投稿者本人で成功 / 他者で 403 / body 不正で 422）（REQ-qa-board-070〜072）
-- [x] `tests/Feature/Http/QaReply/DestroyTest`（投稿者本人で SoftDelete 成功 / admin で SoftDelete 成功 / 他者で 403 / スレッド `status` / `resolved_at` が変わらないことを assertDatabaseHas で確認）（REQ-qa-board-080〜083）
-- [x] `tests/Feature/Http/Admin/QaThread/IndexTest`（admin で全スレッド閲覧 / 非 admin で 403 / `with_trashed=1` で SoftDelete 含む）（REQ-qa-board-130, REQ-qa-board-132）
+- [x] `tests/Feature/Http/QaReply/DestroyTest`（投稿者本人で物理削除成功 / admin で物理削除成功 / 他者で 403 / スレッド `status` / `resolved_at` が変わらないことを assertDatabaseHas で確認）（REQ-qa-board-080〜083）
+- [x] `tests/Feature/Http/Admin/QaThread/IndexTest`（admin で全スレッド閲覧 / 非 admin で 403）（REQ-qa-board-130, REQ-qa-board-132）
 - [x] `tests/Feature/Http/Admin/QaThread/DestroyTest`（admin で回答ありスレッド削除成功 / 非 admin で 403）（REQ-qa-board-052, REQ-qa-board-132）
 - [x] `tests/Feature/Http/Admin/QaReply/DestroyTest`（admin で削除成功 / スレッド `status` / `resolved_at` 不変）（REQ-qa-board-081, REQ-qa-board-083）
-- [x] `tests/Feature/UseCases/QaThread/DestroyActionTest`（回答 0 件で削除 / 回答ありで `QaThreadHasRepliesException` / SoftDelete 済回答のみでも例外）（REQ-qa-board-050, REQ-qa-board-051）
+- [x] `tests/Feature/UseCases/QaThread/DestroyActionTest`（回答 0 件で削除 / 回答ありで `QaThreadHasRepliesException`）（REQ-qa-board-050, REQ-qa-board-051）
 - [x] `tests/Feature/UseCases/QaThread/ResolveActionTest` / `UnresolveActionTest`（状態遷移 + 重複時の例外）（REQ-qa-board-093, REQ-qa-board-094）
 - [x] `tests/Feature/UseCases/QaReply/StoreActionTest`（通知 dispatch 条件分岐 / 自己回答時に Notification::fake で 0 件確認）（REQ-qa-board-065, REQ-qa-board-110）
 - [x] `tests/Unit/Notifications/QaReplyReceivedNotificationTest`（[[notification]] 側で実装する Notification クラス本体のテスト。本 Feature では `tests/Feature/UseCases/QaReply/StoreActionTest` で `Notification::fake` + `assertSentTo` を使った dispatch 検証のみ実装）（REQ-qa-board-110〜113）

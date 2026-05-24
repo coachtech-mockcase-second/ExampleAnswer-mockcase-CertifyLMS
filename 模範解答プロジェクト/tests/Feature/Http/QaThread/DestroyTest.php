@@ -24,7 +24,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($author)->delete(route('qa-board.destroy', $thread));
 
         $response->assertRedirect(route('qa-board.index'));
-        $this->assertSoftDeleted('qa_threads', ['id' => $thread->id]);
+        $this->assertDatabaseMissing('qa_threads', ['id' => $thread->id]);
     }
 
     public function test_author_cannot_delete_when_replies_exist(): void
@@ -37,21 +37,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($author)->deleteJson(route('qa-board.destroy', $thread));
 
         $this->assertSame(403, $response->status(), 'Policy::delete が回答ありを 403 で先取り (Policy ガード)');
-        $this->assertDatabaseHas('qa_threads', ['id' => $thread->id, 'deleted_at' => null]);
-    }
-
-    public function test_author_cannot_delete_when_only_soft_deleted_replies_exist(): void
-    {
-        $author = User::factory()->student()->create();
-        $cert = Certification::factory()->published()->create();
-        $thread = QaThread::factory()->forCertification($cert)->byUser($author)->create();
-        $reply = QaReply::factory()->forThread($thread)->create();
-        $reply->delete();
-
-        $response = $this->actingAs($author)->deleteJson(route('qa-board.destroy', $thread));
-
-        $this->assertSame(403, $response->status());
-        $this->assertDatabaseHas('qa_threads', ['id' => $thread->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('qa_threads', ['id' => $thread->id]);
     }
 
     public function test_other_student_cannot_delete(): void

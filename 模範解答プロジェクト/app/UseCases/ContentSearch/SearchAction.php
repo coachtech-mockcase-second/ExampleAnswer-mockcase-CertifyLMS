@@ -57,8 +57,7 @@ final class SearchAction
             ->whereHas(
                 'chapter.part',
                 fn ($q) => $q->where('certification_id', $certificationId)
-                    ->where('status', ContentStatus::Published->value)
-                    ->whereHas('certification', fn ($cq) => $cq->whereNull('deleted_at')),
+                    ->where('status', ContentStatus::Published->value),
             )
             ->whereHas('chapter', fn ($q) => $q->where('status', ContentStatus::Published->value))
             ->where('status', ContentStatus::Published->value)

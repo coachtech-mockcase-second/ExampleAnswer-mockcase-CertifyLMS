@@ -21,15 +21,15 @@
 
 ### 機能要件 — ChatRoom と ChatMember
 
-- **REQ-chat-001**: The system shall ULID 主キー / SoftDeletes を備えた `chat_rooms` テーブルを提供し、`enrollment_id`(FK, UNIQUE) / `last_message_at`(datetime, nullable) / timestamps / `deleted_at` を保持する。**`status` カラムは持たない**。
-- **REQ-chat-002**: The system shall ULID 主キー / SoftDeletes を備えた `chat_members` テーブル(新設)を提供し、`chat_room_id`(FK, cascadeOnDelete)/ `user_id`(FK)/ `last_read_at`(datetime, nullable)/ `joined_at`(datetime, NOT NULL)/ timestamps / `deleted_at` を保持する。`(chat_room_id, user_id)` UNIQUE。
+- **REQ-chat-001**: The system shall ULID 主キーを備えた `chat_rooms` テーブルを提供し、`enrollment_id`(FK, UNIQUE) / `last_message_at`(datetime, nullable) / timestamps を保持する。**`status` カラムは持たない**。
+- **REQ-chat-002**: The system shall ULID 主キーを備えた `chat_members` テーブル(新設)を提供し、`chat_room_id`(FK, cascadeOnDelete)/ `user_id`(FK)/ `last_read_at`(datetime, nullable)/ `joined_at`(datetime, NOT NULL)/ timestamps を保持する。`(chat_room_id, user_id)` UNIQUE。
 - **REQ-chat-003**: When `Enrollment` が作成された際(`Enrollment\StoreAction` 内、E-3 eager 生成), the system shall **同一 `DB::transaction()`** で (1) `ChatRoom` を INSERT(`enrollment_id` = 新規 Enrollment.id)、(2) **受講生本人 + 当該 `Enrollment.certification` の担当コーチ集合全員** の `ChatMember` を `ChatMemberSyncService::syncForRoom($room)` で一括 INSERT(担当コーチ 0 件の場合は受講生のみ)、を実行する。**初回送信時の lazy 生成ロジックは持たない**。
 - **REQ-chat-004**: When 受講生が担当コーチ未割当(`ChatRoom.members` にコーチが 0 件)のルームに対してメッセージ送信を試みた場合, the system shall HTTP 422 で拒否し「担当コーチが割り当てられていません」エラーメッセージを返す(ルーム自体は eager 生成済みのため `ChatMember.user_id = sender` は存在する、判定は `ChatRoom->enrollment->certification->coaches` の有無で行う)。
 - **REQ-chat-005**: When 担当コーチ集合の変更(`certification_coach_assignments` 追加 / 削除)が発生した際, the system shall 本 Feature の Event Listener で対応する全 ChatRoom の `ChatMember` を同期する(E-3 eager 生成時にコーチ未割当だったルームへの後追い追加もこの経路で吸収)。
 
 ### 機能要件 — ChatMessage 送受信(テキストのみ、E-2 で添付撤回)
 
-- **REQ-chat-010**: The system shall ULID 主キー / SoftDeletes を備えた `chat_messages` テーブルを提供し、`chat_room_id`(FK, cascadeOnDelete)/ `sender_user_id`(FK)/ `body`(text, NOT NULL, max 2000)/ timestamps / `deleted_at` を保持する。
+- **REQ-chat-010**: The system shall ULID 主キーを備えた `chat_messages` テーブルを提供し、`chat_room_id`(FK, cascadeOnDelete)/ `sender_user_id`(FK)/ `body`(text, NOT NULL, max 2000)/ timestamps を保持する。
 - **REQ-chat-011**: The system shall 当事者(`ChatMember` で参加している User)のみがメッセージ送信できるよう Policy で制御する(admin は送信不可、閲覧のみ)。
 - **REQ-chat-012**: When ルーム詳細画面が表示される場合, the system shall メッセージを `created_at ASC` で時系列表示し、現在ログイン User の `ChatMember.last_read_at = now()` を UPDATE する(admin は除く)。
 - **REQ-chat-013**: When メッセージが描画される場合, the system shall 自分の送信したメッセージ / 他者(受講生 vs コーチ vs 他コーチ)を視覚的に区別表示する。
@@ -38,7 +38,7 @@
 
 ### 機能要件 — 未読・既読バッジ(ChatMember 単位、E-2 で要点明示)
 
-- **REQ-chat-030**: The system shall ログイン User の **ルーム別未読件数** を `COUNT(chat_messages WHERE chat_room_id = ? AND sender_user_id != $auth->id AND (created_at > ChatMember.last_read_at OR ChatMember.last_read_at IS NULL) AND deleted_at IS NULL)` で算出する。
+- **REQ-chat-030**: The system shall ログイン User の **ルーム別未読件数** を `COUNT(chat_messages WHERE chat_room_id = ? AND sender_user_id != $auth->id AND (created_at > ChatMember.last_read_at OR ChatMember.last_read_at IS NULL))` で算出する。
 - **REQ-chat-031**: The system shall サイドバーには **自分が ChatMember として参加しているルームのうち、未読メッセージを 1 件以上含むルームの総数** を `SidebarBadgeComposer` 経由で渡す。
 - **REQ-chat-032**: When 受講生またはコーチがルーム詳細画面を `GET` した場合, the system shall **自分自身の `ChatMember.last_read_at = now()` のみ** を UPDATE する。**他のコーチの `last_read_at` には影響しない**(個人別既読、グループ chat として自然な仕様: ある コーチが既読を付けても、別の コーチには未読バッジが残る)。
 - **REQ-chat-033**: The system shall コーチが「未読あり」ルームをドリルダウンする一覧を、`ChatMember.user_id = auth.id AND (last_read_at IS NULL OR last_read_at < ChatMessage.created_at)` を満たすルームでフィルタする。
@@ -47,7 +47,7 @@
 
 - **REQ-chat-040**: The system shall メッセージ INSERT 後、`DB::afterCommit()` で `Broadcast::on(new PrivateChannel("chat-room.{chat_room_id}"))` 経由でブロードキャストし、当該 ChatRoom の全 ChatMember に新着メッセージを即時 push する。
 - **REQ-chat-041**: The system shall `App\Events\ChatMessageSent` ブロードキャストイベントを実装し、`broadcastWith()` で `{ id, body, sender_user_id, sender_name, sender_role, created_at }` を返す(添付撤回により `attachments` フィールドなし)。
-- **REQ-chat-042**: The system shall `routes/channels.php` に `Broadcast::channel('chat-room.{chatRoomId}', fn (User $user, string $chatRoomId) => ChatMember::where('chat_room_id', $chatRoomId)->where('user_id', $user->id)->whereNull('deleted_at')->exists())` を定義し、ChatMember のみ subscribe を許可する。
+- **REQ-chat-042**: The system shall `routes/channels.php` に `Broadcast::channel('chat-room.{chatRoomId}', fn (User $user, string $chatRoomId) => ChatMember::where('chat_room_id', $chatRoomId)->where('user_id', $user->id)->exists())` を定義し、ChatMember のみ subscribe を許可する。
 - **REQ-chat-043**: The system shall chat 画面のクライアント JS(`resources/js/chat/realtime.js`)で Echo + Pusher を初期化し、`chat-room.{id}` channel を購読、`.listen('ChatMessageSent', callback)` でメッセージリストに追記する。
 - **REQ-chat-044**: The system shall Pusher 接続情報を `.env`(`PUSHER_APP_KEY` / `PUSHER_APP_SECRET` / `PUSHER_APP_ID` / `PUSHER_APP_CLUSTER`)で管理する。
 - **REQ-chat-045**: The system shall Pusher が未設定 / 通信失敗の場合でも、ページリロードで最新メッセージを取得できる構成とする(Pusher は補助、DB が真実源)。
@@ -63,7 +63,7 @@
 
 ### 機能要件 — 認可・スコープ制御
 
-- **REQ-chat-060**: The system shall `ChatRoomPolicy::view($user, $room)` を以下で判定する: `admin` は常に true / `coach` / `student` は `ChatMember::where('chat_room_id', $room->id)->where('user_id', $user->id)->whereNull('deleted_at')->exists()`。
+- **REQ-chat-060**: The system shall `ChatRoomPolicy::view($user, $room)` を以下で判定する: `admin` は常に true / `coach` / `student` は `ChatMember::where('chat_room_id', $room->id)->where('user_id', $user->id)->exists()`。
 - **REQ-chat-061**: The system shall `ChatRoomPolicy::sendMessage($user, $room)` を以下で判定する: `admin` は false / `coach` / `student` は `view` と同条件かつ `$room->enrollment->certification->coaches->count() > 0`(担当コーチ存在)。
 - **REQ-chat-062**: The system shall `ChatRoomPolicy` に **`sendMessageForEnrollment` メソッドを提供しない**(E-3 で `chat.storeFirstMessage` ルートと共に撤回、すべての送信は `chat.storeMessage` 経由で `sendMessage($user, $room)` に集約される)。
 - **REQ-chat-063**: When 受講生またはコーチが `User.status != UserStatus::InProgress` の場合, then the system shall `EnsureActiveLearning` Middleware で 403 を返す(`graduated` ユーザーは chat 利用不可)。

@@ -25,8 +25,8 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('admin.qa-board.destroy', $thread));
 
         $response->assertRedirect(route('admin.qa-board.index'));
-        $this->assertSoftDeleted('qa_threads', ['id' => $thread->id]);
-        $this->assertDatabaseHas('qa_replies', ['qa_thread_id' => $thread->id, 'deleted_at' => null]);
+        $this->assertDatabaseMissing('qa_threads', ['id' => $thread->id]);
+        $this->assertDatabaseMissing('qa_replies', ['qa_thread_id' => $thread->id]);
     }
 
     public function test_non_admin_cannot_delete(): void
@@ -39,7 +39,7 @@ class DestroyTest extends TestCase
         foreach ([$coach, $student] as $denied) {
             $response = $this->actingAs($denied)->delete(route('admin.qa-board.destroy', $thread));
             $this->assertContains($response->status(), [403, 404]);
-            $this->assertDatabaseHas('qa_threads', ['id' => $thread->id, 'deleted_at' => null]);
+            $this->assertDatabaseHas('qa_threads', ['id' => $thread->id]);
         }
     }
 }

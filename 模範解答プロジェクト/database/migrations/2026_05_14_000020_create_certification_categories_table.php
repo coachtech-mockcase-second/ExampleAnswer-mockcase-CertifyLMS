@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('name', 50);
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index('sort_order');
         });

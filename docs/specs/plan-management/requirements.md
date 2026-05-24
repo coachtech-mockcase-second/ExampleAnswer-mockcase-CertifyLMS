@@ -18,7 +18,7 @@ Certify LMS の **プラン受講モデルの中核** を担う Feature。価格
 
 ### 機能要件 — A. Plan マスタ
 
-- **REQ-plan-management-001**: The system shall ULID 主キー / `SoftDeletes` を備えた `plans` テーブルを提供し、`name`（VARCHAR(100), NOT NULL）/ `description`（TEXT, nullable）/ `duration_days`（unsigned smallint, NOT NULL, 1..3650）/ **`default_meeting_quota`（unsigned smallint, NOT NULL, 0..1000）**(N2 解消: design.md と統一) / `status` enum（`draft` / `published` / `archived`、default `draft`）/ `sort_order`（unsigned int, default 0）/ `created_by_user_id`（FK, NOT NULL）/ `updated_by_user_id`（FK, NOT NULL）/ `created_at` / `updated_at` / `deleted_at` を保持する。**`price` カラムは持たない**（決済は LMS 外で完結）。
+- **REQ-plan-management-001**: The system shall ULID 主キーを備えた `plans` テーブルを提供し、`name`（VARCHAR(100), NOT NULL）/ `description`（TEXT, nullable）/ `duration_days`（unsigned smallint, NOT NULL, 1..3650）/ **`default_meeting_quota`（unsigned smallint, NOT NULL, 0..1000）**(N2 解消: design.md と統一) / `status` enum（`draft` / `published` / `archived`、default `draft`）/ `sort_order`（unsigned int, default 0）/ `created_by_user_id`（FK, NOT NULL）/ `updated_by_user_id`（FK, NOT NULL）/ `created_at` / `updated_at` を保持する。**`price` カラムは持たない**（決済は LMS 外で完結）。
 - **REQ-plan-management-002**: The system shall `App\Enums\PlanStatus` enum（`Draft` / `Published` / `Archived`）を提供し、`label()` メソッドで日本語ラベル（`下書き` / `公開中` / `アーカイブ`）を返す。
 - **REQ-plan-management-003**: The system shall `Plan` モデルに `belongsTo(User::class, 'created_by_user_id', 'createdBy')` / `belongsTo(User::class, 'updated_by_user_id', 'updatedBy')` / `hasMany(User::class, 'plan_id')` / `hasMany(UserPlanLog::class)` の 4 リレーションを公開する。
 
@@ -28,7 +28,7 @@ Certify LMS の **プラン受講モデルの中核** を担う Feature。価格
 - **REQ-plan-management-011**: When admin が `POST /admin/plans` で Plan を作成した際, the system shall `Plan\StoreRequest` で `name` / `description` / `duration_days` / `default_meeting_quota` / `sort_order` を検証し、`status=Draft` 固定 / `created_by_user_id = $admin->id` で INSERT する。
 - **REQ-plan-management-012**: When admin が `PUT /admin/plans/{plan}` で Plan を編集した際, the system shall `Plan\UpdateRequest` で同セットを検証し、`updated_by_user_id = $admin->id` で UPDATE する。`status` は本エンドポイントで変更しない（公開状態遷移用エンドポイント REQ-020〜022 から）。
 - **REQ-plan-management-013**: If admin が `published` または `archived` 状態の Plan に対して DELETE を要求した場合, then the system shall HTTP 409 Conflict で `PlanNotDeletableException` を返す（既存 User の `plan_id` 参照整合性を守るため、`draft` のみ削除可）。
-- **REQ-plan-management-014**: When admin が `draft` 状態の Plan に対して DELETE を要求した際, the system shall (1) 当該 Plan を `User.plan_id` から参照する User が 1 人もいないことを確認、(2) SoftDelete を実施する。参照あれば `PlanInUseException`（HTTP 409）。
+- **REQ-plan-management-014**: When admin が `draft` 状態の Plan に対して DELETE を要求した際, the system shall (1) 当該 Plan を `User.plan_id` から参照する User が 1 人もいないことを確認、(2) 物理削除を実施する。参照あれば `PlanInUseException`（HTTP 409）。
 - **REQ-plan-management-015**: If `duration_days` が `0` 以下 / `3650` 超 / 非整数の場合, then the system shall FormRequest バリデーションエラー（422）。
 - **REQ-plan-management-016**: If `default_meeting_quota` が負数 / `1000` 超 / 非整数の場合, then the system shall FormRequest バリデーションエラー（422）(N2 解消: design.md と統一)。
 - **REQ-plan-management-020**: When admin が `POST /admin/plans/{plan}/publish` を呼んだ際, the system shall `Plan.status = Draft` であれば `Published` に遷移、それ以外は `PlanInvalidTransitionException`（HTTP 409）。
@@ -44,7 +44,7 @@ Certify LMS の **プラン受講モデルの中核** を担う Feature。価格
 
 ### 機能要件 — D. UserPlanLog（プラン履歴）
 
-- **REQ-plan-management-040**: The system shall ULID 主キー（SoftDelete 非採用、履歴は不可逆）を備えた `user_plan_logs` テーブルを提供し、`user_id`（FK, NOT NULL）/ `plan_id`（FK, NOT NULL）/ `event_type` enum（`assigned` / `renewed` / `canceled` / `expired`）/ `plan_started_at` datetime / `plan_expires_at` datetime / `meeting_quota_initial` unsigned smallint（renewed 時は加算分のみ）/ `changed_by_user_id` ulid nullable（FK、システム自動の場合 NULL）/ `changed_reason` string nullable（max 200）/ `occurred_at` datetime / `created_at` / `updated_at` を保持する。
+- **REQ-plan-management-040**: The system shall ULID 主キー（履歴は不可逆、INSERT only）を備えた `user_plan_logs` テーブルを提供し、`user_id`（FK, NOT NULL）/ `plan_id`（FK, NOT NULL）/ `event_type` enum（`assigned` / `renewed` / `canceled` / `expired`）/ `plan_started_at` datetime / `plan_expires_at` datetime / `meeting_quota_initial` unsigned smallint（renewed 時は加算分のみ）/ `changed_by_user_id` ulid nullable（FK、システム自動の場合 NULL）/ `changed_reason` string nullable（max 200）/ `occurred_at` datetime / `created_at` / `updated_at` を保持する。
 - **REQ-plan-management-041**: The system shall `App\Enums\UserPlanLogEventType` enum（`Assigned` / `Renewed` / `Canceled` / `Expired`）を提供する。
 - **REQ-plan-management-042**: The system shall `UserPlanLog` モデルに `belongsTo(User)` / `belongsTo(Plan)` / `belongsTo(User::class, 'changed_by_user_id', 'changedBy')` の 3 リレーションを公開する。
 - **REQ-plan-management-043**: The system shall `user_plan_logs.(user_id, occurred_at)` 複合 INDEX を提供する（ユーザー詳細画面での履歴一覧表示の高速化）。
@@ -80,7 +80,7 @@ Certify LMS の **プラン受講モデルの中核** を担う Feature。価格
 
 - **NFR-plan-management-001**: The system shall すべての状態変更を伴う Action（`Plan\StoreAction` / `Plan\UpdateAction` / `Plan\DestroyAction` / `Plan\PublishAction` / `Plan\ArchiveAction` / `ExtendCourseAction` / `GraduateUserAction`）を `DB::transaction()` で囲む。
 - **NFR-plan-management-002**: The system shall Plan 一覧の N+1 を `withCount('users')` 等で避ける。
-- **NFR-plan-management-003**: The system shall 以下 INDEX を提供: `plans.(status, sort_order)` 複合 / `plans.deleted_at` / `users.plan_id`（[[auth]] / [[user-management]] が users テーブルに index 設定） / `users.(status, plan_expires_at)` 複合（Schedule Command の高速化） / `user_plan_logs.(user_id, occurred_at)` 複合 / `user_plan_logs.plan_id`。
+- **NFR-plan-management-003**: The system shall 以下 INDEX を提供: `plans.(status, sort_order)` 複合 / `users.plan_id`（[[auth]] / [[user-management]] が users テーブルに index 設定） / `users.(status, plan_expires_at)` 複合（Schedule Command の高速化） / `user_plan_logs.(user_id, occurred_at)` 複合 / `user_plan_logs.plan_id`。
 - **NFR-plan-management-004**: The system shall ドメイン例外を `app/Exceptions/Plan/` 配下に実装する（`PlanNotDeletableException` / `PlanInUseException` / `PlanInvalidTransitionException` / `PlanNotPublishedException` / `UserNotInProgressException`）。
 - **NFR-plan-management-005**: The system shall `UserPlanLog` への記録を呼出元 Action が責務として担保する（Service ではなく Action が直接 INSERT、INSERT only）。
 - **NFR-plan-management-006**: The system shall admin 画面を Wave 0b の共通 Blade コンポーネントに準拠して構築する。

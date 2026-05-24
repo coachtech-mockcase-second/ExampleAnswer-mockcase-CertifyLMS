@@ -13,7 +13,6 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  *
  * 公開用 IndexAction との違い:
  * - `Certification.status = published` フィルタを行わない (公開停止 / draft / archived も対象)
- * - `with_trashed=true` で SoftDelete 済スレッドも含めて取得 (履歴閲覧)
  * - 担当資格による絞り込みは行わない (admin は全資格に越境可能)
  */
 final class IndexAction
@@ -23,16 +22,12 @@ final class IndexAction
      *
      * @return LengthAwarePaginator<QaThread>
      */
-    public function __invoke(array $filters, bool $withTrashed = false): LengthAwarePaginator
+    public function __invoke(array $filters): LengthAwarePaginator
     {
         $query = QaThread::query()
             ->with(['certification', 'user'])
             ->withCount('replies')
             ->orderByDesc('created_at');
-
-        if ($withTrashed) {
-            $query->withTrashed();
-        }
 
         if (! empty($filters['certification_id'])) {
             $query->where('certification_id', $filters['certification_id']);

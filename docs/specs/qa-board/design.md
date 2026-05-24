@@ -59,23 +59,23 @@ sequenceDiagram
 flowchart LR
     A[admin] -->|"GET /admin/qa-board"| L["Admin QaThreadController#index"]
     L --> AI["QaThread\Moderation/IndexAction"]
-    AI -->|"全スレッド SoftDelete 含む選択肢"| V["admin/qa-board/index.blade.php"]
+    AI -->|"全スレッド"| V["admin/qa-board/index.blade.php"]
 
     A -->|"DELETE /admin/qa-board/(thread)"| D["Admin QaThreadController#destroy"]
     D --> AD["QaThread\Moderation/DestroyAction"]
-    AD -->|"SoftDelete 回答存在不問"| DB[("qa_threads.deleted_at = now")]
+    AD -->|"物理削除 回答存在不問"| DB[("DELETE FROM qa_threads")]
 
     A -->|"DELETE /admin/qa-board/replies/(reply)"| RD["Admin QaReplyController#destroy"]
     RD --> ARD["QaReply\Moderation/DestroyAction"]
-    ARD -->|"SoftDelete スレッド状態不変"| DB2[("qa_replies.deleted_at = now")]
+    ARD -->|"物理削除 スレッド状態不変"| DB2[("DELETE FROM qa_replies")]
 ```
 
 ## データモデル
 
 ### Eloquent モデル一覧
 
-- **`QaThread`** — 質問スレッド。`HasUlids` + `SoftDeletes`。`belongsTo(Certification)` / `belongsTo(User, 'user_id')`（投稿者）/ `hasMany(QaReply)`。`scopeResolved()`（`status = resolved`）/ `scopeUnresolved()`（`status = open`）/ `scopeForCertification($id)`。`isResolved(): bool` ヘルパ（`status === QaThreadStatus::Resolved`）。`$casts` に `'status' => QaThreadStatus::class` / `'resolved_at' => 'datetime'`。
-- **`QaReply`** — 回答。`HasUlids` + `SoftDeletes`。`belongsTo(QaThread)` / `belongsTo(User, 'user_id')`（回答者）。
+- **`QaThread`** — 質問スレッド。`HasUlids`。`belongsTo(Certification)` / `belongsTo(User, 'user_id')`（投稿者）/ `hasMany(QaReply)`。`scopeResolved()`（`status = resolved`）/ `scopeUnresolved()`（`status = open`）/ `scopeForCertification($id)`。`isResolved(): bool` ヘルパ（`status === QaThreadStatus::Resolved`）。`$casts` に `'status' => QaThreadStatus::class` / `'resolved_at' => 'datetime'`。
+- **`QaReply`** — 回答。`HasUlids`。`belongsTo(QaThread)` / `belongsTo(User, 'user_id')`（回答者）。
 
 ### ER 図
 
@@ -96,7 +96,6 @@ erDiagram
         timestamp resolved_at
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at
     }
     QA_REPLIES {
         ulid id PK
@@ -105,7 +104,6 @@ erDiagram
         text body
         timestamp created_at
         timestamp updated_at
-        timestamp deleted_at
     }
 ```
 
@@ -125,11 +123,9 @@ erDiagram
 
 - `qa_threads.(certification_id, status)` 複合 INDEX: 「資格別 × 未解決フィルタ」のクエリ高速化（一覧画面のメイン経路）
 - `qa_threads.user_id` INDEX: 投稿者別検索（admin モデレーション用）
-- `qa_threads.deleted_at` INDEX: SoftDelete フィルタ
 - `qa_replies.(qa_thread_id, created_at)` 複合 INDEX: スレッド詳細での回答時系列ソート高速化
 - `qa_replies.user_id` INDEX: 回答者別検索（admin モデレーション用）
-- `qa_replies.deleted_at` INDEX: SoftDelete フィルタ
-- 外部キー: `qa_threads.certification_id → certifications.id` (`onDelete('restrict')`、`Certification` の物理削除は本 Feature でブロック)、`qa_threads.user_id → users.id` (`onDelete('restrict')`)、`qa_replies.qa_thread_id → qa_threads.id` (`onDelete('restrict')`)、`qa_replies.user_id → users.id` (`onDelete('restrict')`)
+- 外部キー: `qa_threads.certification_id → certifications.id` (`onDelete('restrict')`、`Certification` の物理削除は本 Feature でブロック)、`qa_threads.user_id → users.id` (`onDelete('restrict')`)、`qa_replies.qa_thread_id → qa_threads.id` (`onDelete('cascade')`、スレッド物理削除時に回答も同時削除)、`qa_replies.user_id → users.id` (`onDelete('restrict')`)
 - UNIQUE 制約は持たない（同一ユーザーが同一資格に複数スレッド投稿可、同一スレッドに複数回答可）
 
 ## 状態遷移
@@ -173,8 +169,8 @@ stateDiagram-v2
   - `destroy(QaThread $thread, QaReply $reply, DestroyAction $action)`
 
 - **`Admin\QaThreadController`**（admin 用、`/admin/qa-board`、`role:admin` Middleware 適用）
-  - `index(IndexRequest $request, IndexAction $action)` — 全スレッド一覧（SoftDelete 含む切替トグル）
-  - `show(QaThread $thread, ShowAction $action)` — 詳細（SoftDelete 済の回答含む）
+  - `index(IndexRequest $request, IndexAction $action)` — 全スレッド一覧
+  - `show(QaThread $thread, ShowAction $action)` — 詳細
   - `destroy(QaThread $thread, DestroyAction $action)` — モデレーション削除（回答有無不問）
 
 - **`Admin\QaReplyController`**（admin 用、`/admin/qa-board/replies`）
@@ -249,7 +245,7 @@ class DestroyAction
 }
 ```
 
-責務: 整合性チェック「`$thread->replies()->withTrashed()->count() === 0`」を行い、true なら SoftDelete。1 件以上の回答（SoftDelete 含む）があれば `QaThreadHasRepliesException`（HTTP 409）を throw。`DB::transaction` でラップ。
+責務: 整合性チェック「`$thread->replies()->count() === 0`」を行い、true なら物理削除。1 件以上の回答があれば `QaThreadHasRepliesException`（HTTP 409）を throw。`DB::transaction` でラップ。
 
 > 注: Controller の Policy（`delete`）は「投稿者本人 OR admin」を判定するが、admin の場合は本 Action ではなく `QaThread\Moderation\DestroyAction` を経由するため、本 Action に到達するのは「投稿者本人」のみ。回答件数チェックは Action 側の整合性ガードとして二重で実施（Policy で先取りしてもよい）。
 
@@ -316,7 +312,7 @@ class DestroyAction
 }
 ```
 
-責務: SoftDelete のみ。スレッドの `status` / `resolved_at` は変更しない（REQ-qa-board-083）。`DB::transaction` でラップ。
+責務: 物理削除のみ。スレッドの `status` / `resolved_at` は変更しない（REQ-qa-board-083）。`DB::transaction` でラップ。
 
 #### `QaThread\Moderation\IndexAction` / `QaThread\Moderation\ShowAction` / `QaThread\Moderation\DestroyAction`
 
@@ -325,12 +321,12 @@ namespace App\UseCases\QaThread\Moderation;
 
 class IndexAction
 {
-    public function __invoke(array $filters, bool $withTrashed = false): LengthAwarePaginator;
+    public function __invoke(array $filters): LengthAwarePaginator;
 }
 
 class ShowAction
 {
-    public function __invoke(QaThread $thread, bool $withTrashedReplies = false): QaThread;
+    public function __invoke(QaThread $thread): QaThread;
 }
 
 class DestroyAction
@@ -340,9 +336,9 @@ class DestroyAction
 ```
 
 責務:
-- `IndexAction`: 全資格・全ロールのスレッドを返す（`Certification.status = published` フィルタなし）。`$withTrashed = true` なら SoftDelete 済も含む。`certification_id` / `status` / `keyword` フィルタ。20 件ページネーション。
-- `ShowAction`: `$withTrashedReplies = true` なら SoftDelete 済の回答も eager load。
-- `DestroyAction`: 回答有無不問で SoftDelete。`DB::transaction` でラップ。
+- `IndexAction`: 全資格・全ロールのスレッドを返す（`Certification.status = published` フィルタなし）。`certification_id` / `status` / `keyword` フィルタ。20 件ページネーション。
+- `ShowAction`: 回答を eager load。
+- `DestroyAction`: 回答有無不問で物理削除（配下回答は FK cascade で同時削除）。`DB::transaction` でラップ。
 
 #### `QaReply\Moderation\DestroyAction`
 
@@ -355,7 +351,7 @@ class DestroyAction
 }
 ```
 
-責務: SoftDelete のみ。スレッドの `status` / `resolved_at` 変更なし。`DB::transaction` でラップ。
+責務: 物理削除のみ。スレッドの `status` / `resolved_at` 変更なし。`DB::transaction` でラップ。
 
 ### Service
 
@@ -416,7 +412,7 @@ class QaThreadPolicy
             return true;
         }
         return $thread->user_id === $user->id
-            && $thread->replies()->withTrashed()->doesntExist();
+            && $thread->replies()->doesntExist();
     }
 
     public function resolve(User $user, QaThread $thread): bool
@@ -487,8 +483,7 @@ public function rules(): array {
         'certification_id' => [
             'required', 'ulid',
             Rule::exists('certifications', 'id')
-                ->where('status', \App\Enums\CertificationStatus::Published->value)
-                ->whereNull('deleted_at'),
+                ->where('status', \App\Enums\CertificationStatus::Published->value),
         ],
         'title' => ['required', 'string', 'max:200', 'not_regex:/\A[\s\x{3000}]*\z/u'],
         'body' => ['required', 'string', 'max:5000', 'not_regex:/\A[\s\x{3000}]*\z/u'],
@@ -536,7 +531,7 @@ public function rules(): array {
 
 #### Admin 側
 
-`Admin\QaThread\IndexRequest` は `with_trashed` を bool として受ける以外は `QaThread\IndexRequest` と同様、`authorize()` で `$user->role === UserRole::Admin` を判定。
+`Admin\QaThread\IndexRequest` は `QaThread\IndexRequest` と同様で、`authorize()` で `$user->role === UserRole::Admin` を判定。
 
 ### Notification
 
@@ -561,8 +556,8 @@ public function rules(): array {
 
 | ファイル | 役割 |
 |---|---|
-| `admin/qa-board/index.blade.php` | admin 用全スレッド一覧（フィルタ + SoftDelete 含むトグル + モデレーション削除導線）|
-| `admin/qa-board/show.blade.php` | admin 用スレッド詳細（SoftDelete 済回答含む、各回答に削除ボタン）|
+| `admin/qa-board/index.blade.php` | admin 用全スレッド一覧（フィルタ + モデレーション削除導線）|
+| `admin/qa-board/show.blade.php` | admin 用スレッド詳細（各回答に削除ボタン）|
 
 ### 共通コンポーネント利用
 
@@ -602,14 +597,12 @@ Route::middleware('auth')->group(function () {
     // admin モデレーション（EnsureActiveLearning 不要、admin は status 制約なし）
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('/qa-board', [Admin\QaThreadController::class, 'index'])->name('qa-board.index');
-        Route::get('/qa-board/{thread}', [Admin\QaThreadController::class, 'show'])->name('qa-board.show')->withTrashed();
+        Route::get('/qa-board/{thread}', [Admin\QaThreadController::class, 'show'])->name('qa-board.show');
         Route::delete('/qa-board/{thread}', [Admin\QaThreadController::class, 'destroy'])->name('qa-board.destroy');
         Route::delete('/qa-board/replies/{reply}', [Admin\QaReplyController::class, 'destroy'])->name('qa-board.replies.destroy');
     });
 });
 ```
-
-> `withTrashed()` ルートバインディングで admin が SoftDelete 済スレッドも詳細表示できる（REQ-qa-board-131）。
 
 ## エラーハンドリング
 
@@ -617,7 +610,7 @@ Route::middleware('auth')->group(function () {
 
 - **`QaThreadHasRepliesException`** — `ConflictHttpException` 継承（HTTP 409）
   - メッセージ: 「回答が付いているスレッドは削除できません。」
-  - 発生: `QaThread\DestroyAction` で `$thread->replies()->withTrashed()->exists()` のとき
+  - 発生: `QaThread\DestroyAction` で `$thread->replies()->exists()` のとき
 - **`QaThreadAlreadyResolvedException`** — `ConflictHttpException` 継承（HTTP 409）
   - メッセージ: 「このスレッドは既に解決済です。」
   - 発生: `QaThread\ResolveAction` で `resolved_at != null` のとき
@@ -628,7 +621,7 @@ Route::middleware('auth')->group(function () {
 ### Policy 拒否 / Route Model Binding
 
 - Policy 拒否は Laravel 標準の `AccessDeniedHttpException`（HTTP 403、`resources/views/errors/403.blade.php`）
-- 存在しない / SoftDelete 済スレッドへのアクセスは Route Model Binding が `NotFoundHttpException`（HTTP 404、`resources/views/errors/404.blade.php`）を投げる
+- 存在しないスレッドへのアクセスは Route Model Binding が `NotFoundHttpException`（HTTP 404、`resources/views/errors/404.blade.php`）を投げる
 
 ### 列挙攻撃 / 担当外資格指定の防御
 

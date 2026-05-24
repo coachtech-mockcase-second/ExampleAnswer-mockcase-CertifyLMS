@@ -20,9 +20,6 @@ return new class extends Migration
             $table->string('mime_type', 100);
             $table->unsignedInteger('size_bytes');
             $table->timestamps();
-            $table->softDeletes();
-
-            $table->index(['section_id', 'deleted_at']);
         });
     }
 

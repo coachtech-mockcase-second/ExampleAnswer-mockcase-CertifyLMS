@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * SectionQuestion を 1 問解答した時の個別履歴 Model。append-only。
@@ -24,7 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class SectionQuestionAnswer extends Model
 {
     /** @use HasFactory<SectionQuestionAnswerFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'user_id',

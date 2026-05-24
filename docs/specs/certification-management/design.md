@@ -77,9 +77,9 @@ sequenceDiagram
 
 ### Eloquent モデル
 
-- **`Certification`**(v3 で 4 カラム) — `HasUlids` + `HasFactory` + `SoftDeletes`、`difficulty` enum cast / `status` enum cast / `published_at` / `archived_at` datetime cast、`belongsTo(CertificationCategory)` / `hasMany(Part)`([[content-management]]) / `hasMany(MockExam)`([[mock-exam]]) / `hasMany(Enrollment)` / `belongsToMany(User, 'certification_coach_assignments', 'certification_id', 'user_id')->withTimestamps()->wherePivot('unassigned_at', null)` を `coaches()` で公開
-- **`CertificationCategory`** — `HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo` なし、`hasMany(Certification)` / `hasMany(QuestionCategory)`
-- **`Certificate`** — `HasUlids` + `HasFactory`(SoftDelete 不要)、`issued_at` datetime cast、`belongsTo(User)` / `belongsTo(Enrollment)` / `belongsTo(Certification)`
+- **`Certification`**(v3 で 4 カラム) — `HasUlids` + `HasFactory`、`difficulty` enum cast / `status` enum cast / `published_at` / `archived_at` datetime cast、`belongsTo(CertificationCategory)` / `hasMany(Part)`([[content-management]]) / `hasMany(MockExam)`([[mock-exam]]) / `hasMany(Enrollment)` / `belongsToMany(User, 'certification_coach_assignments', 'certification_id', 'user_id')->withTimestamps()->wherePivot('unassigned_at', null)` を `coaches()` で公開(現役判定は `unassigned_at IS NULL`)
+- **`CertificationCategory`** — `HasUlids` + `HasFactory`、`belongsTo` なし、`hasMany(Certification)` / `hasMany(QuestionCategory)`
+- **`Certificate`** — `HasUlids` + `HasFactory`、`issued_at` datetime cast、`belongsTo(User)` / `belongsTo(Enrollment)` / `belongsTo(Certification)`
 
 ### ER 図(v3 で certifications 4 カラム化)
 
@@ -105,7 +105,6 @@ erDiagram
         timestamp published_at "nullable"
         timestamp archived_at "nullable"
         timestamps
-        timestamp deleted_at "nullable"
     }
     CERTIFICATES {
         ulid id PK

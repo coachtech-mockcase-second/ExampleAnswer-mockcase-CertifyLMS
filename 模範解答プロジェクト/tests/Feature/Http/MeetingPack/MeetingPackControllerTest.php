@@ -144,7 +144,7 @@ class MeetingPackControllerTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('admin.meeting-packs.destroy', $plan));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('meeting_packs', ['id' => $plan->id]);
+        $this->assertDatabaseMissing('meeting_packs', ['id' => $plan->id]);
     }
 
     public function test_admin_can_destroy_archived_plan(): void
@@ -155,7 +155,7 @@ class MeetingPackControllerTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('admin.meeting-packs.destroy', $plan));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('meeting_packs', ['id' => $plan->id]);
+        $this->assertDatabaseMissing('meeting_packs', ['id' => $plan->id]);
     }
 
     public function test_destroy_returns_409_for_published_plan(): void
@@ -166,7 +166,7 @@ class MeetingPackControllerTest extends TestCase
         $response = $this->actingAs($admin)->deleteJson(route('admin.meeting-packs.destroy', $plan));
 
         $this->assertSame(409, $response->status());
-        $this->assertDatabaseHas('meeting_packs', ['id' => $plan->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('meeting_packs', ['id' => $plan->id]);
     }
 
     public function test_destroy_via_browser_redirects_back_with_flash_error_for_published_plan(): void
@@ -180,7 +180,7 @@ class MeetingPackControllerTest extends TestCase
 
         $response->assertRedirect(route('admin.meeting-packs.show', $plan));
         $response->assertSessionHas('error');
-        $this->assertDatabaseHas('meeting_packs', ['id' => $plan->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('meeting_packs', ['id' => $plan->id]);
     }
 
     public function test_publish_transitions_draft_to_published(): void

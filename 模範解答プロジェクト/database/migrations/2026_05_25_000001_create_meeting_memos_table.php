@@ -21,7 +21,6 @@ return new class extends Migration
             $table->foreignUlid('meeting_id')->unique()->constrained('meetings')->cascadeOnDelete();
             $table->text('body');
             $table->timestamps();
-            $table->softDeletes();
         });
     }
 

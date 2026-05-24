@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 受講生 / コーチが公開で技術質問を投稿する Q&A 掲示板のスレッドを表す Model。
@@ -25,7 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class QaThread extends Model
 {
     /** @use HasFactory<QaThreadFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'certification_id',

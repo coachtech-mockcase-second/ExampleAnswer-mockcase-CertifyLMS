@@ -22,7 +22,7 @@ class DestroyTest extends TestCase
             ->delete(route('ai-chat.conversations.destroy', $conv))
             ->assertRedirect(route('ai-chat.index'));
 
-        $this->assertSoftDeleted('ai_chat_conversations', ['id' => $conv->id]);
+        $this->assertDatabaseMissing('ai_chat_conversations', ['id' => $conv->id]);
     }
 
     public function test_other_student_cannot_delete(): void
@@ -35,6 +35,6 @@ class DestroyTest extends TestCase
             ->delete(route('ai-chat.conversations.destroy', $conv))
             ->assertForbidden();
 
-        $this->assertDatabaseHas('ai_chat_conversations', ['id' => $conv->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('ai_chat_conversations', ['id' => $conv->id]);
     }
 }

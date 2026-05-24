@@ -39,18 +39,4 @@ class IndexTest extends TestCase
         }
     }
 
-    public function test_with_trashed_flag_includes_soft_deleted_threads(): void
-    {
-        $admin = User::factory()->admin()->create();
-        $cert = Certification::factory()->published()->create();
-        $alive = QaThread::factory()->forCertification($cert)->count(2)->create();
-        $trashed = QaThread::factory()->forCertification($cert)->create();
-        $trashed->delete();
-
-        $without = $this->actingAs($admin)->get(route('admin.qa-board.index'));
-        $this->assertSame(2, $without->viewData('threads')->total());
-
-        $withTrashed = $this->actingAs($admin)->get(route('admin.qa-board.index', ['with_trashed' => 1]));
-        $this->assertSame(3, $withTrashed->viewData('threads')->total());
-    }
 }

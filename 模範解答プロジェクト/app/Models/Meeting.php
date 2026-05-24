@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 1on1 面談予約を表す Model。
@@ -27,7 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Meeting extends Model
 {
     /** @use HasFactory<MeetingFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'enrollment_id',

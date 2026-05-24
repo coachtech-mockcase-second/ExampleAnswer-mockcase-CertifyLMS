@@ -9,15 +9,15 @@
 
 ### Migration
 
-- [ ] migration: `create_parts_table`(ULID + SoftDeletes + `certification_id` FK + `title string max:200` + `description text nullable` + `order unsigned smallint` + `status enum draft/published` + `published_at datetime nullable` + `(certification_id, order)` / `(certification_id, status)` 複合 INDEX + `deleted_at` INDEX)(REQ-content-management-001, REQ-content-management-002, REQ-content-management-007, NFR-content-management-003)
-- [ ] migration: `create_chapters_table`(ULID + SoftDeletes + `part_id` FK + 同上カラム + `(part_id, order)` / `(part_id, status)` INDEX)(REQ-content-management-001, REQ-content-management-003, NFR-content-management-003)
-- [ ] migration: `create_sections_table`(ULID + SoftDeletes + `chapter_id` FK + `title` + `description` + **`body longtext`(Markdown max 50000 文字)** + `order` + `status` + `published_at` + `(chapter_id, order)` / `(chapter_id, status)` / `title` 単体 INDEX)(REQ-content-management-001, REQ-content-management-003, NFR-content-management-003)
-- [ ] migration: `create_question_categories_table`(ULID + SoftDeletes + `certification_id` FK NOT NULL + `name string max:50` + `slug string max:60` + `sort_order unsigned smallint default 0` + `description text nullable max:500` + `(certification_id, slug)` UNIQUE + `(certification_id, sort_order)` INDEX)(REQ-content-management-042, NFR-content-management-003)
-- [ ] **migration: `create_section_questions_table`(v3 新構造)** — ULID + SoftDeletes + **`section_id` FK NOT NULL** `cascadeOnDelete` + `category_id` FK NOT NULL `restrictOnDelete` to `question_categories` + `body text` + `explanation text nullable` + `order unsigned smallint default 0` + `status enum draft/published` + `published_at datetime nullable` + `(section_id, status)` / `(section_id, order)` / `category_id` 複合 INDEX(REQ-content-management-001, REQ-content-management-004, REQ-content-management-007, REQ-content-management-008, NFR-content-management-003)
+- [ ] migration: `create_parts_table`(ULID + `certification_id` FK + `title string max:200` + `description text nullable` + `order unsigned smallint` + `status enum draft/published` + `published_at datetime nullable` + `(certification_id, order)` / `(certification_id, status)` 複合 INDEX)(REQ-content-management-001, REQ-content-management-002, REQ-content-management-007, NFR-content-management-003)
+- [ ] migration: `create_chapters_table`(ULID + `part_id` FK + 同上カラム + `(part_id, order)` / `(part_id, status)` INDEX)(REQ-content-management-001, REQ-content-management-003, NFR-content-management-003)
+- [ ] migration: `create_sections_table`(ULID + `chapter_id` FK + `title` + `description` + **`body longtext`(Markdown max 50000 文字)** + `order` + `status` + `published_at` + `(chapter_id, order)` / `(chapter_id, status)` / `title` 単体 INDEX)(REQ-content-management-001, REQ-content-management-003, NFR-content-management-003)
+- [ ] migration: `create_question_categories_table`(ULID + `certification_id` FK NOT NULL + `name string max:50` + `slug string max:60` + `sort_order unsigned smallint default 0` + `description text nullable max:500` + `(certification_id, slug)` UNIQUE + `(certification_id, sort_order)` INDEX)(REQ-content-management-042, NFR-content-management-003)
+- [ ] **migration: `create_section_questions_table`(v3 新構造)** — ULID + **`section_id` FK NOT NULL** `cascadeOnDelete` + `category_id` FK NOT NULL `restrictOnDelete` to `question_categories` + `body text` + `explanation text nullable` + `order unsigned smallint default 0` + `status enum draft/published` + `published_at datetime nullable` + `(section_id, status)` / `(section_id, order)` / `category_id` 複合 INDEX(REQ-content-management-001, REQ-content-management-004, REQ-content-management-007, REQ-content-management-008, NFR-content-management-003)
   - **`certification_id` カラムは持たない**(section から辿る)
   - **`difficulty` カラムは持たない**(v3 撤回)
-- [ ] **migration: `create_section_question_options_table`(v3 新構造)** — ULID + SoftDelete 不採用(delete-and-insert で同期) + `section_question_id` FK `cascadeOnDelete` + `body text` + `is_correct boolean default false` + `order unsigned smallint` + `(section_question_id, order)` INDEX(REQ-content-management-001, REQ-content-management-005, NFR-content-management-003)
-- [ ] migration: `create_section_images_table`(ULID + SoftDeletes + `section_id` FK + `path string UNIQUE` + `original_filename string` + `mime_type string` + `size_bytes unsigned int` + `(section_id, deleted_at)` INDEX)(REQ-content-management-001, REQ-content-management-006, NFR-content-management-003)
+- [ ] **migration: `create_section_question_options_table`(v3 新構造)** — ULID + `section_question_id` FK `cascadeOnDelete` + `body text` + `is_correct boolean default false` + `order unsigned smallint` + `(section_question_id, order)` INDEX(delete-and-insert で同期)(REQ-content-management-001, REQ-content-management-005, NFR-content-management-003)
+- [ ] migration: `create_section_images_table`(ULID + `section_id` FK + `path string UNIQUE` + `original_filename string` + `mime_type string` + `size_bytes unsigned int` + `section_id` INDEX)(REQ-content-management-001, REQ-content-management-006, NFR-content-management-003)
 
 ### 明示的に持たない migration(v3 撤回)
 
@@ -35,13 +35,13 @@
 
 ### Model
 
-- [ ] Model: `Part`(`HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `$casts['status' => ContentStatus::class, 'published_at' => 'datetime']` / `belongsTo(Certification)` / `hasMany(Chapter::class)` / `scopePublished` / `scopeOrdered`)(REQ-content-management-002, REQ-content-management-007)
+- [ ] Model: `Part`(`HasUlids` + `HasFactory`、`fillable` / `$casts['status' => ContentStatus::class, 'published_at' => 'datetime']` / `belongsTo(Certification)` / `hasMany(Chapter::class)` / `scopePublished` / `scopeOrdered`)(REQ-content-management-002, REQ-content-management-007)
 - [ ] Model: `Chapter`(`belongsTo(Part)` / `hasMany(Section::class)` / `scopePublished`(親 Part を whereHas) / `scopeOrdered`)(REQ-content-management-003, REQ-content-management-022)
 - [ ] Model: `Section`(`belongsTo(Chapter)` / **`hasMany(SectionQuestion::class)`(v3)** / `hasMany(SectionImage::class)` / `scopePublished`(Chapter / Part 連鎖 whereHas) / `scopeOrdered` / `scopeKeyword(?string)`)(REQ-content-management-003, REQ-content-management-007, REQ-content-management-022, REQ-content-management-070)
-- [ ] **Model: `SectionQuestion`(v3 新規)** — `HasUlids` + `HasFactory` + `SoftDeletes`、`fillable: section_id / category_id / body / explanation / order / status / published_at` / `$casts['status'=>ContentStatus::class, 'published_at'=>'datetime']` / `belongsTo(Section)` / `belongsTo(QuestionCategory, category_id)` / `hasMany(SectionQuestionOption::class)` / `hasMany(SectionQuestionAttempt)`([[quiz-answering]] テーブル) / `scopePublished` / `scopeOfSection` / `scopeByCategory(?string)` / `scopeOrdered`(REQ-content-management-004, REQ-content-management-007, REQ-content-management-008)
-- [ ] **Model: `SectionQuestionOption`(v3 新規)** — `HasUlids` + `HasFactory`(SoftDelete 不採用)、`fillable` / `$casts['is_correct'=>'boolean']` / `belongsTo(SectionQuestion)` / `scopeOrdered`(REQ-content-management-005)
-- [ ] Model: `QuestionCategory`(共有マスタ、変更なし) — `HasUlids` + `HasFactory` + `SoftDeletes`、`fillable` / `belongsTo(Certification)` / `hasMany(SectionQuestion::class)`(v3) / `hasMany(MockExamQuestion::class)`([[mock-exam]] 所有) / `scopeOrdered`(REQ-content-management-042, REQ-content-management-043)
-- [ ] Model: `SectionImage`(`HasUlids` + `HasFactory` + `SoftDeletes`、`belongsTo(Section)`)(REQ-content-management-006)
+- [ ] **Model: `SectionQuestion`(v3 新規)** — `HasUlids` + `HasFactory`、`fillable: section_id / category_id / body / explanation / order / status / published_at` / `$casts['status'=>ContentStatus::class, 'published_at'=>'datetime']` / `belongsTo(Section)` / `belongsTo(QuestionCategory, category_id)` / `hasMany(SectionQuestionOption::class)` / `hasMany(SectionQuestionAttempt)`([[quiz-answering]] テーブル) / `scopePublished` / `scopeOfSection` / `scopeByCategory(?string)` / `scopeOrdered`(REQ-content-management-004, REQ-content-management-007, REQ-content-management-008)
+- [ ] **Model: `SectionQuestionOption`(v3 新規)** — `HasUlids` + `HasFactory`、`fillable` / `$casts['is_correct'=>'boolean']` / `belongsTo(SectionQuestion)` / `scopeOrdered`(REQ-content-management-005)
+- [ ] Model: `QuestionCategory`(共有マスタ、変更なし) — `HasUlids` + `HasFactory`、`fillable` / `belongsTo(Certification)` / `hasMany(SectionQuestion::class)`(v3) / `hasMany(MockExamQuestion::class)`([[mock-exam]] 所有) / `scopeOrdered`(REQ-content-management-042, REQ-content-management-043)
+- [ ] Model: `SectionImage`(`HasUlids` + `HasFactory`、`belongsTo(Section)`)(REQ-content-management-006)
 
 ### 明示的に削除する Model(v3 撤回)
 
@@ -137,7 +137,7 @@
 ### SectionImage Action(`App\UseCases\SectionImage\`)
 
 - [ ] `StoreAction`(`Storage::disk('public')->putFileAs` + DB INSERT を `DB::transaction()` 内で実行、失敗時 `SectionImageStorageException`)(REQ-content-management-050, NFR-content-management-005)
-- [ ] `DestroyAction`(Storage 削除 + SoftDelete を 1 トランザクション)(REQ-content-management-053)
+- [ ] `DestroyAction`(Storage 削除 + 物理削除を 1 トランザクション)(REQ-content-management-053)
 
 ### SectionQuestion Action(`App\UseCases\SectionQuestion\`、v3 で大幅刷新)
 
@@ -145,14 +145,14 @@
 - [ ] **`ShowAction`** — `with('options', 'category')`
 - [ ] **`StoreAction`** — category_id × certification 一致検証 / `is_correct` ちょうど 1 検証 / `lockForUpdate` で MAX(order) 取得 / `section_questions` INSERT + `section_question_options` 一括 INSERT、`DB::transaction`(REQ-content-management-031, REQ-content-management-032, REQ-content-management-033)
 - [ ] **`UpdateAction`** — `body` / `explanation` / `category_id` UPDATE + `section_question_options` を delete-and-insert で同期、`section_id` 不可変(REQ-content-management-034, REQ-content-management-035)
-- [ ] **`DestroyAction`** — SoftDelete(SectionQuestionAttempt / SectionQuestionAnswer は `withTrashed` で参照可能)(REQ-content-management-037)
+- [ ] **`DestroyAction`** — 物理削除(SectionQuestionAttempt / SectionQuestionAnswer の `restrictOnDelete` 外部キー制約で履歴保護、回答履歴があれば削除を拒否)(REQ-content-management-037)
 - [ ] **`PublishAction`** — `status=Draft` ガード + `options.count() >= 2` + `is_correct=true count = 1` 検証 → `Published` UPDATE(REQ-content-management-036)
 - [ ] **`UnpublishAction`** — `status=Published` ガード + `Draft` UPDATE
 
 ### QuestionCategory Action(`App\UseCases\QuestionCategory\`)
 
 - [ ] `IndexAction` / `StoreAction` / `UpdateAction`
-- [ ] **`DestroyAction`(v3 で SectionQuestion + MockExamQuestion 両参照確認)** — `SectionQuestion::where('category_id')->count() > 0` または `MockExamQuestion::where('category_id')->count() > 0` で `QuestionCategoryInUseException`、両ゼロで SoftDelete(REQ-content-management-046)
+- [ ] **`DestroyAction`(v3 で SectionQuestion + MockExamQuestion 両参照確認)** — `SectionQuestion::where('category_id')->count() > 0` または `MockExamQuestion::where('category_id')->count() > 0` で `QuestionCategoryInUseException`、両ゼロで物理削除(REQ-content-management-046)
 
 ### ContentSearch Action(`App\UseCases\ContentSearch\`)
 
@@ -223,14 +223,14 @@
 - [ ] `tests/Feature/Http/Admin/Section/CrudTest.php`(body 更新 + Preview API)
 - [ ] **`tests/Feature/Http/Admin/SectionQuestion/CrudTest.php`(v3 rename)** — Store / Update / Publish / Destroy + category_id 不一致 422 + is_correct 多重 422 + options 1 件で 422 + 公開化条件チェック + 担当外 coach 403 + `difficulty` 関連テスト削除
 - [ ] `tests/Feature/Http/Admin/SectionImage/StoreTest.php`(Storage 保存 + サイズ/MIME 422)
-- [ ] `tests/Feature/Http/Admin/QuestionCategory/CrudTest.php`(Store + UNIQUE + **Destroy ガード(SectionQuestion + MockExamQuestion 両参照確認)** + 認可)
+- [ ] `tests/Feature/Http/Admin/QuestionCategory/CrudTest.php`(Store + UNIQUE + **Destroy ガード(SectionQuestion + MockExamQuestion 両参照確認、両ゼロで物理削除)** + 認可)
 - [ ] `tests/Feature/Http/ContentSearch/SearchTest.php`(登録資格内 / Published のみ / cascade visibility / `graduated` ユーザー 403 / 空キーワードゼロ件)
 
 ### Feature(UseCases)
 
 - [ ] `tests/Feature/UseCases/SectionQuestion/StoreActionTest.php`(category_id 不一致 / is_correct 多重 / options delete-and-insert)
 - [ ] `tests/Feature/UseCases/SectionQuestion/PublishActionTest.php`(options 1 件で 409 / is_correct ≠ 1 で 409 / 正常 200)
-- [ ] `tests/Feature/UseCases/QuestionCategory/DestroyActionTest.php`(SectionQuestion 参照あり 409 / MockExamQuestion 参照あり 409 / 両ゼロで SoftDelete)
+- [ ] `tests/Feature/UseCases/QuestionCategory/DestroyActionTest.php`(SectionQuestion 参照あり 409 / MockExamQuestion 参照あり 409 / 両ゼロで物理削除)
 
 ### Unit(Services)
 

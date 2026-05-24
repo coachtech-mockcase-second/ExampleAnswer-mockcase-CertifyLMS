@@ -29,11 +29,9 @@ return new class extends Migration
             $table->string('status')->default('open');
             $table->dateTime('resolved_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['certification_id', 'status']);
             $table->index('user_id');
-            $table->index('deleted_at');
         });
     }
 

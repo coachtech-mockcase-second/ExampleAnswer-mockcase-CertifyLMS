@@ -14,8 +14,7 @@ use Illuminate\Support\Facades\Schema;
  * - model / input_tokens / output_tokens / response_time_ms: assistant の応答メタ
  * - error_detail: assistant エラー時の内部ログ。受講生には汎用文言を表示する
  *
- * SoftDelete は持たない。親 ai_chat_conversation の SoftDelete は論理削除であり、メッセージは
- * cascade で物理削除されない (親が deleted_at にセットされても messages は残る) ことに注意。
+ * 親 ai_chat_conversation が物理削除されるとメッセージも cascade で物理削除される。
  */
 return new class extends Migration
 {

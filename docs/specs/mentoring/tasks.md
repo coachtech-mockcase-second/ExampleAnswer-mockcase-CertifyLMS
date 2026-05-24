@@ -17,15 +17,15 @@
 - **`users.meeting_url` カラム追加 Migration は [[auth]] が所有**（D4 確定、本 Feature では作成しない、auth Step 1 完了済が前提）
 - [ ] `app/Models/User.php` に `meetingsAsCoach()` / `meetingsAsStudent()` / `coachAvailabilities()` リレーション追加（[[auth]] 既存モデル拡張、`meeting_url` の `$fillable` は [[auth]] で追加済前提）
 - [ ] `app/Enums/MeetingStatus.php` — backed enum **3 値** `Reserved` / `Canceled` / `Completed` + `label()` 日本語ラベル（REQ-mentoring-002、v3 で 6 → 3 値）
-- [ ] `database/migrations/{date}_create_meetings_table.php` — ULID 主キー / `enrollment_id` / `coach_id` / `student_id` / `scheduled_at` / `status` / `topic` / `canceled_by_user_id` / `canceled_at` / `meeting_url_snapshot` / **`completed_at`**（v3 追加） / **`meeting_quota_transaction_id`**（v3 追加） / timestamps / softDeletes + **`(coach_id, scheduled_at)` UNIQUE 制約**（v3 改修）+ 3 つの複合 INDEX（REQ-mentoring-001, 004）
+- [ ] `database/migrations/{date}_create_meetings_table.php` — ULID 主キー / `enrollment_id` / `coach_id` / `student_id` / `scheduled_at` / `status` / `topic` / `canceled_by_user_id` / `canceled_at` / `meeting_url_snapshot` / **`completed_at`**（v3 追加） / **`meeting_quota_transaction_id`**（v3 追加） / timestamps + **`(coach_id, scheduled_at)` UNIQUE 制約**（v3 改修）+ 3 つの複合 INDEX（REQ-mentoring-001, 004）
   - 旧カラム `rejected_reason` / `started_at` / `ended_at` は持たない（v3 撤回）
-- [ ] `app/Models/Meeting.php` — `HasUlids` + `SoftDeletes`、`$fillable` / `$casts`（status を `MeetingStatus::class` cast、`scheduled_at` / `canceled_at` / `completed_at` を datetime）、**6 リレーション**（enrollment / coach / student / canceledBy / meetingMemo / **quotaTransaction**）、`scopeUpcoming()`（`status = reserved AND scheduled_at >= now()`）/ `scopePast()`（`status IN (canceled, completed)`）/ `scopeForCoach()` / `scopeForStudent()`（REQ-mentoring-003, 064）
+- [ ] `app/Models/Meeting.php` — `HasUlids`、`$fillable` / `$casts`（status を `MeetingStatus::class` cast、`scheduled_at` / `canceled_at` / `completed_at` を datetime）、**6 リレーション**（enrollment / coach / student / canceledBy / meetingMemo / **quotaTransaction**）、`scopeUpcoming()`（`status = reserved AND scheduled_at >= now()`）/ `scopePast()`（`status IN (canceled, completed)`）/ `scopeForCoach()` / `scopeForStudent()`（REQ-mentoring-003, 064）
 - [ ] `database/factories/MeetingFactory.php` — `reserved()` / `canceled()` / `completed()` state 提供。`forCoach(User)` / `forStudent(User)` / `forEnrollment(Enrollment)` ヘルパ（v3 で旧 state 削除）
-- [ ] `database/migrations/{date}_create_meeting_memos_table.php` — ULID 主キー / `meeting_id` UNIQUE FK cascade / `body` text / timestamps / softDeletes（REQ-mentoring-016）
-- [ ] `app/Models/MeetingMemo.php` — `HasUlids` + `SoftDeletes`、`$fillable`、`belongsTo(Meeting)`（REQ-mentoring-017）
+- [ ] `database/migrations/{date}_create_meeting_memos_table.php` — ULID 主キー / `meeting_id` UNIQUE FK cascade / `body` text / timestamps（REQ-mentoring-016）
+- [ ] `app/Models/MeetingMemo.php` — `HasUlids`、`$fillable`、`belongsTo(Meeting)`（REQ-mentoring-017）
 - [ ] `database/factories/MeetingMemoFactory.php` — `forMeeting(Meeting)` ヘルパ
-- [ ] `database/migrations/{date}_create_coach_availabilities_table.php` — ULID 主キー / `coach_id` FK / `day_of_week` tinyint / `start_time` / `end_time` / `is_active` / timestamps / softDeletes + 2 つの複合 INDEX（REQ-mentoring-010, 011）
-- [ ] `app/Models/CoachAvailability.php` — `HasUlids` + `SoftDeletes`、`$fillable` / `$casts`（is_active を boolean）、`belongsTo(User, 'coach_id', 'coach')`、`scopeActive()` / `scopeForDay(int $dow)`
+- [ ] `database/migrations/{date}_create_coach_availabilities_table.php` — ULID 主キー / `coach_id` FK / `day_of_week` tinyint / `start_time` / `end_time` / `is_active` / timestamps + 2 つの複合 INDEX（REQ-mentoring-010, 011）
+- [ ] `app/Models/CoachAvailability.php` — `HasUlids`、`$fillable` / `$casts`（is_active を boolean）、`belongsTo(User, 'coach_id', 'coach')`、`scopeActive()` / `scopeForDay(int $dow)`
 - [ ] `database/factories/CoachAvailabilityFactory.php` — `forCoach(User)` / `active()` / `inactive()` / `monday()` / `tuesday()` ... state 提供
 
 ## Step 2: Policy

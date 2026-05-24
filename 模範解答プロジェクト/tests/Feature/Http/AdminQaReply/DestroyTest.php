@@ -27,7 +27,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($admin)->delete(route('admin.qa-board.replies.destroy', $reply));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('qa_replies', ['id' => $reply->id]);
+        $this->assertDatabaseMissing('qa_replies', ['id' => $reply->id]);
 
         $thread->refresh();
         $this->assertSame(QaThreadStatus::Resolved, $thread->status);

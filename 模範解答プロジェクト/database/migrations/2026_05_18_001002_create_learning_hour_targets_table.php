@@ -21,7 +21,6 @@ return new class extends Migration
                 ->restrictOnDelete();
             $table->unsignedSmallInteger('target_total_hours');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->unique('enrollment_id');
         });

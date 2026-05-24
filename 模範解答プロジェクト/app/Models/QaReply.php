@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 質問掲示板スレッドへの回答を表す Model。
@@ -22,7 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class QaReply extends Model
 {
     /** @use HasFactory<QaReplyFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'qa_thread_id',

@@ -7,9 +7,9 @@
 
 ## Step 1: Migration & Model
 
-- [x] migration: `create_section_progresses_table`(ULID PK + SoftDeletes + `(enrollment_id, section_id)` UNIQUE + `(section_id, deleted_at)` 複合 INDEX、FK は `restrictOnDelete`)(REQ-learning-001)
-- [x] migration: `create_learning_sessions_table`(ULID PK + SoftDeletes + `user_id` / `enrollment_id` / `section_id` FK 全 `restrictOnDelete` + `started_at` / `ended_at nullable` / `duration_seconds nullable unsigned` / `auto_closed boolean default false` + `(user_id, started_at)` / `(enrollment_id, started_at)` / `(user_id, ended_at)` / `(enrollment_id, section_id)` 複合 INDEX)(REQ-learning-002)
-- [x] migration: `create_learning_hour_targets_table`(ULID PK + SoftDeletes + `enrollment_id` UNIQUE + `target_total_hours unsigned smallint 1..9999`)(REQ-learning-003)
+- [x] migration: `create_section_progresses_table`(ULID PK + `(enrollment_id, section_id)` UNIQUE、FK は `restrictOnDelete`)(REQ-learning-001)
+- [x] migration: `create_learning_sessions_table`(ULID PK + `user_id` / `enrollment_id` / `section_id` FK 全 `restrictOnDelete` + `started_at` / `ended_at nullable` / `duration_seconds nullable unsigned` / `auto_closed boolean default false` + `(user_id, started_at)` / `(enrollment_id, started_at)` / `(user_id, ended_at)` / `(enrollment_id, section_id)` 複合 INDEX)(REQ-learning-002)
+- [x] migration: `create_learning_hour_targets_table`(ULID PK + `enrollment_id` UNIQUE + `target_total_hours unsigned smallint 1..9999`)(REQ-learning-003)
 - [x] Model: `App\Models\SectionProgress`(`fillable` / `$casts['completed_at' => 'datetime']` / `belongsTo(Enrollment)` / `belongsTo(Section)` / `scopeCompleted`)
 - [x] Model: `App\Models\LearningSession`(`fillable` / 各種 cast / `belongsTo(User/Enrollment/Section)` / `scopeOpen` / `scopeClosed` / `scopeForUser` / `scopeForEnrollment` / `scopeOnDate`)
 - [x] Model: `App\Models\LearningHourTarget`(`fillable` / `belongsTo(Enrollment)` / `scopeActive`)
@@ -62,8 +62,8 @@
 
 ### SectionProgress Action(`App\UseCases\SectionProgress\`)
 
-- [x] **`MarkReadAction`** — cascade visibility 検証 + **Enrollment 状態検証(`learning + passed` 許容、`failed` で 409)**(v3) + `withTrashed + lockForUpdate + restore + UPDATE / 新規 INSERT` 分岐
-- [x] `UnmarkReadAction`(冪等 SoftDelete)
+- [x] **`MarkReadAction`** — cascade visibility 検証 + **Enrollment 状態検証(`learning + passed` 許容、`failed` で 409)**(v3) + `lockForUpdate + UPDATE / 新規 INSERT` 分岐
+- [x] `UnmarkReadAction`(冪等な物理削除)
 
 ### LearningSession Action(`App\UseCases\LearningSession\`)
 
@@ -74,8 +74,8 @@
 ### LearningHourTarget Action(`App\UseCases\LearningHourTarget\`)
 
 - [x] `ShowAction`(`LearningHourTargetService::compute` 同梱)
-- [x] `UpsertAction`(`withTrashed + lockForUpdate + restore + UPDATE / 新規 INSERT` 分岐)
-- [x] `DestroyAction`(冪等 SoftDelete)
+- [x] `UpsertAction`(`lockForUpdate + UPDATE / 新規 INSERT` 分岐)
+- [x] `DestroyAction`(冪等な物理削除)
 
 ### Service(`App\Services\`)
 
@@ -132,8 +132,8 @@
 ### Feature(HTTP)
 
 - [x] `Http/Learning/BrowseControllerTest.php`(Index redirect / 認可分岐 / Section auto-start / `passed`・`failed` 動作、`graduated` 403)
-- [x] `Http/Learning/SectionProgressControllerTest.php`(`learning` / `passed` で 200、`failed` で 409、Draft 409、冪等 SoftDelete + restore、認可)
-- [x] `Http/Learning/LearningHourTargetControllerTest.php`(show / upsert / destroy + バリデーション + SoftDelete 復元)
+- [x] `Http/Learning/SectionProgressControllerTest.php`(`learning` / `passed` で 200、`failed` で 409、Draft 409、冪等な物理削除 + 再マーク UPDATE、認可)
+- [x] `Http/Learning/LearningHourTargetControllerTest.php`(show / upsert / destroy + バリデーション + UPSERT 動作)
 
 ### Unit(Services / Policies)
 

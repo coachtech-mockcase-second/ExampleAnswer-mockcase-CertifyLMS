@@ -35,10 +35,8 @@ return new class extends Migration
                 ->constrained('users')
                 ->restrictOnDelete();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['certification_id', 'is_published', 'order']);
-            $table->index(['certification_id', 'deleted_at']);
         });
 
         Schema::create('mock_exam_questions', function (Blueprint $table) {
@@ -53,7 +51,6 @@ return new class extends Migration
             $table->text('explanation')->nullable();
             $table->unsignedSmallInteger('order')->default(0);
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['mock_exam_id', 'order']);
         });
@@ -67,7 +64,6 @@ return new class extends Migration
             $table->boolean('is_correct');
             $table->unsignedSmallInteger('order');
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['mock_exam_question_id', 'order']);
         });
@@ -95,7 +91,6 @@ return new class extends Migration
             $table->decimal('score_percentage', 5, 2)->nullable();
             $table->boolean('pass')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['enrollment_id', 'status']);
             $table->index(['mock_exam_id', 'pass']);

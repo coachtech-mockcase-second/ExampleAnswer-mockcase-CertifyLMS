@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 担当コーチの面談可能時間枠を表す Model(曜日 × 開始時刻 × 終了時刻の繰り返し枠)。
@@ -24,7 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class CoachAvailability extends Model
 {
     /** @use HasFactory<CoachAvailabilityFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'coach_id',

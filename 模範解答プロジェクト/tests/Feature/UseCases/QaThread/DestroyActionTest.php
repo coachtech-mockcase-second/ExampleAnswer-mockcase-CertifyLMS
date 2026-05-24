@@ -21,7 +21,7 @@ class DestroyActionTest extends TestCase
 
         app(DestroyAction::class)($thread);
 
-        $this->assertSoftDeleted('qa_threads', ['id' => $thread->id]);
+        $this->assertDatabaseMissing('qa_threads', ['id' => $thread->id]);
     }
 
     public function test_throws_exception_when_replies_exist(): void
@@ -34,18 +34,8 @@ class DestroyActionTest extends TestCase
         try {
             app(DestroyAction::class)($thread);
         } finally {
-            $this->assertDatabaseHas('qa_threads', ['id' => $thread->id, 'deleted_at' => null]);
+            $this->assertDatabaseHas('qa_threads', ['id' => $thread->id]);
         }
     }
 
-    public function test_throws_exception_when_only_soft_deleted_replies_exist(): void
-    {
-        $thread = QaThread::factory()->create();
-        $reply = QaReply::factory()->forThread($thread)->create();
-        $reply->delete();
-
-        $this->expectException(QaThreadHasRepliesException::class);
-
-        app(DestroyAction::class)($thread);
-    }
 }

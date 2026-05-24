@@ -52,7 +52,7 @@ class CoachGoogleCredentialControllerTest extends TestCase
         $response = $this->actingAs($coach)->delete(route('settings.google-calendar.destroy'));
 
         $response->assertRedirect(route('settings.profile.edit', ['tab' => 'meeting']));
-        $this->assertSoftDeleted('coach_google_credentials', ['id' => $credential->id]);
+        $this->assertDatabaseMissing('coach_google_credentials', ['id' => $credential->id]);
     }
 
     public function test_callback_rejects_mismatched_state(): void

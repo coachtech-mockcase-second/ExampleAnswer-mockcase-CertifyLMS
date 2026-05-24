@@ -27,7 +27,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($author)->delete(route('qa-board.replies.destroy', ['thread' => $thread->id, 'reply' => $reply->id]));
 
         $response->assertRedirect();
-        $this->assertSoftDeleted('qa_replies', ['id' => $reply->id]);
+        $this->assertDatabaseMissing('qa_replies', ['id' => $reply->id]);
 
         $thread->refresh();
         $this->assertSame(QaThreadStatus::Resolved, $thread->status, 'スレッド状態は変わらない');
@@ -45,7 +45,7 @@ class DestroyTest extends TestCase
         $response = $this->actingAs($other)->delete(route('qa-board.replies.destroy', ['thread' => $thread->id, 'reply' => $reply->id]));
 
         $response->assertForbidden();
-        $this->assertDatabaseHas('qa_replies', ['id' => $reply->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('qa_replies', ['id' => $reply->id]);
     }
 
     public function test_coach_other_than_author_cannot_delete(): void

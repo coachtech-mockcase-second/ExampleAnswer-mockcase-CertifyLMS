@@ -6,7 +6,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Relations\Pivot;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 資格 × 担当コーチの割当を表す Pivot Model。
@@ -16,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class CertificationCoachAssignment extends Pivot
 {
-    use HasUlids, SoftDeletes;
+    use HasUlids;
 
     public $incrementing = false;
 

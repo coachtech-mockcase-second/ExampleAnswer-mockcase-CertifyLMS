@@ -96,7 +96,6 @@ class AttachTest extends TestCase
             'assigned_by_user_id' => $admin->id,
             'assigned_at' => now()->subDays(10),
             'unassigned_at' => now()->subDay(),
-            'deleted_at' => now()->subDay(),
         ]);
 
         $this->actingAs($admin)->post(
@@ -107,7 +106,6 @@ class AttachTest extends TestCase
             'certification_id' => $cert->id,
             'user_id' => $coach->id,
             'unassigned_at' => null,
-            'deleted_at' => null,
         ]);
     }
 

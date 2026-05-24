@@ -49,7 +49,6 @@ final class StoreAction
         $certification = Certification::query()
             ->where('id', $validated['certification_id'])
             ->where('status', CertificationStatus::Published->value)
-            ->whereNull('deleted_at')
             ->first();
 
         if ($certification === null) {

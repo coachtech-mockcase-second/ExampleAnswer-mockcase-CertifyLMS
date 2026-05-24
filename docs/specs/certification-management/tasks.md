@@ -9,11 +9,11 @@
 
 ### Migration
 
-- [ ] `database/migrations/{date}_create_certification_categories_table.php`(ULID + SoftDeletes + `slug` UNIQUE + `sort_order` INDEX)
-- [ ] **`database/migrations/{date}_create_certifications_table.php`(v3 で 4 カラム化)** — ULID + SoftDeletes + **`name` string max:100 NOT NULL** + **`category_id` FK restrict** + **`difficulty` enum**(`beginner` / `intermediate` / `advanced`) + **`description` text nullable** + `status` enum + `created_by_user_id` / `updated_by_user_id` FK restrict + `published_at` / `archived_at` datetime nullable + `(status, category_id)` 複合 INDEX(v3 で維持) + `deleted_at` INDEX
+- [ ] `database/migrations/{date}_create_certification_categories_table.php`(ULID + `slug` UNIQUE + `sort_order` INDEX)
+- [ ] **`database/migrations/{date}_create_certifications_table.php`(v3 で 4 カラム化)** — ULID + **`name` string max:100 NOT NULL** + **`category_id` FK restrict** + **`difficulty` enum**(`beginner` / `intermediate` / `advanced`) + **`description` text nullable** + `status` enum + `created_by_user_id` / `updated_by_user_id` FK restrict + `published_at` / `archived_at` datetime nullable + `(status, category_id)` 複合 INDEX(v3 で維持)
   - **`code` / `slug` / `passing_score` / `total_questions` / `exam_duration_minutes` カラムは持たない**(v3 撤回)
   - **`code` UNIQUE INDEX は持たない**(v3 撤回)
-- [ ] `database/migrations/{date}_create_certification_coach_assignments_table.php`(ULID + SoftDeletes + `certification_id` / `user_id` / `assigned_by_user_id` FK restrict + `assigned_at` + `unassigned_at` nullable + UNIQUE(`certification_id`, `user_id`) where deleted_at IS NULL)
+- [ ] `database/migrations/{date}_create_certification_coach_assignments_table.php`(ULID + `certification_id` / `user_id` / `assigned_by_user_id` FK restrict + `assigned_at` + `unassigned_at` nullable + 現役判定は `unassigned_at IS NULL` で表現)
 - [ ] `database/migrations/{date}_create_certificates_table.php`(ULID + `user_id` / `enrollment_id` UNIQUE / `certification_id` FK restrict + `serial_no` string UNIQUE + `pdf_path` string + `issued_at` datetime + timestamps)
 
 ### Enum
@@ -23,9 +23,9 @@
 
 ### Model
 
-- [ ] **`App\Models\Certification`(v3 で 4 カラム)** — `HasUlids` + `HasFactory` + `SoftDeletes` + fillable + `$casts['difficulty'=>CertificationDifficulty, 'status'=>CertificationStatus, 'published_at'=>'datetime', 'archived_at'=>'datetime']` + `belongsTo(CertificationCategory)` + `hasMany(Part)` + `hasMany(MockExam)` + `hasMany(Enrollment)` + `belongsToMany(User, 'certification_coach_assignments')->wherePivot('unassigned_at', null)` を `coaches()` で公開 + `scopePublished` / `scopeAssignedTo(User)` / `scopeKeyword(?string)`(**v3 で `name` のみ LIKE**)
-- [ ] `App\Models\CertificationCategory`(`HasUlids` + `HasFactory` + `SoftDeletes` + `hasMany(Certification)` + `hasMany(QuestionCategory)`)
-- [ ] `App\Models\Certificate`(`HasUlids` + `HasFactory`、SoftDelete 不採用 + `$casts['issued_at'=>'datetime']` + `belongsTo(User)` + `belongsTo(Enrollment)` + `belongsTo(Certification)`)
+- [ ] **`App\Models\Certification`(v3 で 4 カラム)** — `HasUlids` + `HasFactory` + fillable + `$casts['difficulty'=>CertificationDifficulty, 'status'=>CertificationStatus, 'published_at'=>'datetime', 'archived_at'=>'datetime']` + `belongsTo(CertificationCategory)` + `hasMany(Part)` + `hasMany(MockExam)` + `hasMany(Enrollment)` + `belongsToMany(User, 'certification_coach_assignments')->wherePivot('unassigned_at', null)` を `coaches()` で公開(現役判定は `unassigned_at IS NULL`) + `scopePublished` / `scopeAssignedTo(User)` / `scopeKeyword(?string)`(**v3 で `name` のみ LIKE**)
+- [ ] `App\Models\CertificationCategory`(`HasUlids` + `HasFactory` + `hasMany(Certification)` + `hasMany(QuestionCategory)`)
+- [ ] `App\Models\Certificate`(`HasUlids` + `HasFactory` + `$casts['issued_at'=>'datetime']` + `belongsTo(User)` + `belongsTo(Enrollment)` + `belongsTo(Certification)`)
 
 ### Factory
 
@@ -110,7 +110,7 @@
 - [ ] **`Admin/Certification/StoreTest`(v3 更新)** — name + category_id + difficulty + description で 200 / **`code` / `passing_score` 等送信時に DB に保存されない**(rule で許容しない) / 必須欠落で 422
 - [ ] **`Admin/Certification/UpdateTest`(v3 更新)** — 4 フィールドのみ UPDATE 可能
 - [ ] `Admin/Certification/PublishTest` / `UnpublishTest` / `ArchiveTest`
-- [ ] `Admin/Certification/DestroyTest`(draft + Enrollment 0 件で SoftDelete / それ以外 409)
+- [ ] `Admin/Certification/DestroyTest`(draft + Enrollment 0 件で物理削除 / それ以外 409)
 - [ ] `Admin/CertificationCoachAssignment/{Attach,Detach}Test`(event 発火検証)
 - [ ] `Catalog/IndexTest` / `ShowTest`(**`EnsureActiveLearning` 適用**(v3)、graduated で 403)
 - [ ] **`Certificate/DownloadTest`(v3)** — 本人 200 / 他者 403 / **`graduated` でも 200**(EnsureActiveLearning 非適用、v3) / admin 全件 200 / coach 担当のみ 200

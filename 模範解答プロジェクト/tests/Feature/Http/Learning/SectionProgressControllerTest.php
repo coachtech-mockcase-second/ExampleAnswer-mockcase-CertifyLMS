@@ -37,7 +37,6 @@ class SectionProgressControllerTest extends TestCase
         $this->assertDatabaseHas('section_progresses', [
             'enrollment_id' => $enrollment->id,
             'section_id' => $section->id,
-            'deleted_at' => null,
         ]);
     }
 
@@ -89,27 +88,7 @@ class SectionProgressControllerTest extends TestCase
             ->delete(route('learning.sections.unmarkRead', $section))
             ->assertRedirect();
 
-        $this->assertSoftDeleted('section_progresses', ['id' => $progress->id]);
-    }
-
-    public function test_mark_read_restores_soft_deleted_progress(): void
-    {
-        [$student, $section] = $this->buildSection();
-        $enrollment = $student->enrollments()->first();
-        $progress = SectionProgress::factory()
-            ->forEnrollment($enrollment)
-            ->forSection($section)
-            ->create();
-        $progress->delete();
-
-        $this->actingAs($student)
-            ->post(route('learning.sections.markRead', $section))
-            ->assertRedirect();
-
-        $this->assertDatabaseHas('section_progresses', [
-            'id' => $progress->id,
-            'deleted_at' => null,
-        ]);
+        $this->assertDatabaseMissing('section_progresses', ['id' => $progress->id]);
     }
 
     public function test_mark_read_forbidden_for_non_enrolled_student(): void

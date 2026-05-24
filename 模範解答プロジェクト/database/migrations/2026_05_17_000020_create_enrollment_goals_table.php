@@ -24,7 +24,6 @@ return new class extends Migration
             $table->date('target_date')->nullable();
             $table->timestamp('achieved_at')->nullable();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->index(['enrollment_id', 'achieved_at']);
         });

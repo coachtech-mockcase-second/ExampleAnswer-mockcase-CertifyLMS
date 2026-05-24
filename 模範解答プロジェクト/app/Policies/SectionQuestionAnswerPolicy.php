@@ -52,10 +52,6 @@ class SectionQuestionAnswerPolicy
             return false;
         }
 
-        if ($question->trashed() || $section->trashed() || $chapter->trashed() || $part->trashed()) {
-            return false;
-        }
-
         return $auth->enrollments()
             ->where('certification_id', $part->certification_id)
             ->whereIn('status', [

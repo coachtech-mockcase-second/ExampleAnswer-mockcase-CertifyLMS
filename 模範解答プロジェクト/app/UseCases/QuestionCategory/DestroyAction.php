@@ -25,13 +25,11 @@ final class DestroyAction
     public function __invoke(QuestionCategory $category): void
     {
         $sectionQuestionCount = SectionQuestion::where('category_id', $category->id)
-            ->whereNull('deleted_at')
             ->count();
 
         $mockExamQuestionCount = Schema::hasTable('mock_exam_questions')
             ? DB::table('mock_exam_questions')
                 ->where('category_id', $category->id)
-                ->whereNull('deleted_at')
                 ->count()
             : 0;
 

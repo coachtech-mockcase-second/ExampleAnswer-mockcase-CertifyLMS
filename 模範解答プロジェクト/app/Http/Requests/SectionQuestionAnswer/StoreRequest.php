@@ -50,7 +50,7 @@ class StoreRequest extends FormRequest
                 Rule::requiredIf(fn () => $this->input('source') === AnswerSource::SectionQuiz->value),
                 'nullable',
                 'ulid',
-                Rule::exists('sections', 'id')->whereNull('deleted_at'),
+                Rule::exists('sections', 'id'),
             ],
             'enrollment_id' => [
                 Rule::requiredIf(fn () => $this->input('source') === AnswerSource::WeakDrill->value),
@@ -64,7 +64,7 @@ class StoreRequest extends FormRequest
                 Rule::requiredIf(fn () => $this->input('source') === AnswerSource::WeakDrill->value),
                 'nullable',
                 'ulid',
-                Rule::exists('question_categories', 'id')->whereNull('deleted_at'),
+                Rule::exists('question_categories', 'id'),
             ],
         ];
     }

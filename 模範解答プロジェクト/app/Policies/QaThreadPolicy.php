@@ -16,7 +16,7 @@ use App\Models\User;
  * - view: admin 全件 / coach は担当資格 / student は公開資格のみ
  * - create: student のみ (REQ-qa-board-021)
  * - update / resolve / unresolve: 投稿者本人のみ (admin であっても代行不可)
- * - delete: 投稿者本人かつ回答 0 件 (SoftDelete 含む) / または admin
+ * - delete: 投稿者本人かつ回答 0 件 / または admin
  */
 class QaThreadPolicy
 {
@@ -51,7 +51,7 @@ class QaThreadPolicy
         }
 
         return $thread->user_id === $user->id
-            && $thread->replies()->withTrashed()->doesntExist();
+            && $thread->replies()->doesntExist();
     }
 
     public function resolve(User $user, QaThread $thread): bool

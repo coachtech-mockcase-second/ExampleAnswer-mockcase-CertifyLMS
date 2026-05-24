@@ -21,7 +21,7 @@
         <div>
             <h1 class="text-2xl font-bold text-ink-900">質問掲示板モデレーション</h1>
             <p class="text-sm text-ink-500 mt-1 max-w-2xl">
-                全資格 (公開停止 / 削除済含む) の質問スレッドを横断モデレーションできます。投稿内容の編集は管理者には許可されません。
+                全資格 (公開停止含む) の質問スレッドを横断モデレーションできます。投稿内容の編集は管理者には許可されません。
                 <span class="font-semibold text-ink-700 ml-1">{{ $threads->total() }} 件</span>
             </p>
         </div>
@@ -62,10 +62,6 @@
             />
 
             <div class="flex items-end gap-2 pb-[2px]">
-                <label class="inline-flex items-center gap-2 text-sm text-ink-700">
-                    <input type="checkbox" name="with_trashed" value="1" {{ $withTrashed ? 'checked' : '' }} class="rounded border-ink-300 text-primary-600 focus:ring-primary-500">
-                    削除済を含む
-                </label>
                 <x-button type="submit" variant="secondary">
                     <x-icon name="funnel" class="w-4 h-4" />
                     絞り込む
@@ -79,7 +75,7 @@
             <x-empty-state
                 icon="question-mark-circle"
                 title="該当するスレッドはありません"
-                description="検索条件を変えるか、削除済を含めて再検索してください。"
+                description="検索条件を変えて再検索してください。"
             />
         </div>
     @else
@@ -99,16 +95,12 @@
                 @foreach ($threads as $thread)
                     @php
                         $isResolved = $thread->status === QaThreadStatus::Resolved;
-                        $isTrashed = $thread->trashed();
                     @endphp
-                    <x-table.row class="{{ $isTrashed ? 'bg-ink-50/60' : '' }}">
+                    <x-table.row>
                         <x-table.cell class="max-w-[320px]">
                             <a href="{{ route('admin.qa-board.show', $thread) }}" class="text-primary-700 hover:underline font-medium line-clamp-1">
                                 {{ $thread->title }}
                             </a>
-                            @if ($isTrashed)
-                                <span class="ml-2 inline-flex"><x-badge variant="gray" size="sm">削除済</x-badge></span>
-                            @endif
                         </x-table.cell>
                         <x-table.cell class="text-xs text-ink-600 whitespace-nowrap">{{ $thread->certification?->name ?? '—' }}</x-table.cell>
                         <x-table.cell class="text-xs whitespace-nowrap">{{ $thread->user?->name ?? '不明' }}</x-table.cell>
@@ -132,12 +124,10 @@
                                     <x-icon name="eye" class="w-4 h-4" />
                                     詳細閲覧
                                 </x-dropdown.item>
-                                @unless ($isTrashed)
-                                    <x-dropdown.item :href="route('admin.qa-board.destroy', $thread)" method="delete" variant="danger">
-                                        <x-icon name="trash" class="w-4 h-4" />
-                                        モデレーション削除
-                                    </x-dropdown.item>
-                                @endunless
+                                <x-dropdown.item :href="route('admin.qa-board.destroy', $thread)" method="delete" variant="danger">
+                                    <x-icon name="trash" class="w-4 h-4" />
+                                    モデレーション削除
+                                </x-dropdown.item>
                             </x-dropdown>
                         </x-table.cell>
                     </x-table.row>

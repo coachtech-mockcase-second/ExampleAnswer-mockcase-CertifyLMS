@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * 受講生 × AI の相談会話を表す Model。
@@ -26,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class AiChatConversation extends Model
 {
     /** @use HasFactory<AiChatConversationFactory> */
-    use HasFactory, HasUlids, SoftDeletes;
+    use HasFactory, HasUlids;
 
     protected $fillable = [
         'user_id',

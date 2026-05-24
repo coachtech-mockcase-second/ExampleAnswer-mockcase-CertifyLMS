@@ -8,10 +8,10 @@ use App\Models\MockExamQuestion;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 模試問題を SoftDelete するユースケース。
+ * 模試問題を削除するユースケース。
  *
- * 過去の MockExamSession は `generated_question_ids` スナップショットを持つため、
- * SoftDelete された問題でも `withTrashed()` で参照できる(採点ロジックが整合性を保つ)。
+ * 過去の MockExamAnswer から参照されている場合は外部キー制約(restrictOnDelete)で削除が阻止される
+ * ため、採点済セッションの整合性は DB レベルで保護される。
  */
 final class DestroyAction
 {

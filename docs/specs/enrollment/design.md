@@ -39,10 +39,10 @@ UNIQUE (user_id, certification_id), INDEX (status, exam_date), (certification_id
 ※ assigned_coach_id / completion_requested_at は持たない
 
 enrollment_goals
-├ id / enrollment_id FK / title / description / target_date / achieved_at / timestamps / soft_deletes
+├ id / enrollment_id FK / title / description / target_date / achieved_at / timestamps
 
 enrollment_notes
-├ id / enrollment_id FK / coach_user_id FK / body / timestamps / soft_deletes
+├ id / enrollment_id FK / coach_user_id FK / body / timestamps
 
 enrollment_status_logs (INSERT only)
 ├ id / enrollment_id FK

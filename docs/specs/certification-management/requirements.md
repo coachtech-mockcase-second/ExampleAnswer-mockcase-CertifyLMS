@@ -22,27 +22,27 @@
 
 ### 機能要件 — 資格マスタ管理
 
-- **REQ-certification-management-001**: The system shall **4 カラム構成の `certifications` テーブル**（v3）を提供する: ULID 主キー / **`name` string max:100 NOT NULL** / **`category_id` ULID FK to `certification_categories` NOT NULL** / **`difficulty` enum**（`beginner` / `intermediate` / `advanced`） / **`description` text nullable** / `status` enum（`draft` / `published` / `archived`） / `created_by_user_id` ULID FK / `updated_by_user_id` ULID FK / `published_at` datetime nullable / `archived_at` datetime nullable / `created_at` / `updated_at` / `deleted_at`。**`(status, category_id)` 複合 INDEX 維持**。
+- **REQ-certification-management-001**: The system shall **4 カラム構成の `certifications` テーブル**（v3）を提供する: ULID 主キー / **`name` string max:100 NOT NULL** / **`category_id` ULID FK to `certification_categories` NOT NULL** / **`difficulty` enum**（`beginner` / `intermediate` / `advanced`） / **`description` text nullable** / `status` enum（`draft` / `published` / `archived`） / `created_by_user_id` ULID FK / `updated_by_user_id` ULID FK / `published_at` datetime nullable / `archived_at` datetime nullable / `created_at` / `updated_at`。**`(status, category_id)` 複合 INDEX 維持**。
 - **REQ-certification-management-002**: **削除（v3 撤回）**: 旧 `code` / `slug` / `passing_score` / `total_questions` / `exam_duration_minutes` カラムは持たない。`code` UNIQUE INDEX も持たない。
 - **REQ-certification-management-010**: When admin が `GET /admin/certifications` にアクセスした際, the system shall 公開状態フィルタ（`status`）+ カテゴリフィルタ（`category_id`）+ 難易度フィルタ（`difficulty`）+ keyword フィルタを提供する。
 - **REQ-certification-management-011**: While admin が資格一覧画面で `keyword` を指定している間, the system shall **`certifications.name`** の部分一致検索を実行する（v3 で `code` 検索撤回）。
 - **REQ-certification-management-012**: When admin が `POST /admin/certifications` で新規資格を作成した際, the system shall `name` / `category_id` / `difficulty` / `description` を検証して INSERT する（`status = draft` 固定）。
 - **REQ-certification-management-013**: **削除（v3 撤回）**: `certifications.code` UNIQUE バリデーションは行わない。
 - **REQ-certification-management-014**: When admin が編集フォームから資格マスタを更新した際, the system shall **`name` / `category_id` / `difficulty` / `description` のみ** を UPDATE する（v3 で 4 カラム構成）。`status` は公開状態遷移用エンドポイントから別途行う。
-- **REQ-certification-management-015**: When admin が資格マスタを削除しようとした際, the system shall (1) `status === draft`、(2) 関連 Enrollment ゼロ件、を検証し、合格なら SoftDelete する。違反は `CertificationNotDeletableException`（HTTP 409）。
+- **REQ-certification-management-015**: When admin が資格マスタを削除しようとした際, the system shall (1) `status === draft`、(2) 関連 Enrollment ゼロ件、を検証し、合格なら物理削除する。違反は `CertificationNotDeletableException`（HTTP 409）。
 - **REQ-certification-management-016**: When admin が `POST /admin/certifications/{certification}/publish` / `/unpublish` / `/archive` を呼んだ際, the system shall 公開状態遷移を実行する。
 - **REQ-certification-management-017**: **削除（v3 撤回）**: `passing_score` バリデーション関連。合格点は `MockExam.passing_score` で資格内の模試ごとに設定するため、本 Feature では持たない。
 
 ### 機能要件 — CertificationCategory 管理
 
-- **REQ-certification-management-030**: The system shall ULID 主キー / `slug` UNIQUE / `name` / `sort_order` / `created_at` / `updated_at` / `deleted_at` を備えた `certification_categories` テーブルを提供する。
+- **REQ-certification-management-030**: The system shall ULID 主キー / `slug` UNIQUE / `name` / `sort_order` / `created_at` / `updated_at` を備えた `certification_categories` テーブルを提供する。
 - **REQ-certification-management-031**: When admin が `/admin/certification-categories` で CRUD を行う際, the system shall `name` / `slug` / `sort_order` の入力を受け付け、`(slug)` UNIQUE を保証する。
 
 ### 機能要件 — 担当コーチ割当（`certification_coach_assignments`）
 
-- **REQ-certification-management-040**: The system shall ULID 主キー / `certification_id` FK / `user_id`（coach）FK / `assigned_by_user_id` FK（admin）/ `assigned_at` datetime / `unassigned_at` datetime nullable / SoftDeletes を備えた `certification_coach_assignments` テーブルを提供する。`(certification_id, user_id)` UNIQUE（active 状態）。
+- **REQ-certification-management-040**: The system shall ULID 主キー / `certification_id` FK / `user_id`（coach）FK / `assigned_by_user_id` FK（admin）/ `assigned_at` datetime / `unassigned_at` datetime nullable を備えた `certification_coach_assignments` テーブルを提供する。`(certification_id, user_id)` UNIQUE で物理削除を採用し、現役判定は `unassigned_at IS NULL` で行う（解除後の再割当時は同じ pivot 行を `unassigned_at = NULL` で再アクティベートするか、または DELETE + INSERT のいずれかで実装可、要件は「現役判定が `unassigned_at IS NULL` で完結する」点のみ）。
 - **REQ-certification-management-041**: When admin が `POST /admin/certifications/{certification}/coaches/{coach}` を呼んだ際, the system shall 当該 coach を担当に割当する。
-- **REQ-certification-management-042**: When admin が `DELETE /admin/certifications/{certification}/coaches/{coach}` を呼んだ際, the system shall 当該割当を解除する（`unassigned_at = now()` で SoftDelete、関連 [[chat]] の ChatMember を `ChatMemberSyncService` で自動同期）。
+- **REQ-certification-management-042**: When admin が `DELETE /admin/certifications/{certification}/coaches/{coach}` を呼んだ際, the system shall 当該割当を解除する（`unassigned_at = now()` をセットして現役判定から外す、関連 [[chat]] の ChatMember を `ChatMemberSyncService` で自動同期）。
 
 ### 機能要件 — 受講生向け資格カタログ
 
