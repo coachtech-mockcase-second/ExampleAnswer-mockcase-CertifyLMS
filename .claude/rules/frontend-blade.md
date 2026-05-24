@@ -796,3 +796,34 @@ grep -rnE 'UserStatusLog|UserPlanLog|MeetingQuotaTransaction|EnrollmentStatusLog
 - インライン `style="..."` は使わない（特殊ケース・PDF レイアウトのみ許容）
 - Alpine.js / Livewire は使わない（[tech.md](../../docs/steering/tech.md) 規約）。インタラクションは素の JS（[frontend-javascript.md](./frontend-javascript.md)）で実装
 - **ユーザー向けテキストに DB / Model / Enum 機械値を露出しない**（本ドキュメント「ユーザー向け文言の規約」参照）
+
+## Basic / Advance チケットと JS の使い分け
+
+提供 PJ の Blade は受講生に渡り、受講生はそれを足場にバックエンドを実装する。チケット難易度で Blade の JS 依存度を変える。
+
+### Basic チケットの Blade（JS なし）
+
+Basic は「教材内 + ContactForm / BookShelf の範囲」。**JS を使わず純 Laravel（Blade + フォーム POST + リダイレクト）で完結**させる。
+
+- ❌ 使わない: `<x-dropdown>` / `<x-modal>` 等の JS 依存コンポーネント、インライン `<script>`、`data-*` による JS フック
+- ✅ 操作の実装:
+  - 編集 → 専用ページ（`{entity}/edit` 等）へリンク遷移（インライン編集フォームの JS toggle は使わない）
+  - 削除 → `<form method="POST">` + `@method('DELETE')`、誤操作防止は `onsubmit="return confirm()"`（HTML 標準、JS ファイル不要）
+  - 操作メニュー → ドロップダウンに畳まず、編集リンク + 削除フォームを直接並べる
+- 根拠: BookShelf / ContactForm の Basic パターン（編集=専用ページ / 削除=フォーム POST + confirm / インライン編集なし / inline script なし）
+
+### Advance チケットの Blade（JS 可）
+
+Advance は素の JS（Vite ビルド）+ Sanctum API 等を扱う。動的 UI（非同期更新 / リアルタイム / モーダル）は素の JS（[frontend-javascript.md](./frontend-javascript.md)）で実装してよい。上記「やってはいけないこと」の「Alpine.js / Livewire は使わない、インタラクションは素の JS」は Advance に適用される指針。
+
+## 提供 PJ の Blade コメント方針
+
+提供 PJ の Blade（受講生に渡る）のコメントは、**マークアップ構造（各ブロックの役割）+ フロント実装観点（JS なし / confirm / XSS 表示処理）のみ**を書く。**バックエンド設計には一切触れない** — 受講生が Blade を読んで必要なバックエンドを自力で設計する練習を奪わないため（書くとヒントになり教材価値が下がる）。
+
+| 書く ✅（構造 / フロント観点） | 書かない ❌（バックエンド設計のヒント） |
+|---|---|
+| `{{-- スレッド本体カード（バッジ + タイトル + 投稿者 + 操作 + 本文）--}}` | `{{-- Controller@show が $thread を渡す。certification を Eager Load で N+1 回避 --}}` |
+| `{{-- 削除はフォーム送信 + confirm()（JS 不要）--}}` | `{{-- @can('delete') は QaThreadPolicy::delete に対応 --}}` |
+| `{{-- 本文。e() + nl2br で XSS 対策 --}}` | `{{-- POST /qa-board（qa-board.store）、StoreRequest でバリデーション --}}` |
+
+書かない具体カテゴリ: Controller / Action / Service / Policy のクラス・メソッド名、route 定義（`routes/web.php に定義` 等）、Eager Load / withCount / N+1 等のクエリ最適化、バリデーションルール（`max:200` 等）。
