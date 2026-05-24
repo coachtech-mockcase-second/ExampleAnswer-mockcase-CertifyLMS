@@ -13,9 +13,7 @@ use App\UseCases\Learning\ShowChapterAction;
 use App\UseCases\Learning\ShowEnrollmentAction;
 use App\UseCases\Learning\ShowPartAction;
 use App\UseCases\Learning\ShowSectionAction;
-use App\UseCases\LearningSession\StartAction as StartSessionAction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
@@ -23,8 +21,8 @@ use Illuminate\View\View;
  * /learning(empty-state)→/learning/enrollments/{enrollment}→/learning/parts/{part}→
  * /learning/chapters/{chapter}→/learning/sections/{section} の 5 階層動線を提供する。
  *
- * showSection は表示と同時に LearningSession のサーバ側 auto-start を呼び、別 Section 遷移時の自動切替を行う
- * (JS / 公開 HTTP エンドポイント経由ではない)。auto-start の失敗は表示の妨げにしないため例外吸収する。
+ * Section 閲覧時の LearningSession 自動開始は StartLearningSession ミドルウェアが、
+ * AI 相談ウィジェット向けの Section 文脈 (pageMeta) は SectionPageMetaComposer が担う。
  */
 class BrowseController extends Controller
 {
@@ -56,34 +54,10 @@ class BrowseController extends Controller
         return view('learning.chapters.show', $action($chapter, auth()->user()));
     }
 
-    public function showSection(Section $section, ShowSectionAction $action, StartSessionAction $startSession): View
+    public function showSection(Section $section, ShowSectionAction $action): View
     {
         $this->authorize('learning.section.view', $section);
 
-        $user = auth()->user();
-        $data = $action($section, $user);
-
-        try {
-            $startSession($user, $section);
-        } catch (\Throwable $exception) {
-            // セッション開始の失敗は学習行為の妨げを避けるためログのみ。
-            // 残骸 open は Schedule Command(learning:close-stale-sessions)で後追い回収する。
-            Log::warning('LearningSession auto-start failed', [
-                'user_id' => $user->id,
-                'section_id' => $section->id,
-                'exception' => $exception->getMessage(),
-            ]);
-        }
-
-        // フローティング AI 相談ウィジェットに教材コンテキストを渡す
-        // (ウィジェットは layouts/app.blade.php で $pageMeta を読み、Section / 資格名を data-* 属性に焼き付ける)
-        $section->loadMissing('chapter.part.certification');
-        view()->share('pageMeta', [
-            'section_id' => $section->id,
-            'section_title' => $section->title,
-            'certification_name' => $section->chapter?->part?->certification?->name,
-        ]);
-
-        return view('learning.sections.show', $data);
+        return view('learning.sections.show', $action($section, auth()->user()));
     }
 }

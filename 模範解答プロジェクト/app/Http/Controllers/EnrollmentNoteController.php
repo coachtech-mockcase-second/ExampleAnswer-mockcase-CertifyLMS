@@ -12,9 +12,13 @@ use App\UseCases\EnrollmentNote\DestroyAction;
 use App\UseCases\EnrollmentNote\StoreAction;
 use App\UseCases\EnrollmentNote\UpdateAction;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 /**
  * コーチ / admin による受講生メモ Controller。受講生(student) は本リソースに対する全操作を Policy で拒否される。
+ *
+ * 受講生詳細画面(`enrollments.show`)は admin / coach / student の 3 ロール共有エンドポイントに統合済のため、
+ * メモ編集後の戻り先もロールに依存せず単一 route で完結する。
  */
 class EnrollmentNoteController extends Controller
 {
@@ -25,11 +29,22 @@ class EnrollmentNoteController extends Controller
         return back()->with('success', 'メモを追加しました。');
     }
 
+    public function edit(EnrollmentNote $note): View
+    {
+        $this->authorize('update', $note);
+
+        return view('enrollment-note.edit', [
+            'note' => $note,
+        ]);
+    }
+
     public function update(EnrollmentNote $note, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
         $action($note, $request->validated());
 
-        return back()->with('success', 'メモを更新しました。');
+        return redirect()
+            ->route('enrollments.show', $note->enrollment_id)
+            ->with('success', 'メモを更新しました。');
     }
 
     public function destroy(EnrollmentNote $note, DestroyAction $action): RedirectResponse

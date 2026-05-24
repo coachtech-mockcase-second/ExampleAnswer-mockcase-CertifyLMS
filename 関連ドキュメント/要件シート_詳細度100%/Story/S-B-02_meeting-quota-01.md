@@ -171,10 +171,7 @@
   5. **ルート**: `Route::resource('meeting-packs', MeetingPackController::class)` で CRUD 7 ルート + 状態遷移 3 ルートを `admin` プレフィックス + `auth + role:admin` Middleware 配下に配置
   6. **一覧の並び順**: 「公開中優先 → `sort_order` ASC → `created_at` DESC」推奨。`orderByRaw("CASE status WHEN 'published' THEN 1 WHEN 'draft' THEN 2 WHEN 'archived' THEN 3 END")` で実現可(あるいは `sort_order` ASC のみでも振る舞い OK)
 
-### 関連ファイルメモ(コーチ用、受講生に直接教えない)
-
-> **コーチが実装範囲のコードを事前把握しておく材料**。受講生のヒアリング応答時は **ファイルパスを直接教えない**(教育上 NG、受講生は提供 PJ コードを自分で読解するのが学習目的)。「admin の管理画面 Blade はどこに置かれている?」「類似パターンとしてプラン管理(`PlanController` 周辺)はどう作られている?」のような **問い返し / 方向性ヒント** で受講生のコードリーディングを促すための材料として使う。
-> 模範解答 PJ は Action パターンを採用しているが、Basic 範囲では Controller 内完結も許容。
+### 関連ファイルメモ
 
 - `app/Models/MeetingPack.php` / `app/Enums/MeetingPackStatus.php`
 - `app/Http/Controllers/MeetingPackController.php` / `app/Http/Controllers/MeetingPackStatusController.php`
@@ -191,8 +188,6 @@
 ## 補足
 
 ### 想定ヒアリング Q&A
-
-> 受講生の **仮説提案型ヒアリング**(「○○と振る舞うべきと理解しましたが正しいですか?」)に対して OK / NG / 別案 を返すスタイル。**要件・仕様レベル(正しい振る舞いの確認)のみ** 記述する(設計判断 / 実装詳細は書かない)。
 
 | 質問 | 回答 |
 |---|---|

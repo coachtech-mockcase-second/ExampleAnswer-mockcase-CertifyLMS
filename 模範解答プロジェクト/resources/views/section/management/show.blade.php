@@ -22,7 +22,7 @@
         <div class="min-w-0">
             <div class="flex items-center gap-3 flex-wrap">
                 <h1 class="text-2xl font-bold text-ink-900">{{ $section->title }}</h1>
-                @include('common.content-management._partials.status-pill', ['status' => $section->status])
+                <x-content-management.status-pill :status="$section->status" />
             </div>
             <div class="text-xs text-ink-500 font-mono mt-1 tabular-nums">order #{{ $section->order }}</div>
         </div>
@@ -97,27 +97,27 @@
     </x-card>
 
     @if ($isDraft)
-        @include('common.content-management._modals.publish-confirm', [
-            'id' => 'section-publish-modal',
-            'title' => 'Section を公開しますか？',
-            'description' => '公開すると受講生の教材閲覧画面に表示されます（親 Chapter / Part が公開済みの場合のみ受講生から見えます）。',
-            'action' => route('admin.sections.publish', $section),
-        ])
-        @include('common.content-management._modals.delete-confirm', [
-            'id' => 'section-delete-modal',
-            'title' => 'Section を削除しますか？',
-            'description' => 'Section を SoftDelete します。',
-            'action' => route('admin.sections.destroy', $section),
-        ])
+        <x-content-management.publish-confirm-modal
+            id="section-publish-modal"
+            title="Section を公開しますか？"
+            description="公開すると受講生の教材閲覧画面に表示されます（親 Chapter / Part が公開済みの場合のみ受講生から見えます）。"
+            :action="route('admin.sections.publish', $section)"
+        />
+        <x-content-management.delete-confirm-modal
+            id="section-delete-modal"
+            title="Section を削除しますか？"
+            description="Section を SoftDelete します。"
+            :action="route('admin.sections.destroy', $section)"
+        />
     @else
-        @include('common.content-management._modals.publish-confirm', [
-            'id' => 'section-unpublish-modal',
-            'title' => 'Section を下書きに戻しますか？',
-            'description' => '下書きに戻すと受講生からは非表示になります。',
-            'action' => route('admin.sections.unpublish', $section),
-            'buttonLabel' => '下書きに戻す',
-            'buttonVariant' => 'secondary',
-        ])
+        <x-content-management.publish-confirm-modal
+            id="section-unpublish-modal"
+            title="Section を下書きに戻しますか？"
+            description="下書きに戻すと受講生からは非表示になります。"
+            :action="route('admin.sections.unpublish', $section)"
+            button-label="下書きに戻す"
+            button-variant="secondary"
+        />
     @endif
 @endsection
 

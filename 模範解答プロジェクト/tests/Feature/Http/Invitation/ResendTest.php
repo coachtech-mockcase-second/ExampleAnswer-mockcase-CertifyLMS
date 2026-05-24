@@ -50,7 +50,7 @@ class ResendTest extends TestCase
         $response->assertRedirect(route('admin.users.show', $target));
         $response->assertSessionHas('success');
 
-        Mail::assertSent(InvitationMail::class);
+        Mail::assertQueued(InvitationMail::class);
     }
 
     public function test_old_pending_is_revoked_and_user_stays_invited(): void

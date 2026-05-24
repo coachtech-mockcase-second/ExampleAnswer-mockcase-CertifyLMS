@@ -138,23 +138,33 @@ class EnrollmentControllerTest extends TestCase
         ]);
     }
 
-    public function test_graduated_student_cannot_access_enrollment_routes(): void
+    public function test_graduated_student_cannot_use_student_only_routes(): void
     {
+        // Arrange
         $graduated = User::factory()->student()->graduated()->create();
+        $certification = Certification::factory()->published()->create();
 
-        $response = $this->actingAs($graduated)->get(route('enrollments.index'));
+        // Act: 自己登録は student + active-learning 専用 route
+        $response = $this->actingAs($graduated)->postJson(route('enrollments.store'), [
+            'certification_id' => $certification->id,
+        ]);
 
-        // active-learning Middleware で 403
+        // Assert: active-learning Middleware で 403
         $response->assertForbidden();
     }
 
-    public function test_coach_cannot_use_student_routes(): void
+    public function test_coach_cannot_use_student_only_routes(): void
     {
+        // Arrange
         $coach = User::factory()->coach()->inProgress()->create();
+        $certification = Certification::factory()->published()->create();
 
-        $response = $this->actingAs($coach)->get(route('enrollments.index'));
+        // Act: 自己登録は student 専用 route
+        $response = $this->actingAs($coach)->postJson(route('enrollments.store'), [
+            'certification_id' => $certification->id,
+        ]);
 
-        // role:student Middleware で 403
+        // Assert: role:student Middleware で 403
         $response->assertForbidden();
     }
 

@@ -12,12 +12,18 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
+/**
+ * 統合後 `enrollments.index` のコーチ scope 観点テスト。
+ * Policy + `Enrollment::scopeForUser` で担当資格の Enrollment のみが見えることを保証する。
+ * admin / student の正常系・未認証拒否は `EnrollmentControllerTest` に集約済。
+ */
 class IndexTest extends TestCase
 {
     use RefreshDatabase;
 
     public function test_coach_sees_only_enrollments_in_assigned_certifications(): void
     {
+        // Arrange
         $admin = User::factory()->admin()->create();
         $coach = User::factory()->coach()->create();
         $student = User::factory()->student()->create();
@@ -42,34 +48,21 @@ class IndexTest extends TestCase
             'certification_id' => $otherCert->id,
         ]);
 
-        $response = $this->actingAs($coach)->get(route('coach.students.index'));
+        // Act
+        $response = $this->actingAs($coach)->get(route('enrollments.index'));
 
+        // Assert
         $response->assertOk();
         $response->assertSee('Assigned Cert');
         $response->assertDontSee('Other Cert');
     }
 
-    public function test_admin_cannot_access_coach_students(): void
-    {
-        $admin = User::factory()->admin()->create();
-
-        $this->actingAs($admin)
-            ->get(route('coach.students.index'))
-            ->assertForbidden();
-    }
-
-    public function test_student_cannot_access_coach_students(): void
-    {
-        $student = User::factory()->student()->create();
-
-        $this->actingAs($student)
-            ->get(route('coach.students.index'))
-            ->assertForbidden();
-    }
-
     public function test_guest_cannot_access(): void
     {
-        $this->get(route('coach.students.index'))
-            ->assertRedirect(route('login'));
+        // Act
+        $response = $this->get(route('enrollments.index'));
+
+        // Assert
+        $response->assertRedirect(route('login'));
     }
 }

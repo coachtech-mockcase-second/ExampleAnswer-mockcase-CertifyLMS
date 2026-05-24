@@ -22,7 +22,7 @@
         <div class="min-w-0">
             <h1 class="text-2xl font-bold text-ink-900 line-clamp-2">{{ \Illuminate\Support\Str::limit($question->body, 80) }}</h1>
             <div class="mt-2 flex items-center gap-2">
-                @include('common.content-management._partials.status-pill', ['status' => $question->status])
+                <x-content-management.status-pill :status="$question->status" />
                 <span class="text-xs text-ink-500">分野: {{ $question->category?->name ?? '—' }}</span>
             </div>
         </div>
@@ -92,27 +92,27 @@
     </form>
 
     @if ($isDraft)
-        @include('common.content-management._modals.publish-confirm', [
-            'id' => 'question-publish-modal',
-            'title' => '演習問題を公開しますか？',
-            'description' => '公開には選択肢 2 件以上 + 正答 1 件が必要です。',
-            'action' => route('admin.section-questions.publish', $question),
-        ])
-        @include('common.content-management._modals.delete-confirm', [
-            'id' => 'question-delete-modal',
-            'title' => '演習問題を削除しますか？',
-            'description' => '演習問題を SoftDelete します。受講生の解答履歴は保持されます。',
-            'action' => route('admin.section-questions.destroy', $question),
-        ])
+        <x-content-management.publish-confirm-modal
+            id="question-publish-modal"
+            title="演習問題を公開しますか？"
+            description="公開には選択肢 2 件以上 + 正答 1 件が必要です。"
+            :action="route('admin.section-questions.publish', $question)"
+        />
+        <x-content-management.delete-confirm-modal
+            id="question-delete-modal"
+            title="演習問題を削除しますか？"
+            description="演習問題を SoftDelete します。受講生の解答履歴は保持されます。"
+            :action="route('admin.section-questions.destroy', $question)"
+        />
     @else
-        @include('common.content-management._modals.publish-confirm', [
-            'id' => 'question-unpublish-modal',
-            'title' => '演習問題を下書きに戻しますか？',
-            'description' => '下書きに戻すと受講生からは非表示になります。',
-            'action' => route('admin.section-questions.unpublish', $question),
-            'buttonLabel' => '下書きに戻す',
-            'buttonVariant' => 'secondary',
-        ])
+        <x-content-management.publish-confirm-modal
+            id="question-unpublish-modal"
+            title="演習問題を下書きに戻しますか？"
+            description="下書きに戻すと受講生からは非表示になります。"
+            :action="route('admin.section-questions.unpublish', $question)"
+            button-label="下書きに戻す"
+            button-variant="secondary"
+        />
     @endif
 @endsection
 

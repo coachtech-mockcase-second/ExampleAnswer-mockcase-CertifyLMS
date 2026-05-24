@@ -1,12 +1,11 @@
 @php
     $user = auth()->user();
     $notificationBadge = $notificationBadge ?? 0;
-    $searchPlaceholder = match (optional($user)->role?->value) {
-        'admin' => 'ユーザー・資格・コーチを検索...',
-        'coach' => '受講生・教材を検索...',
-        'student' => '教材・問題・質問を検索...',
-        default => '検索...',
-    };
+    // 教材検索は受講生のみが対象（管理者・コーチ向けの横断検索エンドポイントは存在しない）。
+    // 検索結果はデフォルト資格にスコープされるため、デフォルト資格が設定されているときだけ検索バーを出す。
+    $searchCertificationId = $user?->role === \App\Enums\UserRole::Student
+        ? $user->defaultEnrollment?->certification_id
+        : null;
 @endphp
 
 <header class="sticky top-0 z-20 flex items-center gap-3 lg:gap-4 px-4 lg:px-8 py-3 border-b border-[var(--border-subtle)] bg-surface-canvas/85 backdrop-blur-md">
@@ -21,15 +20,21 @@
         <x-icon name="bars-3" class="w-5 h-5" />
     </button>
 
-    {{-- 検索バー --}}
-    <div class="relative flex-1 max-w-[320px] hidden sm:block">
-        <x-icon name="magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500" />
-        <input
-            type="search"
-            placeholder="{{ $searchPlaceholder }}"
-            class="w-full text-[13px] py-2 pl-9 pr-3 rounded-full bg-ink-50 border border-transparent placeholder:text-ink-400 focus:outline-none focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-500/15 transition-colors"
-        >
-    </div>
+    {{-- 教材検索（受講生 + デフォルト資格設定時のみ。Enter で登録資格内 Section を全文検索） --}}
+    @if ($searchCertificationId !== null && Route::has('contents.search'))
+        <form method="GET" action="{{ route('contents.search') }}" role="search" class="relative flex-1 max-w-[320px] hidden sm:block">
+            <input type="hidden" name="certification_id" value="{{ $searchCertificationId }}">
+            <x-icon name="magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500" />
+            <input
+                type="search"
+                name="keyword"
+                maxlength="200"
+                placeholder="教材を検索..."
+                aria-label="教材を検索"
+                class="w-full text-[13px] py-2 pl-9 pr-3 rounded-full bg-ink-50 border border-transparent placeholder:text-ink-400 focus:outline-none focus:bg-white focus:border-primary-300 focus:ring-2 focus:ring-primary-500/15 transition-colors"
+            >
+        </form>
+    @endif
 
     <div class="flex-1"></div>
 

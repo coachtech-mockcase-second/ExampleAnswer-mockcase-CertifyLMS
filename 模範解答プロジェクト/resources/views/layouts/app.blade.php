@@ -47,7 +47,7 @@
 
     {{-- AI 相談フローティングウィジェット: 受講中の student のみ、ai-chat 機能 ON のみ表示。
          AI 相談 Feature 自身の画面では非表示(重複防止)。
-         教材閲覧画面の Section コンテキストは learning Controller が view()->share('pageMeta', [...]) で渡す。
+         教材閲覧画面の Section コンテキストは SectionPageMetaComposer が pageMeta として渡す。
          資格コンテキスト (certification_name) は default_enrollment 経由でフォールバック解決される。 --}}
     @php
         $aiChatPageMeta = $pageMeta ?? [];

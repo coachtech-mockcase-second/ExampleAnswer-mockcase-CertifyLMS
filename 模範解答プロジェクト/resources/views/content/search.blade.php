@@ -53,7 +53,7 @@
             <p class="text-xs text-ink-500 tabular-nums">{{ $paginator->total() }} 件ヒット</p>
             @foreach ($items as $section)
                 <x-card padding="md">
-                    <a href="{{ route('admin.sections.show', $section) }}" class="block group">
+                    <a href="{{ route('learning.sections.show', $section) }}" class="block group">
                         <div class="text-xs text-ink-500 font-mono">
                             {{ $section->chapter->part->certification->name }} / {{ $section->chapter->part->title }} / {{ $section->chapter->title }}
                         </div>

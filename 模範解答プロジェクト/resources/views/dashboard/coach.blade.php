@@ -46,24 +46,17 @@
         ])
     </div>
 
-    <div class="grid gap-5 lg:grid-cols-[2fr_1fr]">
-        <div class="flex flex-col gap-5">
-            @include('dashboard._partials.coach.assigned-students-list', [
-                'enrollments' => $viewModel->assignedEnrollments,
-            ])
+    <div class="flex flex-col gap-5">
+        {{-- 担当受講生一覧は全幅(リストは横幅があるほど読みやすい) --}}
+        @include('dashboard._partials.coach.assigned-students-list', [
+            'enrollments' => $viewModel->assignedEnrollments,
+        ])
 
+        {{-- 対応サマリ(未対応 chat / 未回答 Q&A / 面談予定)は 3 カラムバンドに --}}
+        <div class="grid gap-5 lg:grid-cols-3">
             @include('dashboard._partials.coach.chat-room-summary', [
                 'rooms' => $viewModel->recentUnreadChatRooms,
                 'totalCount' => $viewModel->unreadChatCount,
-            ])
-        </div>
-
-        <div class="flex flex-col gap-5">
-            @include('dashboard._partials.meeting-upcoming-list', [
-                'meetings' => $viewModel->todayAndTomorrowMeetings,
-                'partnerAttribute' => 'student',
-                'linkRoute' => 'coach.meetings.index',
-                'linkLabel' => '一覧 &rarr;',
             ])
 
             @include('dashboard._partials.coach.qa-thread-summary', [
@@ -71,9 +64,11 @@
                 'totalCount' => $viewModel->unansweredQaCount,
             ])
 
-            @include('dashboard._partials.notification-list', [
-                'notifications' => $viewModel->recentNotifications,
-                'unreadCount' => $viewModel->unreadNotificationCount,
+            @include('dashboard._partials.meeting-upcoming-list', [
+                'meetings' => $viewModel->todayAndTomorrowMeetings,
+                'partnerAttribute' => 'student',
+                'linkRoute' => 'coach.meetings.index',
+                'linkLabel' => '一覧 &rarr;',
             ])
         </div>
     </div>

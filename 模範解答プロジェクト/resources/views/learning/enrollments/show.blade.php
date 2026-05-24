@@ -63,7 +63,7 @@
                 @endif
                 <p class="mt-2 text-xs">
                     <a class="text-primary-700 underline" href="{{ route('learning.hourTarget.show', $enrollment) }}">
-                        目標を編集
+                        学習時間目標を編集
                     </a>
                 </p>
             @else

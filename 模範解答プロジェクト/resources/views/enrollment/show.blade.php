@@ -4,6 +4,7 @@
 
 @php
     use App\Enums\EnrollmentStatus;
+    use App\Enums\UserRole;
     use App\Models\EnrollmentNote;
 
     $statusBadge = fn (EnrollmentStatus $s) => match ($s) {
@@ -11,6 +12,11 @@
         EnrollmentStatus::Passed => 'success',
         EnrollmentStatus::Failed => 'gray',
     };
+
+    $viewer = auth()->user();
+    $isStaff = $viewer && in_array($viewer->role, [UserRole::Admin, UserRole::Coach], true);
+    $isAdmin = $viewer && $viewer->role === UserRole::Admin;
+    $progressPercent = $progress ? (int) round($progress->overallCompletionRatio * 100) : null;
 @endphp
 
 @section('content')
@@ -25,18 +31,56 @@
             <div class="flex items-center gap-3">
                 <h1 class="text-2xl font-bold text-ink-900 truncate">{{ $enrollment->certification->name }}</h1>
                 <x-badge :variant="$statusBadge($enrollment->status)" size="md">{{ $enrollment->status->label() }}</x-badge>
+                @if ($enrollment->trashed())
+                    <x-badge variant="danger" size="md">削除済</x-badge>
+                @endif
             </div>
             <p class="text-sm text-ink-500 mt-1">
+                @if ($isStaff)
+                    受講生: <span class="font-semibold text-ink-700">{{ $enrollment->user?->name }}</span>({{ $enrollment->user?->email }}) ・
+                @endif
                 {{ $enrollment->certification->category?->name ?? '未分類' }} ・ 現在ターム: {{ $enrollment->current_term->label() }}
             </p>
         </div>
-        @if (in_array($enrollment->status, [EnrollmentStatus::Learning, EnrollmentStatus::Passed], true))
+        @if (! $isStaff && in_array($enrollment->status, [EnrollmentStatus::Learning, EnrollmentStatus::Passed], true))
             <x-link-button href="{{ route('learning.enrollments.show', $enrollment) }}" variant="primary">
                 <x-icon name="book-open" class="w-4 h-4" />
                 教材を読む
             </x-link-button>
         @endif
     </div>
+
+    {{-- 学習進捗カード(staff のみ表示、ProgressService の集計値) --}}
+    @if ($isStaff && $progress)
+        <x-card class="mt-6" padding="md" shadow="sm">
+            <x-slot:header>学習進捗</x-slot:header>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex items-baseline justify-between mb-1">
+                        <div class="text-sm text-ink-500">全体進捗(Section 単位)</div>
+                        <div class="text-lg font-bold text-ink-900 tabular-nums">{{ $progressPercent }}%</div>
+                    </div>
+                    <div class="h-2 rounded-full bg-ink-100 overflow-hidden">
+                        <div class="h-full bg-primary-600 transition-all" style="width: {{ $progressPercent }}%"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div class="rounded-md bg-ink-50 px-3 py-2">
+                        <div class="text-xs text-ink-500">Section</div>
+                        <div class="text-sm font-mono text-ink-900 tabular-nums">{{ $progress->sectionsCompleted }} / {{ $progress->sectionsTotal }}</div>
+                    </div>
+                    <div class="rounded-md bg-ink-50 px-3 py-2">
+                        <div class="text-xs text-ink-500">Chapter</div>
+                        <div class="text-sm font-mono text-ink-900 tabular-nums">{{ $progress->chaptersCompleted }} / {{ $progress->chaptersTotal }}</div>
+                    </div>
+                    <div class="rounded-md bg-ink-50 px-3 py-2">
+                        <div class="text-xs text-ink-500">Part</div>
+                        <div class="text-sm font-mono text-ink-900 tabular-nums">{{ $progress->partsCompleted }} / {{ $progress->partsTotal }}</div>
+                    </div>
+                </div>
+            </div>
+        </x-card>
+    @endif
 
     {{-- 修了証受領パネル(状態と認可に応じて表示) --}}
     @include('enrollment._partials.receive-certificate-button', ['enrollment' => $enrollment])
@@ -99,7 +143,80 @@
                         </x-button>
                     </form>
                 @endcan
+
+                {{-- 試験日変更フォーム(admin のみ、passed / trashed 時は非表示) --}}
+                @if ($isAdmin && $enrollment->status !== EnrollmentStatus::Passed && ! $enrollment->trashed())
+                    <form method="POST" action="{{ route('admin.enrollments.updateExamDate', $enrollment) }}" class="mt-4 flex items-end gap-3">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex-1">
+                            <x-form.input
+                                name="exam_date"
+                                label="目標受験日を変更"
+                                type="date"
+                                :value="old('exam_date', $enrollment->exam_date?->format('Y-m-d'))"
+                                :error="$errors->first('exam_date')"
+                            />
+                        </div>
+                        <x-button type="submit" variant="outline">更新</x-button>
+                    </form>
+                @endif
+
+                {{-- 手動学習中止フォーム(admin のみ、learning 状態かつ未削除のみ) --}}
+                @if ($isAdmin && $enrollment->status === EnrollmentStatus::Learning && ! $enrollment->trashed())
+                    <form
+                        method="POST"
+                        action="{{ route('admin.enrollments.fail', $enrollment) }}"
+                        class="mt-4 space-y-2"
+                        onsubmit="return confirm('この受講登録を学習中止にしますか？');"
+                    >
+                        @csrf
+                        <x-form.input
+                            name="reason"
+                            label="学習中止の理由(任意)"
+                            :value="old('reason')"
+                            :error="$errors->first('reason')"
+                            maxlength="200"
+                        />
+                        <x-button type="submit" variant="danger">
+                            <x-icon name="x-mark" class="w-4 h-4" />
+                            学習中止にする
+                        </x-button>
+                    </form>
+                @endif
             </x-card>
+
+            {{-- 状態遷移履歴(admin のみ) --}}
+            @if ($isAdmin)
+                <x-card padding="md" shadow="sm">
+                    <x-slot:header>状態遷移履歴</x-slot:header>
+                    @php $logs = $enrollment->statusLogs ?? collect(); @endphp
+                    @if ($logs->isEmpty())
+                        <p class="text-sm text-ink-500">履歴はまだありません。</p>
+                    @else
+                        <ul class="divide-y divide-ink-100">
+                            @foreach ($logs as $log)
+                                <li class="py-2 text-sm">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="text-ink-700">
+                                            {{ $log->from_status?->label() ?? '(新規)' }}
+                                            <x-icon name="arrow-right" class="inline w-3 h-3 mx-1 text-ink-400" />
+                                            <span class="font-semibold">{{ $log->to_status->label() }}</span>
+                                        </div>
+                                        <div class="text-xs text-ink-500 tabular-nums">{{ $log->changed_at->format('Y-m-d H:i') }}</div>
+                                    </div>
+                                    <div class="text-xs text-ink-500 mt-0.5">
+                                        操作者: {{ $log->changedBy?->name ?? 'システム自動' }}
+                                        @if ($log->changed_reason)
+                                            ／ 理由: {{ $log->changed_reason }}
+                                        @endif
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </x-card>
+            @endif
 
             {{-- 個人目標(受講生本人 CRUD、coach/admin 閲覧専用) --}}
             <x-card padding="md" shadow="sm">

@@ -3,6 +3,7 @@
 @section('title', '質問を編集')
 
 @section('content')
+    {{-- 質問編集フォーム。資格は変更不可（バッジ表示のみ）、タイトル + 本文を更新。@method('PATCH') で更新リクエストにする --}}
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
         ['label' => '質問掲示板', 'href' => route('qa-board.index')],

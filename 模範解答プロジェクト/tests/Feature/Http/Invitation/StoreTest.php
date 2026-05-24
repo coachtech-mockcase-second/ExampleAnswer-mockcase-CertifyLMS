@@ -56,7 +56,7 @@ class StoreTest extends TestCase
             'status' => InvitationStatus::Pending->value,
         ]);
 
-        Mail::assertSent(InvitationMail::class);
+        Mail::assertQueued(InvitationMail::class);
     }
 
     public function test_coach_invitation_rejects_plan_id_with_422(): void
@@ -216,7 +216,7 @@ class StoreTest extends TestCase
             'changed_reason' => '新規招待',
         ]);
 
-        Mail::assertSent(InvitationMail::class);
+        Mail::assertQueued(InvitationMail::class);
     }
 
     public function test_coach_cannot_issue_invitation(): void

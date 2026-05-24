@@ -85,6 +85,11 @@
                             </form>
                         @endcan
                     @endif
+                    @can('update', $goal)
+                        <x-link-button href="{{ route('enrollment-goals.edit', $goal) }}" variant="ghost" size="sm">
+                            <x-icon name="pencil-square" class="w-4 h-4" />
+                        </x-link-button>
+                    @endcan
                     @can('delete', $goal)
                         <form
                             method="POST"

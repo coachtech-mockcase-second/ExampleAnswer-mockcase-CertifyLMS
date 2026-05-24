@@ -247,7 +247,7 @@
                     </div>
                     <div>
                         <p class="eyebrow px-4 pt-4">coach</p>
-                        @include('layouts._partials.sidebar-coach', ['sidebarBadges' => ['unattendedChat' => 3, 'pendingQuestions' => 1, 'todayMeetings' => 2, 'notifications' => 4]])
+                        @include('layouts._partials.sidebar-coach', ['sidebarBadges' => ['unattendedChat' => 3]])
                     </div>
                     <div>
                         <p class="eyebrow px-4 pt-4">admin</p>

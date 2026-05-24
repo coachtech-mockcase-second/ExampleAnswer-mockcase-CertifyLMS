@@ -9,7 +9,6 @@ use App\Models\EnrollmentGoal;
 use App\Models\Meeting;
 use App\Services\Learning\StreakSummary;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 
 /**
@@ -25,7 +24,6 @@ final readonly class StudentDashboardViewModel
      * @param EloquentCollection<int, Enrollment> $passedEnrollments 修了済資格セクション(passed_at DESC)
      * @param ?Collection<int, EnrollmentGoal> $goalTimeline 個人目標タイムライン(取得失敗時 null)
      * @param ?Collection<int, Meeting> $upcomingMeetings 今後の面談予定(取得失敗時 null)
-     * @param EloquentCollection<int, DatabaseNotification> $recentNotifications 直近通知 5 件
      */
     public function __construct(
         public ?PlanInfoPanel $planInfo,
@@ -34,8 +32,6 @@ final readonly class StudentDashboardViewModel
         public ?StreakSummary $streak,
         public ?Collection $goalTimeline,
         public ?Collection $upcomingMeetings,
-        public EloquentCollection $recentNotifications,
-        public int $unreadNotificationCount,
         public bool $hasNoEnrollment,
     ) {}
 }

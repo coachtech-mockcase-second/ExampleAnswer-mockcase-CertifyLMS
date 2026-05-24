@@ -12,7 +12,6 @@ use App\Models\CertificationCoachAssignment;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 /**
  * 開発用 資格マスタ + 担当コーチ割当シーダー。
@@ -177,12 +176,10 @@ final class CertificationSeeder extends Seeder
 
     private function createAssignment(Certification $certification, User $coach, User $admin): void
     {
-        CertificationCoachAssignment::create([
-            'id' => (string) Str::ulid(),
+        CertificationCoachAssignment::factory()->create([
             'certification_id' => $certification->id,
             'user_id' => $coach->id,
             'assigned_by_user_id' => $admin->id,
-            'assigned_at' => now(),
         ]);
     }
 }

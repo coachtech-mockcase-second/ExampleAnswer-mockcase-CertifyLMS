@@ -3,6 +3,7 @@
 @section('title', '質問を投稿')
 
 @section('content')
+    {{-- 質問投稿フォーム。資格セレクト + タイトル + 本文の入力欄で構成 --}}
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
         ['label' => '質問掲示板', 'href' => route('qa-board.index')],

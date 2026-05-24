@@ -5,19 +5,12 @@
 ])
 
 @php
-    use App\Enums\EnrollmentStatus;
-
     $user = auth()->user();
-    $enrollments = $user
-        ? $user->enrollments()
-            ->whereIn('status', [EnrollmentStatus::Learning->value, EnrollmentStatus::Passed->value])
-            ->with('certification')
-            ->orderBy('created_at')
-            ->get()
-        : collect();
+    // 受講中資格一覧は EnrollmentSwitcherComposer が $switcherEnrollments として注入する。
+    // 実クエリは User::switchableEnrollments が担い、同一リクエスト内の複数描画でも 1 回だけ実行される。
+    $enrollments = $switcherEnrollments ?? collect();
     $defaultId = $user?->default_enrollment_id;
-    $currentEnrollment = $current
-        ?? $user?->defaultEnrollment;
+    $currentEnrollment = $current ?? $enrollments->firstWhere('id', $defaultId);
     $currentLabel = $currentEnrollment?->certification?->name ?? '資格を選択';
 @endphp
 

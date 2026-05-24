@@ -4,80 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Enums\EnrollmentStatus;
 use App\Http\Requests\Enrollment\FailRequest;
 use App\Http\Requests\Enrollment\UpdateExamDateRequest;
-use App\Models\Certification;
 use App\Models\Enrollment;
 use App\UseCases\Enrollment\FailAction;
-use App\UseCases\Enrollment\ShowAction;
 use App\UseCases\Enrollment\UpdateExamDateAction;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 /**
- * 管理者向け受講登録 Controller。全件一覧 / 詳細 / 試験日変更 / 手動失敗マークを提供する。
+ * 管理者向け受講登録の admin 固有業務操作 Controller。
  *
- * 一覧フィルタ: status / certification_id / キーワード(受講生名 / メール 部分一致)。
- * withTrashed クエリパラメータで論理削除済の Enrollment も含めて返す。
+ * - updateExamDate: 受講生に代わって目標受験日を変更
+ * - fail: 受講生を学習中止(failed)状態へ手動遷移
  *
- * 受講登録の新規作成は受講生自身の自己登録のみで完結し、admin による手動割当は提供しない。
+ * 一覧 / 詳細は `EnrollmentController` の 3 ロール共有エンドポイント(`enrollments.index` / `enrollments.show`)に
+ * 集約済。本 Controller は admin 専用業務(状態変更 + 履歴記録)のみを担う。受講登録の新規作成は受講生自身の
+ * 自己登録のみで完結し、admin による手動割当は提供しない。
  */
 class EnrollmentManagementController extends Controller
 {
-    public function index(Request $request): View
-    {
-        $this->authorize('viewAdmin', Enrollment::class);
-
-        $query = Enrollment::query()
-            ->with(['user', 'certification.category', 'latestStatusLog']);
-
-        if ($request->boolean('with_trashed')) {
-            $query->withTrashed();
-        }
-
-        if ($status = $request->string('status')->toString()) {
-            $query->where('status', EnrollmentStatus::from($status)->value);
-        }
-
-        if ($certificationId = $request->string('certification_id')->toString()) {
-            $query->where('certification_id', $certificationId);
-        }
-
-        if ($keyword = trim($request->string('keyword')->toString())) {
-            $query->whereHas(
-                'user',
-                fn ($q) => $q
-                    ->where('name', 'LIKE', '%'.$keyword.'%')
-                    ->orWhere('email', 'LIKE', '%'.$keyword.'%'),
-            );
-        }
-
-        $enrollments = $query
-            ->orderByDesc('created_at')
-            ->paginate(20)
-            ->withQueryString();
-
-        return view('enrollment.management.index', [
-            'enrollments' => $enrollments,
-            'status' => $request->string('status')->toString(),
-            'certification_id' => $request->string('certification_id')->toString(),
-            'keyword' => $request->string('keyword')->toString(),
-            'withTrashed' => $request->boolean('with_trashed'),
-            'certifications' => Certification::query()->orderBy('name')->get(),
-        ]);
-    }
-
-    public function show(Enrollment $enrollment, ShowAction $action): View
-    {
-        $this->authorize('view', $enrollment);
-
-        return view('enrollment.management.show', [
-            'enrollment' => $action($enrollment->loadMissing('user')),
-        ]);
-    }
-
     public function updateExamDate(
         Enrollment $enrollment,
         UpdateExamDateRequest $request,
@@ -86,7 +31,7 @@ class EnrollmentManagementController extends Controller
         $action($enrollment, $request->validated());
 
         return redirect()
-            ->route('admin.enrollments.show', $enrollment)
+            ->route('enrollments.show', $enrollment)
             ->with('success', '目標受験日を更新しました。');
     }
 
@@ -98,7 +43,7 @@ class EnrollmentManagementController extends Controller
         $action($enrollment, auth()->user(), $request->validated('reason'));
 
         return redirect()
-            ->route('admin.enrollments.show', $enrollment)
+            ->route('enrollments.show', $enrollment)
             ->with('success', '受講登録を学習中止にしました。');
     }
 }

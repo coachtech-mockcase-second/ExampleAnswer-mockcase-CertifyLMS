@@ -8,7 +8,7 @@
     <x-slot:header>コーチメモ</x-slot:header>
 
     @can('create', [EnrollmentNote::class, $enrollment])
-        <form method="POST" action="{{ route('admin.enrollments.notes.store', $enrollment) }}" class="space-y-3 pb-4 border-b border-ink-100">
+        <form method="POST" action="{{ route('enrollments.notes.store', $enrollment) }}" class="space-y-3 pb-4 border-b border-ink-100">
             @csrf
             <x-form.textarea
                 name="body"
@@ -37,19 +37,26 @@
                             <span class="font-semibold text-ink-700">{{ $note->author?->name ?? '不明' }}</span>
                             <span class="tabular-nums">{{ $note->created_at->format('Y-m-d H:i') }}</span>
                         </div>
-                        @can('delete', $note)
-                            <form
-                                method="POST"
-                                action="{{ route('enrollment-notes.destroy', $note) }}"
-                                onsubmit="return confirm('このメモを削除しますか？');"
-                            >
-                                @csrf
-                                @method('DELETE')
-                                <x-button type="submit" variant="ghost" size="sm">
-                                    <x-icon name="trash" class="w-4 h-4" />
-                                </x-button>
-                            </form>
-                        @endcan
+                        <div class="flex items-center gap-1">
+                            @can('update', $note)
+                                <x-link-button href="{{ route('enrollment-notes.edit', $note) }}" variant="ghost" size="sm">
+                                    <x-icon name="pencil-square" class="w-4 h-4" />
+                                </x-link-button>
+                            @endcan
+                            @can('delete', $note)
+                                <form
+                                    method="POST"
+                                    action="{{ route('enrollment-notes.destroy', $note) }}"
+                                    onsubmit="return confirm('このメモを削除しますか？');"
+                                >
+                                    @csrf
+                                    @method('DELETE')
+                                    <x-button type="submit" variant="ghost" size="sm">
+                                        <x-icon name="trash" class="w-4 h-4" />
+                                    </x-button>
+                                </form>
+                            @endcan
+                        </div>
                     </div>
                     <div class="mt-2 text-sm text-ink-800 whitespace-pre-line">{{ $note->body }}</div>
                 </li>

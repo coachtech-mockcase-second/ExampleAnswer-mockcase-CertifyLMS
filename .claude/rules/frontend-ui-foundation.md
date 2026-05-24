@@ -88,12 +88,12 @@ paths:
 │ 運用統計      [chart-bar]       │ → admin.stats.index
 ├─────────────────────────────────┤
 │ 共通                            │
-│ 通知          [bell] (N)        │ → notifications.index
+│ 通知          [bell]            │ → notifications.index
 │ 設定          [cog]             │ → settings.profile.edit
 └─────────────────────────────────┘
 ```
 
-`(N)` は通知の **未対応件数バッジ**（後述「サイドバー実装規約」）。
+`(N)` は未読 chat 件数バッジ（coach / student のチャット項目にのみ表示）。通知の未読件数は TopBar のベルに一本化する（後述「サイドバー実装規約」「TopBar 構造」参照）。
 
 > 旧「承認」セクションの「修了申請承認」(`admin.enrollments.pending`)は撤回（修了は受講生自己完結に統一されたため、admin が承認する画面は存在しない）。
 
@@ -136,11 +136,11 @@ paths:
 ├─────────────────────────────────┤
 │ 対応                            │
 │ chat 対応 [chat-bubble-left-right] (N) │ → coach.chat.index
-│ 質問対応 [question-mark-circle] (N)    │ → coach.qa-board.index
-│ 面談管理 [calendar-days]   (N)         │ → coach.meetings.index
+│ 質問対応 [question-mark-circle]        │ → coach.qa-board.index
+│ 面談管理 [calendar-days]            │ → coach.meetings.index
 ├─────────────────────────────────┤
 │ 共通                            │
-│ 通知          [bell] (N)        │ → notifications.index
+│ 通知          [bell]            │ → notifications.index
 │ 設定          [cog]             │ → settings.profile.edit
 └─────────────────────────────────┘
 ```
@@ -164,7 +164,7 @@ paths:
 │ 面談予約      [calendar-days]   │ → meetings.index
 ├─────────────────────────────────┤
 │ 共通                            │
-│ 通知          [bell] (N)        │ → notifications.index
+│ 通知          [bell]            │ → notifications.index
 │ 設定          [cog]             │ → settings.profile.edit
 └─────────────────────────────────┘
 ```
@@ -203,7 +203,7 @@ Component 詳細は [[default-enrollment]] spec を参照。
 
 1. **`Route::has()` でガード**: 未実装 Feature のルートは表示しない。`<x-nav.item>` 内部で自動チェック（[frontend-blade.md](./frontend-blade.md) 参照）
 2. **アクティブハイライト**: `request()->routeIs($route . '*')` でグループ単位の判定。`/admin/users/123/edit` でも「ユーザー管理」が active
-3. **バッジ集約**: 未読 chat / 未読通知 / 未回答 Q&A / 今日の面談 / 修了申請待ち 等の集計は **`App\View\Composers\SidebarBadgeComposer`** で 1 リクエスト 1 回だけ集計（DB クエリ束ね）。サイドバー Blade が `$sidebarBadges` 配列を参照する形にする
+3. **バッジ集約**: サイドバーの未読 chat 件数は **`App\View\Composers\SidebarBadgeComposer`** が 1 リクエスト 1 回だけ集計し、サイドバー Blade が `$sidebarBadges['unattendedChat']` を参照する。通知の未読件数は **`App\View\Composers\NotificationBadgeComposer`** が TopBar のベル専用に供給する（サイドバーに通知バッジは置かず、件数表示はベルに一本化）
 4. **モバイル**: `lg:` 未満で drawer 化（off-canvas + バックドロップ）。`resources/js/components/sidebar-drawer.js` で開閉
 
 ### TopBar 構造

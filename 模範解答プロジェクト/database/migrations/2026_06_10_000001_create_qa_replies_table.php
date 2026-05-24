@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * 質問スレッドへの回答を表す中間テーブル。
  *
- * 親スレッド削除時に cascade させず、SoftDelete されたスレッド配下の回答は閲覧経路から除外するのみとし
- * 履歴は維持する (回答件数チェックは withTrashed() で行う)。
+ * 親スレッド削除時には restrictOnDelete で削除を拒否し、回答 0 件確認後のみ親スレッド削除を許可する。
+ * 回答自体の削除も物理削除。
  */
 return new class extends Migration
 {

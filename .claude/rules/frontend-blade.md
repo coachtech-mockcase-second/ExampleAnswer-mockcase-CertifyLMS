@@ -53,11 +53,8 @@ resources/views/
 │   ├── form/
 │   ├── modal.blade.php
 │   ├── nav/
+│   ├── content-management/ #   Feature 横断の共有 UI（<x-content-management.status-pill> / publish-confirm-modal / delete-confirm-modal）
 │   └── ...
-├── common/                 # 複数 Entity を束ねる Feature 共通の partials/modals 置き場（cross-Entity）
-│   └── content-management/
-│       ├── _partials/      #   status-pill.blade.php 等、Part/Chapter/Section/SectionQuestion/QuestionCategory が共有
-│       └── _modals/        #   publish-confirm.blade.php / delete-confirm.blade.php 等
 ├── auth/                   # 認証系（Fortify、[[auth]] 所有）
 ├── errors/                 # エラーページ（[frontend-ui-foundation.md] 所有）
 ├── dashboard/              # ダッシュボード（[[dashboard]] 所有、ロール別 Blade を直下に保持）
@@ -105,7 +102,7 @@ resources/views/
 
 - **view 名と route 名は意図的にずれる**: route 名 / URL prefix は外向け（受講生・コーチ・admin にとっての URL 慣習として `/admin/...` の階層が意味を持つ）なので **変更しない**。view 名 / Class 名は内向け（開発者用）なので **Entity + 役割** の純粋な命名軸に揃える
 - **子 Entity も完全フラット top-level**: `MockExamQuestion` は `mock-exam/questions/` のような nested ではなく、`mock-exam-question/` 単独で並べる。BookStack / Snipe-IT / Akaunting 等の Laravel 大型 OSS と整合（`books/` `chapters/` `pages/` のフラット展開がデファクト）
-- **Feature 単位ディレクトリは top-level に作らない**: `content-management/` のような複数 Entity 束ね名は使わない。例外として複数 Entity 共有の partials/modals のみ `views/common/{feature-name}/_partials/` に置く（後フェーズで `<x-...>` 共通コンポーネントへの昇格を検討）
+- **Feature 単位ディレクトリは top-level に作らない**: `content-management/` のような複数 Entity 束ね名は使わない。複数 Entity 共有の partials/modals は **Feature 名前空間付きの Blade コンポーネント**（`resources/views/components/{feature}/` → `<x-{feature}.xxx>`、例: `<x-content-management.status-pill>` / `<x-content-management.publish-confirm-modal>`）にまとめる
 
 ### 役割サブディレクトリ命名規則
 

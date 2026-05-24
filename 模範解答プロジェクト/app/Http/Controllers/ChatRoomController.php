@@ -19,30 +19,42 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * 受講生 / コーチ向け chat Controller。
+ * Chat Controller。受講生 / コーチ / admin 共通で利用される。
  *
- * - index / indexAsCoach: 最新ルームへ即時 redirect、0 件なら empty-state
- *   (ルーム選択 UI は show ページの 2 ペイン左カラムに集約しているため、独立した一覧画面は不要)
- *   コーチ向けは filter / keyword の query string をそのまま保持して redirect する
- * - show: ルーム詳細(rooms-pane + thread)。コーチが閲覧時は query string の filter / keyword を
- *   rooms-pane の絞り込みに反映する
- * - storeMessage: メッセージ送信(StoreMessageRequest で `Policy::view` が authorize 担当、
- *   コーチ未割当時は 422 を Controller で振り分け)
+ * - index: 受講生 / コーチは参加ルームの最新へ redirect、admin は全ルーム横断で最新へ redirect、0 件なら empty-state
+ * - indexAsCoach: コーチ専用、未読あり / filter / keyword の query string をそのまま保持して redirect
+ * - show: ルーム詳細(rooms-pane + thread)。viewer の role に応じて navRoomsQuery を切替
+ *   (student/coach は forUser、admin は filterForAdmin)
+ * - storeMessage: メッセージ送信(`Policy::view` で authorize、コーチ未割当時は 422 を Controller で振り分け)
  */
 class ChatRoomController extends Controller
 {
     public function index(IndexRequest $request): Renderable|RedirectResponse
     {
-        $latest = ChatRoom::query()
-            ->forUser($request->user())
-            ->orderByLastMessage()
-            ->first();
+        $viewer = $request->user();
+        $filters = $request->filters();
+
+        $query = ChatRoom::query();
+
+        if ($viewer->role === UserRole::Admin) {
+            $query->filterForAdmin($filters);
+        } else {
+            $query->forUser($viewer);
+        }
+
+        $latest = $query->orderByLastMessage()->first();
 
         if ($latest !== null) {
+            if ($viewer->role === UserRole::Admin) {
+                $params = array_merge(['room' => $latest], array_filter($filters, fn ($v) => $v !== null && $v !== ''));
+
+                return redirect()->route('admin.chat-rooms.show', $params);
+            }
+
             return redirect()->route('chat.show', $latest);
         }
 
-        return view('chat-room.empty-state');
+        return view('chat-room.empty-state', ['filters' => $filters]);
     }
 
     public function indexAsCoach(IndexAsCoachRequest $request): Renderable|RedirectResponse
@@ -76,18 +88,29 @@ class ChatRoomController extends Controller
         $room = $action($room, $viewer);
 
         $navRoomsQuery = ChatRoom::query()
-            ->forUser($viewer)
             ->with(['enrollment.certification.coaches', 'enrollment.user', 'latestMessage.sender']);
 
         $coachFilters = null;
-        if ($viewer->role === UserRole::Coach) {
-            // デフォルトはフィルタなし (= すべて表示)。query string で明示された場合のみ絞り込む。
-            $coachFilters = [
-                'filter' => $request->string('filter', 'all')->toString(),
+        $adminFilters = null;
+
+        if ($viewer->role === UserRole::Admin) {
+            $adminFilters = [
                 'certification_id' => $request->input('certification_id'),
                 'keyword' => $request->input('keyword'),
             ];
-            $navRoomsQuery->filterForCoach($viewer, $coachFilters);
+            $navRoomsQuery->filterForAdmin($adminFilters);
+        } else {
+            $navRoomsQuery->forUser($viewer);
+
+            if ($viewer->role === UserRole::Coach) {
+                // デフォルトはフィルタなし (= すべて表示)。query string で明示された場合のみ絞り込む。
+                $coachFilters = [
+                    'filter' => $request->string('filter', 'all')->toString(),
+                    'certification_id' => $request->input('certification_id'),
+                    'keyword' => $request->input('keyword'),
+                ];
+                $navRoomsQuery->filterForCoach($viewer, $coachFilters);
+            }
         }
 
         $navRooms = $navRoomsQuery
@@ -101,6 +124,7 @@ class ChatRoomController extends Controller
             'navRooms' => $navRooms,
             'navRoomUnreadCounts' => $unreadCount->messageCountsByRoomForUser($navRooms, $viewer),
             'coachFilters' => $coachFilters,
+            'adminFilters' => $adminFilters,
         ]);
     }
 

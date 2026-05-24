@@ -21,7 +21,7 @@
         <div class="min-w-0">
             <div class="flex items-center gap-3 flex-wrap">
                 <h1 class="text-2xl font-bold text-ink-900">{{ $chapter->title }}</h1>
-                @include('common.content-management._partials.status-pill', ['status' => $chapter->status])
+                <x-content-management.status-pill :status="$chapter->status" />
             </div>
             <div class="text-xs text-ink-500 font-mono mt-1 tabular-nums">order #{{ $chapter->order }}</div>
         </div>
@@ -101,7 +101,7 @@
                                    class="text-base font-semibold text-ink-900 hover:text-primary-700 transition-colors">
                                     {{ $section->title }}
                                 </a>
-                                @include('common.content-management._partials.status-pill', ['status' => $section->status])
+                                <x-content-management.status-pill :status="$section->status" />
                             </div>
                             @if ($section->description)
                                 <p class="text-xs text-ink-500 mt-1 line-clamp-1">{{ $section->description }}</p>
@@ -156,26 +156,26 @@
     </x-modal>
 
     @if ($isDraft)
-        @include('common.content-management._modals.publish-confirm', [
-            'id' => 'chapter-publish-modal',
-            'title' => 'Chapter を公開しますか？',
-            'description' => '公開すると配下の Section も受講生の閲覧対象になります（各子要素も公開状態である必要があります）。',
-            'action' => route('admin.chapters.publish', $chapter),
-        ])
-        @include('common.content-management._modals.delete-confirm', [
-            'id' => 'chapter-delete-modal',
-            'title' => 'Chapter を削除しますか？',
-            'description' => 'Chapter を SoftDelete します。配下の Section も連鎖的に非表示になります。',
-            'action' => route('admin.chapters.destroy', $chapter),
-        ])
+        <x-content-management.publish-confirm-modal
+            id="chapter-publish-modal"
+            title="Chapter を公開しますか？"
+            description="公開すると配下の Section も受講生の閲覧対象になります（各子要素も公開状態である必要があります）。"
+            :action="route('admin.chapters.publish', $chapter)"
+        />
+        <x-content-management.delete-confirm-modal
+            id="chapter-delete-modal"
+            title="Chapter を削除しますか？"
+            description="Chapter を SoftDelete します。配下の Section も連鎖的に非表示になります。"
+            :action="route('admin.chapters.destroy', $chapter)"
+        />
     @else
-        @include('common.content-management._modals.publish-confirm', [
-            'id' => 'chapter-unpublish-modal',
-            'title' => 'Chapter を下書きに戻しますか？',
-            'description' => '下書きに戻すと受講生からは非表示になります。',
-            'action' => route('admin.chapters.unpublish', $chapter),
-            'buttonLabel' => '下書きに戻す',
-            'buttonVariant' => 'secondary',
-        ])
+        <x-content-management.publish-confirm-modal
+            id="chapter-unpublish-modal"
+            title="Chapter を下書きに戻しますか？"
+            description="下書きに戻すと受講生からは非表示になります。"
+            :action="route('admin.chapters.unpublish', $chapter)"
+            button-label="下書きに戻す"
+            button-variant="secondary"
+        />
     @endif
 @endsection

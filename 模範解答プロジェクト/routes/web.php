@@ -15,14 +15,12 @@ use App\Http\Controllers\CertificationCoachAssignmentController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChapterController;
 use App\Http\Controllers\ChatRoomController;
-use App\Http\Controllers\ChatRoomModerationController;
 use App\Http\Controllers\ContentSearchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentGoalController;
 use App\Http\Controllers\EnrollmentManagementController;
 use App\Http\Controllers\EnrollmentNoteController;
-use App\Http\Controllers\EnrollmentRosterController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LearningHourTargetController;
 use App\Http\Controllers\MeetingController;
@@ -41,9 +39,7 @@ use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlanStatusController;
 use App\Http\Controllers\QaReplyController;
-use App\Http\Controllers\QaReplyModerationController;
 use App\Http\Controllers\QaThreadController;
-use App\Http\Controllers\QaThreadModerationController;
 use App\Http\Controllers\QuestionCategoryController;
 use App\Http\Controllers\QuizHistoryController;
 use App\Http\Controllers\QuizStatsController;
@@ -107,6 +103,14 @@ Route::middleware('auth')->group(function () {
     // 修了証配信(graduated 受講生でも DL 可、active-learning 非適用)
     Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
         ->name('certificates.download');
+
+    // 受講登録(3 ロール共有: student=自分のみ / coach=担当範囲 / admin=全件)。
+    // 認可は EnrollmentPolicy::viewAny / view で 3 ロール対応済。閲覧範囲は EnrollmentController で
+    // ロール別 eager-load + Blade の @can / @if で UI を出し分ける。
+    Route::get('enrollments', [EnrollmentController::class, 'index'])->name('enrollments.index');
+    Route::get('enrollments/{enrollment}', [EnrollmentController::class, 'show'])
+        ->withTrashed()
+        ->name('enrollments.show');
 });
 
 // ============================================================
@@ -123,9 +127,7 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
     Route::get('contents/search', [ContentSearchController::class, 'search'])
         ->name('contents.search');
 
-    // 受講登録(受講中一覧 / 詳細 / 自己登録 / 受講解除 / 再挑戦)
-    Route::get('enrollments', [EnrollmentController::class, 'index'])->name('enrollments.index');
-    Route::get('enrollments/{enrollment}', [EnrollmentController::class, 'show'])->name('enrollments.show');
+    // 受講登録 — 自己登録 / 受講解除 / failed からの再挑戦(index / show は全ロール共有 group に移管済)
     Route::post('enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
     Route::delete('enrollments/{enrollment}', [EnrollmentController::class, 'destroy'])->name('enrollments.destroy');
     Route::post('enrollments/{enrollment}/resume', [EnrollmentController::class, 'resume'])->name('enrollments.resume');
@@ -137,6 +139,8 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
     // 個人目標(受講生本人のみ CRUD)
     Route::post('enrollments/{enrollment}/goals', [EnrollmentGoalController::class, 'store'])
         ->name('enrollments.goals.store');
+    Route::get('enrollment-goals/{goal}/edit', [EnrollmentGoalController::class, 'edit'])
+        ->name('enrollment-goals.edit');
     Route::patch('enrollment-goals/{goal}', [EnrollmentGoalController::class, 'update'])
         ->name('enrollment-goals.update');
     Route::delete('enrollment-goals/{goal}', [EnrollmentGoalController::class, 'destroy'])
@@ -173,7 +177,9 @@ Route::middleware(['auth', 'role:student', 'active-learning'])
             ->name('enrollments.show');
         Route::get('parts/{part}', [BrowseController::class, 'showPart'])->name('parts.show');
         Route::get('chapters/{chapter}', [BrowseController::class, 'showChapter'])->name('chapters.show');
-        Route::get('sections/{section}', [BrowseController::class, 'showSection'])->name('sections.show');
+        Route::get('sections/{section}', [BrowseController::class, 'showSection'])
+            ->middleware('start-learning-session')
+            ->name('sections.show');
 
         // Section 読了マーク
         Route::post('sections/{section}/read', [SectionProgressController::class, 'markRead'])
@@ -194,8 +200,10 @@ Route::middleware(['auth', 'role:student', 'active-learning'])
 // admin + コーチ共有ルート(コーチメモ: coach は担当資格内のみ、admin は越境可)
 // ============================================================
 Route::middleware(['auth', 'role:admin,coach'])->group(function () {
-    Route::post('admin/enrollments/{enrollment}/notes', [EnrollmentNoteController::class, 'store'])
-        ->name('admin.enrollments.notes.store');
+    Route::post('enrollments/{enrollment}/notes', [EnrollmentNoteController::class, 'store'])
+        ->name('enrollments.notes.store');
+    Route::get('enrollment-notes/{note}/edit', [EnrollmentNoteController::class, 'edit'])
+        ->name('enrollment-notes.edit');
     Route::patch('enrollment-notes/{note}', [EnrollmentNoteController::class, 'update'])
         ->name('enrollment-notes.update');
     Route::delete('enrollment-notes/{note}', [EnrollmentNoteController::class, 'destroy'])
@@ -266,11 +274,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('meeting-packs/{plan}/unarchive', [MeetingPackStatusController::class, 'unarchive'])
         ->name('admin.meeting-packs.unarchive');
 
-    // 受講登録管理(全件一覧 / 詳細 / 試験日変更 / 手動学習中止)。新規作成は受講生自身の自己登録のみ
-    Route::get('enrollments', [EnrollmentManagementController::class, 'index'])->name('admin.enrollments.index');
-    Route::get('enrollments/{enrollment}', [EnrollmentManagementController::class, 'show'])
-        ->withTrashed()
-        ->name('admin.enrollments.show');
+    // 受講登録管理 — 試験日変更 / 手動学習中止のみ admin 専用(一覧 / 詳細は全ロール共有 group に移管済)
     Route::patch('enrollments/{enrollment}/exam-date', [EnrollmentManagementController::class, 'updateExamDate'])
         ->name('admin.enrollments.updateExamDate');
     Route::post('enrollments/{enrollment}/fail', [EnrollmentManagementController::class, 'fail'])
@@ -346,8 +350,7 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
     Route::delete('question-categories/{category}', [QuestionCategoryController::class, 'destroy'])
         ->name('admin.question-categories.destroy');
 
-    // 模試管理 — 模試マスタ CRUD + 公開状態遷移 + 並び順
-    Route::put('mock-exams/reorder', [MockExamController::class, 'reorder'])->name('admin.mock-exams.reorder');
+    // 模試管理 — 模試マスタ CRUD + 公開状態遷移
     Route::resource('mock-exams', MockExamController::class)
         ->parameters(['mock-exams' => 'mockExam'])
         ->names('admin.mock-exams');
@@ -357,8 +360,6 @@ Route::middleware(['auth', 'role:admin,coach'])->prefix('admin')->group(function
         ->name('admin.mock-exams.unpublish');
 
     // 模試管理 — 模試問題 CRUD(模試マスタの子リソース、shallow)
-    Route::put('mock-exams/{mockExam}/questions/reorder', [MockExamQuestionController::class, 'reorder'])
-        ->name('admin.mock-exams.questions.reorder');
     Route::get('mock-exams/{mockExam}/questions', [MockExamQuestionController::class, 'index'])
         ->name('admin.mock-exams.questions.index');
     Route::get('mock-exams/{mockExam}/questions/create', [MockExamQuestionController::class, 'create'])
@@ -426,7 +427,7 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
             ->with('certification')
             ->get();
 
-        return view('mock-exams.empty-state', [
+        return view('mock-exam.empty-state', [
             'enrollments' => $enrollments ?? collect(),
         ]);
     })
@@ -535,9 +536,9 @@ Route::middleware(['auth', 'role:coach', 'active-learning'])->group(function () 
 // 管理者専用 — chat 監査閲覧
 // ============================================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('chat-rooms', [ChatRoomModerationController::class, 'index'])
+    Route::get('chat-rooms', [ChatRoomController::class, 'index'])
         ->name('admin.chat-rooms.index');
-    Route::get('chat-rooms/{room}', [ChatRoomModerationController::class, 'show'])
+    Route::get('chat-rooms/{room}', [ChatRoomController::class, 'show'])
         ->name('admin.chat-rooms.show');
 });
 
@@ -545,9 +546,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 // コーチ専用ルート — 担当資格受講生管理 / 面談管理 / メモ記録
 // ============================================================
 Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')->group(function () {
-    // 担当資格受講生管理(担当資格に属する Enrollment の一覧 / 詳細)
-    Route::get('students', [EnrollmentRosterController::class, 'index'])->name('students.index');
-    Route::get('students/{enrollment}', [EnrollmentRosterController::class, 'show'])->name('students.show');
+    // 担当受講生の一覧 / 詳細は全ロール共有 `enrollments.index` / `enrollments.show` に統合済(認可は Policy で範囲を絞る)
 
     // 面談管理
     Route::get('meetings', [MeetingController::class, 'indexAsCoach'])->name('meetings.index');
@@ -604,6 +603,7 @@ Route::middleware(['auth', 'role:student,coach', 'active-learning'])->group(func
     Route::post('qa-board/{thread}/unresolve', [QaThreadController::class, 'unresolve'])->name('qa-board.unresolve');
 
     Route::post('qa-board/{thread}/replies', [QaReplyController::class, 'store'])->name('qa-board.replies.store');
+    Route::get('qa-board/{thread}/replies/{reply}/edit', [QaReplyController::class, 'edit'])->name('qa-board.replies.edit');
     Route::patch('qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'update'])->name('qa-board.replies.update');
     Route::delete('qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'destroy'])->name('qa-board.replies.destroy');
 });
@@ -612,10 +612,10 @@ Route::middleware(['auth', 'role:student,coach', 'active-learning'])->group(func
 // 管理者専用 — qa-board モデレーション
 // ============================================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('qa-board', [QaThreadModerationController::class, 'index'])->name('admin.qa-board.index');
-    Route::get('qa-board/{thread}', [QaThreadModerationController::class, 'show'])->withTrashed()->name('admin.qa-board.show');
-    Route::delete('qa-board/{thread}', [QaThreadModerationController::class, 'destroy'])->name('admin.qa-board.destroy');
-    Route::delete('qa-board/replies/{reply}', [QaReplyModerationController::class, 'destroy'])->name('admin.qa-board.replies.destroy');
+    Route::get('qa-board', [QaThreadController::class, 'index'])->name('admin.qa-board.index');
+    Route::get('qa-board/{thread}', [QaThreadController::class, 'show'])->name('admin.qa-board.show');
+    Route::delete('qa-board/{thread}', [QaThreadController::class, 'destroy'])->name('admin.qa-board.destroy');
+    Route::delete('qa-board/{thread}/replies/{reply}', [QaReplyController::class, 'destroy'])->name('admin.qa-board.replies.destroy');
 });
 
 // ============================================================

@@ -5,27 +5,51 @@
 @section('content')
     @php
         $viewer = auth()->user();
+        $isAdminContext = request()->routeIs('admin.*');
         $viewerIsStudent = $viewer->role === \App\Enums\UserRole::Student;
-        $backRoute = $viewer->role === \App\Enums\UserRole::Coach ? 'coach.chat.index' : 'chat.index';
+        $viewerIsAdmin = $viewer->role === \App\Enums\UserRole::Admin;
+
+        if ($isAdminContext) {
+            $backRoute = 'admin.chat-rooms.index';
+            $backLabel = 'chat 監査';
+        } elseif ($viewer->role === \App\Enums\UserRole::Coach) {
+            $backRoute = 'coach.chat.index';
+            $backLabel = 'chat';
+        } else {
+            $backRoute = 'chat.index';
+            $backLabel = 'chat';
+        }
+
         $coaches = $room->enrollment->certification->coaches;
         $coachUnassigned = $coaches->isEmpty();
         $certName = $room->enrollment->certification->name;
         $studentName = $room->enrollment->user->name;
-        $headerSubtitle = $viewerIsStudent
-            ? ($coachUnassigned ? '担当コーチ未割当' : '担当コーチ: ' . $coaches->pluck('name')->implode(' / '))
-            : '受講生: ' . $studentName;
+
+        if ($viewerIsAdmin) {
+            $headerSubtitle = '受講生: '.$studentName.($coaches->isNotEmpty() ? ' · 担当コーチ: '.$coaches->pluck('name')->implode(' / ') : ' · 担当コーチ未割当');
+        } else {
+            $headerSubtitle = $viewerIsStudent
+                ? ($coachUnassigned ? '担当コーチ未割当' : '担当コーチ: '.$coaches->pluck('name')->implode(' / '))
+                : '受講生: '.$studentName;
+        }
     @endphp
 
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
-        ['label' => 'chat', 'href' => route($backRoute)],
+        ['label' => $backLabel, 'href' => route($backRoute)],
         ['label' => $certName],
     ]" />
 
     <div
         class="mt-4 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] bg-surface-raised border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-sm h-[calc(100vh-180px)] min-h-[560px]"
     >
-        @include('chat-room._partials.rooms-pane', ['navRooms' => $navRooms, 'currentRoom' => $room, 'navRoomUnreadCounts' => $navRoomUnreadCounts ?? [], 'coachFilters' => $coachFilters ?? null])
+        @include('chat-room._partials.rooms-pane', [
+            'navRooms' => $navRooms,
+            'currentRoom' => $room,
+            'navRoomUnreadCounts' => $navRoomUnreadCounts ?? [],
+            'coachFilters' => $coachFilters ?? null,
+            'adminFilters' => $adminFilters ?? null,
+        ])
 
         <section class="flex flex-col overflow-hidden bg-surface-canvas min-w-0">
             <header class="px-6 py-3 bg-surface-raised border-b border-[var(--border-subtle)] flex items-center gap-3">
@@ -38,7 +62,9 @@
                         {{ $headerSubtitle }}
                     </div>
                 </div>
-                @if ($coachUnassigned)
+                @if ($viewerIsAdmin)
+                    <x-badge variant="info">監査モード(閲覧のみ)</x-badge>
+                @elseif ($coachUnassigned)
                     <x-badge variant="warning">コーチ未割当</x-badge>
                 @endif
             </header>
@@ -53,9 +79,11 @@
                 @if ($messages->isEmpty())
                     @include('chat-room._partials.empty-message', [
                         'title' => 'まだメッセージはありません',
-                        'description' => $coachUnassigned
-                            ? '担当コーチが割り当てられるとメッセージを送れるようになります。'
-                            : '最初のメッセージを送ってみましょう。',
+                        'description' => $viewerIsAdmin
+                            ? '受講生 / コーチが送信するとここに表示されます。'
+                            : ($coachUnassigned
+                                ? '担当コーチが割り当てられるとメッセージを送れるようになります。'
+                                : '最初のメッセージを送ってみましょう。'),
                     ])
                 @else
                     @foreach ($messages as $message)
@@ -67,7 +95,7 @@
             @can('sendMessage', $room)
                 @include('chat-room._partials.message-form', ['room' => $room])
             @else
-                @unless (auth()->user()->role === \App\Enums\UserRole::Admin)
+                @unless ($viewerIsAdmin)
                     <div class="border-t border-[var(--border-subtle)] px-6 py-4 text-sm text-warning-700 bg-warning-50">
                         @if ($coachUnassigned)
                             担当コーチが割り当てられていないため、メッセージを送信できません。
@@ -80,11 +108,13 @@
         </section>
     </div>
 
-    @include('chat-room._partials.message-template')
+    @unless ($viewerIsAdmin)
+        @include('chat-room._partials.message-template')
 
-    <script>
-        window.chatRoomId = @json($room->id);
-        window.authUserId = @json(auth()->id());
-    </script>
-    @vite('resources/js/chat/realtime.js')
+        <script>
+            window.chatRoomId = @json($room->id);
+            window.authUserId = @json(auth()->id());
+        </script>
+        @vite('resources/js/chat/realtime.js')
+    @endunless
 @endsection

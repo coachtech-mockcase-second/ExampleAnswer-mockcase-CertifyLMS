@@ -21,7 +21,7 @@ use Illuminate\Support\Collection;
  * コーチダッシュボードの ViewModel を組み立てる Action。
  *
  * 担当資格に紐付く Enrollment 一覧(certification.coaches 経由) + 今日 / 明日の面談予約 +
- * 未読 chat 件数 + 未読 chat ルーム上位 5 件 + 未回答 Q&A 件数 + 直近 Q&A 上位 5 件 + 直近通知 を集約する。
+ * 未読 chat 件数 + 未読 chat ルーム上位 5 件 + 未回答 Q&A 件数 + 直近 Q&A 上位 5 件 を集約する。
  *
  * 担当受講生一覧は表示専用(ソートなし、最終活動日は `withMax` で集約取得)。
  * 弱点カテゴリ集約 / 受講生メモ表示 / 滞留検知は本ロールでは表示しない(個別画面で対応)。
@@ -62,8 +62,6 @@ final class FetchCoachDashboardAction
             recentUnreadChatRooms: $this->safe(fn () => $this->fetchRecentUnreadChatRooms($coach)),
             unansweredQaCount: $this->safe(fn () => $this->fetchUnansweredQaCount($coachingCertificationIds)),
             recentQaThreads: $this->safe(fn () => $this->fetchRecentUnansweredQaThreads($coachingCertificationIds)),
-            recentNotifications: $coach->notifications()->latest()->limit(5)->get(),
-            unreadNotificationCount: $coach->unreadNotifications()->count(),
         );
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Http\Requests\QaReply\StoreRequest;
 use App\Http\Requests\QaReply\UpdateRequest;
 use App\Models\QaReply;
@@ -12,12 +13,13 @@ use App\UseCases\QaReply\DestroyAction;
 use App\UseCases\QaReply\StoreAction;
 use App\UseCases\QaReply\UpdateAction;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 /**
- * 受講生 / コーチ向けの回答 Controller。
+ * 質問への回答 Controller。受講生 / コーチ / admin 共通で利用される。
  *
  * Policy::create は admin に対して常に false を返すため、admin は回答送信不可。
- * 削除は本人 + admin に許可されるが、admin モデレーション削除は QaReplyModerationController を使う想定。
+ * 削除は本人(Policy::delete)+ admin(モデレーション削除)で共通利用される。
  */
 class QaReplyController extends Controller
 {
@@ -29,6 +31,16 @@ class QaReplyController extends Controller
             ->route('qa-board.show', ['thread' => $thread->id])
             ->withFragment('reply-'.$reply->id)
             ->with('success', '回答を投稿しました。');
+    }
+
+    public function edit(QaThread $thread, QaReply $reply): View
+    {
+        $this->authorize('update', $reply);
+
+        return view('qa-thread.reply-edit', [
+            'thread' => $thread,
+            'reply' => $reply,
+        ]);
     }
 
     public function update(QaThread $thread, QaReply $reply, UpdateRequest $request, UpdateAction $action): RedirectResponse
@@ -47,8 +59,12 @@ class QaReplyController extends Controller
 
         $action($reply);
 
+        $redirectRoute = auth()->user()->role === UserRole::Admin
+            ? 'admin.qa-board.show'
+            : 'qa-board.show';
+
         return redirect()
-            ->route('qa-board.show', ['thread' => $thread->id])
+            ->route($redirectRoute, ['thread' => $thread->id])
             ->with('success', '回答を削除しました。');
     }
 }

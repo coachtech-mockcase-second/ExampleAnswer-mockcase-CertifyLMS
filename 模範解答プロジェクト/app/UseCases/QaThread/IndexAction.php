@@ -13,11 +13,11 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * 質問掲示板の一覧取得ユースケース。
+ * 質問掲示板の一覧取得ユースケース。受講生 / コーチ / admin 共通で利用される。
  *
  * ロールごとに取得対象を絞る:
  *
- * - admin: 全資格・全状態 (ただし本 Action は公開 (`/qa-board`) 経由のみ、admin はそもそも `/admin/qa-board` を使う想定なので実質呼ばれない)
+ * - admin: 全資格・全状態(モデレーション目的、公開停止 / draft / archived も含む)
  * - coach: 担当資格のスレッドのみ。担当外資格を `certification_id` フィルタで指定された場合は Controller / Policy 側で 403 を返す前提
  * - student: 公開資格 (`status = published`) のスレッドのみ
  *

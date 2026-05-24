@@ -9,7 +9,6 @@ use App\Models\Enrollment;
 use App\Models\Meeting;
 use App\Models\QaThread;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 
 /**
@@ -25,7 +24,6 @@ final readonly class CoachDashboardViewModel
      * @param EloquentCollection<int, Meeting> $todayAndTomorrowMeetings 今日 / 明日の面談予約
      * @param ?Collection<int, ChatRoom> $recentUnreadChatRooms 未読 chat ルーム上位 5(取得失敗時 null)
      * @param ?Collection<int, QaThread> $recentQaThreads 未回答 Q&A 上位 5(取得失敗時 null)
-     * @param EloquentCollection<int, DatabaseNotification> $recentNotifications 直近通知 5 件
      */
     public function __construct(
         public EloquentCollection $assignedEnrollments,
@@ -34,7 +32,5 @@ final readonly class CoachDashboardViewModel
         public ?Collection $recentUnreadChatRooms,
         public ?int $unansweredQaCount,
         public ?Collection $recentQaThreads,
-        public EloquentCollection $recentNotifications,
-        public int $unreadNotificationCount,
     ) {}
 }

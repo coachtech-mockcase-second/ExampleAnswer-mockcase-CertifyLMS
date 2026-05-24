@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\CertificationStatus;
+use App\Enums\UserRole;
 use App\Http\Requests\QaThread\IndexRequest;
 use App\Http\Requests\QaThread\StoreRequest;
 use App\Http\Requests\QaThread\UpdateRequest;
@@ -24,10 +25,10 @@ use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
- * 受講生 / コーチ向け質問掲示板スレッド Controller。
+ * 質問掲示板スレッド Controller。受講生 / コーチ / admin 共通で利用される。
  *
- * リソース固有認可は QaThreadPolicy に集約。投稿は student のみ、回答は coach も可能、編集 / 削除 / 解決マークは
- * 投稿者本人のみ (admin 代行不可)。admin モデレーションは QaThreadModerationController を使う。
+ * リソース固有認可は QaThreadPolicy に集約。投稿は student のみ、編集 / 解決マークは投稿者本人のみ
+ * (admin 代行不可)。削除は投稿者本人(回答 0 件のみ)または admin(無条件モデレーション削除)。
  */
 class QaThreadController extends Controller
 {
@@ -44,6 +45,7 @@ class QaThreadController extends Controller
             'threads' => $threads,
             'filters' => $filters,
             'certifications' => $this->certificationOptionsFor($request->user()),
+            'publishedStatus' => CertificationStatus::Published,
         ]);
     }
 
@@ -102,10 +104,15 @@ class QaThreadController extends Controller
     {
         $this->authorize('delete', $thread);
 
-        $action($thread);
+        $auth = auth()->user();
+        $action($thread, $auth);
+
+        $redirectRoute = $auth->role === UserRole::Admin
+            ? 'admin.qa-board.index'
+            : 'qa-board.index';
 
         return redirect()
-            ->route('qa-board.index')
+            ->route($redirectRoute)
             ->with('success', '質問を削除しました。');
     }
 
@@ -132,15 +139,18 @@ class QaThreadController extends Controller
     }
 
     /**
-     * フィルタ / 投稿フォームで使う資格選択肢を返す (公開済資格のみ)。
+     * フィルタ / 投稿フォームで使う資格選択肢を返す (admin は全資格、それ以外は公開済のみ)。
      *
      * @return Collection<int, Certification>
      */
     private function certificationOptionsFor(?User $user): Collection
     {
-        return Certification::query()
-            ->where('status', CertificationStatus::Published)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $query = Certification::query()->orderBy('name');
+
+        if ($user?->role !== UserRole::Admin) {
+            $query->where('status', CertificationStatus::Published);
+        }
+
+        return $query->get(['id', 'name', 'status']);
     }
 }

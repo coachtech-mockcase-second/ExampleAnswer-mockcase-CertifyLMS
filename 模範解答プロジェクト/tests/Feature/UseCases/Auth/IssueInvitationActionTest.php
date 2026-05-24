@@ -225,7 +225,7 @@ class IssueInvitationActionTest extends TestCase
 
         app(IssueInvitationAction::class)('mailtest@example.test', UserRole::Student, $plan, $admin);
 
-        Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('mailtest@example.test'));
+        Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('mailtest@example.test'));
     }
 
     public function test_inserts_user_status_log_with_invited_status_on_new_user_insert(): void

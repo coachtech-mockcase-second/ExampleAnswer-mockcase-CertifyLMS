@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\MockExamQuestion\ReorderRequest;
 use App\Http\Requests\MockExamQuestion\StoreRequest;
 use App\Http\Requests\MockExamQuestion\UpdateRequest;
 use App\Models\MockExam;
 use App\Models\MockExamQuestion;
 use App\UseCases\MockExamQuestion\DestroyAction;
-use App\UseCases\MockExamQuestion\ReorderAction;
 use App\UseCases\MockExamQuestion\StoreAction;
 use App\UseCases\MockExamQuestion\UpdateAction;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +17,7 @@ use Illuminate\View\View;
 /**
  * 模試問題(模試マスタの子リソース)を直接 CRUD する Controller。
  *
- * shallow ルートで `index` / `create` / `store` は親 MockExam を受け、`show` / `edit` / `update` / `destroy` / `reorder` は MockExamQuestion を受ける。
+ * shallow ルートで `index` / `create` / `store` は親 MockExam を受け、`show` / `edit` / `update` / `destroy` は MockExamQuestion を受ける。
  */
 class MockExamQuestionController extends Controller
 {
@@ -102,14 +100,5 @@ class MockExamQuestionController extends Controller
         return redirect()
             ->route('admin.mock-exams.questions.index', $mockExam)
             ->with('success', '問題を削除しました。');
-    }
-
-    public function reorder(MockExam $mockExam, ReorderRequest $request, ReorderAction $action): RedirectResponse
-    {
-        $action($mockExam, $request->validated()['items']);
-
-        return redirect()
-            ->route('admin.mock-exams.questions.index', $mockExam)
-            ->with('success', '問題の並び順を更新しました。');
     }
 }

@@ -93,7 +93,7 @@
                             <span class="text-sm text-ink-700">{{ $q->category?->name ?? '—' }}</span>
                         </x-table.cell>
                         <x-table.cell>
-                            @include('common.content-management._partials.status-pill', ['status' => $q->status])
+                            <x-content-management.status-pill :status="$q->status" />
                         </x-table.cell>
                         <x-table.cell>
                             <span class="text-sm text-ink-700 tabular-nums">{{ $q->options->count() }} 件</span>

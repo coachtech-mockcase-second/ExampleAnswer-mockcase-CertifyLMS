@@ -1,3 +1,4 @@
+{{-- 回答投稿フォーム。回答できないユーザー（管理者など）には案内メッセージを表示 --}}
 @php
     $canReply = auth()->user()?->can('create', [\App\Models\QaReply::class, $thread]) ?? false;
 @endphp

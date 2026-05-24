@@ -61,9 +61,7 @@
 | POST / DELETE | `/admin/sections/{section}/images` / `/admin/section-images/{image}` | 教材内画像 アップロード / 削除 |
 | GET / POST / PATCH / DELETE | `/admin/certifications/{certification}/question-categories` 配下、`/admin/question-categories/{category}` ほか | 出題分野マスタ CRUD |
 
-### 原因箇所メモ(コーチ用、受講生に直接教えない)
-
-> **コーチが Bug の原因コードを事前把握しておく材料**。受講生のヒアリング応答時は **ファイルパスや修正コードを直接教えない**(教育上 NG)。「教材管理画面で 403 が出るとき、Laravel ではどのレイヤーがアクセスを判定している?」「同じ画面が admin だけ通る挙動だと、ロール判定なのか担当判定なのかどちらが疑わしい?」のような **問い返し / 方向性ヒント** で受講生自身のコードリーディングを促す。
+### 原因箇所メモ
 
 - 原因の主要ファイル: `app/Policies/PartPolicy.php`
 - 関連ファイル: `app/Policies/ChapterPolicy.php` / `app/Policies/SectionPolicy.php` / `app/Policies/SectionQuestionPolicy.php` / `app/Policies/SectionImagePolicy.php` / `app/Policies/QuestionCategoryPolicy.php`
@@ -73,8 +71,6 @@
 ## 補足
 
 ### 想定ヒアリング Q&A
-
-> 受講生の **仮説提案型ヒアリング**(「○○と振る舞うべきと理解しましたが正しいですか?」)に対して OK / NG / 別案 を返すスタイル。**要件・仕様レベル(正しい振る舞いの確認)のみ** 記述する(設計判断 / 実装詳細は書かない)。
 
 | 質問 | 回答 |
 |---|---|

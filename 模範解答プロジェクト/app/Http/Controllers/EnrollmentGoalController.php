@@ -14,6 +14,7 @@ use App\UseCases\EnrollmentGoal\StoreAction;
 use App\UseCases\EnrollmentGoal\UnmarkAchievedAction;
 use App\UseCases\EnrollmentGoal\UpdateAction;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 /**
  * 受講生本人による個人目標 Controller。コーチ / admin は閲覧専用なので CRUD エンドポイントは持たない。
@@ -27,6 +28,15 @@ class EnrollmentGoalController extends Controller
         return redirect()
             ->route('enrollments.show', $enrollment)
             ->with('success', '目標を追加しました。');
+    }
+
+    public function edit(EnrollmentGoal $goal): View
+    {
+        $this->authorize('update', $goal);
+
+        return view('enrollment-goal.edit', [
+            'goal' => $goal,
+        ]);
     }
 
     public function update(EnrollmentGoal $goal, UpdateRequest $request, UpdateAction $action): RedirectResponse

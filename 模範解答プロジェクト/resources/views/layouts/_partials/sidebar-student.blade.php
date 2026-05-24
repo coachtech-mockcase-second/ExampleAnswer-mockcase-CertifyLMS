@@ -15,7 +15,7 @@
         <x-nav.item route="meetings.fallback.create" icon="calendar-days" label="面談予約" />
 
         <x-nav.section title="共通" :routes="['notifications.index', 'settings.profile.edit']" />
-        <x-nav.item route="notifications.index" icon="bell" label="通知" :badge="$notificationBadge ?? 0" />
+        <x-nav.item route="notifications.index" icon="bell" label="通知" />
         <x-nav.item route="settings.profile.edit" icon="cog-6-tooth" label="設定" />
     </x-nav.sidebar>
 

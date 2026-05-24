@@ -30,6 +30,24 @@ class SearchTest extends TestCase
             ->assertSee('TCP/IP 入門');
     }
 
+    public function test_search_result_links_to_student_learning_route_not_admin(): void
+    {
+        $student = User::factory()->student()->create();
+        $cert = Certification::factory()->published()->create();
+        Enrollment::factory()->create(['user_id' => $student->id, 'certification_id' => $cert->id]);
+
+        [$part, $chapter, $section] = $this->makePartChain($cert, 'published');
+        $section->update(['title' => 'TCP/IP 入門', 'body' => 'TCP/IP は ...']);
+
+        $response = $this->actingAs($student)
+            ->get(route('contents.search', ['certification_id' => $cert->id, 'keyword' => 'TCP']));
+
+        $response->assertOk();
+        // 受講生が辿れる learning ルートにリンクすること (admin ルートだと受講生は 403 になる)
+        $response->assertSee(route('learning.sections.show', $section), false);
+        $response->assertDontSee(route('admin.sections.show', $section), false);
+    }
+
     public function test_draft_section_not_returned(): void
     {
         $student = User::factory()->student()->create();

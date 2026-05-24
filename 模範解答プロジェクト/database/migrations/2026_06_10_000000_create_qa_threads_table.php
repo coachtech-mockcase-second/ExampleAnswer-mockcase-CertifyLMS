@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * 受講生 / コーチが資格別に技術質問を公開で投稿する Q&A 掲示板のスレッドテーブル。
  *
  * - 解決状態は `status` Enum (open / resolved) と `resolved_at` の同時更新で表現
- * - SoftDelete 採用: モデレーション削除や投稿者削除でも履歴を保持
+ * - 削除は物理削除 (モデレーション削除も投稿者削除も履歴を残さない)
  */
 return new class extends Migration
 {

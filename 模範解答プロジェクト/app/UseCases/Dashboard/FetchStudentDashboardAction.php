@@ -28,7 +28,7 @@ use Illuminate\Support\Collection;
  * 受講生ダッシュボードの ViewModel を組み立てる Action。
  *
  * プラン情報パネル(残面談 + 残日数 + 追加面談購入 CTA) + 受講中資格カード(learning + passed) +
- * 修了済資格セクション + ストリーク + 個人目標タイムライン + 直近通知 + 今後の面談予定 を集約する。
+ * 修了済資格セクション + ストリーク + 個人目標タイムライン + 今後の面談予定 を集約する。
  *
  * - 受講中資格カードの進捗集計は `ProgressService::batchCalculate` で N+1 回避
  * - 各セクション build は `safe()` で包み、Service 例外で画面全体が 500 化するのを防ぐ
@@ -64,8 +64,6 @@ final class FetchStudentDashboardAction
             streak: $this->safe(fn () => $this->streak->calculate($student)),
             goalTimeline: $this->safe(fn () => $this->buildGoalTimeline($student)),
             upcomingMeetings: $this->safe(fn () => $this->buildUpcomingMeetings($student)),
-            recentNotifications: $student->notifications()->latest()->limit(5)->get(),
-            unreadNotificationCount: $student->unreadNotifications()->count(),
             hasNoEnrollment: $activeEnrollments->isEmpty(),
         );
     }

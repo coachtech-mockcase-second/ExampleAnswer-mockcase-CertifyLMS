@@ -28,33 +28,38 @@ class FailExpiredEnrollmentsCommand extends Command
         EnrollmentStatusChangeService $statusChanger,
         DefaultEnrollmentService $defaultEnrollmentService,
     ): int {
-        $enrollments = Enrollment::query()
+        $count = 0;
+
+        // 件数無制限になり得る対象を chunkById で分割処理。foreach 内で status を Learning → Failed に
+        // 更新する(WHERE 条件カラムと同じ)ため、offset ベースの chunk だと取りこぼしが発生する → chunkById 必須。
+        Enrollment::query()
             ->with('user')
             ->where('status', EnrollmentStatus::Learning->value)
             ->whereNotNull('exam_date')
             ->whereDate('exam_date', '<', now()->toDateString())
-            ->get();
+            ->orderBy('id')
+            ->chunkById(100, function ($enrollments) use ($statusChanger, $defaultEnrollmentService, &$count): void {
+                foreach ($enrollments as $enrollment) {
+                    DB::transaction(function () use ($enrollment, $statusChanger, $defaultEnrollmentService) {
+                        $enrollment->update(['status' => EnrollmentStatus::Failed->value]);
 
-        foreach ($enrollments as $enrollment) {
-            DB::transaction(function () use ($enrollment, $statusChanger, $defaultEnrollmentService) {
-                $enrollment->update(['status' => EnrollmentStatus::Failed->value]);
+                        $statusChanger->recordStatusChange(
+                            $enrollment,
+                            fromStatus: EnrollmentStatus::Learning,
+                            toStatus: EnrollmentStatus::Failed,
+                            changedBy: null,
+                            reason: '試験日超過による自動失敗',
+                        );
 
-                $statusChanger->recordStatusChange(
-                    $enrollment,
-                    fromStatus: EnrollmentStatus::Learning,
-                    toStatus: EnrollmentStatus::Failed,
-                    changedBy: null,
-                    reason: '試験日超過による自動失敗',
-                );
-
-                $defaultEnrollmentService->resolveAfterStatusChange(
-                    $enrollment->user,
-                    $enrollment,
-                );
+                        $defaultEnrollmentService->resolveAfterStatusChange(
+                            $enrollment->user,
+                            $enrollment,
+                        );
+                    });
+                    $count++;
+                }
             });
-        }
 
-        $count = $enrollments->count();
         $this->info("Failed {$count} expired enrollments.");
 
         return self::SUCCESS;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Http\QaReply\Moderation;
+namespace Tests\Feature\Http\AdminQaReply;
 
 use App\Enums\QaThreadStatus;
 use App\Models\Certification;
@@ -16,7 +16,7 @@ class DestroyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_soft_delete_reply_and_thread_status_unchanged(): void
+    public function test_admin_can_delete_reply_and_thread_status_unchanged(): void
     {
         $admin = User::factory()->admin()->create();
         $cert = Certification::factory()->published()->create();
@@ -24,7 +24,7 @@ class DestroyTest extends TestCase
         $reply = QaReply::factory()->forThread($thread)->create();
         $originalResolvedAt = $thread->resolved_at;
 
-        $response = $this->actingAs($admin)->delete(route('admin.qa-board.replies.destroy', $reply));
+        $response = $this->actingAs($admin)->delete(route('admin.qa-board.replies.destroy', [$reply->qa_thread_id, $reply->id]));
 
         $response->assertRedirect();
         $this->assertDatabaseMissing('qa_replies', ['id' => $reply->id]);
@@ -43,7 +43,7 @@ class DestroyTest extends TestCase
         $reply = QaReply::factory()->forThread($thread)->create();
 
         foreach ([$coach, $student] as $denied) {
-            $response = $this->actingAs($denied)->delete(route('admin.qa-board.replies.destroy', $reply));
+            $response = $this->actingAs($denied)->delete(route('admin.qa-board.replies.destroy', [$reply->qa_thread_id, $reply->id]));
             $this->assertContains($response->status(), [403, 404]);
         }
     }

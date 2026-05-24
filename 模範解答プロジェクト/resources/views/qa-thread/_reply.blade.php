@@ -1,8 +1,11 @@
 @php
+    // 回答 1 件分の表示ブロック（$reply を受け取る）
     $viewer = auth()->user();
     $isAuthor = $viewer !== null && $reply->user_id === $viewer->id;
     $canUpdate = $viewer?->can('update', $reply) ?? false;
     $canDelete = $viewer?->can('delete', $reply) ?? false;
+    $isAdminContext ??= request()->routeIs('admin.*');
+    $destroyRoute = $isAdminContext ? 'admin.qa-board.replies.destroy' : 'qa-board.replies.destroy';
 @endphp
 
 <article id="reply-{{ $reply->id }}" class="bg-surface-raised border border-[var(--border-subtle,#E6EDEB)] rounded-2xl px-5 py-4">
@@ -26,58 +29,39 @@
             </div>
         </div>
 
-        @if ($canUpdate || $canDelete)
-            <x-dropdown align="right">
-                <x-slot:trigger>
-                    <button type="button" class="p-1.5 rounded-md text-ink-500 hover:text-ink-900 hover:bg-ink-50 transition-colors" aria-label="この回答の操作メニュー">
-                        <x-icon name="ellipsis-vertical" class="w-4 h-4" />
-                    </button>
-                </x-slot:trigger>
-                @if ($canUpdate)
-                    <x-dropdown.item :href="'#reply-edit-'.$reply->id" data-reply-toggle-edit="{{ $reply->id }}">
-                        <x-icon name="pencil-square" class="w-4 h-4" />
-                        編集
-                    </x-dropdown.item>
-                @endif
-                @if ($canDelete)
-                    <x-dropdown.item :href="route('qa-board.replies.destroy', ['thread' => $reply->qa_thread_id, 'reply' => $reply->id])" method="delete" variant="danger">
+        {{-- 操作ボタン（編集リンク + 削除フォーム）。ドロップダウンは使わず直接並べる --}}
+        <div class="flex items-center gap-1.5 shrink-0">
+            {{-- 編集はリンク遷移 --}}
+            @if ($canUpdate)
+                <x-link-button
+                    href="{{ route('qa-board.replies.edit', ['thread' => $reply->qa_thread_id, 'reply' => $reply->id]) }}"
+                    variant="ghost"
+                    size="sm"
+                >
+                    <x-icon name="pencil-square" class="w-4 h-4" />
+                    編集
+                </x-link-button>
+            @endif
+            {{-- 削除はフォーム送信 + confirm() --}}
+            @if ($canDelete)
+                <form
+                    method="POST"
+                    action="{{ route($destroyRoute, ['thread' => $reply->qa_thread_id, 'reply' => $reply->id]) }}"
+                    onsubmit="return confirm('この回答を削除しますか？');"
+                >
+                    @csrf
+                    @method('DELETE')
+                    <x-button type="submit" variant="ghost" size="sm">
                         <x-icon name="trash" class="w-4 h-4" />
                         削除
-                    </x-dropdown.item>
-                @endif
-            </x-dropdown>
-        @endif
+                    </x-button>
+                </form>
+            @endif
+        </div>
     </header>
 
-    <div class="mt-3 text-sm leading-relaxed text-ink-800" data-reply-body-{{ $reply->id }}>
+    {{-- 本文。e() でエスケープ後 nl2br() で改行を <br> 化（XSS 対策）--}}
+    <div class="mt-3 text-sm leading-relaxed text-ink-800">
         {!! nl2br(e($reply->body)) !!}
     </div>
-
-    @if ($canUpdate)
-        <form
-            method="POST"
-            action="{{ route('qa-board.replies.update', ['thread' => $reply->qa_thread_id, 'reply' => $reply->id]) }}"
-            id="reply-edit-{{ $reply->id }}"
-            class="mt-4 hidden"
-            data-reply-edit-form="{{ $reply->id }}"
-        >
-            @csrf
-            @method('PATCH')
-            <x-form.textarea
-                name="body"
-                label="回答を編集"
-                :rows="5"
-                :value="$reply->body"
-                :maxlength="5000"
-                :required="true"
-            />
-            <div class="flex items-center justify-end gap-3 mt-2">
-                <button type="button" data-reply-cancel-edit="{{ $reply->id }}" class="text-sm text-ink-600 hover:text-ink-900">キャンセル</button>
-                <x-button type="submit" variant="primary" size="sm">
-                    <x-icon name="check" class="w-4 h-4" />
-                    更新
-                </x-button>
-            </div>
-        </form>
-    @endif
 </article>

@@ -12,6 +12,7 @@ use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\ResolveDefaultEnrollment;
+use App\Http\Middleware\StartLearningSession;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
@@ -99,6 +100,7 @@ class Kernel extends HttpKernel
         'resolve-default-enrollment' => ResolveDefaultEnrollment::class,
         'role' => EnsureUserRole::class,
         'signed' => ValidateSignature::class,
+        'start-learning-session' => StartLearningSession::class,
         'stripe.signature' => VerifyStripeSignature::class,
         'throttle' => ThrottleRequests::class,
         'verified' => EnsureEmailIsVerified::class,

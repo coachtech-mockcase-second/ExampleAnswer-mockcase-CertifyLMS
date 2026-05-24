@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
  *
  * 編集 UI 本体は `/settings/profile?tab=meeting` の面談設定タブが所有しており、
  * 本 Controller は **POST / PATCH / DELETE のみを受け持つ API 的エンドポイント**(本 Feature の Blade form の送信先)。
- * `GET /settings/availability` (`index`) は旧設計の単独画面の名残りとして残し、プロフィール設定画面へ 302 redirect する。
+ * `GET /settings/availability` (`index`) は面談設定タブ (`/settings/profile?tab=meeting`) への互換リダイレクト。直接 URL アクセスや旧ブックマークを正しい編集画面へ 302 で誘導する。
  * `role:coach` middleware で他ロールは 403。本人所有確認は `CoachAvailabilityPolicy` を経由する。
  */
 class AvailabilityController extends Controller

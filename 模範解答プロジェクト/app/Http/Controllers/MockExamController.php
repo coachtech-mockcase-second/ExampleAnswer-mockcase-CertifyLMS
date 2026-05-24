@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\MockExam\IndexRequest;
-use App\Http\Requests\MockExam\ReorderRequest;
 use App\Http\Requests\MockExam\StoreRequest;
 use App\Http\Requests\MockExam\UpdateRequest;
 use App\Models\Certification;
@@ -13,7 +12,6 @@ use App\Models\MockExam;
 use App\UseCases\MockExam\DestroyAction;
 use App\UseCases\MockExam\IndexAction;
 use App\UseCases\MockExam\PublishAction;
-use App\UseCases\MockExam\ReorderAction;
 use App\UseCases\MockExam\ShowAction;
 use App\UseCases\MockExam\StoreAction;
 use App\UseCases\MockExam\UnpublishAction;
@@ -22,7 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 /**
- * admin / coach 用の模試マスタ管理画面 Controller。CRUD + 公開状態遷移 + 並び順を提供する。
+ * admin / coach 用の模試マスタ管理画面 Controller。CRUD + 公開状態遷移を提供する。
  */
 class MockExamController extends Controller
 {
@@ -125,15 +123,5 @@ class MockExamController extends Controller
         return redirect()
             ->route('admin.mock-exams.show', $mockExam)
             ->with('success', '模試の公開を停止しました。');
-    }
-
-    public function reorder(ReorderRequest $request, ReorderAction $action): RedirectResponse
-    {
-        $validated = $request->validated();
-        $action($validated['certification_id'], $validated['items']);
-
-        return redirect()
-            ->route('admin.mock-exams.index', ['certification_id' => $validated['certification_id']])
-            ->with('success', '並び順を更新しました。');
     }
 }

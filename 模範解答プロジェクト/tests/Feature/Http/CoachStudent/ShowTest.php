@@ -36,7 +36,7 @@ class ShowTest extends TestCase
             'certification_id' => $cert->id,
         ]);
 
-        $response = $this->actingAs($coach)->get(route('coach.students.show', $enrollment));
+        $response = $this->actingAs($coach)->get(route('enrollments.show', $enrollment));
 
         $response->assertOk();
         $response->assertSee('受講生 太郎');
@@ -55,7 +55,7 @@ class ShowTest extends TestCase
         ]);
 
         $this->actingAs($coach)
-            ->get(route('coach.students.show', $enrollment))
+            ->get(route('enrollments.show', $enrollment))
             ->assertForbidden();
     }
 }

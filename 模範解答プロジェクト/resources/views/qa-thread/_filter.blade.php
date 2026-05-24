@@ -1,3 +1,4 @@
+{{-- 一覧の絞り込みフォーム（解決状態タブ + 資格チップ + キーワード検索）。すべて GET フォームで送信、JS は使わない --}}
 @php
     $segments = [
         '' => 'すべて',
@@ -7,9 +8,11 @@
     $currentStatus = $filters['status'] ?? '';
     $currentCertId = $filters['certification_id'] ?? '';
     $keyword = $filters['keyword'] ?? '';
+    $indexRoute ??= 'qa-board.index';
+    $publishedStatus ??= \App\Enums\CertificationStatus::Published;
 @endphp
 
-<form method="GET" action="{{ route('qa-board.index') }}" class="flex flex-wrap items-center gap-3" id="qa-board-filter-form">
+<form method="GET" action="{{ route($indexRoute) }}" class="flex flex-wrap items-center gap-3" id="qa-board-filter-form">
     <input type="hidden" name="certification_id" value="{{ $currentCertId }}">
     <input type="hidden" name="status" value="{{ $currentStatus }}" data-filter-status>
 
@@ -32,7 +35,7 @@
     {{-- certification chips --}}
     <div class="flex flex-wrap items-center gap-2">
         <a
-            href="{{ route('qa-board.index', array_filter(['status' => $currentStatus, 'keyword' => $keyword])) }}"
+            href="{{ route($indexRoute, array_filter(['status' => $currentStatus, 'keyword' => $keyword])) }}"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition {{ $currentCertId === '' ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-[var(--border-default,#D2DEDB)] text-ink-700 hover:border-primary-200' }}"
             aria-pressed="{{ $currentCertId === '' ? 'true' : 'false' }}"
         >
@@ -41,11 +44,14 @@
         @foreach ($certifications as $cert)
             @php $active = $currentCertId === $cert->id; @endphp
             <a
-                href="{{ route('qa-board.index', array_filter(['certification_id' => $active ? null : $cert->id, 'status' => $currentStatus, 'keyword' => $keyword])) }}"
+                href="{{ route($indexRoute, array_filter(['certification_id' => $active ? null : $cert->id, 'status' => $currentStatus, 'keyword' => $keyword])) }}"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition {{ $active ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-[var(--border-default,#D2DEDB)] text-ink-700 hover:border-primary-200' }}"
                 aria-pressed="{{ $active ? 'true' : 'false' }}"
             >
                 {{ $cert->name }}
+                @if ($cert->status !== $publishedStatus)
+                    <span class="text-[10px] text-ink-500">({{ $cert->status->label() }})</span>
+                @endif
                 @if ($active)
                     <x-icon name="x-mark" class="w-3 h-3" />
                 @endif

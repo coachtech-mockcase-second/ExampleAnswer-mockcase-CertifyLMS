@@ -3,10 +3,14 @@
 @section('title', $thread->title)
 
 @section('content')
+    {{-- スレッド詳細。スレッド本体カード + 回答一覧 + 回答投稿フォームの 3 ブロック構成。操作は JS を使わずリンク / フォームで行う --}}
     @php
         use App\Enums\QaThreadStatus;
 
         $viewer = auth()->user();
+        $isAdminContext = request()->routeIs('admin.*');
+        $indexRoute = $isAdminContext ? 'admin.qa-board.index' : 'qa-board.index';
+        $destroyRoute = $isAdminContext ? 'admin.qa-board.destroy' : 'qa-board.destroy';
         $isResolved = $thread->status === QaThreadStatus::Resolved;
         $canUpdate = $viewer?->can('update', $thread) ?? false;
         $canDelete = $viewer?->can('delete', $thread) ?? false;
@@ -17,7 +21,7 @@
 
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
-        ['label' => '質問掲示板', 'href' => route('qa-board.index')],
+        ['label' => $isAdminContext ? '質問掲示板モデレーション' : '質問掲示板', 'href' => route($indexRoute)],
         ['label' => $thread->title],
     ]" />
 
@@ -70,27 +74,23 @@
                         </form>
                     @endif
 
-                    @if ($canUpdate || $canDelete)
-                        <x-dropdown align="right">
-                            <x-slot:trigger>
-                                <x-button variant="ghost" size="sm">
-                                    操作
-                                    <x-icon name="chevron-down" class="w-4 h-4" />
-                                </x-button>
-                            </x-slot:trigger>
-                            @if ($canUpdate)
-                                <x-dropdown.item :href="route('qa-board.edit', $thread)">
-                                    <x-icon name="pencil-square" class="w-4 h-4" />
-                                    編集
-                                </x-dropdown.item>
-                            @endif
-                            @if ($canDelete)
-                                <x-dropdown.item :href="route('qa-board.destroy', $thread)" method="delete" variant="danger">
-                                    <x-icon name="trash" class="w-4 h-4" />
-                                    削除
-                                </x-dropdown.item>
-                            @endif
-                        </x-dropdown>
+                    {{-- 編集はリンク遷移 --}}
+                    @if ($canUpdate)
+                        <x-link-button href="{{ route('qa-board.edit', $thread) }}" variant="outline" size="sm">
+                            <x-icon name="pencil-square" class="w-4 h-4" />
+                            編集
+                        </x-link-button>
+                    @endif
+                    {{-- 削除はフォーム送信。onsubmit の confirm() で誤操作を防ぐ（HTML 標準、JS ファイル不要）--}}
+                    @if ($canDelete)
+                        <form method="POST" action="{{ route($destroyRoute, $thread) }}" onsubmit="return confirm('この質問を削除しますか？');">
+                            @csrf
+                            @method('DELETE')
+                            <x-button type="submit" variant="danger" size="sm">
+                                <x-icon name="trash" class="w-4 h-4" />
+                                削除
+                            </x-button>
+                        </form>
                     @endif
                 </div>
             @endif
@@ -120,7 +120,7 @@
         @else
             <div class="mt-3 flex flex-col gap-3">
                 @foreach ($replies as $reply)
-                    @include('qa-thread._reply', ['reply' => $reply])
+                    @include('qa-thread._reply', ['reply' => $reply, 'isAdminContext' => $isAdminContext])
                 @endforeach
             </div>
         @endif
@@ -129,27 +129,4 @@
     <section class="mt-6" aria-label="回答投稿フォーム">
         @include('qa-thread._reply-form', ['thread' => $thread])
     </section>
-
-    <script>
-        document.querySelectorAll('[data-reply-toggle-edit]').forEach((trigger) => {
-            trigger.addEventListener('click', (event) => {
-                event.preventDefault();
-                const replyId = trigger.dataset.replyToggleEdit;
-                const form = document.querySelector(`[data-reply-edit-form="${replyId}"]`);
-                if (form) {
-                    form.classList.remove('hidden');
-                    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            });
-        });
-        document.querySelectorAll('[data-reply-cancel-edit]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const replyId = btn.dataset.replyCancelEdit;
-                const form = document.querySelector(`[data-reply-edit-form="${replyId}"]`);
-                if (form) {
-                    form.classList.add('hidden');
-                }
-            });
-        });
-    </script>
 @endsection

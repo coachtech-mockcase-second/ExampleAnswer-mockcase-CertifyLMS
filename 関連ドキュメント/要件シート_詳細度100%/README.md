@@ -118,15 +118,15 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 |---|---|---|---|---|---|
 | `B-B-01` | `content-management-01` | コーチ教材アクセス 403 → 編集可能化 | 認可・認証 | 4h | コーチ Policy で `denied` を返す |
 | `B-B-02` | `content-management-02` | 教材一覧 ソート順無視 | 機能(ソート) | 2.5h | `Part\IndexAction` の `orderBy('order')` 追加忘れ |
-| `B-B-03` | `content-management-03` | 教材一覧で archived 資格も表示 | データ(クエリ漏れ) | 3h | `Part\IndexAction`(or Model scope)の `where('status', 'published')` 条件漏れ |
-| `B-B-04` | `user-management-02` | admin 受講生一覧で withdrawn も表示 | データ(クエリ漏れ) | 3h | `User\IndexAction` の `where('status', '!=', 'withdrawn')` 条件漏れ |
-| `B-B-05` | `user-management-03` | ユーザー招待で重複 email 可能 | データ(バリデーション) | 2.5h | FormRequest の `unique:users,email` ルール漏れ |
-| `B-B-06` | `auth-01` | 招待トークン使い回し可能 | セキュリティ(トークン期限管理) | 3h | `Auth\OnboardAction` で `used_at` UPDATE 忘れ + `expires_at >= now()` を `>` 境界ミス |
-| `B-B-07` | `quiz-answering-01` | 解答後フラッシュメッセージ表示忘れ | UI/UX(フラッシュ) | 2h | Controller の `redirect()->with('success', ...)` 漏れ |
+| `B-B-03` | `content-management-03` | 受講生向け教材閲覧で archived 資格の教材が露出 | データ(クエリ漏れ) | 3h | 受講生向け教材閲覧フロー(`Learning\BrowseController` または `Part\IndexAction` 経由)に `Certification.status === 'archived'` を弾く絞り込みを正解像として追加 → Step 4 でその絞り込みを削除し、archive された資格の教材が引き続き閲覧可能になる(対象 Action / フィルタ箇所は実装フェーズで確定) |
+| `B-B-04` | `user-management-02` | admin 受講生一覧で withdrawn も表示 | データ(クエリ漏れ) | 3h | `User\IndexAction` の `if ($status === UserStatus::Withdrawn) { $query->withTrashed(); }` 条件を取り払って `$query->withTrashed();` を冒頭で常時呼ぶ(通常一覧にも SoftDelete 済 withdrawn ユーザーが混入) |
+| `B-B-05` | `user-management-03` | ユーザー招待で重複 email 可能 | データ(バリデーション) | 2.5h | `Auth\IssueInvitationAction` の `EmailAlreadyRegistered` ガード(既存 in_progress / graduated user との email 重複チェック + 例外 throw)ブロックを削除(FormRequest に `unique` は元々存在しないため、Action ガード側を抜く) |
+| `B-B-06` | `auth-01` | 招待トークン使い回し可能 | セキュリティ(トークン期限管理) | 3h | `Auth\OnboardAction` の `$invitation->forceFill(['status' => InvitationStatus::Accepted, 'accepted_at' => $now])->save();` を削除(使用済化忘れ → status が Pending のまま → 同じトークンで何度でも再オンボード可能) |
+| `B-B-07` | `certification-management-02` | 資格分類マスタ削除後のフラッシュメッセージ表示忘れ(admin) | UI/UX(フラッシュ) | 2h | `CertificationCategoryController::destroy()` の `redirect()->route('admin.certification-categories.index')->with('success', '分類を削除しました。')` から `with('success', ...)` のみ削除(store / update は正常維持で destroy のみ漏れのコピペミス) |
 | `B-B-08` | `settings-profile-02` | 設定保存後のリダイレクト先誤り | UI/UX(リダイレクト) | 2h | Controller の `redirect()` 先誤り |
-| `B-B-09` | `content-management-04` | 受講生が未登録資格の教材詳細を直叩き閲覧可 | 認可・認証(IDOR) | 3h | Controller の `$this->authorize()` 呼び出し漏れ |
+| `B-B-09` | `content-management-04` | 受講生が未登録資格の教材詳細を直叩き閲覧可 | 認可・認証(IDOR) | 3h | 受講生向け教材閲覧 `Learning\BrowseController` の `showSection()` / `showPart()` / `showChapter()` / `showEnrollment()` から `$this->authorize('learning.section.view', ...)` 等の呼び出しを削除(対象は learning Feature であり、content-management の admin 系教材管理ではない) |
 | `B-B-10` | `meeting-quota-04` | 面談キャンセル時に残数が返却されない | データ(Tx 漏れ) | 3h | `Meeting\CancelAction` 内で `MeetingQuotaTransaction.refunded` INSERT 漏れ(※Basic 範囲外、Skill 生成時に「※」注記) |
-| `B-B-11` | `user-management-04` | 招待中ユーザー一覧で誤った status 条件 | データ(クエリ条件誤り) | 3h | `User\IndexAction` の where 条件を誤ったコピペ(招待中フィルタが他 status とずれる) |
+| `B-B-11` | `plan-management-02` | admin プラン管理一覧の status フィルタコピペミス | データ(クエリ条件誤り) | 3h | `Plan\IndexAction`(または `PlanController::index`)の status フィルタ条件で、`PlanStatus::Published` を指定したのに `where('status', PlanStatus::Draft->value)` を書いてしまう enum 値コピペミス(公開中プランが draft 扱いで非表示)。S-B-03(プラン管理 Admin UI)直後の連続学習として配置 |
 | `B-B-12` | `auth-02` | オンボーディング完了時の status 遷移漏れ | 機能(状態遷移) | 3h | `Auth\OnboardAction` の `$user->update(['status' => UserStatus::InProgress])` 行を削除 |
 | `B-B-13` | `auth-03` | オンボーディングで `password_confirmation` 漏れ | データ(バリデーション) | 2h | FormRequest の `'password' => 'confirmed'` ルールを抜く |
 | `B-B-14` | `chat-01` | chat 未読バッジで自分の発言もカウント | データ(クエリ条件誤り) | 3h | `ChatUnreadCountService` の未読集計 query で `where('sender_id', '!=', auth()->id())` 漏れ |
@@ -137,8 +137,8 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 | Step 4 仕込み方 |
 |---|---|---|---|---|---|
-| `B-A-01` | `mentoring-02` | 面談予約の悲観ロックバグ | 並行性 | 6h | `lockForUpdate()` 無しで実装、同時リクエストで重複作成 |
-| `B-A-02` | `mock-exam-04` | 模試採点ロジックバグ | 機能(計算) | 8h | `ScoringAction` / `ScoringService` の採点計算ロジックを意図的に壊す |
+| `B-A-01` | `mentoring-02` | 面談予約時の悲観ロック漏れによる面談回数二重消費 | 並行性 | 6h | `MeetingQuota\ConsumeQuotaAction` の `User::query()->whereKey($user->id)->lockForUpdate()->first();` 行を削除(同時 2 リクエストで残数チェック → INSERT の間に TOCTOU が発生し、残数 1 件のユーザーが 2 件予約成立 → `MeetingQuotaTransaction` が 2 件 INSERT され残数 -1 の会計バグ) |
+| `B-A-02` | `mock-exam-04` | 模試採点ロジックバグ | 機能(計算) | 8h | `MockExamSession\GradeAction` の `$scorePercentage = round($totalCorrect / $totalQuestions * 100, 2)` から `* 100` を削除(75% のはずが 0.75% として保存され、合否判定 `>= passing_score_snapshot` で全員不合格扱い)。クラス名は `ScoringAction` / `ScoringService` ではなく `MockExamSession\GradeAction` |
 | `B-A-03` | `enrollment-04` | ターム判定ロジックの誤り | 機能(計算 + クエリ) | 4h | `TermJudgementService` の `status IN (...)` に `canceled` を含めるミス |
 
 ### Task Basic(3 件)

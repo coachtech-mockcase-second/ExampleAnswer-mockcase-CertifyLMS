@@ -1,3 +1,4 @@
+{{-- 一覧の 1 スレッドカード（回答数 + タイトル + プレビュー + 投稿者 + 状態バッジ）。カード全体が詳細へのリンク --}}
 @php
     use App\Enums\QaThreadStatus;
 
@@ -15,10 +16,13 @@
         ? '解決 '.$thread->resolved_at->diffForHumans(now(), ['parts' => 1, 'short' => true])
         : ($thread->updated_at ? '最終 '.$thread->updated_at->diffForHumans(now(), ['parts' => 1, 'short' => true]) : '—');
     $preview = mb_strimwidth(preg_replace('/\s+/', ' ', $thread->body ?? ''), 0, 140, '…');
+    $showRoute ??= 'qa-board.show';
+    $publishedStatus ??= \App\Enums\CertificationStatus::Published;
+    $isUnpublished = $thread->certification?->status !== $publishedStatus;
 @endphp
 
 <a
-    href="{{ route('qa-board.show', $thread) }}"
+    href="{{ route($showRoute, $thread) }}"
     class="block bg-surface-raised border rounded-2xl px-4 py-4 transition hover:border-primary-200 hover:shadow-md {{ $isResolved ? 'bg-success-50/40 border-success-200' : 'border-[var(--border-subtle,#E6EDEB)]' }}"
 >
     <div class="grid grid-cols-[auto_1fr_auto] items-start gap-4">
@@ -43,6 +47,9 @@
                 <span class="font-medium text-ink-700">{{ $thread->user?->name ?? '不明' }}</span>
                 <span class="inline-block w-1 h-1 rounded-full bg-ink-300"></span>
                 <x-badge variant="gray" size="sm">{{ $thread->certification?->name ?? '資格未設定' }}</x-badge>
+                @if ($isUnpublished)
+                    <x-badge variant="warning" size="sm">{{ $thread->certification?->status?->label() ?? '—' }}</x-badge>
+                @endif
                 <span class="inline-block w-1 h-1 rounded-full bg-ink-300"></span>
                 <span>{{ $thread->created_at?->diffForHumans() }}</span>
             </div>

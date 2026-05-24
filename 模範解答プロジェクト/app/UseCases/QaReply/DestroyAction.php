@@ -8,8 +8,8 @@ use App\Models\QaReply;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 投稿者本人による回答削除ユースケース。SoftDelete のみ実施しスレッドの status / resolved_at は変更しない
- * (質問者の解決判断を尊重する)。
+ * 質問への回答削除ユースケース。投稿者本人 / admin モデレーションの両方で共通利用される。
+ * 物理削除のみ実施し、親スレッドの status / resolved_at は変更しない(質問者の解決判断を尊重する)。
  */
 final class DestroyAction
 {

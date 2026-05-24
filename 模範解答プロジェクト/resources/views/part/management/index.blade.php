@@ -45,7 +45,7 @@
                                    class="text-lg font-semibold text-ink-900 hover:text-primary-700 transition-colors">
                                     {{ $part->title }}
                                 </a>
-                                @include('common.content-management._partials.status-pill', ['status' => $part->status])
+                                <x-content-management.status-pill :status="$part->status" />
                             </div>
                             @if ($part->description)
                                 <p class="text-sm text-ink-500 mt-1 line-clamp-2">{{ $part->description }}</p>

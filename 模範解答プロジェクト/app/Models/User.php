@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\EnrollmentStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Notifications\Auth\ResetPasswordNotification;
@@ -102,6 +103,21 @@ class User extends Authenticatable
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
+    }
+
+    /**
+     * 資格スイッチャー(<x-enrollment-switcher>)に表示する受講中(learning + passed)の受講登録。
+     * 資格名表示のため certification を eager load し登録順に並べる。リレーションとして定義することで、
+     * 1 リクエスト内でサイドバーとインラインに複数描画されても結果がキャッシュされ再クエリされない。
+     *
+     * @return HasMany<Enrollment, $this>
+     */
+    public function switchableEnrollments(): HasMany
+    {
+        return $this->enrollments()
+            ->whereIn('status', [EnrollmentStatus::Learning->value, EnrollmentStatus::Passed->value])
+            ->with('certification')
+            ->orderBy('created_at');
     }
 
     /**
