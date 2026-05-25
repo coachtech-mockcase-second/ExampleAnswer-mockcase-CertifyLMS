@@ -7,7 +7,7 @@ namespace App\UseCases\EnrollmentNote;
 use App\Models\EnrollmentNote;
 
 /**
- * メモの SoftDelete Action。コーチは自身が作成したノートのみ、admin は越境可(Policy 側で判定済)。
+ * メモの削除 Action(物理削除)。コーチは自身が作成したノートのみ、admin は越境可(Policy 側で判定済)。
  */
 final class DestroyAction
 {

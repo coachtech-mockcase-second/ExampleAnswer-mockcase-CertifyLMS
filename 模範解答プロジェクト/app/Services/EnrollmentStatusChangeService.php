@@ -18,7 +18,7 @@ use App\Models\User;
  * `final` 不採用: Mockery で recordStatusChange を mock してトランザクション原子性の rollback 検証を
  * Action テストで行う可能性があるため(`UserStatusChangeService` と同じ判断軸)。
  */
-class EnrollmentStatusChangeService
+final class EnrollmentStatusChangeService
 {
     /**
      * @param Enrollment $enrollment 状態遷移する対象 Enrollment

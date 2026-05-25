@@ -22,7 +22,7 @@ use App\Models\User;
  * `final` 不採用: 呼出側 Action のテストで Mockery で mock したいケース(呼出回数・引数検証 /
  * トランザクション原子性 rollback 検証)に備える(UserStatusChangeService / EnrollmentStatusChangeService と同じ判断軸)。
  */
-class DefaultEnrollmentService
+final class DefaultEnrollmentService
 {
     /**
      * 新規 Enrollment 作成直後に呼ばれる。default が NULL の場合のみ、その Enrollment を default にセット。

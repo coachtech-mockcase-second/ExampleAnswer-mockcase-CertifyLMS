@@ -120,12 +120,11 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 - When 会話作成時に `section_id` が指定され、その Section の所属資格に対して受講生が Enrollment を持たない場合, the ai-chat Module shall HTTP 403 を返す。
 - The ai-chat Module shall `Enrollment.status` が `learning` / `passed` のいずれかの Enrollment のみを「紐付け可能」とみなす(`failed` は拒否)。
 
-### REQ-ai-chat-030: 会話一覧
+### REQ-ai-chat-030: 会話入口(最新会話リダイレクト方式)
 
-- The ai-chat Module shall `GET /ai-chat` で受講生の会話一覧画面を表示する。
-- The ai-chat Module shall 一覧を `last_message_at` 降順(NULL は末尾)で表示する。
-- The ai-chat Module shall 各会話エントリに以下を表示する: タイトル / 直近メッセージ送信時刻(相対表記、例「3 時間前」) / コンテキストバッジ(`📚 {Section.title}` / `🎓 {Certification.name}` / `(全般)`)。
-- The ai-chat Module shall ページネーション(20 件 / page)を Laravel `paginate()` で提供する。
+- The ai-chat Module shall `GET /ai-chat` で受講生の最新会話(`last_message_at` 降順、NULL は末尾)へリダイレクトする。
+- The ai-chat Module shall 会話が 1 件も存在しない場合、空状態ビュー(`ai-chat/empty-state.blade.php`)を表示する。
+- The ai-chat Module shall 独立した会話一覧画面・ページネーションを提供しない(会話の切替は会話詳細画面のサイドリストで行う)。専用の `IndexAction` / 一覧 Blade は持たない。
 
 ### REQ-ai-chat-031: 会話作成
 
@@ -235,7 +234,7 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 ### REQ-ai-chat-074: フローティングウィジェット — フル画面遷移
 
 - When 受講生が `[↗]` ボタンをクリックした場合, the ai-chat Module shall `/ai-chat/conversations/{current_conversation_id}` に遷移し、ウィジェットを閉じる。
-- When `current_conversation_id` が無い場合, the ai-chat Module shall `/ai-chat` 一覧画面に遷移する。
+- When `current_conversation_id` が無い場合, the ai-chat Module shall `/ai-chat`(最新会話へリダイレクト、会話 0 件なら空状態)に遷移する。
 
 ### REQ-ai-chat-080: LLM Repository 抽象
 
@@ -281,7 +280,7 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 
 ### NFR-ai-chat-001: パフォーマンス
 
-- The ai-chat Module shall 会話一覧画面(`GET /ai-chat`)のレスポンスを 200ms 以内(自分の会話 100 件 / ページネーション 20 件 / Eager Load 適用)で返す。
+- The ai-chat Module shall `GET /ai-chat`(最新会話へのリダイレクト / 会話 0 件時の空状態表示)のレスポンスを 200ms 以内で返す。
 - The ai-chat Module shall 会話詳細画面(`GET /ai-chat/conversations/{id}`)のレスポンスを 300ms 以内(メッセージ 100 件 / Eager Load 適用)で返す。
 - The ai-chat Module shall 同期メッセージ送信は Gemini API レスポンス時間 + 200ms 以内で完了する。
 

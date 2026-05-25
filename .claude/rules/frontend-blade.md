@@ -42,7 +42,7 @@ resources/views/
 ├── layouts/                # 共通レイアウト
 │   ├── app.blade.php       #   ログイン後の主レイアウト（サイドバー + ヘッダー + メイン）
 │   ├── guest.blade.php     #   未ログイン（ロゴ + 中央カード）
-│   ├── pdf.blade.php       #   dompdf 用（共通レイアウト非継承、インライン <style>）
+│   ├── pdf.blade.php       #   mpdf 用（共通レイアウト非継承、インライン <style>）
 │   └── _partials/          #   レイアウト内部品（ロール別サイドバー等）
 │       ├── sidebar-admin.blade.php
 │       ├── sidebar-coach.blade.php
@@ -204,10 +204,10 @@ namespace App\UseCases\Chat\Moderation;               // 既存 Entity namespace
 - ログイン / オンボーディング / パスワードリセット / エラーページが継承
 - slot / yield は `@yield('title')` / `@yield('content')` のみ
 
-### `layouts/pdf.blade.php`（dompdf 専用）
+### `layouts/pdf.blade.php`（mpdf 専用）
 
-- `app.blade.php` を **継承しない**（dompdf は外部 CSS / JS を解釈しないため、インライン `<style>` のみ）
-- 日本語フォント `IPAGothic` を `font-family` で指定
+- `app.blade.php` を **継承しない**（mpdf は外部 CSS / JS を解釈しないため、インライン `<style>` のみ）
+- 日本語は mpdf の CJK フォント（`IPAGothic` 等）を `font-family` で指定
 - 修了証 PDF（[[certification-management]]）が利用
 
 ## 共通コンポーネント API（契約定義）

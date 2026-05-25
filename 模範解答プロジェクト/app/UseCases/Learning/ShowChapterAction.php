@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Learning;
 
+use App\Enums\CertificationStatus;
 use App\Enums\ContentStatus;
 use App\Models\Chapter;
 use App\Models\SectionProgress;
@@ -23,11 +24,17 @@ final class ShowChapterAction
      */
     public function __invoke(Chapter $chapter, User $student): array
     {
-        $chapter->loadMissing('part');
+        $chapter->loadMissing('part.certification');
 
         if ($chapter->status !== ContentStatus::Published
             || $chapter->part === null
             || $chapter->part->status !== ContentStatus::Published) {
+            throw new NotFoundHttpException;
+        }
+
+        // 親資格が公開停止(アーカイブ / 下書き)状態なら、受講登録済みでも教材は閲覧不可
+        if ($chapter->part->certification === null
+            || $chapter->part->certification->status !== CertificationStatus::Published) {
             throw new NotFoundHttpException;
         }
 

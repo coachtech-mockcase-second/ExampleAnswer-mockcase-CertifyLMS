@@ -68,7 +68,7 @@ class GoogleOAuthService
 
     /**
      * 既存の認証情報を Google 側で revoke する。revoke 失敗は Service 層では握りつぶし、
-     * 呼出側で DB の SoftDelete を続行できるようにする(教材として失敗パスを明示)。
+     * 呼出側で DB の物理削除を続行できるようにする(教材として失敗パスを明示)。
      */
     public function revoke(string $token): bool
     {

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\UseCases\Meeting;
 
-use App\Http\Controllers\MeetingController;
 use App\Models\Meeting;
 
 /**
@@ -13,7 +12,7 @@ use App\Models\Meeting;
  * 詳細画面で表示する関連(enrollment / certification / coach / student / meetingMemo)を 1 リクエストで揃える。
  * 認可は Controller の `$this->authorize('view', $meeting)` で済ませる前提で、本 Action は読み取りのみ。
  *
- * @see MeetingController::show()
+ * @see \App\Http\Controllers\MeetingController::show()
  */
 final class ShowAction
 {

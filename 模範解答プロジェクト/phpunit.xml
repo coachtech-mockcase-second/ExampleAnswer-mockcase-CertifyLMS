@@ -16,7 +16,17 @@
         <include>
             <directory>app</directory>
         </include>
+        <exclude>
+            <directory>app/Console/Kernel.php</directory>
+            <directory>app/Exceptions/Handler.php</directory>
+            <directory>app/Providers</directory>
+        </exclude>
     </source>
+    <coverage includeUncoveredFiles="true">
+        <report>
+            <text outputFile="php://stdout" showUncoveredFiles="false" showOnlySummary="true"/>
+        </report>
+    </coverage>
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

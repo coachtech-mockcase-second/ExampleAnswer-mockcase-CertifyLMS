@@ -11,7 +11,7 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * 担当コーチが資格から解除された際に発火するイベント。
- * 関連 [[chat]] 等のリスナーが担当変更を受けて Chat メンバーを同期する想定。
+ * Chat メンバー同期リスナーが本イベントを受けて、該当資格に紐づく全 ChatRoom の参加者を同期する。
  */
 final class CertificationCoachDetached
 {

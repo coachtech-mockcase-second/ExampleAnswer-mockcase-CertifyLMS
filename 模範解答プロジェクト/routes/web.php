@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\EnrollmentStatus;
 use App\Http\Controllers\AiChatConversationController;
 use App\Http\Controllers\AiChatMessageController;
 use App\Http\Controllers\AnnouncementController;
@@ -415,22 +414,7 @@ Route::middleware(['auth', 'role:student', 'active-learning'])
 
 // /mock-exams 直接アクセスは default 資格へ自動 redirect(default 未設定で複数 Enrollment 時のみフォールバック画面)
 Route::middleware(['auth', 'role:student', 'active-learning'])->group(function () {
-    Route::get('mock-exams', function () {
-        // ここに到達した = default 未設定 + 残存 Enrollment が 0 件 or 2+ 件
-        $user = auth()->user();
-        $enrollments = $user
-            ?->enrollments()
-            ->whereIn('status', [
-                EnrollmentStatus::Learning->value,
-                EnrollmentStatus::Passed->value,
-            ])
-            ->with('certification')
-            ->get();
-
-        return view('mock-exam.empty-state', [
-            'enrollments' => $enrollments ?? collect(),
-        ]);
-    })
+    Route::get('mock-exams', [MockExamCatalogController::class, 'fallbackIndex'])
         ->middleware('resolve-default-enrollment:mock-exam.catalog.index')
         ->name('mock-exam.fallback.index');
 

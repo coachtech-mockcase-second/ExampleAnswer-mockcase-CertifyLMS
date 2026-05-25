@@ -19,7 +19,8 @@ use Illuminate\View\View;
 
 /**
  * AI 相談会話の CRUD Controller (受講生専用画面)。
- * メソッドは Action クラス名と一致 (index → IndexAction、store → StoreAction…)。
+ * メソッドは概ね Action クラス名と一致 (store → StoreAction…)。ただし index は専用 Action を持たず、
+ * 最新会話へのリダイレクト / 会話 0 件時の空状態表示のみを担う。
  */
 class AiChatConversationController extends Controller
 {

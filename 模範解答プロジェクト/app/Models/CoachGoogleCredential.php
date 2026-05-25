@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * 短寿命の `access_token` は `refresh_token` で自動更新する(`GoogleCalendarTokenService`)。
  * `calendar_id` は OAuth 同意時に取得した primary カレンダー識別子で、将来コーチが任意のカレンダーを
- * 切り替える余地を残す。連携解除時は SoftDelete で履歴を保持する。
+ * 切り替える余地を残す。連携解除時は物理削除される。
  *
  * 関連: User(coach)
  */

@@ -324,6 +324,14 @@ class PlanExpirationService
 - `PlanNotPublishedException`(HTTP 422): published でない Plan で招待・延長
 - `UserNotInProgressException`(HTTP 409): graduated / withdrawn ユーザーの延長
 
+## 一覧ソート順
+
+`Plan\IndexAction` は admin プラン一覧を以下の優先順でソートする(マスタ管理 UX 上、公開中を最上部に集めるため status を最優先):
+
+1. **status 優先**: `published` → `draft` → `archived`(MySQL は `FIELD(status, 'published', 'draft', 'archived')`、SQLite は `CASE` 式で同等順序)
+2. `sort_order ASC`(status 内の手動並び順)
+3. `created_at DESC`(同一 sort_order 内の新着順)
+
 ## Blade テンプレ
 
 - `views/admin/plans/index.blade.php`: Plan 一覧 + status フィルタ + 新規作成ボタン

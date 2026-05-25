@@ -21,9 +21,7 @@ final class ArchiveAction
     public function __invoke(Plan $plan, User $admin): Plan
     {
         if ($plan->status !== PlanStatus::Published) {
-            throw new PlanInvalidTransitionException(
-                '公開中(published)のプランのみアーカイブできます。',
-            );
+            throw PlanInvalidTransitionException::forArchive();
         }
 
         return DB::transaction(function () use ($plan, $admin) {

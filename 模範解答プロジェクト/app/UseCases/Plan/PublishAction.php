@@ -21,9 +21,7 @@ final class PublishAction
     public function __invoke(Plan $plan, User $admin): Plan
     {
         if ($plan->status !== PlanStatus::Draft) {
-            throw new PlanInvalidTransitionException(
-                '下書き(draft)状態のプランのみ公開できます。',
-            );
+            throw PlanInvalidTransitionException::forPublish();
         }
 
         return DB::transaction(function () use ($plan, $admin) {

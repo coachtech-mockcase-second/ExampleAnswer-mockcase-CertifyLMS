@@ -258,7 +258,7 @@ class User extends Authenticatable
     }
 
     /**
-     * コーチが [[settings-profile]] で登録した面談可能時間枠。曜日 × 時刻の繰り返し枠で表現される。
+     * コーチがプロフィール設定で登録した面談可能時間枠。曜日 × 時刻の繰り返し枠で表現される。
      *
      * @return HasMany<CoachAvailability, $this>
      */

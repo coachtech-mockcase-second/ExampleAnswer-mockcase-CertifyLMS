@@ -6,7 +6,6 @@ namespace App\UseCases\Meeting;
 
 use App\Enums\MeetingStatus;
 use App\Exceptions\Mentoring\MeetingStatusTransitionException;
-use App\Http\Controllers\MeetingController;
 use App\Models\Meeting;
 use App\Models\MeetingMemo;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * 認可(担当コーチ本人かつ reserved/completed 状態)は呼出元 Controller の `$this->authorize('upsertMemo', $meeting)` で済ませる前提で、
  * Action 側は状態の最終整合性チェック + upsert に専念する。canceled 状態の Meeting にはメモを残せない。
  *
- * @see MeetingController::upsertMemo()
+ * @see \App\Http\Controllers\MeetingController::upsertMemo()
  */
 final class UpsertMemoAction
 {

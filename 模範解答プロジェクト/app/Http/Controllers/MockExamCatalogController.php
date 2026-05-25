@@ -9,6 +9,7 @@ use App\Models\Enrollment;
 use App\Models\MockExam;
 use App\UseCases\MockExamCatalog\IndexAction;
 use App\UseCases\MockExamCatalog\ShowAction;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -48,6 +49,30 @@ class MockExamCatalogController extends Controller
             'enrollment' => $enrollment->load('certification'),
             'mockExam' => $action($mockExam, $enrollment),
             'activeSession' => $action->findActiveSession($mockExam, $enrollment),
+        ]);
+    }
+
+    /**
+     * `/mock-exams` 直接アクセスで default 資格が解決できなかった場合のフォールバック画面。
+     * default 未設定かつ受講中 / 修了済の Enrollment が 0 件または 2 件以上のときに到達し、
+     * 資格選択を促す empty-state を表示する(`resolve-default-enrollment` Middleware が解決できた場合は
+     * `mock-exam.catalog.index` へ redirect されるため本メソッドには到達しない)。
+     */
+    public function fallbackIndex(Request $request): View
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $enrollments = $user->enrollments()
+            ->whereIn('status', [
+                EnrollmentStatus::Learning->value,
+                EnrollmentStatus::Passed->value,
+            ])
+            ->with('certification')
+            ->get();
+
+        return view('mock-exam.empty-state', [
+            'enrollments' => $enrollments,
         ]);
     }
 

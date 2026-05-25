@@ -63,7 +63,7 @@ final class GeminiLlmRepository implements LlmRepositoryInterface
 
         if ($response->failed()) {
             // Gemini のレスポンス body にクォータ詳細 (どの制限超過か、リセット時刻、quotaId)
-            // が含まれるため、例外メッセージに body 先頭 500 文字を含めてログから原因特定できるようにする
+            // が含まれるため、例外メッセージに body 先頭 2000 文字を含めてログから原因特定できるようにする
             $bodySnippet = mb_substr((string) $response->body(), 0, 2000);
             throw new AiChatLlmApiException(
                 "Gemini API failed: HTTP {$response->status()} body={$bodySnippet}",

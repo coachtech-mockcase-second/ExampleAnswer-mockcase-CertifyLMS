@@ -21,9 +21,7 @@ final class UnarchiveAction
     public function __invoke(Plan $plan, User $admin): Plan
     {
         if ($plan->status !== PlanStatus::Archived) {
-            throw new PlanInvalidTransitionException(
-                'アーカイブ済みのプランのみアーカイブ解除できます。',
-            );
+            throw PlanInvalidTransitionException::forUnarchive();
         }
 
         return DB::transaction(function () use ($plan, $admin) {

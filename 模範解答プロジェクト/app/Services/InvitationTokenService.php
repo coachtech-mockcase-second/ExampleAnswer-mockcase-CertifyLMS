@@ -10,7 +10,7 @@ use App\Models\Invitation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
-class InvitationTokenService
+final class InvitationTokenService
 {
     /**
      * オンボーディング画面への署名付き URL を生成する。

@@ -7,7 +7,7 @@ namespace App\UseCases\EnrollmentGoal;
 use App\Models\EnrollmentGoal;
 
 /**
- * 個人目標の SoftDelete Action。受講生本人のみ実行可。
+ * 個人目標の削除 Action(物理削除)。受講生本人のみ実行可。
  */
 final class DestroyAction
 {

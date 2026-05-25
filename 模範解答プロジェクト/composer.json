@@ -52,7 +52,11 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi"
-        ]
+        ],
+        "test": "@php vendor/bin/phpunit",
+        "test:coverage": "@php -d xdebug.mode=coverage vendor/bin/phpunit --coverage-text",
+        "test:coverage-html": "@php -d xdebug.mode=coverage vendor/bin/phpunit --coverage-html=coverage-report",
+        "test:coverage-min": "@php -d xdebug.mode=coverage vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml --min=80"
     },
     "extra": {
         "laravel": {

@@ -10,7 +10,7 @@ use App\Models\Plan;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Plan 削除ユースケース。draft かつ User 参照なしの場合のみ SoftDelete。
+ * Plan 削除ユースケース。draft かつ User 参照なしの場合のみ物理削除。
  */
 final class DestroyAction
 {
@@ -20,13 +20,11 @@ final class DestroyAction
     public function __invoke(Plan $plan): void
     {
         if ($plan->status !== PlanStatus::Draft) {
-            throw new PlanNotDeletableException;
+            throw PlanNotDeletableException::forStatusViolation();
         }
 
         if ($plan->users()->exists()) {
-            throw new PlanNotDeletableException(
-                'このプランは受講者が紐づいているため削除できません。',
-            );
+            throw PlanNotDeletableException::forUsersAttached();
         }
 
         DB::transaction(fn () => $plan->delete());

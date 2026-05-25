@@ -96,13 +96,19 @@ class GoogleCalendarService
             $meetingUrl = $meeting->meeting_url_snapshot ?? '';
 
             $event = new GoogleEvent;
-            $event->setSummary("{$studentName} と {$certificationName} の面談");
-            $event->setDescription(implode("\n\n", array_filter([
-                "資格: {$certificationName}",
-                "受講生: {$studentName}",
-                '相談内容: '.$meeting->topic,
-                $meetingUrl !== '' ? "面談 URL: {$meetingUrl}" : null,
-            ])));
+            $event->setSummary(__('mentoring.gcal.event_summary', [
+                'student' => $studentName,
+                'certification' => $certificationName,
+            ]));
+            $description = __('mentoring.gcal.event_description_template', [
+                'certification' => $certificationName,
+                'student' => $studentName,
+                'topic' => $meeting->topic,
+            ]);
+            if ($meetingUrl !== '') {
+                $description .= "\n\n".__('mentoring.gcal.event_description_meeting_url', ['url' => $meetingUrl]);
+            }
+            $event->setDescription($description);
             if ($meetingUrl !== '') {
                 $event->setLocation($meetingUrl);
             }
