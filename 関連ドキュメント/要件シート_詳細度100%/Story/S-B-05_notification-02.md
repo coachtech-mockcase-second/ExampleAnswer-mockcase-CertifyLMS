@@ -13,192 +13,145 @@
 | 工数 (h) | 6 |
 | 依存チケット | `S-B-04` |
 
-## 概要
-
-`S-B-04` で実装した通知基盤の上に、指定ユーザーの通知一覧 / 1 件既読化 / 全件既読化を JSON で返す **認証なし JSON API** を新規実装する。`routes/api.php` 配下に v1 名前空間で配置し、ContactForm / BookShelf Basic で経験した「Web/API 分離 + Resource + API FormRequest + テスト」のパターンを資格 LMS ドメインに置き換えて踏襲する。
-
 ## 背景・目的
 
-- **現状の問題**: `S-B-04` で通知基盤(DB + メール配信 + Web 一覧)を作っても、外部のフロントエンド / モバイル / 第三者システムから通知を取得・既読化する手段が存在しない。Advance フェーズの JS フロントによる通知ポップオーバー(`S-A-05`)を実装する前提として、まず素の JSON API を Basic 範囲で組み上げる必要がある。
-- **達成したい状態**: `routes/api.php` 配下に通知用 JSON API(一覧 / 1 件既読化 / 全件既読化)が存在し、curl / Postman / 任意の HTTP クライアントから JSON 形式で通知を取得・操作できる状態。Web 一覧と同等の振る舞いを認証なしで再現できる。
-- **価値・優先度**: 本チケットは Pro 生として **「Web / API の分離設計」「JSON Resource による整形」「Api FormRequest によるクエリ検証」「Web/API ルーティング分離」** を資格 LMS ドメインで再演習する位置づけ。本実装が完成すると `S-A-05` で Sanctum Cookie 認証を後付けして JS フロント表示を組み立てる土台が整う。
+`S-B-04` で通知基盤(DB + メール配信 + Web 一覧)を構築しても、外部フロントエンド / モバイル / 第三者システムから通知を取得・既読化する手段が存在しない。Advance フェーズの JS フロントによる通知ポップオーバー(`S-A-05`)を実装する前提として、まず素の JSON API を Basic 範囲で組み上げる必要がある。
 
-> **本 API のセキュリティ位置づけ(必読)**: 本チケットは **意図的に認証なし** で設計されている(BookShelf Basic の「公開 API CRUD (認証なし)」と同じ教材パターン)。第三者が任意ユーザーの通知を閲覧 / 既読化できる構造的脆弱性を含むが、**`S-A-05` で Sanctum Cookie 認証(`auth:sanctum`)を後付けして実用化する** 階段設計。受講生が「認証なしで API を成立させる練習」→「認証を後付けして本番セマンティクスに整える練習」を 2 段階で経験する目的。
+本チケットは `routes/api.php` 配下に通知用 JSON API(一覧 / 単一既読化 / 全件既読化)を **認証なし** で新規実装する。「Web / API の分離設計」「JSON Resource による整形」「API FormRequest によるクエリ検証」「Web / API ルーティング分離」を資格 LMS ドメインで実装する位置づけ。本実装が完成すると `S-A-05` で Sanctum Cookie 認証を後付けして JS フロント表示を組み立てる土台が整う。
+
+> **本 API のセキュリティ位置づけ**: 本チケットは **意図的に認証なし** で設計されている。第三者が任意ユーザーの通知を閲覧 / 既読化できる構造的脆弱性を含むが、**`S-A-05` で Sanctum Cookie 認証を後付けして実用化する** 階段設計。
 
 ## ユーザーストーリー
 
-- **JS フロントエンド開発者として(`S-A-05` の前段)**、curl / fetch で叩ける通知 JSON API が欲しい。なぜなら、後段でモーダル展開 / ポップオーバー UI を組み立てる前にエンドポイントの振る舞い検証を完了させたいから。
-- **モバイルアプリ開発者として(将来想定)**、JSON で通知一覧と既読化操作ができる API が欲しい。なぜなら、ネイティブアプリから同じ通知データを参照したいから。
-- **受講生(student、API 学習者として)として**、認証なし JSON API CRUD パターン(Web/API 分離 + Resource + API FormRequest + テスト)を資格 LMS ドメインで再演習したい。なぜなら、ContactForm / BookShelf で経験した型を別ドメインで定着させたいから。
-- **コーチ / 管理者として**、本 API の振る舞いを画面操作と独立して検証できる経路が欲しい。なぜなら、通知発火と既読化の動作を automated test / 手動 curl で再現可能にしたいから。
+- **受講生(student)として**、自分の通知が JSON 形式で取得できる経路があってほしい。なぜなら、将来 JS フロント / モバイルアプリから非同期で通知一覧を取得 + 既読化できる UX を実現するための土台が必要だから。
+- **コーチ(coach)として**、自分の通知が JSON 形式で取得できる経路があってほしい。なぜなら、受講生と同じ通知基盤を共有しており、専用 UI を組み込む際の API が必要だから。
+- **管理者(admin)として**、本 API は通知の受信側ロール(受講生 / コーチ)向けで、対象外。なぜなら、管理者は通知の配信側で受信側 API は使わないから。
 
-## やること
+## 要件
 
 ### 通知一覧 API
 
-- **エンドポイント**: `GET /api/v1/notifications`、認証なし
-- **クエリパラメータ**: `user_id`(対象ユーザー ID、必須)/ `tab`(`all` / `unread` のいずれか、任意、デフォルト `all`)/ `per_page`(1〜100、任意、デフォルト 20)/ `page`(任意、デフォルト 1)
-- **レスポンス**: 200 + JSON(ページネーション付きの Resource Collection、各通知は `id` / `type` / `notification_type` / `title` / `message` / `link_route` / `link_params` / `read_at` / `created_at` を含む)
-- **対象ユーザーが存在しない場合**: 404
-- **クエリバリデーション失敗時**: 422 + JSON エラーレスポンス
-- **並び順**: 通知の作成日時 降順
-- **「未読のみ」フィルタ**: `tab=unread` で未読(`read_at = NULL`)のみに絞り込み、`all` または未指定で全件
+- 対象ユーザー指定(対象ユーザー ID クエリパラメータ、必須 / 既存ユーザーと整合)による自分宛通知の取得
+- 「全件」「未読のみ」のタブ絞り込み(任意 / 範囲外は既定値にフォールバック)
+- ページネーション(1 ページ件数指定可、任意 / 1〜100 の整数)
+- 通知データ JSON の平坦化(画面表示に必要なフィールドを Resource で整形)
 
 ### 単一通知の既読化 API
 
-- **エンドポイント**: `POST /api/v1/notifications/{notification}/read`、認証なし
-- **振る舞い**: パスパラメータの通知 ID で対象を特定し、`read_at = now()` を UPDATE(既読済なら no-op = べき等)
-- **レスポンス**: 200 + JSON `{"status": "ok"}`
-- **通知が存在しない場合**: 404
-- **既読済の場合**: 200 を返す(no-op で副作用なし)
+- パスパラメータの通知 ID で対象を特定し既読化日時を更新
+- 既読済通知への再呼出はべき等(no-op + 成功レスポンス)
 
 ### 全件既読化 API
 
-- **エンドポイント**: `POST /api/v1/notifications/read-all`、認証なし
-- **リクエストボディ / クエリパラメータ**: `user_id`(対象ユーザー ID、必須)
-- **振る舞い**: 対象ユーザーの全未読通知を一括既読化、`read_at = now()` で UPDATE
-- **レスポンス**: 200 + JSON `{"status": "ok", "updated": <更新件数>}`
-- **対象ユーザーが存在しない場合**: 404
-- **既読化対象 0 件の場合**: 200 + `"updated": 0`(エラーではない)
+- 対象ユーザー指定(クエリ / ボディ)による自分宛全未読通知の一括既読化
+- 既読化件数をレスポンスに含める
 
 ### 共通の振る舞い
 
-- すべて `routes/api.php` 配下、`api.v1.notifications.*` ルート名(prefix `v1` + name prefix `api.v1.` 規約)
-- Web ルート(`routes/web.php` の `notifications.*`)とは完全に独立した別エンドポイント。Web 側の既読化(`S-B-04`)はリダイレクトを返す HTML フロー、API 側は JSON のみを返す
-- バリデーションエラー時は Laravel 標準の 422 + `{"message": "...", "errors": {...}}` 形式 JSON
-- 404 は Laravel 標準の `{"message": "..."}` 形式 JSON
+- すべて `routes/api.php` 配下、Web ルートとは完全独立(Web 側はリダイレクト、API 側は JSON のみ)
+- バリデーションエラーは Laravel 標準の 422 + JSON 形式
+- 通知 ID 不在は 404、対象ユーザー不在は 404 or 422(振る舞いベース)
 
-## やらないこと
+## スコープ外
 
-- **Sanctum Cookie 認証 / API トークン認証 / CSRF 保護** — `S-A-05` で `auth:sanctum` Middleware 適用と CSRF cookie 取得フロー(`/sanctum/csrf-cookie`)を後付けする
-- **CORS 設定 / 別オリジン対応** — `S-A-05` で BE-FE 別オリジン構成を見据えた CORS / Sanctum stateful 設定を扱う(本チケットは同一オリジンで完結)
-- **認可(他人通知の閲覧 / 既読化ガード)** — 認証なし API のため Policy 適用なし。`S-A-05` で Sanctum 認証 + `NotificationPolicy` 適用により実用セマンティクスを確立する
-- **JS フロントエンド側の通知ポップオーバー / モーダル / バッジ更新** — `S-A-05` で fetch + DOM 操作を実装する
-- **Pusher Broadcasting によるリアルタイム push** — `S-A-05` で Pusher を有効化(本チケットの API はポーリング向けの REST のみ)
+- **Sanctum Cookie 認証 / API トークン認証 / CSRF 保護** — `S-A-05` で後付け
+- **CORS 設定 / 別オリジン対応** — `S-A-05` で BE-FE 別オリジン構成を見据えた設定を扱う(本チケットは同一オリジン)
+- **認可(他人通知の閲覧 / 既読化ガード)** — 認証なし API のため Policy 適用なし。`S-A-05` で Sanctum 認証 + Policy 適用により実用セマンティクスを確立する
+- **JS フロント側の通知ポップオーバー / モーダル / バッジ更新** — `S-A-05` で扱う
+- **Pusher Broadcasting によるリアルタイム push** — `S-A-05` で扱う
 - **API レートリミット** — MVP 外
-- **OpenAPI / Swagger スキーマファイル生成** — MVP 外、必要に応じて将来追加
-- **通知の論理削除 / 物理削除 API** — Web 同様、既読化のみ提供
-- **通知配信側 API(外部システムから通知を作成する API)** — 通知発火は本 LMS の業務 Action からのみ(`S-B-04` の責務)
+- **OpenAPI / Swagger スキーマファイル生成** — MVP 外
+- **通知の削除 API** — Web 同様、既読化のみ提供
+- **通知配信側 API(外部システムから通知を作成する API)** — 通知発火は本 LMS の業務イベントからのみ(`S-B-04` の責務)
 
 ## 受け入れ条件
 
-- [ ] **一覧 - 成功レスポンス**: `GET /api/v1/notifications?user_id={存在する user_id}` で 200 + JSON Resource Collection が返る
-- [ ] **一覧 - 並び順**: 通知が作成日時 降順で並ぶ
-- [ ] **一覧 - ページネーション**: `per_page=10` で 10 件 / ページに区切られ、`page=2` で 2 ページ目を返す。レスポンスにはページネーションのメタ情報(`current_page` / `last_page` / `total` / `per_page` 等)が含まれる
-- [ ] **一覧 - tab フィルタ**: `tab=unread` で `read_at = NULL` の通知のみ返る、`tab=all` または未指定で全件返る
-- [ ] **一覧 - レスポンスフィールド**: 各通知行に `id` / `type` / `notification_type` / `title` / `message` / `link_route` / `link_params` / `read_at` / `created_at` のキーが含まれる
-- [ ] **一覧 - 対象ユーザー不在**: `user_id` が存在しないユーザー ID のとき 404 JSON が返る
-- [ ] **一覧 - バリデーション失敗**: `user_id` 未指定 / `tab` が `all`/`unread` 以外 / `per_page` が 0 以下 or 101 以上 のとき 422 + JSON エラーレスポンスが返る
-- [ ] **単一既読化 - 成功**: `POST /api/v1/notifications/{未読 notification id}/read` で 200 + `{"status": "ok"}` が返り、対象通知の `read_at` が現在時刻で更新される
-- [ ] **単一既読化 - 既読済 no-op**: 既読済通知に対して再度呼んでも 200 + `{"status": "ok"}` が返り、`read_at` が上書きされない(べき等性、※下記 Q&A 参照)
-- [ ] **単一既読化 - 通知不在**: 存在しない notification ID のとき 404 JSON が返る
-- [ ] **全件既読化 - 成功**: `POST /api/v1/notifications/read-all` + `user_id={存在 user_id}` で 200 + `{"status": "ok", "updated": <件数>}` が返り、対象ユーザーの全未読通知の `read_at` が現在時刻で更新される
-- [ ] **全件既読化 - 0 件**: 対象ユーザーの未読通知が 0 件のとき 200 + `{"status": "ok", "updated": 0}` が返る(エラーにはならない)
-- [ ] **全件既読化 - 対象不在**: `user_id` が存在しないユーザー ID のとき 404 JSON が返る
-- [ ] **API / Web 独立**: 本 API の操作で Web 側(`S-B-04`)の通知一覧の表示状態が同期する(既読化 API → Web 一覧で既読扱い)、逆も同様
+- [ ] `GET /api/v1/notifications` に存在ユーザーを指定すると、自分宛通知が時系列降順 + ページネーションメタ情報付きの JSON で取得でき、各通知行に通知種別 / タイトル / プレビュー / 遷移先ルート / 既読化日時等の整形済フィールドが含まれる
+- [ ] 「全件」「未読のみ」のタブ指定で絞り込みでき、1 ページの件数指定でページ区切りが切り替わる
+- [ ] `POST /api/v1/notifications/{notification}/read` で対象通知の既読化日時が現在時刻で更新され、JSON で成功レスポンスが返る(既読済通知への再呼出はべき等で既読化日時を上書きしない)
+- [ ] `POST /api/v1/notifications/read-all` で対象ユーザーの全未読通知が一括既読化され、既読化件数を含む JSON が返る(対象 0 件のときは件数 0 を返しエラーにしない)
+- [ ] 一覧 / 全件既読化 API にて、リクエストパラメータにバリデーションが行われ、ルール違反時に 422 + JSON 形式の日本語エラーレスポンスが返るか:
+  - 対象ユーザー ID (両 API 対象、全件既読化はクエリ / ボディどちらも可): 必須 / 既存ユーザーと整合
+  - タブ識別子 (一覧 API): 任意 / 「全件」「未読のみ」のいずれか
+  - 1 ページ件数 (一覧 API): 任意 / 1〜100 の整数
+  - ページ番号 (一覧 API): 任意 / 1 以上の整数
+- [ ] 存在しない通知 ID を指定したリクエストは 404 + JSON エラーレスポンスが返る
+- [ ] 本 API による既読化操作の結果は Web 側通知一覧(`S-B-04`)と同期する(API 経由既読化 → Web で既読扱い、逆も同様)
+- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
-## 実装方針
+## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の設計を組み立てる。
+> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
 
-### 主要 URL
+### インターフェース(必須)
 
-| メソッド | パス | 振る舞い |
-|---|---|---|
-| GET | `/api/v1/notifications?user_id={ulid}&tab={all\|unread}&per_page={1-100}&page={N}` | 通知一覧 JSON、200 + Resource Collection(ページネーション meta 付き) |
-| POST | `/api/v1/notifications/{notification}/read` | 単一既読化、200 + `{"status":"ok"}` / 通知 ID 不在で 404 |
-| POST | `/api/v1/notifications/read-all`(body or query `user_id={ulid}`) | 一括既読化、200 + `{"status":"ok","updated":N}` / user_id 不在で 404 |
+| HTTP | パス | 認可 | 振る舞い |
+|---|---|---|---|
+| GET | `/api/v1/notifications?user_id={ulid}&tab={全件\|未読のみ}&per_page={1-100}&page={N}` | 認可なし(任意 ID 指定可、構造的脆弱性は `S-A-05` で解消) | 通知一覧 JSON(時系列降順 + ページネーション meta 付き Resource Collection) |
+| POST | `/api/v1/notifications/{notification}/read` | 認可なし(任意通知 ID 指定可) | 単一既読化、成功時 200 + 成功 JSON(既読済はべき等で no-op) |
+| POST | `/api/v1/notifications/read-all`(body or query `user_id={ulid}`) | 認可なし | 自分宛全未読通知の一括既読化、成功時 200 + 既読化件数を含む JSON |
 
-route 名は `api.v1.notifications.index` / `api.v1.notifications.markAsRead` / `api.v1.notifications.markAllAsRead`(`Route::prefix('v1')->name('api.v1.')->group(...)` で生成)。
+**ルート規約**: ルート名は `api.v1.notifications.*`(`Route::prefix('v1')->name('api.v1.')` で生成)。Web ルート(`S-B-04` の `notifications.*`)とは完全独立 + 同じパス階層を意図的に揃え、`S-A-05` で API 側に JS を組み込むときの整合性を確保。
+
+**ルート登録順序**: `read-all` を `{notification}/read` より先に登録(`read-all` が `{notification}` 動的セグメントに食われない並び順)。
+
+**ミドルウェア**: なし(認証なし API のため)。Laravel 11+ では `bootstrap/app.php` の `withRouting` で `api: __DIR__.'/../routes/api.php'` を有効化。
 
 ### データモデル
 
-> **既存テーブル**(`S-B-04` で作成済)。本チケットは新規テーブル追加なし。`notifications` テーブルの読み取り + `read_at` UPDATE のみ。
+`S-B-04` で作成された `notifications` テーブル + `BaseNotification` 抽象基底 + 4 通知種別クラスを本チケットで再利用。本チケットでテーブル / Model / Enum の新規追加なし。
 
-リソースモデル: Laravel 標準 `Illuminate\Notifications\DatabaseNotification`(本チケットでは Route Model Binding で `{notification}` を自動解決)。`notifiable_id` の検索キーで対象ユーザーの通知を絞り込む。
+### コンポーネント
 
-### バリデーション
+**Controller** (`app/Http/Controllers/Api/V1/`)
+- `NotificationController` — API 受付 → Action 呼出 → Resource 整形 → JSON 返却(`index` / `markAsRead` / `markAllAsRead`)
 
-`App\Http\Requests\Api\V1\Notification\IndexRequest`(一覧):
+**FormRequest** (`app/Http/Requests/Api/V1/Notification/`)
+- `IndexRequest` — 対象ユーザー ID / タブ識別子 / ページ番号 / 1 ページ件数の検証(MarkAllAsRead 用は受講生判断、`IndexRequest` の `user_id` ルールを流用する設計も可)
 
-| 入力項目 | ルール | 推奨エラーメッセージ例 |
-|---|---|---|
-| user_id | required / ulid / exists:users,id | 対象ユーザー ID は必須です。<br>対象ユーザーが見つかりません。 |
-| tab | nullable / string / in:all,unread | tab は `all` または `unread` を指定してください。 |
-| per_page | nullable / integer / min:1 / max:100 | per_page は 1〜100 の整数で指定してください。 |
-| page | nullable / integer / min:1 | page は 1 以上の整数で指定してください。 |
+**Action** (`app/UseCases/Notification/`、※ 模範解答 PJ で API 固有 Action を分離、Basic 受講生は Controller 内完結も可)
+- `Api\IndexAction` — 対象ユーザー解決 + タブフィルタ + ページネーション
+- `Api\MarkAllAsReadAction` — 自分宛未読通知の一括既読化 + 既読化件数返却
+- `MarkAsReadAction` — Web / API 共有(`S-B-04` で実装済、Resource Binding 経由で同 Action を呼ぶ)
 
-`App\Http\Requests\Api\V1\Notification\MarkAllAsReadRequest`(全件既読化):
+**Resource** (`app/Http/Resources/Api/V1/`)
+- `NotificationResource` — 通知データ JSON を平坦化、JS フロントが扱いやすい安定スキーマで返却
 
-| 入力項目 | ルール | 推奨エラーメッセージ例 |
-|---|---|---|
-| user_id | required / ulid / exists:users,id | 対象ユーザー ID は必須です。<br>対象ユーザーが見つかりません。 |
+**Routes** (`routes/api.php`)
+- `v1` group に通知ルート 3 本を登録(`read-all` を `{notification}/read` より先)
 
-単一既読化はパスパラメータの `{notification}` で Route Model Binding が成立する(失敗時 Laravel 標準 404)、FormRequest は不要。
+**連携先**(本チケットで変更しない、`S-B-04` 提供)
+- `app/Notifications/BaseNotification.php` + 4 通知種別クラス / `app/Models/User.php`(`Notifiable` trait) / `notifications` テーブル
 
-### 認可設計
+### 異常系
 
-**Policy**: 適用しない(認証なし API のため認可ガードがない)。`S-A-05` で `auth:sanctum` Middleware 適用 + `NotificationPolicy::view` / `update` 適用により他人通知の閲覧 / 既読化を 403 で拒否する後付け設計。
+**入力検証**(FormRequest クラス名 + ルール記法):
 
-`authorize()` メソッドは `return true` で全許可(BookShelf Basic API 流)。
+- 一覧クエリ FormRequest (`Api\V1\Notification\IndexRequest`):
+  - `user_id`: `required` / `ulid` / `exists:users,id`
+  - `tab`: `nullable` / `string` / `in:全件,未読のみ`
+  - `per_page`: `nullable` / `integer` / `min:1` / `max:100`
+  - `page`: `nullable` / `integer` / `min:1`
+- 全件既読化 FormRequest(該当時、`Api\V1\Notification\MarkAllAsReadRequest` 新規作成 or `IndexRequest` の `user_id` ルールを流用):
+  - `user_id`: `required` / `ulid` / `exists:users,id`
+- 単一既読化: パスパラメータの通知 ID で Route Model Binding が成立(不在時 Laravel 標準 404)、入力検証は不要
 
-### API 仕様
+**業務例外**:
 
-| エンドポイント | リクエスト | レスポンス(200) | 認証 |
-|---|---|---|---|
-| GET /api/v1/notifications | query: user_id(ulid)/ tab(string)/ per_page(int)/ page(int) | `{"data": [{...resource}], "links": {...}, "meta": {"current_page":1,"last_page":N,"per_page":20,"total":M}}` | なし |
-| POST /api/v1/notifications/{notification}/read | path: notification (ulid) | `{"status":"ok"}` | なし |
-| POST /api/v1/notifications/read-all | body / query: user_id(ulid) | `{"status":"ok","updated":N}` | なし |
+- 既読済通知への単一既読化: べき等(no-op + 成功レスポンス、`read_at` は上書きしない)
+- 全件既読化で対象 0 件: 既読化件数 0 + 成功レスポンス(エラーにしない)
+- 対象ユーザー不在: 422(`exists:users,id`) or 404(Controller 内 `findOrFail`)— 受講生判断、振る舞いベースで「不在ユーザーで取得を試みたらエラー」が伝われば良い
+- 通知 ID 不在: Route Model Binding により Laravel 標準 404 JSON
 
-リソース整形(`App\Http\Resources\Api\V1\NotificationResource`):
+### 設計判断
 
-```json
-{
-  "id": "01HXXXX...",
-  "type": "App\\Notifications\\Chat\\ChatMessageReceivedNotification",
-  "notification_type": "chat_message_received",
-  "title": "佐藤太郎 さんから新着メッセージ",
-  "message": "今日の宿題について質問があります...",
-  "link_route": "chat.show",
-  "link_params": {"room": "01HYYYY..."},
-  "read_at": null,
-  "created_at": "2026-05-25T12:34:56+09:00"
-}
-```
-
-### テスト観点
-
-| 種別 | 観点 |
-|---|---|
-| Feature(API) | 一覧の 200 / 422(バリデーション失敗)/ 404(user_id 不在)/ 並び順 / ページネーション meta / tab フィルタ / レスポンスフィールド網羅 / 単一既読化の 200(`read_at` 更新)/ 既読済再呼び出しの no-op + 200 / 単一既読化の 404(通知不在)/ 全件既読化の 200 + `updated` 件数 / 全件既読化の 0 件レスポンス / 全件既読化の 404(user_id 不在) |
-| Feature(API/Web 連動) | API 経由既読化後に Web 通知一覧(`S-B-04`)で既読扱いになる連動性 / Web 経由既読化後に API レスポンスで `read_at` が反映される連動性 |
-| Unit(Resource) | `NotificationResource::toArray()` が `data` JSON から `notification_type` / `title` / `message` / `link_route` / `link_params` を正しく平坦化する / `data` が空配列のときのフォールバック(`message` を空文字に / `title` を「通知」固定 等) |
-
-### アーキテクチャ判断
-
-> **Basic 範囲制約**: 本チケットは ContactForm / BookShelf Basic の「公開 API CRUD」パターン踏襲。API Controller / FormRequest / Resource は教材範囲内。Action / Service クラスの採用は受講生判断(Controller 内完結も可)。Sanctum 認証 / CSRF / CORS は Advance 範囲(`S-A-05`)で後付け。
-
-- **採用技術**: Laravel 標準 API Resource(`JsonResource`)+ Controller(受講生判断で Action 分割可)+ Api FormRequest + Route Model Binding(`DatabaseNotification` 自動解決)+ ページネーション(`LengthAwarePaginator`)
-- **設計判断**:
-  1. **Web/API 分離**: `routes/web.php`(`S-B-04` の HTML フロー、`notifications.*`)と `routes/api.php`(本チケット、`api.v1.notifications.*`)で **完全に独立した Controller / Resource / FormRequest** を持つ。Web 側は `App\Http\Controllers\NotificationController`、API 側は `App\Http\Controllers\Api\V1\NotificationController` という namespace 分離(`backend-http.md`「領域別 namespace」に従う Webhooks / Api の特殊カテゴリ扱い)
-  2. **Resource クラス**: `App\Http\Resources\Api\V1\NotificationResource` を作り、`DatabaseNotification` の `data` JSON を平坦化して画面表示に必要なフィールドを返す。本 Resource は BookShelf Basic の `BookResource` と同型パターン
-  3. **ルート定義**: `Route::prefix('v1')->name('api.v1.')->group(...)` で `api.v1.notifications.index` / `markAsRead` / `markAllAsRead` の 3 ルートを定義。Web 側の既読化 URL は `POST /notifications/{notification}/read`、API 側は `POST /api/v1/notifications/{notification}/read` で **意図的にパスを揃え** て、`S-A-05` で API 側にフロント JS を組み込むときに「Web URL を JS で叩く錯覚」を防ぐ
-  4. **既読化の no-op 化**: Web 側(`S-B-04` の `MarkAsReadAction`)と同じ Action を共有してもよい(`if ($notification->read_at !== null) return;`)。API 側 Action として `App\UseCases\Notification\Api\IndexAction` / `Api\MarkAllAsReadAction` を分けるのは「ページネーション per_page を可変にする」「`updated` 件数を返す」等の API 固有要件が出る場合のみ。Basic 受講生は Controller 内で Web 側 Action を流用する実装でも振る舞いが満たせれば OK
-  5. **`exists:users,id` バリデーション**: `user_id` 不在を 422 ではなく 404 として返したい場合は、FormRequest で `exists` を入れる代わりに、Controller 内で `User::query()->findOrFail($user_id)` を使う方法もある。本チケットでは「422 か 404 か」は受講生判断(振る舞い目線では「不在ユーザーの一覧を取りに行ったらエラー」が伝われば良い)
-  6. **既読化ルートの順序**: `Route::post('notifications/read-all', ...)` を `Route::post('notifications/{notification}/read', ...)` よりも **先に登録** する(`read-all` が `{notification}` の動的セグメントに食われない並び順)
-  7. **同期送信 / Queue 不使用**: 本 API は単純な SELECT / UPDATE のみで Mail / 重い処理を伴わないため、Queue 化不要
-
-### 関連ファイルメモ
-
-- `app/Http/Controllers/Api/V1/NotificationController.php`(`index` / `markAsRead` / `markAllAsRead`)
-- `app/UseCases/Notification/Api/{Index,MarkAllAsRead}Action.php`(※ 模範解答 PJ では API 固有の Action として分離、Basic 受講生は Controller 内で Web 側 Action 流用も可)
-- `app/UseCases/Notification/MarkAsReadAction.php`(Web 側と共有可能)
-- `app/Http/Resources/Api/V1/NotificationResource.php`
-- `app/Http/Requests/Api/V1/Notification/{Index,MarkAllAsRead}Request.php`(`MarkAllAsRead` は受講生判断で作成、Index のみで完結する設計も可)
-- `routes/api.php` の `v1` グループに `Route::get('notifications', ...)` + `Route::post('notifications/read-all', ...)` + `Route::post('notifications/{notification}/read', ...)` を追加
-- 既存 `routes/api.php` を **新規プロジェクトの場合は Laravel デフォルトの作成** が必要(Laravel 11+ では `bootstrap/app.php` の `withRouting` で `api: __DIR__.'/../routes/api.php'` を有効化)
-- 類似パターン参考: ContactForm の認証なし POST API / BookShelf Basic の公開 CRUD API
-- 連携先(参考、変更しない): `app/Notifications/BaseNotification.php`(`S-B-04` 同梱)/ `app/Models/User.php`(`Notifiable` trait)
+- **Web / API の完全分離**: `routes/api.php` 配下の `Api\V1\` namespace で Controller を切り、Web 側との完全分離 + 将来 v2 / v3 が登場したときの段階移行を見据えた配置
+- **Resource クラスでのレスポンス整形**: `Api\V1\NotificationResource` で通知データ JSON を平坦化、JS フロントが扱いやすい安定スキーマを返す(`type` FQCN / 業務識別子 / タイトル / プレビュー / 遷移先ルート + パラメータ / `read_at` / `created_at` を ISO 8601 で整形)。通知データ JSON が空 / キー欠落時はフォールバック値で防御
+- **API パスを Web ルートと意図的に揃える**: `/notifications` と `/api/v1/notifications` の対称性で、`S-A-05` で API 側に JS を組み込むときの整合性を確保
+- **べき等性の単一実装**: Web / API 両側で同じ `Notification\MarkAsReadAction` を共有(`S-B-04` で実装済)、既読化日時の上書き防止ロジックも 1 箇所に集約
+- **構造的脆弱性の意図的許容**: 本チケットは認証なし API のため、第三者が任意の `user_id` / 通知 ID を URL 指定すると他者通知を閲覧 / 既読化できる。これは教材的に「Basic で API 構造を組み、Advance で Sanctum 認証を後付けする階段設計」のため意図的に残し、`S-A-05` で `auth:sanctum` + Policy 適用で実用化する
+- **ルート登録順序の意図**: `read-all` を `{notification}/read` より先に登録することで動的セグメントに食われない並び順を確保。順序ミスは 404 / 別レスポンスの原因になる
+- **テスト観点**: 「API レスポンスのページネーション meta」「タブ識別子バリデーション(範囲外で 422)」「既読化のべき等性(既読済再呼出で `read_at` 上書きしない)」「全件既読化の 0 件パターン(エラーにせず件数 0 を返す)」が本チケット固有の Feature テスト観点
 
 ## 補足
 
@@ -206,20 +159,22 @@ route 名は `api.v1.notifications.index` / `api.v1.notifications.markAsRead` / 
 
 | 質問 | 回答 |
 |---|---|
-| 認証なしで本当に運用するの? | 本チケットの範囲では認証なし。本質的なセキュリティは `S-A-05` で Sanctum Cookie 認証 + `auth:sanctum` Middleware で確立する。Basic は「API 実装の型を資格 LMS ドメインで再演習する」教材的位置づけ |
-| ユーザー特定は URL クエリパラメータ? それともリクエストボディ? | 一覧は GET なので クエリパラメータ(`?user_id=...`)、全件既読化は POST なのでボディ / クエリどちらでも可(`MarkAllAsReadRequest` で受け取れば Laravel が両対応する)。単一既読化はパスパラメータの `{notification}` で対象を特定するため `user_id` 不要 |
-| `user_id` を URL 自由指定にすると他人通知が見れる? | 見えます。それが本チケットで意図的に許容しているセキュリティ的トレードオフ。`S-A-05` で `auth:sanctum` + `NotificationPolicy::view` を適用すると、認証ユーザー本人の通知のみ取得 / 既読化に制限される |
-| `user_id` 不在時のレスポンスは 422 / 404 のどっち? | 振る舞いベースで「不在ユーザーの一覧を取りに行ったらエラー」が伝われば良い。`exists:users,id` を FormRequest に書けば 422、`findOrFail` で書けば 404。受講生判断 |
-| `notification_id` 不在時のレスポンスは? | Route Model Binding(`DatabaseNotification $notification`)で Laravel 標準 404 JSON が自動的に返る |
-| `tab=unread` 以外の値を渡したらどうなる? | `in:all,unread` バリデーションで 422 + JSON エラー |
-| `per_page` の上限は? | 100。0 以下 or 101 以上で 422 |
-| ページネーションのレスポンス形式は? | Laravel 標準の `LengthAwarePaginator` を `JsonResource::collection()` でラップした形式(`data` + `links` + `meta` を含む)。BookShelf Basic 公開 API と同じ |
-| 既読済通知に対する単一既読化の振る舞いは? | no-op + 200。`read_at` は上書きしない(既読化日時を最初に既読化した時点に固定する仕様)。再既読化で日時が動くと「最初にいつ読んだか」が消えるため |
-| 全件既読化で 0 件のときは? | 200 + `{"status":"ok","updated":0}`。エラーにはしない(べき等性) |
-| Web 側(`S-B-04`)と API 側で既読状態は同期する? | 同期する。両者とも同じ `notifications.read_at` カラムを更新するため、片方で既読化したらもう片方でも既読として返る |
+| 認証なしで本当に運用するの? | 本チケット範囲では認証なし。本質的なセキュリティは `S-A-05` で Sanctum Cookie 認証 + Policy 適用で確立する。Basic は「API 実装の型を資格 LMS ドメインで再演習する」教材的位置づけ |
+| ユーザー特定はクエリパラメータ? ボディ? | 一覧は GET なのでクエリパラメータ、全件既読化は POST なのでボディ / クエリどちらでも可。単一既読化はパスパラメータの通知 ID で対象特定するため対象ユーザー指定不要 |
+| 対象ユーザー ID を URL 自由指定にすると他人通知が見れる? | 見える。それが本チケットで意図的に許容しているセキュリティ的トレードオフ。`S-A-05` で `auth:sanctum` + Policy 適用すると認証ユーザー本人の通知のみ取得 / 既読化に制限される |
+| 対象ユーザー不在時のレスポンスは 422 / 404? | 振る舞いベースで「不在ユーザーで取得を試みたらエラー」が伝われば良い。`exists:users,id` バリデーションを通せば 422、Controller 内 `findOrFail` を使えば 404。受講生判断 |
+| 通知 ID 不在時のレスポンスは? | Route Model Binding で Laravel 標準 404 JSON が自動的に返る |
+| タブ識別子の範囲外を渡したら? | 422 + JSON エラー |
+| 1 ページ件数の上限は? | 100。0 以下 or 101 以上は 422 |
+| ページネーションのレスポンス形式は? | Laravel 標準の paginator を Resource Collection でラップした形式(`data` + `links` + `meta` を含む)。過去案件の公開 API と同じ |
+| 既読済通知への単一既読化の振る舞いは? | べき等 + 成功レスポンス。既読化日時は上書きしない(「最初にいつ読んだか」を永続化したい仕様) |
+| 全件既読化で 0 件のときは? | 既読化件数 0 + 成功レスポンス。エラーにはしない(べき等性) |
+| Web 側(`S-B-04`)と API 側で既読状態は同期する? | 同期する。両者とも同じ通知テーブルの既読化日時を更新するため、片方で既読化したらもう片方でも既読として返る |
 | API レートリミットは? | 本チケット範囲外。`throttle` Middleware 適用は MVP 外 |
 | CORS はどうする? | 本チケット範囲外。同一オリジン前提で動作確認する。`S-A-05` で BE-FE 別オリジン構成を見据えた CORS / Sanctum stateful 設定を扱う |
-| レスポンスの `link_route` を JS フロントでどう使う? | `S-A-05` で `link_route` + `link_params` から JS が遷移先 URL を組み立てて、通知行クリック時に `window.location` を切り替える設計。本チケットではレスポンスにそのまま含める(整形まで) |
-| `created_at` のフォーマットは? | ISO 8601(例: `2026-05-25T12:34:56+09:00`)。Resource クラス内で `?->toIso8601String()` を呼ぶ |
-| API 用 Controller を `Api/V1/` namespace に置く理由は? | Web 側 Controller(`NotificationController`)との完全分離 + 将来 v2 / v3 が登場したときの段階移行を見据えた配置。`backend-http.md`「領域別 namespace」の Webhooks / Auth と同じ特殊カテゴリ扱い |
-| Action を作るべきか、Controller 内完結で OK か? | Basic 受講生判断。Controller 内で `User::findOrFail($user_id)->notifications()->paginate()` を書く実装でも振る舞いを満たす。Action 分割(`Notification\Api\IndexAction` 等)はチャレンジ枠 |
+| レスポンスの遷移先ルートを JS フロントでどう使う? | `S-A-05` で遷移先ルート + パラメータから JS が遷移先 URL を組み立てて、通知行クリック時に画面遷移を実装する。本チケットではレスポンスにそのまま含める(整形まで) |
+| 作成日時のフォーマットは? | ISO 8601(例: `2026-05-25T12:34:56+09:00`)。Resource クラス内で日時整形メソッドを呼ぶ |
+| API 用 Controller を `Api/V1/` namespace に置く理由は? | Web 側 Controller との完全分離 + 将来 v2 / v3 が登場したときの段階移行を見据えた配置 |
+| Action を作るべきか Controller 内完結で OK か? | Basic 受講生判断。Controller 内で対象ユーザー解決 + ページネーション呼出を直接書く実装でも振る舞いは満たせる。Action 分割はチャレンジ枠 |
+| パスを Web ルートと意図的に揃える理由は? | `S-A-05` で API 側に JS を組み込むときに「Web URL を JS で叩く錯覚」を防ぐ + 利用者が API パス階層を把握しやすい設計判断 |
+| ルート登録順(`read-all` を先に)を間違えると? | `read-all` が `{notification}` 動的セグメントに食われ、本来 200 を返すべきリクエストが 404 や別レスポンスになる |

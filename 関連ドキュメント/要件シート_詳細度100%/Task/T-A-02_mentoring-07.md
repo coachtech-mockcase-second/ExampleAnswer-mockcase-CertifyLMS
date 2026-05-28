@@ -26,7 +26,7 @@ mentoring Feature の Controller(`MeetingController`)で 1 メソッドあたり
 
 - **現状の問題**: 受講生による面談予約 / 当事者によるキャンセル / コーチによる面談メモ記録 の 3 操作が、Controller メソッド内に「残面談回数チェック → 枠検証 → 候補コーチ抽出 → 自動割当 → 予約 INSERT → 面談回数消費 → 通知発火 → Google カレンダーイベント作成」のように 60〜80 行の手続きをベタ書きしている。Controller が「リクエスト受付 + 業務ロジック + レスポンス整形」を兼ね、テスト容易性 / 単一責務 / 再利用性のすべてが損なわれた状態。`S-A-01`(Google カレンダー連携)実装後はさらに行数が増え、コードリーディングが急速に困難化する。
 - **達成したい状態**: Controller メソッドは「リクエスト受付 → 認可委譲 → Action 呼出 → レスポンス整形」のみを担い、業務ロジックは `app/UseCases/Meeting/{Store,Cancel,UpsertMemo}Action.php` の `__invoke()` に集約される。トランザクション境界 / 例外 throw / 副作用(通知 / 外部 API)が Action 内に閉じ込められ、Action 単体の Feature テストで業務分岐を網羅検証できる。
-- **価値・優先度**: Pro 生レベルの **Clean Architecture 軽量版** を実装で示す中核チケット。`backend-usecases.md` の「Controller メソッド名 = Action クラス名」「1 業務操作 = 1 Action」「データ整合性チェックは Action 内」「DB::transaction() で囲む」を、既存コードを題材に再構築する形で身につける。
+- **価値・優先度**: **Clean Architecture 軽量版** を実装で示す中核チケット。`backend-usecases.md` の「Controller メソッド名 = Action クラス名」「1 業務操作 = 1 Action」「データ整合性チェックは Action 内」「DB::transaction() で囲む」を既存コードを題材に再構築する。
 
 ## やること
 

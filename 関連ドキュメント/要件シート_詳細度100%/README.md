@@ -26,12 +26,12 @@
 ├── README.md              # 本ファイル(ナビ + チケット一覧 + 進捗トラッカー)
 ├── _review-log.md         # 詳細化中の模範解答 PJ 懐疑的レビューを集約
 ├── 01_概要.md             # ターム内容 + 開発プロセス + 環境構築手順(後工程で別途作成)
-├── Story/                 # 14 件(Basic 9 / Advance 5)
+├── Story/                 # 15 件(Basic 10 / Advance 5)
 ├── Bug/                   # 19 件(Basic 16 / Advance 3)
 └── Task/                  # 7 件(Basic 3 / Advance 4)
 ```
 
-**合計 40 件 / 目標 225h ± 10%**。Basic / Advance はファイル名(`S-B-XX` / `S-A-XX` 等)で識別する(サブディレクトリで階層化しない)。
+**合計 41 件 / 目標 225h ± 10%**。Basic / Advance はファイル名(`S-B-XX` / `S-A-XX` 等)で識別する(サブディレクトリで階層化しない)。
 
 > テンプレ(`story.md` / `bug.md` / `task.md`)は `.claude/skills/ticket-detail-100p/templates/` 配下。本ディレクトリには配置しない。
 
@@ -86,7 +86,7 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 
 > 出所: `../要件ブレインストーミング.md` § 2(2026-05-21 草案 fix)。Skill 実行時の入力情報源として使用。
 
-### Story Basic(9 件)
+### Story Basic(10 件)
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
 |---|---|---|---|---|
@@ -99,6 +99,7 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 | `S-B-07` | `settings-profile-01` | 設定・プロフィール画面 | 既存機能の拡張 | 7h |
 | `S-B-08` | `mentoring-06` | コーチ用 受講生メモ(EnrollmentNote)編集 | 新規機能の構築 | 6h |
 | `S-B-09` | `notification-05` | admin お知らせ配信機能 | 新規機能の構築 | 8h |
+| `S-B-10` | `notification-04` | 面談リマインダー通知(前日 + 1 時間前) | 新規機能の構築 | 5h |
 
 ### Story Advance(5 件)
 
@@ -162,22 +163,23 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 
 | 種別 | Basic | Advance | 計 |
 |---|---:|---:|---:|
-| Story | 9 / 9 | 5 / 5 | 14 / 14 |
+| Story | 10 / 10 | 5 / 5 | 15 / 15 |
 | Bug | 16 / 16 | 3 / 3 | 19 / 19 |
 | Task | 3 / 3 | 4 / 4 | 7 / 7 |
-| **計** | **28 / 28** | **12 / 12** | **40 / 40** |
+| **計** | **29 / 29** | **12 / 12** | **41 / 41** |
 
 ### 完成済み
 
-- ✅ `S-B-01 / qa-board-01` 質問掲示板の実装(2026-05-23 サイドバーバッジ機能廃止 / 通知発火スコープ外 [`S-B-04` に移管] / やること構造化 / Seeder 設計を採点シナリオ紐付けで具体化 で再書き直し済、依存チケット解除)
+- ✅ `S-B-01 / qa-board-01` 質問掲示板の実装(2026-05-23 サイドバーバッジ機能廃止 / 通知発火スコープ外 [`S-B-04` に移管] で書き直し → 2026-05-27 規約刷新版で再生成 → **2026-05-28 実装方針 5 サブセクション構造で再々生成**、AC 10 件、Basic 範囲で Controller 内完結を前提に記述、実装方針を「インターフェース(認可列含む)→ データモデル(制約列含む)→ コンポーネント(クラス名 + ファイルパス集約)→ 異常系 → 設計判断(テスト観点内包)」の外部→内部潜行順 5 構造に再編、依存チケットなし)
 - ✅ `S-B-02 / meeting-quota-01` 面談パックマスタ管理(admin マスタ CRUD)(2026-05-23 詳細化、Basic 範囲で Controller 内完結を前提に記述、状態遷移 3 種(publish / archive / unarchive)+ 公開中削除ガード(409)、依存チケットなし)
 - ✅ `S-B-03 / plan-management-01` プラン管理 Admin マスタ UI(2026-05-25 詳細化、Basic 範囲で Controller 内完結を前提に記述、削除は物理削除 = 下書き × 受講者なしのみ可 + 状態遷移 3 種、🕐 例外クラスのメッセージ責務は Phase D で MeetingPack と統一、Step 4 引き算は B-B-11 と重複あり Phase D 課題 #3 で整合確認)
-- ✅ `S-B-04 / notification-01` 通知基盤(Laravel Notification、DB + Mail)(2026-05-25 詳細化、Basic 範囲で Notification + Controller 内完結を前提に記述、4 通知種別[chat / Q&A / 面談予約 / 面談キャンセル]+ TopBar 未読バッジ + 通知一覧 / 行クリック既読化 + 全件既読化、管理者は受信対象から除外、リマインダー / Announcement / API / Pusher / Sanctum は別チケット、Action 経由発火は ※ 注記、依存チケットなし)
-- ✅ `S-B-05 / notification-02` 通知 JSON API(認証なし)(2026-05-25 詳細化、Basic 範囲で BookShelf 公開 API パターン踏襲、`api.v1.notifications.*` ルート 3 本 [index / markAsRead / markAllAsRead] + Resource + Api FormRequest + `user_id` クエリ指定、認可なしの構造的脆弱性は `S-A-05` で Sanctum 認証後付けにより実用化、Step 4 = 模範解答 PJ の `auth:sanctum` 取り外し + `$request->user()` を `user_id` 解決へ切替、依存 `S-B-04`)
+- ✅ `S-B-04 / notification-01` 通知基盤(Laravel Notification、DB + Mail)(2026-05-25 詳細化 → 2026-05-26 規約刷新版で再生成 → **2026-05-28 実装方針 5 サブセクション構造で再々生成**、AC 10 件、4 通知種別[chat / Q&A / 面談予約 / 面談キャンセル]+ サイドバー通知一覧 / 行クリック既読化 + 全件既読化、管理者は受信対象から除外、リマインダー / Announcement / API / Pusher / Sanctum は別チケット、依存チケットなし)
+- ✅ `S-B-05 / notification-02` 通知 JSON API(認証なし)(2026-05-25 詳細化 → 2026-05-26 規約刷新版で再生成 → **2026-05-28 実装方針 5 サブセクション構造で再々生成**、AC 8 件、Basic 範囲で過去案件の公開 API パターン踏襲、`api.v1.notifications.*` ルート 3 本 [index / markAsRead / markAllAsRead] + Resource + Api FormRequest + 対象ユーザークエリ指定、認可なしの構造的脆弱性は `S-A-05` で Sanctum 認証後付けにより実用化、Step 4 = 模範解答 PJ の `auth:sanctum` 取り外し + 対象ユーザー解決方式の切替、依存 `S-B-04`)
 - ✅ `S-B-06 / enrollment-03` 個人目標(EnrollmentGoal)CRUD(2026-05-25 詳細化、Basic 範囲で Controller 内完結を前提に記述、新規テーブル `enrollment_goals` + Policy 責務委譲(`view` を `EnrollmentPolicy::view` に委譲)+ 達成マーク / 達成解除のべき等性 + 編集は専用ページ + 削除は HTML confirm、コーチ / 管理者は閲覧専用、依存チケットなし)
 - ✅ `S-B-07 / settings-profile-01` 設定・プロフィール画面(2026-05-25 詳細化、Basic 範囲で全ロール共通の 2 タブ[プロフィール / パスワード]+ アバター変更 + コーチ専用固定面談 URL 編集、Fortify Password Update 活用、`UserPolicy::updateSelf` 新設、`EnsureActiveLearning` Middleware 不適用で graduated もアクセス可、面談設定タブ / Google Calendar 連携は `S-A-01` で扱う、🕐 B-B-08 と Step 4 重複あり Phase D 課題 #4 で整合確認)
 - ✅ `S-B-08 / mentoring-06` コーチ用 受講生メモ(EnrollmentNote)編集(2026-05-25 詳細化、Basic 範囲で Controller 内完結を前提に記述、新規テーブル `enrollment_notes` + Policy 二重判定[担当コーチ + 作成者本人 + 管理者越境] + 受講生は閲覧含め完全 403 + 編集時の作成者(`coach_user_id`)不変性、`EnrollmentGoal`(S-B-06)と役割対称ペア、依存チケットなし)
-- ✅ `S-B-09 / notification-05` admin お知らせ配信機能(2026-05-25 詳細化、Basic 範囲で Controller 内完結を前提に記述、新規テーブル `announcements` + `AnnouncementTargetType` Enum 3 種[全受講生 / 資格指定 / ユーザー指定]+ `S-B-04` 通知基盤利用 + `DB::afterCommit` で配信発火 + 受講中 status フィルタ + 配信不可逆(再配信 / 編集 / 取消なし)、依存 `S-B-04`)
+- ✅ `S-B-09 / notification-05` admin お知らせ配信機能(2026-05-25 詳細化 → 2026-05-26 規約刷新版で再生成 → **2026-05-28 実装方針 5 サブセクション構造で再々生成**、AC 11 件、新規お知らせエンティティ + 配信対象タイプ 3 種[全受講生 / 資格指定 / ユーザー指定]+ `S-B-04` 通知基盤利用 + 業務トランザクション確定後の配信発火 + 受講中フィルタ + 配信不可逆(再配信 / 編集 / 取消なし)、依存 `S-B-04`)
+- ✅ `S-B-10 / notification-04` 面談リマインダー通知(前日 + 1 時間前)(2026-05-27 新規作成、Basic 範囲で Schedule Command + 同期発火 + Queue なし、`notifications:send-meeting-reminders --window={eve\|one_hour_before}` の 2 タイミング配信 + 当事者全員[受講生 + 担当コーチ]対象 + `(meeting_id, window)` 冪等性検査 + `withoutOverlapping` 二重防御、Queue 化は別途 Advance 専用チケットで扱う、依存 `S-B-04`)
 - ✅ `B-B-01 / content-management-01` コーチが担当資格の教材管理にアクセスすると 403(2026-05-24 詳細化、Step 4 仕込み = 6 Policy [Part / Chapter / Section / SectionQuestion / SectionImage / QuestionCategory] の coach 判定を `false` 固定に置換、Basic 範囲で Policy 修正のみで完結 → 「※」例外注記なし、依存チケットなし)
 - ✅ `B-B-02 / content-management-02` 教材管理の Part 一覧が並び順を無視(2026-05-24 詳細化、Step 4 = `Part\IndexAction` の `->ordered()` 削除、※ Action 内 = Basic 範囲外注記)
 - ✅ `B-B-03 / content-management-03` 公開停止資格の教材が受講生に露出(2026-05-24 詳細化、⚠️→対応完了: 模範解答 PJ の `Learning\Show{Part,Chapter,Section}Action` に「公開中資格のみ」ガードを追加実装 + テスト追加 [BrowseControllerTest 全通過]、Step 4 でこのガード削除、※ Action 内)
@@ -208,7 +210,7 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 - ✅ `S-A-02 / ai-chat-01` Gemini AI チャットボット(2026-05-25 詳細化、Advance 範囲 = Repository / Action / Service、新規 `ai_chat_conversations` / `ai_chat_messages` テーブル + `LlmRepositoryInterface` + `GeminiLlmRepository` + `AiChatPromptBuilderService`(Section パンくず + default_enrollment 解決) + フローティングウィジェット + 同期メッセージ送信 + Transaction A 先行 commit + タイトル LLM 自動生成 + `throttle:ai-chat` 日次 50 通 + 機能 OFF スイッチ、Step 4 = 全 AI 関連コードを引き算で外す、依存チケットなし)
 - ✅ `S-A-03 / meeting-quota-02` Stripe 連携(追加面談購入)(2026-05-25 詳細化、Advance 範囲 = Action / Middleware、新規 `payments` テーブル + `PaymentStatus` Enum + `CreateCheckoutSessionAction` + `StripeWebhook\HandleAction`(冪等性ガード + 3 イベント分岐)+ `PurchaseQuotaAction` + `MeetingQuotaCheckoutController` + `VerifyStripeSignature` Middleware + `MeetingQuotaPolicy::purchase` + Stripe SDK 採用、Step 4 = 全 Stripe 関連コードを引き算で外す、`meeting_quota_transactions` 基盤は提供 PJ 既存(消費 / 返却 / 管理者付与は提供 PJ 範囲)、依存 `S-B-02`)
 - ✅ `S-A-04 / certification-management-01` 修了証 PDF 出力(2026-05-25 詳細化、Advance 範囲 = Service / Action、`certificates` テーブルは提供 PJ 既存、本チケットで PDF 生成部分を追加 = `CertificatePdfService`(mpdf、A4 横向き、日本語 CJK)+ `CertificateSerialNumberService`(`CT-{YYYYMM}-{NNNNN}` 月内連番 `lockForUpdate`)+ `Certificate\{Issue,Download}Action` + `CertificatePolicy::download`(admin 全件 / coach 担当資格 / student 本人)+ `resources/views/certificates/pdf.blade.php` + `active-learning` Middleware 非適用、Step 4 = PDF 生成 + DL エンドポイントを引き算で外す、依存チケットなし)
-- ✅ `S-A-05 / notification-03` Sanctum Cookie 認証追加 + JS フロント通知表示(2026-05-25 詳細化、Advance 範囲 = Sanctum + 素の JS、`Sanctum::stateful()` + `auth:sanctum` を `/api/v1/notifications*` 全 3 ルートに適用 + `/sanctum/csrf-cookie` 公開 + `Api\V1\NotificationController` + `Api\IndexAction` + `Api\MarkAllAsReadAction` + `NotificationResource` 平坦化 + 通知ポップオーバー Blade + `notification-popover.js`(タブ切替 / ローディング / 行クリック既読化 + 遷移 / 全件既読 / フッターリンク / a11y)+ TopBar バッジ動的更新、Step 4 = `auth:sanctum` 取り外し + ポップオーバー JS + Blade 削除、依存 `S-B-05`)
+- ✅ `S-A-05 / notification-03` Sanctum Cookie 認証追加 + JS フロント通知表示(2026-05-25 詳細化 → 2026-05-26 規約刷新版で再生成 → **2026-05-28 実装方針 5 サブセクション構造で再々生成**、AC 11 件、Advance 範囲 = Sanctum + 素の JS、Sanctum stateful 設定 + `auth:sanctum` を通知 API 全 3 ルートに適用 + CSRF Cookie endpoint 公開 + 認証ユーザー本人の通知に切替 + 通知ポップオーバー Blade + JS ポップオーバー制御(タブ切替 / 行クリック既読化 + 遷移 / 全件既読)+ TopBar バッジ動的更新、管理者は対象外、Step 4 = `auth:sanctum` 取り外し + ポップオーバー JS + Blade 削除、依存 `S-B-05`)
 
 ## 関連ドキュメント
 

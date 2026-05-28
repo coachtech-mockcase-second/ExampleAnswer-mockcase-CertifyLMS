@@ -26,7 +26,7 @@
 
 - **現状の問題**: Google API クライアントの組み立て(クライアント ID / シークレット / リダイレクト URI / scope 設定)、OAuth 認可 URL 生成、認可コードのトークン交換、トークン取消、トークン期限切れ時のリフレッシュ、`freebusy` リクエスト構築、予定作成 / 削除 API 呼出が、利用側(空き枠集計 Service / 予約 Action / キャンセル Action / 連携設定 Controller)に **直接書き散らかっている**。利用側が Google API ライブラリの低レベル詳細(`Google\Client` インスタンス生成 / `Google\Service\Calendar` 構築 / `Google\Service\Calendar\Event` 構築 / DateTime オブジェクト変換 / Throwable 例外ハンドリング / Log 出力)を知らないと改修不能で、テストもしづらい。トークン期限切れ時のリフレッシュロジックも複数箇所に重複している。
 - **達成したい状態**: Google Calendar API の呼び出しを **2 つの専用 Service クラス**(認可フロー専用 + Calendar API 専用)に集約する。利用側からは「`freebusy($credential, $start, $end): array`」「`insertEvent($credential, $meeting): ?string`」「`deleteEvent($credential, $eventId): void`」「`buildClient(): Client`」「`getAuthUrl(array $state): string`」「`exchangeCode(string $code): array`」「`revoke(string $token): bool`」のような高レベル API のみを呼ぶ。トークン期限切れリフレッシュ / 例外 → 空配列フォールバック / Log 出力は Service 内に閉じ込められ、利用側は本質的なドメインロジックだけを書ける。
-- **価値・優先度**: Pro 生レベルの **「外部 API の境界設計」** を学ぶ題材。`backend-services.md` の「外部 API を叩く Service は専用クラスに切り出す」「Mockery でテストできるよう `final` を外す判断軸」を実コードで適用する。S-A-01 で書いた散在コードを「ライブラリ依存を 1 箇所に閉じ込めるリファクタ」で整理する流れは、実務プロジェクトでの外部 SaaS 連携の典型パターン。
+- **価値・優先度**: **「外部 API の境界設計」** を扱う題材。`backend-services.md` の「外部 API を叩く Service は専用クラスに切り出す」「Mockery でテストできるよう `final` を外す判断軸」を実コードで適用する。S-A-01 で書いた散在コードを「ライブラリ依存を 1 箇所に閉じ込めるリファクタ」で整理する流れは、実務プロジェクトでの外部 SaaS 連携の典型パターン。
 
 ## やること
 
