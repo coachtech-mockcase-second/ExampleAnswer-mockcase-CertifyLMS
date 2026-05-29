@@ -27,7 +27,7 @@ class DestroyTest extends TestCase
         $this->assertDatabaseMissing('qa_threads', ['id' => $thread->id]);
     }
 
-    public function test_author_cannot_delete_when_replies_exist(): void
+    public function test_author_delete_with_replies_returns_409(): void
     {
         $author = User::factory()->student()->create();
         $cert = Certification::factory()->published()->create();
@@ -36,7 +36,7 @@ class DestroyTest extends TestCase
 
         $response = $this->actingAs($author)->deleteJson(route('qa-board.destroy', $thread));
 
-        $this->assertSame(403, $response->status(), 'Policy::delete が回答ありを 403 で先取り (Policy ガード)');
+        $this->assertSame(409, $response->status(), '回答ありスレッドの投稿者削除は DestroyAction の状態ガードで 409');
         $this->assertDatabaseHas('qa_threads', ['id' => $thread->id]);
     }
 

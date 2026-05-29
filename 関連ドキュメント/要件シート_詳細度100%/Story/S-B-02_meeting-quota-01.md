@@ -13,48 +13,52 @@
 | 工数 (h) | 6 |
 | 依存チケット | (なし) |
 
-## 概要
-
-管理者(admin)が追加面談購入用の SKU マスタ(面談パック)を CRUD + 状態遷移(下書き / 公開中 / アーカイブ)できる管理画面を実装する。提供 PJ にはデータ構造 + 初期データ + admin 管理画面の表示部分が既に含まれており、受講生は管理画面のロジック側(認可・バリデーション・ルーティング)を組んで CRUD UI として機能させる。
-
 ## 背景・目的
 
-- **現状の問題**: 提供 PJ には面談パックのデータ構造と admin 管理画面の表示部分、初期データが既にあるが、認可・ルーティング・バリデーションのロジック側が欠落しており画面が動作しない(404 になる)。運営側は面談パックの新設・価格改定・終売を直接操作できず、受講生の追加面談購入動線(S-A-04 で別途実装)の前提が立ち上がらない。
-- **達成したい状態**: 管理者が面談パック管理画面から面談パックを CRUD でき、下書き → 公開中 → アーカイブの状態遷移で受講生の購入画面に並ぶ SKU を運営側でコントロールできる。公開中の面談パックは削除不可で、過去の購入履歴の整合性を守る。
-- **価値・優先度**: 追加面談購入(S-A-04 Stripe 連携)の前提となるマスタ管理画面。本チケットが揃わないと、後続の購入導線の検証ができない。
+提供 PJ には面談パックのデータ構造・admin 管理画面の表示部分・初期データが既に含まれているが、認可・ルーティング・バリデーションのロジック側が欠落しており画面が動作しない(404 になる)。運営側は面談パックの新設・価格改定・終売を直接操作できず、受講生の追加面談購入動線(別チケットで扱う)の前提が立ち上がらない。
+
+本チケットでは管理者が面談パック管理画面から CRUD でき、下書き → 公開中 → アーカイブの状態遷移で受講生の購入画面に並ぶ SKU を運営側でコントロールできる状態を達成する。公開中の面談パックは削除不可とし、過去の購入履歴の整合性を守る。追加面談購入動線の前提となるマスタ管理画面であり、本チケットが揃わないと後続の購入導線の検証ができない。
 
 ## ユーザーストーリー
 
 - **管理者(admin)として**、追加面談購入用の面談パックを CRUD したい。なぜなら、運営側で価格 / 回数 / 公開状態を自由にコントロールしたいから。
-- **管理者として**、面談パックを下書きから公開へ、または受講生の購入画面から外すためにアーカイブへ遷移させたい。なぜなら、SKU のライフサイクル(新設→販売→終売)を自前でハンドリングしたいから。
+- **管理者として**、面談パックを下書きから公開へ、または受講生の購入画面から外すためにアーカイブへ遷移させたい。なぜなら、SKU のライフサイクル(新設 → 販売 → 終売)を自前でハンドリングしたいから。
 - **管理者として**、公開中の面談パックが誤って削除されない仕組みを期待する。なぜなら、購入履歴を持つ SKU を消すと履歴が孤立して監査ができなくなるから。
-- **受講生(student) / コーチ(coach)として**、admin 専用の面談パック管理画面に直接アクセスしても 403 が返ることを期待する。なぜなら、運営側のマスタ管理画面に他ロールが入れる構成は事故の元だから。
+- **受講生(student) / コーチ(coach)として**、admin 専用の面談パック管理画面に直接アクセスしても拒否されることを期待する。なぜなら、運営側のマスタ管理画面に他ロールが入れる構成は事故の元だから。
 
-## やること
+## 要件
 
-### 面談パック
+### 面談パックの管理(管理者のみ)
 
-- **一覧**: 管理者のみ可、受講生 / コーチは 403。キーワード検索 + 状態フィルタ + ページネーション付きで表示
-- **詳細**: 管理者のみ可、他は 403。面談パックの基本情報 + 直近の購入履歴 + メタ情報を表示
-- **新規作成**: 管理者のみ可、他は 403。投稿成功で詳細画面にリダイレクト、初期状態は **下書き** で作成される
-- **編集**: 管理者のみ可、他は 403。基本情報を更新できるが、状態は本フォームでは変えられない(状態遷移は別操作)
-- **削除**: 管理者のみ可、他は 403。下書き / アーカイブ状態のみ削除可(論理削除)、公開中状態は 409 を返して購入履歴の孤立を防ぐ
+- 一覧表示(SKU 名キーワードでの部分一致検索 + 状態フィルタ + ページネーション、公開中を優先する並び順)
+- 詳細表示(基本情報 + 直近の購入履歴 + メタ情報)
+- 新規作成(初期状態は **下書き**)
+- 編集(基本情報の更新。状態はこのフォームでは変更しない = 状態遷移は別操作)
+- 削除(下書き / アーカイブ状態のみ可、物理削除。公開中状態は削除不可で購入履歴の孤立を防ぐ)
 
-### 状態遷移
+### 状態遷移(管理者のみ)
 
-- **公開する**(下書き → 公開中): 管理者のみ可、他は 403。下書き状態以外で 409
-- **アーカイブ**(公開中 → アーカイブ): 管理者のみ可、他は 403。公開中状態以外で 409。アーカイブ後は受講生の購入画面から外れるが、過去の購入履歴は残る
-- **下書きへ戻す**(アーカイブ → 下書き): 管理者のみ可、他は 403。アーカイブ状態以外で 409。誤アーカイブの取り戻し / 再販売準備の動線
+- 公開(下書き → 公開中)
+- アーカイブ(公開中 → アーカイブ。受講生の購入画面から外れるが過去の購入履歴は残る)
+- 下書きへ戻す(アーカイブ → 下書き。誤アーカイブの取り戻し / 再販売準備の動線)
+- 公開中 → 下書きへの直接戻しはできない(一度アーカイブを経由する)
 
-### 共通の振る舞い
+### 入力検証
 
-- 受講生 / コーチが管理者専用画面にアクセスすると 403
-- 公開中 → 下書きへの **直接戻し** はできない(一度アーカイブを経由する)
-- 並び順は公開中の SKU を優先表示
+- SKU 名: 必須 / 100 文字以内
+- 説明: 任意 / 2000 文字以内
+- 面談回数: 必須 / 1〜100 の整数
+- 価格: 必須 / 0〜1,000,000 円の整数
+- Stripe 価格 ID: 任意 / 255 文字以内
+- 並び順: 任意 / 0 以上の整数
 
-## やらないこと
+### アクセス制御(機能群共通)
 
-- 受講生の追加面談購入動線(購入チェックアウト画面 / Stripe Checkout 連携 / Webhook 受信) — `S-A-04` で扱う
+- 管理者のみが面談パック管理画面の全操作にアクセス可能、受講生 / コーチはアクセス拒否
+
+## スコープ外
+
+- 受講生の追加面談購入動線(購入チェックアウト画面 / Stripe Checkout 連携 / Webhook 受信) — 本チケットでは扱わない
 - 面談回数履歴(消費 / 返却 / 購入 / 管理者付与 / 初期付与)の表示・記録
 - 管理者の面談回数手動付与モーダル(ユーザー詳細画面からの付与)
 - 残数集計の実装(残り面談回数の集計)
@@ -63,131 +67,136 @@
 
 ## 受け入れ条件
 
-- [ ] **一覧 - 認可**: 管理者が面談パック管理画面の一覧を開くと一覧画面が表示され、受講生 / コーチが開くと 403
-- [ ] **一覧 - 検索 / フィルタ**: SKU 名キーワード(部分一致)と状態(下書き / 公開中 / アーカイブ)で絞り込みでき、ページネーションにフィルタ状態が引き継がれる
-- [ ] **新規作成 - リダイレクト + フラッシュ**: 管理者が新規作成成功時、作成された面談パック詳細画面にリダイレクトされ、フラッシュメッセージが表示される
-- [ ] **新規作成 - 初期状態**: 新規作成された面談パックの状態が **下書き** で作成される
-- [ ] **新規作成 - 認可拒否**: 受講生 / コーチが新規作成フォーム / 新規作成アクションにアクセスすると 403
-- [ ] **編集 - リダイレクト + フラッシュ**: 編集成功時、面談パック詳細画面にリダイレクトされ、フラッシュメッセージが表示される
-- [ ] **編集 - 状態保持**: 編集フォームで状態(下書き / 公開中 / アーカイブ)は変更されない(状態遷移は別操作でのみ変更)
-- [ ] **削除 - 下書き / アーカイブ可**: 管理者が下書き / アーカイブ状態の面談パックを削除すると SoftDelete され、一覧画面にリダイレクト + フラッシュ表示
-- [ ] **削除 - 公開中ガード**: 公開中状態の面談パックを削除しようとすると 409 + フラッシュエラーが表示される
-- [ ] **状態遷移 - 公開**: 下書き状態の面談パックに対して公開を実行すると公開中に遷移し、詳細画面にリダイレクト + フラッシュ表示。下書き以外で実行すると 409
-- [ ] **状態遷移 - アーカイブ**: 公開中状態の面談パックに対してアーカイブを実行するとアーカイブに遷移し、詳細画面にリダイレクト + フラッシュ表示。公開中以外で実行すると 409
-- [ ] **状態遷移 - 下書きへ戻す**: アーカイブ状態の面談パックに対して下書きへ戻すを実行すると下書きに遷移し、詳細画面にリダイレクト + フラッシュ表示。アーカイブ以外で実行すると 409
-- [ ] **状態遷移 - 認可拒否**: 受講生 / コーチが状態遷移操作にアクセスすると 403
+- [ ] 管理者が面談パック管理画面で一覧を閲覧でき、SKU 名キーワード(部分一致)+ 状態(下書き / 公開中 / アーカイブ)フィルタ + ページネーション(フィルタ状態を引き継ぎ)で絞り込める。公開中を優先する並び順で表示される
+- [ ] 管理者が新規作成すると **下書き状態** で作成され、作成された面談パックの詳細画面にリダイレクト + フラッシュメッセージが表示される
+- [ ] 管理者が基本情報(SKU 名 / 説明 / 面談回数 / 価格 / Stripe 価格 ID / 並び順)を更新でき、このフォームでは状態(下書き / 公開中 / アーカイブ)は変更されない。成功時に詳細画面にリダイレクト + フラッシュ表示
+- [ ] 下書き / アーカイブ状態の面談パックを削除すると物理削除され、一覧画面にリダイレクト + フラッシュ表示。公開中状態の面談パックを削除しようとすると 409 + フラッシュエラーで拒否される
+- [ ] 公開(下書き → 公開中)/ アーカイブ(公開中 → アーカイブ)/ 下書きへ戻す(アーカイブ → 下書き)の 3 操作がそれぞれ遷移元の状態でのみ実行でき、成功時に詳細画面リダイレクト + フラッシュ表示。遷移元以外の状態で実行すると 409(公開中 → 下書きの直接戻しは不可)
+- [ ] 新規作成 / 編集フォームでバリデーションが行われ、ルール違反時に日本語のエラーメッセージが表示される:
+  - SKU 名: 必須 / 100 文字以内
+  - 説明: 任意 / 2000 文字以内
+  - 面談回数: 必須 / 1〜100 の整数
+  - 価格: 必須 / 0〜1,000,000 円の整数
+  - Stripe 価格 ID: 任意 / 255 文字以内
+  - 並び順: 任意 / 0 以上の整数
+- [ ] 受講生 / コーチが面談パック管理画面の全操作(一覧 / 詳細 / 新規作成 / 編集 / 削除 / 状態遷移)にアクセスすると 403
+- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
-## 実装方針
+## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の設計を組み立てる。
+> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
 
-### 主要 URL
+### インターフェース(必須)
 
-| メソッド | パス | 振る舞い |
-|---|---|---|
-| GET | `/admin/meeting-packs` | 一覧(キーワード検索 + 状態フィルタ + ページネーション、フィルタ引き継ぎ) |
-| GET | `/admin/meeting-packs/create` | 新規作成フォーム表示 |
-| POST | `/admin/meeting-packs` | 新規作成、成功時 `/admin/meeting-packs/{plan}` リダイレクト + フラッシュ「面談パックを作成しました。」、`status=draft` で INSERT |
-| GET | `/admin/meeting-packs/{plan}` | 詳細(基本情報 + 直近購入履歴 + メタ情報 + 状態遷移ボタン) |
-| GET | `/admin/meeting-packs/{plan}/edit` | 編集フォーム表示 |
-| PATCH | `/admin/meeting-packs/{plan}` | 更新、成功時 `/admin/meeting-packs/{plan}` リダイレクト + フラッシュ「面談パックを更新しました。」、`status` は変更しない |
-| DELETE | `/admin/meeting-packs/{plan}` | 削除(下書き / アーカイブのみ SoftDelete、成功時 `/admin/meeting-packs` リダイレクト + フラッシュ「面談パックを削除しました。」)。公開中なら 409 + フラッシュエラー「公開中の面談パックは削除できません。先に下書きに戻すか、アーカイブしてください。」 |
-| POST | `/admin/meeting-packs/{plan}/publish` | 公開(下書き → 公開中)、成功時 詳細画面リダイレクト + フラッシュ「面談パックを公開しました。」。下書き以外なら 409 |
-| POST | `/admin/meeting-packs/{plan}/archive` | アーカイブ(公開中 → アーカイブ)、成功時 詳細画面リダイレクト + フラッシュ「面談パックをアーカイブしました。」。公開中以外なら 409 |
-| POST | `/admin/meeting-packs/{plan}/unarchive` | 下書きへ戻す(アーカイブ → 下書き)、成功時 詳細画面リダイレクト + フラッシュ「面談パックを下書きへ戻しました。」。アーカイブ以外なら 409 |
+**エンドポイント**:
+
+| HTTP | パス | 認可 | 振る舞い |
+|---|---|---|---|
+| GET | `/admin/meeting-packs` | 管理者のみ | 一覧(キーワード検索 + 状態フィルタ + ページネーション、フィルタ引き継ぎ) |
+| GET | `/admin/meeting-packs/create` | 管理者のみ | 新規作成フォーム表示 |
+| POST | `/admin/meeting-packs` | 管理者のみ | 新規作成、成功時 `/admin/meeting-packs/{plan}` リダイレクト + フラッシュ「面談パックを作成しました。」、`status=draft` で作成 |
+| GET | `/admin/meeting-packs/{plan}` | 管理者のみ | 詳細(基本情報 + 直近購入履歴 + メタ情報 + 状態遷移ボタン) |
+| GET | `/admin/meeting-packs/{plan}/edit` | 管理者のみ | 編集フォーム表示 |
+| PATCH | `/admin/meeting-packs/{plan}` | 管理者のみ | 更新、成功時 詳細リダイレクト + フラッシュ「面談パックを更新しました。」、`status` は変更しない |
+| DELETE | `/admin/meeting-packs/{plan}` | 管理者のみ | 削除(下書き / アーカイブのみ物理削除、成功時 一覧リダイレクト + フラッシュ「面談パックを削除しました。」)。公開中なら 409 + フラッシュエラー |
+| POST | `/admin/meeting-packs/{plan}/publish` | 管理者のみ | 公開(下書き → 公開中)、成功時 詳細リダイレクト + フラッシュ「面談パックを公開しました。」。下書き以外なら 409 |
+| POST | `/admin/meeting-packs/{plan}/archive` | 管理者のみ | アーカイブ(公開中 → アーカイブ)、成功時 詳細リダイレクト + フラッシュ「面談パックをアーカイブしました。」。公開中以外なら 409 |
+| POST | `/admin/meeting-packs/{plan}/unarchive` | 管理者のみ | 下書きへ戻す(アーカイブ → 下書き)、成功時 詳細リダイレクト + フラッシュ「面談パックを下書きへ戻しました。」。アーカイブ以外なら 409 |
+
+> 認可拒否は 403(受講生 / コーチが直アクセスしても 403、404 にはしない)。ルートパラメータは `Route::resource(...)->parameters(['meeting-packs' => 'plan'])` で `{plan}` に揃える。
+
+**ミドルウェア**: 全ルートに `auth` + `role:admin` 適用(`admin` プレフィックス配下)。
 
 ### データモデル
 
-> **既存テーブル**(提供 PJ に同梱、変更不要)。受講生は新規にマイグレーション / Model を作成しない。下記カラム構成と Enum を理解した上で Controller / FormRequest を組む。
+> **既存テーブル**(提供 PJ に同梱、変更不要)。受講生は新規にマイグレーション / Model / Enum / Seeder を作成しない。下記の構成を理解した上で Controller / FormRequest / Policy / Route を組む。
 
-`meeting_packs`(ULID 主キー + SoftDelete):
+**エンティティ**:
 
-| カラム | 型 | NOT NULL | FK / UNIQUE | 補足 |
-|---|---|:---:|---|---|
-| id | ulid | ✓ | PK | `$table->ulid('id')->primary()` |
-| name | varchar(100) | ✓ | | SKU 名 |
-| description | text | | | 説明文 |
-| meeting_count | unsigned smallint | ✓ | | 面談回数(1〜100) |
-| price | unsigned int | ✓ | | 価格(円、0〜1,000,000) |
-| stripe_price_id | varchar(255) | | | 事前作成済み Stripe Price ID(任意、本チケット範囲ではフォーム上の任意入力扱い) |
-| status | varchar(20) | ✓ | | `MeetingPackStatus` Enum cast(`draft` / `published` / `archived`)、デフォルト `draft` |
-| sort_order | unsigned int | ✓ | | 並び順、デフォルト 0 |
-| created_by_user_id | ulid | ✓ | users.id, ON DELETE RESTRICT | 作成者 |
-| updated_by_user_id | ulid | ✓ | users.id, ON DELETE RESTRICT | 最終更新者 |
-| created_at | timestamp | | | `$table->timestamps()` |
-| updated_at | timestamp | | | `$table->timestamps()` |
-| deleted_at | timestamp | | | `$table->softDeletes()` |
+| エンティティ (Model) | 主要属性 | 関係性 | 制約 |
+|---|---|---|---|
+| 面談パック (`MeetingPack`) | SKU 名(100 文字以内) / 説明 / 面談回数(1〜100) / 価格(0〜1,000,000 円) / Stripe 価格 ID(任意) / 状態 / 並び順 / 作成者 / 最終更新者 | 作成者・最終更新者 受講者(User)N-1 / 購入(`Payment`)1-N | 作成者・更新者 FK `restrictOnDelete` / **物理削除(SoftDelete 不採用)** / `Payment` 側 FK `restrictOnDelete`(購入履歴を持つパックは物理削除がブロックされる) |
 
-- **インデックス**: `(status, sort_order)` 複合 / `deleted_at`(提供 PJ で既設)
-- **Enum / Cast**: `MeetingPackStatus`(Draft / Published / Archived)→ `meeting_packs.status` に cast、`label()` 戻り値「下書き」「公開中」「アーカイブ」
-- **リレーション**: User belongsTo (createdBy / updatedBy) / Payment hasMany(`payments` は S-A-04 で作る別テーブル、詳細画面の購入履歴セクションで表示するが本チケットでは空配列フォールバックで OK)
-- **Scope**(受講生判断、推奨): `scopePublished` / `scopeOrdered`(`sort_order` ASC → `created_at` DESC)
+**Enum**:
 
-### バリデーション
+- 面談パック状態 (`MeetingPackStatus`): 下書き (`Draft`) / 公開中 (`Published`) / アーカイブ (`Archived`)。`label()` で「下書き」「公開中」「アーカイブ」を返す
 
-`StoreMeetingPackRequest` / `UpdateMeetingPackRequest`:
+**インデックス用途**:
 
-| 入力項目 | ルール | 推奨エラーメッセージ例 |
-|---|---|---|
-| name | required / string / max:100 | SKU 名は必須です。<br>SKU 名は 100 文字以内で入力してください。 |
-| description | nullable / string / max:2000 | 説明は 2000 文字以内で入力してください。 |
-| meeting_count | required / integer / min:1 / max:100 | 面談回数は必須です。<br>面談回数は 1〜100 の範囲で入力してください。 |
-| price | required / integer / min:0 / max:1000000 | 価格は必須です。<br>価格は 0〜1,000,000 円の範囲で入力してください。 |
-| stripe_price_id | nullable / string / max:255 | Stripe Price ID は 255 文字以内で入力してください。 |
-| sort_order | nullable / integer / min:0 | 並び順は 0 以上の整数で入力してください。 |
+- 状態 × 並び順(`(status, sort_order)` 複合、一覧の並び順・フィルタ用)
 
-`IndexMeetingPackRequest`: `keyword` / `status`(Enum、`Rule::enum(MeetingPackStatus::class)`)を任意フィルタとして受け取る。
+**初期データ Seeder(必須)** (`MeetingPackSeeder`、提供 PJ 既存):
 
-### 認可設計
+- 状態網羅: 公開中 × 3(1 回 / 5 回 / 10 回パック、価格 3,000 / 12,000 / 21,000 円)+ 下書き × 1(3 回パック・調整中)+ アーカイブ × 1(20 回パック・旧)
+- 動作確認用途: 一覧の状態フィルタ動作 / 状態遷移ボタンの活性条件(下書きには公開ボタン、公開中にはアーカイブボタン、アーカイブには下書きへ戻すボタン)/ 公開中削除ガードの 409 を実機確認できる
+- DatabaseSeeder 順序: `UserSeeder` の後(作成者 admin が必要)
 
-**Policy**: `MeetingPackPolicy`
+### コンポーネント
 
-| メソッド | ロール × 判定 |
-|---|---|
-| viewAny / view / create / update / delete | 管理者(admin): ✅ / コーチ: ❌ / 受講生: ❌ |
-| publish / archive / unarchive | 管理者: ✅ / コーチ: ❌ / 受講生: ❌ |
+**Controller** (`app/Http/Controllers/`)
+- `MeetingPackController` — CRUD(index / show / create / store / edit / update / destroy)。HTTP 受付 → 認可委譲 → Action 呼出 → リダイレクト整形
+- `MeetingPackStatusController` — 状態遷移(publish / archive / unarchive)。CRUD 本体から分離
 
-- 削除可否(`delete`)は **admin の真偽判定** のみ Policy 側で行う。「公開中は削除不可」という **状態ベースのガード** は Controller / Action 内で `MeetingPackNotDeletableException`(409) として実装する(認可と整合性チェックの責務分離)
-- 状態遷移(publish / archive / unarchive)の遷移元検証も同様に Controller / Action 内で `MeetingPackInvalidTransitionException`(409) を throw
+**FormRequest** (`app/Http/Requests/MeetingPack/`)
+- `IndexRequest` — 一覧フィルタ(keyword / status)
+- `StoreRequest` / `UpdateRequest` — 新規作成・編集の入力検証
 
-### テスト観点
+**Action** (`app/UseCases/MeetingPack/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+- `{Index,Show,Store,Update,Destroy,Publish,Archive,Unarchive}Action` — 一覧取得 / 詳細 / 作成(`created_by` / `updated_by` 記録)/ 更新 / 削除(公開中ガード + 物理削除)/ 状態遷移(遷移元状態の検証)
 
-| 種別 | 観点 |
-|---|---|
-| Unit | `MeetingPackStatus` Enum(cast / `label()` 日本語) / Model リレーション(createdBy / updatedBy) |
-| Feature | 各エンドポイントの認可分岐(管理者 / コーチ / 受講生) / 副作用(DB INSERT・UPDATE・SoftDelete・状態遷移) / フラッシュ表示有無 / リダイレクト先パス / 公開中削除時の 409 + 元画面に戻る + フラッシュエラー / 状態遷移違反時の 409 / 検索・フィルタのページネーション引き継ぎ / 新規作成時の `status=draft` 初期化 |
-| Policy | 各メソッド × 各ロールの真偽判定(admin true / coach false / student false 網羅) |
+**Policy** (`app/Policies/`)
+- `MeetingPackPolicy` — 全 8 操作とも admin 真偽判定のみ(状態ベースガードは Action 側に委譲)
 
-### アーキテクチャ判断
+**Model + Enum** (`app/Models/`, `app/Enums/`)
+- `MeetingPack` / `MeetingPackStatus`
 
-> **Basic 範囲制約**: Service / Action(UseCases) は教材範囲外。本チケットは **Controller 内完結を前提** に詳細を記述する。Action / Service への分離は受講生判断(チャレンジするなら歓迎、振る舞いが受け入れ条件を満たせば OK)。
+**View**(提供 PJ 既存、ロック対象)
+- `resources/views/meeting-pack/management/{index,show,create,edit}.blade.php`
 
-- **採用技術**: Eloquent + Controller(受講生判断で Action 分割可) + Policy + FormRequest + Blade(提供済み) + `DB::transaction`
-- **設計判断**:
-  1. **Controller 分離**: 一覧 / 詳細 / 新規 / 編集 / 削除 を `MeetingPackController`、状態遷移(`publish` / `archive` / `unarchive`)を `MeetingPackStatusController` に分けると責務が明確(Single Responsibility)。1 Controller に集約しても可
-  2. **状態遷移の検証**: 各遷移メソッド冒頭で「現在状態が遷移元と一致するか」を検証して `MeetingPackInvalidTransitionException`(409、static factory `forPublish()` / `forArchive()` / `forUnarchive()` でメッセージを所有)を throw。メッセージ文字列を Controller から渡さない(例外クラス側が責務を所有)
-  3. **削除制約**: `destroy` メソッド内で公開中なら `MeetingPackNotDeletableException`(409)を throw、下書き / アーカイブのみ SoftDelete
-  4. **作成 / 更新者の記録**: 新規作成時に `created_by_user_id` / `updated_by_user_id` を `auth()->user()->id` で記録(`fillable` で許可済み)。更新・状態遷移時にも `updated_by_user_id` を更新
-  5. **ルート**: `Route::resource('meeting-packs', MeetingPackController::class)` で CRUD 7 ルート + 状態遷移 3 ルートを `admin` プレフィックス + `auth + role:admin` Middleware 配下に配置
-  6. **一覧の並び順**: 「公開中優先 → `sort_order` ASC → `created_at` DESC」推奨。`orderByRaw("CASE status WHEN 'published' THEN 1 WHEN 'draft' THEN 2 WHEN 'archived' THEN 3 END")` で実現可(あるいは `sort_order` ASC のみでも振る舞い OK)
+**Migration / Seeder**(提供 PJ 既存)
+- `database/migrations/*_create_meeting_packs_table.php`
+- `database/seeders/MeetingPackSeeder.php`
 
-### 関連ファイルメモ
+**例外** (`app/Exceptions/MeetingQuota/`)
+- `MeetingPackNotDeletableException`(409、公開中削除ガード)
+- `MeetingPackInvalidTransitionException`(409、static factory `forPublish` / `forArchive` / `forUnarchive`)
 
-- `app/Models/MeetingPack.php` / `app/Enums/MeetingPackStatus.php`
-- `app/Http/Controllers/MeetingPackController.php` / `app/Http/Controllers/MeetingPackStatusController.php`
-- `app/UseCases/MeetingPack/{Index,Show,Store,Update,Destroy,Publish,Archive,Unarchive}Action.php`(※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
-- `app/Policies/MeetingPackPolicy.php`
-- `app/Http/Requests/MeetingPack/{Store,Update,Index}Request.php`
-- `app/Exceptions/MeetingQuota/{MeetingPackNotDeletable,MeetingPackInvalidTransition}Exception.php`
-- `resources/views/meeting-pack/management/{index,show,create,edit}.blade.php`(提供 PJ 既存、ロック対象)
-- `database/migrations/*_create_meeting_packs_table.php`(提供 PJ 既存)
-- `database/seeders/MeetingPackSeeder.php`(提供 PJ 既存、状態網羅 published × 3 / draft × 1 / archived × 1)
-- `routes/web.php` の admin プレフィックス内に `Route::resource('meeting-packs', ...)` + status route 3 本を追加
-- 類似パターン参考: `PlanController` / `PlanStatusController`(`plan-management` Feature の admin マスタ CRUD + 状態遷移、本チケットとほぼ同型)
+**Routes** (`routes/web.php`)
+- `admin.meeting-packs.*`(`Route::resource` 7 ルート + 状態遷移 3 ルート、`auth` + `role:admin` + `admin` プレフィックス)
+
+### 異常系
+
+**入力検証**(FormRequest クラス名 + ルール記法):
+
+- 新規作成 (`MeetingPack\StoreRequest`) / 編集 (`MeetingPack\UpdateRequest`):
+  - `name`: `required` / `string` / `max:100`
+  - `description`: `nullable` / `string` / `max:2000`
+  - `meeting_count`: `required` / `integer` / `min:1` / `max:100`
+  - `price`: `required` / `integer` / `min:0` / `max:1000000`
+  - `stripe_price_id`: `nullable` / `string` / `max:255`
+  - `sort_order`: `nullable` / `integer` / `min:0`
+- 一覧フィルタ (`MeetingPack\IndexRequest`):
+  - `status`: `nullable` / `Rule::enum(MeetingPackStatus::class)`
+  - `keyword`: `nullable` / `string` / `max:100`
+
+> 推奨エラーメッセージの日本語文言例は想定 Q&A セクションに集約(本セクションは機械的ルール記法のみ)。
+
+**業務例外**(状態ベースガード + HTTP ステータス):
+
+- 公開中の面談パック削除 (`MeetingPackNotDeletableException`) → 409
+- 状態遷移の遷移元状態不一致 (`MeetingPackInvalidTransitionException`) → 409
+
+### 設計判断
+
+- **Controller 2 分割(CRUD / 状態遷移)**: publish / archive / unarchive の 3 状態遷移を `MeetingPackStatusController` に分離。CRUD と状態遷移で責務が異なり、1 Controller に 10 method 集約より読みやすい(Single Responsibility)。1 Controller 集約でも振る舞いは満たせる
+- **Policy(人ベース)と Action(状態ベース)の責務分離**: `delete` の Policy は admin 真偽のみ判定し、「公開中は削除不可」という状態整合性ガードは Action 内で `MeetingPackNotDeletableException`(409)を throw。認可(誰が操作できるか)と整合性チェック(どの状態なら操作できるか)を混ぜない
+- **例外クラスがメッセージ責務を所有**: 状態遷移違反のメッセージは `MeetingPackInvalidTransitionException::forPublish` / `forArchive` / `forUnarchive` の static factory が所有し、Action から文字列を渡さない
+- **物理削除採用(SoftDelete 不採用)**: Draft / Published / Archived の status を持つマスタは「終売 = アーカイブ」で表現でき、誤削除の復旧 UX 要件もないため物理削除で十分。購入履歴の整合性は ① 公開中削除ガード(409)+ ② `payments` の FK RESTRICT(購入履歴を持つパックは物理削除がブロックされる)の二重で担保する。同型の受講プランマスタ(`Plan`)と設計を揃える
+- **テスト観点**: 各操作 × 各ロール(admin true / coach・student false)の認可分岐網羅 + 状態遷移の遷移元バリデーション(3 遷移 × 不正な遷移元 → 409)が本チケット固有の観点。標準的な CRUD + フラッシュ + リダイレクトの Feature テストは AC で担保
 
 ## 補足
 
-### 想定ヒアリング Q&A
+### 想定 Q&A
 
 | 質問 | 回答 |
 |---|---|
@@ -197,12 +206,12 @@
 | 認可拒否時の HTTP ステータスは 403 / 404? | 403(受講生 / コーチが直接画面を開いても 403 を返す。404 では返さない) |
 | 公開中の SKU を削除しようとしたら? | 409 を返す。下書きに戻すかアーカイブしてから削除可 |
 | 公開中 → 下書きの直接戻しはできる? | 不可。一度アーカイブを経由し、アーカイブから下書きへ戻す |
-| 削除は SoftDelete / 物理削除? | SoftDelete(論理削除)。過去の購入履歴とのデータ参照関係を保つ |
+| 削除は SoftDelete / 物理削除? | 物理削除。Draft/Published/Archived の status を持つマスタなので「終売 = アーカイブ」で表現でき、SoftDelete は採用しない。過去の購入履歴を持つパックは `payments` の FK RESTRICT で物理削除がブロックされるため整合性は守られる |
 | 公開中の SKU の編集はできる? | 可。基本情報(SKU 名 / 説明 / 面談回数 / 価格 / Stripe 価格 ID / 並び順)は公開後も変更可。受講生の購入画面に即時反映される(キャッシュなし) |
 | 一覧の並び順は? | 「公開中優先 → 並び順 昇順 → 作成日時 降順」推奨。「並び順 昇順 → 作成日時 降順」だけでも振る舞い OK |
 | 検索のヒット範囲は? | SKU 名 の部分一致のみ(説明 は対象外) |
 | ページネーションは何件 / ページ? | 20 件推奨(リスト規模が小さいので 50 でも 100 でも受講生判断で OK) |
 | 作成者 ID / 最終更新者 ID は誰の ID? | 作成時は作成した管理者の ID、その後の更新時(編集・状態遷移含む)は更新した管理者の ID |
-| 詳細画面の購入履歴は本チケットで実装する? | しない。詳細画面の表示部分は提供 PJ 既存で、購入履歴データが空 / 未作成でも空配列フォールバックで画面破綻なし(S-A-04 で実体が入った時点で表示が活きる) |
+| 詳細画面の購入履歴は本チケットで実装する? | しない。詳細画面の表示部分は提供 PJ 既存で、購入履歴データが空 / 未作成でも空配列フォールバックで画面破綻なし(購入動線が実装されて購入履歴が記録されるようになった時点で表示が活きる) |
 | 並び順を編集する UI は必要? | 不要。並び順は数値入力で十分。ドラッグ&ドロップ並び替えは本チケットでは扱わない |
-| フラッシュ文言の推奨は? | 作成「面談パックを作成しました。」/ 更新「面談パックを更新しました。」/ 削除「面談パックを削除しました。」/ 公開「面談パックを公開しました。」/ アーカイブ「面談パックをアーカイブしました。」/ 下書きへ戻す「面談パックを下書きへ戻しました。」/ 公開中削除エラー「公開中の面談パックは削除できません。先に下書きに戻すか、アーカイブしてください。」(適切な日本語であれば文言の細部は採点対象外) |
+| フラッシュ文言の推奨は? | 作成「面談パックを作成しました。」/ 更新「面談パックを更新しました。」/ 削除「面談パックを削除しました。」/ 公開「面談パックを公開しました。」/ アーカイブ「面談パックをアーカイブしました。」/ 下書きへ戻す「面談パックを下書きへ戻しました。」/ 公開中削除エラー「公開中の面談パックは削除できません。先に下書きに戻すか、アーカイブしてください。」/ 状態遷移違反「下書きの面談パックのみ公開できます。」「公開中の面談パックのみアーカイブできます。」「アーカイブ済みの面談パックのみ下書きへ戻せます。」(適切な日本語であれば文言の細部は採点対象外) |

@@ -110,15 +110,16 @@ class QaThreadPolicyTest extends TestCase
         $this->assertTrue($this->policy()->delete($admin, $thread));
     }
 
-    public function test_delete_author_can_delete_only_when_no_replies(): void
+    public function test_delete_allows_author_regardless_of_reply_count(): void
     {
         $author = User::factory()->student()->create();
         $threadNoReplies = QaThread::factory()->byUser($author)->create();
         $threadWithReplies = QaThread::factory()->byUser($author)->create();
         QaReply::factory()->forThread($threadWithReplies)->create();
 
+        // 回答有無は Policy では判定しない (状態ガードは DestroyAction の責務)
         $this->assertTrue($this->policy()->delete($author, $threadNoReplies));
-        $this->assertFalse($this->policy()->delete($author, $threadWithReplies));
+        $this->assertTrue($this->policy()->delete($author, $threadWithReplies));
     }
 
     public function test_delete_disallows_non_author_non_admin(): void

@@ -13,15 +13,11 @@
 | 工数 (h) | 16.5 |
 | 依存チケット | (なし) |
 
-## 概要
-
-コーチが自分の Google アカウントを LMS と OAuth 連携することで、面談予約の空き枠から「コーチの Google カレンダー上で予定が入っている時刻」を自動除外し、予約成立時にコーチの Google カレンダーに面談 Event を自動作成、キャンセル時に Event を自動削除する仕組みを追加する。連携はコーチごとに任意で、未連携のコーチは従来通り面談可能時間枠と既存予約だけで空き判定される。
-
 ## 背景・目的
 
-- **現状の問題**: 提供 PJ の面談機能は「面談可能時間枠 ∩ 既存予約なし」のみで空き判定しているため、コーチが LMS 外の予定(他社案件 / 私用 / 別 LMS の面談 等)で実際は埋まっている時刻でも、受講生から予約成立してしまう。コーチは予約を受けてから「ダブルブッキングなのでキャンセルしてほしい」と運用でカバーしており、受講生体験を損なっている。
-- **達成したい状態**: 連携を有効にしたコーチについては、Google カレンダーの予定とぶつかる時刻は予約画面で最初から非表示になり、ダブルブッキングが発生しない。予約成立時にコーチのカレンダーへ Event が自動登録され、コーチは自分の手帳でも面談を一元管理できる。連携解除も任意でいつでも可能。
-- **価値・優先度**: コーチ側のスケジュール透明性を OAuth で取り込み、受講生・コーチ双方のダブルブッキング不快体験を構造的に消す。本機能は受講生体験の中核改善であり、外部 OAuth 連携を扱う Advance スコープの代表チケット。
+- **現状の問題**: 提供 PJ の面談機能は「面談可能時間枠 ∩ 既存予約なし」のみで空き判定しているため、コーチが LMS 外の予定(他社案件 / 私用 / 別 LMS の面談 等)で実際は埋まっている時刻でも受講生から予約成立してしまう。コーチは予約を受けてから「ダブルブッキングなのでキャンセルしてほしい」と運用でカバーしており、受講生体験を損なっている。
+- **達成したい状態**: コーチが自分の Google アカウントを LMS と任意連携することで、Google カレンダーで予定が入っている時刻は予約画面で最初から非表示になり、ダブルブッキングが構造的に消える。予約成立時にはコーチのカレンダーへ面談 Event が自動登録され、キャンセル時には連動削除される。連携・解除はコーチ本人がいつでも切り替えられ、未連携コーチは従来通りの空き判定で動く。
+- **価値・優先度**: コーチ側のスケジュール透明性を OAuth で取り込み、受講生・コーチ双方のダブルブッキング不快体験を構造的に消す。外部サービスへの OAuth クライアント連携(認可フロー + トークン管理 + API 失敗フォールバック)を扱う、実務で頻出する Advance スコープの代表チケット。
 
 ## ユーザーストーリー
 
@@ -32,214 +28,198 @@
 - **受講生(student)として**、予約画面に表示される空き時刻にはコーチの Google カレンダーで予定がない時刻だけが並んでいることを期待する。なぜなら、予約してから「ダブルブッキング」と言われてキャンセルされる体験を二度としたくないから。
 - **管理者(admin)として**、本機能の運用には介入しない。なぜなら、コーチ個人の Google アカウントとの連携であり、管理者がトークン管理する必要はないから。
 
-## やること
+## 要件
 
-### Google カレンダー連携(コーチ)
+### Google カレンダー連携(コーチのみ)
 
-- **連携開始**: コーチのみ可、受講生 / 管理者は 403。設定画面の面談設定タブにある連携ボタンから Google の認可画面に遷移し、コーチが自分の Google アカウントで同意することで LMS にアクセス用の認可情報が保存される
-- **連携解除**: コーチのみ可、受講生 / 管理者は 403。連携状態のコーチが解除ボタンを押すと、LMS 側の認可情報が削除され、Google 側でも LMS のアクセス権が失効する
-- **連携状態の表示**: 設定画面の面談設定タブに「未連携 / 連携中(連携日時付き)」のいずれかが表示される。連携中の場合は解除ボタンが活性化し、未連携の場合は連携ボタンが活性化する
-- **コーチオンボーディング後の任意連携**: コーチオンボーディング時点では連携必須ではなく、いつでも連携 / 解除を切り替えられる
+- 連携開始: 設定画面の面談設定タブから自分の Google アカウントを連携し、認可同意で連携情報が保存される
+- 連携解除: いつでも解除可能(LMS 側の連携情報を削除し、Google 側のアクセス権も失効させる)
+- 連携状態の表示: 面談設定タブに「未連携 / 連携中(連携日時)」を表示し、対応するボタン(連携 / 解除)を活性化
+- 連携は任意で、オンボーディング時点では必須ではなくいつでも切替可能
 
-### 面談予約への影響(受講生体験)
+### 面談予約への反映(受講生体験)
 
-- **空き枠の Google カレンダー反映**: 受講生が予約画面で空き枠を表示する際、Google カレンダー連携済のコーチについては、コーチの Google カレンダー上で予定が入っている時刻はその時刻の予約可能コーチ数から除外される。連携していないコーチは従来通りの集計
-- **予約成立時の Event 自動作成**: 受講生が予約を成立させた直後、選出されたコーチが Google カレンダー連携済の場合、コーチの Google カレンダーに面談 Event が自動作成される(成功時に Event ID が面談に紐づけられて保存される)。連携なしのコーチが選出された場合は Event 作成自体が走らない
-- **キャンセル時の Event 自動削除**: 予約がキャンセルされた際、その面談に紐づく Google カレンダー Event ID があれば、Google カレンダーの Event も連動して削除される
+- 空き枠への反映: 連携済コーチが Google カレンダーで予定を持つ時刻は、予約画面の予約可能コーチ数から除外。連携なしコーチは従来通り(面談可能時間枠 + 既存予約のみ)で判定
+- 予約成立時の Event 作成: 連携済コーチが割り当たった予約成立時に Google カレンダーへ面談 Event を自動作成(連携なしコーチは作成しない)。Event の場所・説明にはコーチの固定面談 URL を埋め込み、開始〜終了は予約時刻〜60 分後とする
+- キャンセル時の Event 削除: Event が紐づく面談のキャンセルで、Google カレンダーの Event も連動削除
 
-### 共通の振る舞い
+### 共通の振る舞い(フォールバック / トークン管理)
 
-- **Google API 失敗時のフォールバック**: 空き枠取得時に Google API が失敗 / タイムアウトしても、面談予約画面自体は壊れずに表示される(Google カレンダー側の busy 情報は空として扱う = 連携なしと同等にフォールバック)。Event 作成失敗時も面談予約自体は成立扱い、Event 削除失敗時も面談キャンセル自体は成立扱い
-- **アクセストークン期限切れの自動更新**: Google の短命なアクセストークンが切れた状態で API を叩いた場合、リフレッシュトークンを使って自動的にトークンを更新してリトライする。リフレッシュトークンまで無効化されている場合は、当該リクエストは失敗扱いとし、コーチには再連携を促す
-- **認可コールバックの検証**: Google からの認可コールバックを受けた際、認証情報のすり替え防止のため、コールバックに含まれる検証情報と現在ログイン中のコーチ ID が一致することを確認する。一致しなければ 400 で拒否する
-- **トークン保存形式**: アクセストークン / リフレッシュトークンは認証情報レコードに直接保存する(教材として OAuth フローの可視性を優先、本番運用時は暗号化推奨を補足で明記)
+- Google API 失敗時のフォールバック: 空き枠取得失敗は busy なし扱い / Event 作成失敗は面談成立扱い / Event 削除失敗はキャンセル成立扱い(いずれも面談予約の根幹機能を壊さない付加機能扱い)
+- アクセストークン期限切れ時の自動更新: リフレッシュトークンで自動更新してリトライし、リフレッシュも失敗した場合は当該 API をスキップ(連携なし相当)してコーチに再連携を促す
+- 認可コールバックの正当性検証: コールバックに含まれる検証情報がログイン中コーチと一致しなければ拒否(連携のなりすまし防止)。永続トークンが取得できない場合も拒否
+- 連携対象はプライマリカレンダー固定
 
-## やらないこと
+### アクセス制御(機能群共通)
 
-- Google Meet URL の自動生成 / 動的取得 — コーチがプロフィールで設定した固定面談 URL(`users.meeting_url`)を Event の場所 / 説明に焼き込むのみ
+- Google カレンダー連携の操作(連携開始 / 解除)はコーチ本人のみ、受講生 / 管理者はアクセス不可
+
+## スコープ外
+
+- Google Meet URL の自動生成 / 動的取得 — コーチがプロフィールで設定した固定面談 URL を Event の場所 / 説明に焼き込むのみ
 - 管理者がコーチの代理で Google 連携を操作する画面 — 連携はコーチ本人のみ
 - 連携済コーチの Google カレンダーへの双方向同期(Google 側で Event を編集した内容が LMS に反映される等)— LMS → Google の一方向のみ
 - 受講生 / 管理者の Google アカウント連携 — 本チケットはコーチ専用
-- 連携 calendar の選択 UI(コーチが複数カレンダーを持つ場合の選択画面)— `primary` カレンダー固定
-- 認証情報の暗号化保存 — 教材スコープ外、トークンは平文保存(README で本番運用時の暗号化推奨を明記)
+- 連携カレンダーの選択 UI(コーチが複数カレンダーを持つ場合の選択画面)— プライマリカレンダー固定
+- 認証情報の暗号化保存 — 本チケットのスコープ外(本番運用での暗号化は別途検討)、トークンは平文保存(README で本番運用時の暗号化推奨を明記)
 - Google API のレート制限超過時のリトライキュー / バックオフ戦略 — 単純な失敗時フォールバックのみ
-- 連携状態を admin 管理画面で一覧表示する機能
+- 連携状態を管理者画面で一覧表示する機能
 - Google 以外のカレンダーサービス(Outlook / Apple カレンダー等)との連携
 - 連携前に成立した既存予約を遡って Google カレンダーに同期する機能
 
-## Seeder 設計
-
-> `migrate:fresh --seed` 直後に動作確認できるよう、シナリオに紐付けたレコード単位で具体化する。
-
-**前提**(他 Seeder で投入される想定): 受講生 A / コーチ X(資格 X 担当) / コーチ Y(資格 X 担当) / 管理者 / 公開資格 X / コーチ X の `meeting_url` / コーチ Y の `meeting_url` / 既存 `meetings` 数件(`reserved` / `completed` 含む)
-
-`CoachGoogleCredentialSeeder`(`DatabaseSeeder` で `UserSeeder` の後に実行):
-
-| レコード | 内容 | 動作確認用途 |
-|---|---|---|
-| credential_1 | コーチ X 用 / `calendar_id = 'primary'` / `connected_at` = 現在時刻 / `access_token` `refresh_token` = ダミー文字列(`'ya29.fake_access_xxxxx'` / `'1//fake_refresh_xxxxx'`、Factory の `fake()` ベース)| 既に連携済コーチが存在する状態で受講生予約画面を確認(GCal API は実呼び出ししない / Factory ベースのダミートークンで `freebusy` 呼び出しが起きると Service 側のフォールバックで空 busy 扱いになる挙動を確認)/ 設定画面の連携中表示 + 解除ボタン活性 / 解除実行後 DB から行が消えること |
-
-> Seeder で投入したトークンは **テスト・教材用のダミー値で、実際の Google API には通らない**。GCal の `freebusy` / `events.insert` / `events.delete` を実機確認する場合はコーチがブラウザから自分の Google アカウントで連携し直す必要がある(教材手順書で別途案内)。連携なしコーチ(コーチ Y)も併設することで、ダミートークン経由のフォールバックと未連携経由のフォールバックの両ルートを動作確認できる。
-
-- **DatabaseSeeder への追加順序**: `UserSeeder` → `CoachGoogleCredentialSeeder` → 既存の `CertificationCoachAssignmentSeeder` / `CoachAvailabilitySeeder` 等の後
-
 ## 受け入れ条件
 
-- [ ] **連携開始 - 認可**: コーチが設定画面の面談設定タブから連携ボタンを押下すると Google の認可画面に遷移する。受講生 / 管理者がコーチ専用ルートに直接アクセスすると 403
-- [ ] **連携完了 - 認可情報保存**: コーチが Google で認可を完了して LMS に戻ると、コーチ ID に紐づく認可情報が保存され、設定画面の面談設定タブに「連携中(連携日時付き)」が表示される
-- [ ] **連携完了 - リダイレクト + フラッシュ**: 認可完了時、設定画面の面談設定タブにリダイレクトされ、フラッシュメッセージが表示される
-- [ ] **連携解除 - 認可情報削除**: コーチが解除ボタンを押すと、コーチ ID に紐づく認可情報が DB から削除され、設定画面の面談設定タブに「未連携」が表示される
-- [ ] **連携解除 - リダイレクト + フラッシュ**: 解除成功時、設定画面の面談設定タブにリダイレクトされ、フラッシュメッセージが表示される
-- [ ] **連携解除 - Google 側のアクセス失効**: 解除実行時に Google 側に対してもアクセス失効リクエストが送信される(Google 側のアプリ連携一覧から LMS が消える、実機確認)
-- [ ] **コールバック検証 - すり替え防止**: Google コールバックに含まれる検証情報と現在ログイン中のコーチ ID が一致しない場合、400 が返り認可情報は保存されない
-- [ ] **コールバック検証 - リフレッシュトークン欠落**: Google から永続トークン(リフレッシュトークン)が返らない場合、400 が返り認可情報は保存されない(再連携の案内をフラッシュエラーで表示)
-- [ ] **空き枠表示 - 連携済コーチ反映**: 連携済コーチが Google カレンダー上で予定を持つ時刻は、受講生の予約画面の空き枠から外れる(連携なしコーチがその時刻に枠を持っていれば、その時刻の予約可能コーチ数からは連携済コーチの 1 名分だけが減じられる)
-- [ ] **空き枠表示 - 連携なしコーチ無影響**: 連携なしコーチについては Google カレンダーが参照されず、面談可能時間枠と既存予約のみで空き判定される(本ストーリー導入前と同じ挙動)
-- [ ] **空き枠表示 - Google API 失敗時フォールバック**: 連携済コーチへの Google API 呼び出しが失敗してもエラー画面にならず、当該コーチについては busy なし扱い(連携なしと同等)で空き枠が表示される
-- [ ] **予約成立 - Event 自動作成**: 連携済コーチが選出された予約が成立すると、コーチの Google カレンダーに面談 Event が作成され、Event ID が面談レコードに保存される
-- [ ] **予約成立 - Event 内容**: 作成された Event の件名に受講生名と資格名、説明に話題と面談 URL、場所に面談 URL、開始時刻 / 終了時刻が面談の予約時刻と完了予定時刻(開始 + 60 分)に一致している
-- [ ] **予約成立 - 連携なしコーチ無影響**: 連携なしコーチが選出された場合は Event 作成リクエスト自体が走らず、面談レコードの Event ID は NULL のまま予約成立する
-- [ ] **予約成立 - Event 作成失敗時フォールバック**: Event 作成 API が失敗しても面談予約自体は成立扱い(面談レコードは作成され面談回数も消費される / 担当コーチ宛通知も発火 / Event ID は NULL のまま)
-- [ ] **キャンセル - Event 自動削除**: 面談レコードに Event ID が紐づいている面談がキャンセルされると、Google カレンダーの Event が連動して削除される
-- [ ] **キャンセル - Event ID なし無影響**: 面談レコードに Event ID が紐づいていない面談がキャンセルされても削除リクエストは走らず、キャンセル自体は成立する
-- [ ] **キャンセル - Event 削除失敗時フォールバック**: Event 削除 API が失敗しても面談キャンセル自体は成立扱い(面談ステータスはキャンセルに遷移し、面談回数も返却される)
-- [ ] **トークン自動更新**: 連携済コーチのアクセストークンが期限切れの状態で空き枠取得 / Event 作成 / Event 削除のいずれかが走った場合、リフレッシュトークンを使って自動更新が試行され、更新成功後に元の API リクエストが完了する
-- [ ] **リフレッシュ失敗時フォールバック**: リフレッシュトークン自体が無効化されていてトークン更新も失敗した場合、当該 API リクエストはスキップされ(空き枠取得なら busy なし扱い / Event 作成・削除なら何もしない)、画面側のフローは継続する
+- [ ] コーチが設定画面の面談設定タブの連携ボタンを押すと Google の認可画面に遷移し、認可完了後は面談設定タブに戻って「連携中(連携日時付き)」+ フラッシュが表示される(連携情報が保存される)。受講生 / 管理者が連携ルートに直接アクセスすると 403
+- [ ] コーチが解除ボタンを押すと連携情報が削除され、Google 側のアクセス権も失効し(Google のアプリ連携一覧から LMS が消える)、面談設定タブが「未連携」+ フラッシュ表示に戻る
+- [ ] 認可コールバックの検証情報がログイン中コーチと一致しない場合、または永続トークン(リフレッシュトークン)が返らない場合は 400 が返り、連携情報は保存されず、再連携を促すエラーが表示される
+- [ ] 連携済コーチが Google カレンダーで予定を持つ時刻は受講生の予約画面の空き枠(予約可能コーチ数)から外れ、連携なしコーチは Google を参照せず面談可能時間枠 + 既存予約のみで空き判定される
+- [ ] 連携済コーチへの Google API 呼び出しが失敗してもエラー画面にならず、当該コーチは busy なし扱い(連携なしと同等)で空き枠が表示される
+- [ ] 連携済コーチが割り当たった予約成立時に Google カレンダーへ面談 Event が作成され(件名に受講生名と資格名、場所・説明に面談 URL、開始〜終了が予約時刻〜60 分後)、面談に Event 識別子が保存される。連携なしコーチが割り当たった場合は Event 作成が走らず、Event 識別子なしで予約成立する
+- [ ] Event 作成 API が失敗しても面談予約自体は成立する(面談作成 + 面談回数消費 + 担当コーチ宛通知発火、Event 識別子はなし)
+- [ ] Event 識別子が紐づく面談のキャンセルで Google カレンダーの Event が連動削除される。Event 識別子がない / 削除 API が失敗した場合でもキャンセル自体は成立する(キャンセル状態への遷移 + 面談回数返却)
+- [ ] 連携済コーチのアクセストークンが期限切れの状態で空き枠取得 / Event 作成 / Event 削除のいずれかが走ると、リフレッシュトークンで自動更新してリトライし、更新も失敗した場合は当該 API をスキップ(連携なし相当のフォールバック)して画面側のフローは継続する
+- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
-## 実装方針
+## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の設計を組み立てる。
+> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
 
-### 主要 URL
+### インターフェース(必須)
 
-| メソッド | パス | 振る舞い |
-|---|---|---|
-| GET | `/settings/google-calendar/connect` | コーチのみ可、認可 URL を組み立てて Google の認可画面に 302 redirect。クエリ `redirect_path` で連携完了後の戻り先を指定可(デフォルト `/settings/profile?tab=meeting`) |
-| GET | `/settings/google-calendar/callback` | Google からの認可コールバックを受信。クエリ `code` `state` を検証し、`code` を access_token / refresh_token に交換して `coach_google_credentials` に upsert。成功時 `state.redirect_path` 先に リダイレクト + フラッシュ「Googleカレンダーと連携しました。」 |
-| DELETE | `/settings/google-calendar` | コーチのみ可、Google 側のトークンを revoke 後 `coach_google_credentials` 行を物理削除。成功時 `/settings/profile?tab=meeting` にリダイレクト + フラッシュ「Googleカレンダー連携を解除しました。」 |
+**エンドポイント**:
 
-> 既存 mentoring の `POST /enrollments/{enrollment}/meetings`(予約成立)/ `POST /meetings/{meeting}/cancel`(キャンセル)/ `GET /enrollments/{enrollment}/meetings/availability`(空き枠取得)に **本チケットの拡張がフックされる**。これら自体は提供 PJ で既存の URL として完成済。
+| HTTP | パス | 認可 | 振る舞い |
+|---|---|---|---|
+| GET | `/settings/google-calendar/connect` | コーチのみ(受講生 / 管理者は 403) | 認可 URL を組み立てて Google の認可画面へ 302 redirect。クエリ `redirect_path` で戻り先指定可(既定 `/settings/profile?tab=meeting`)。Controller method 名は `redirect`、route 名は `settings.google-calendar.redirect` |
+| GET | `/settings/google-calendar/callback` | コーチのみ | Google からの認可コールバック受信。`code` / `state` を検証し access_token / refresh_token に交換して連携情報を upsert。成功時 `state.redirect_path` 先へ redirect + フラッシュ「Googleカレンダーと連携しました。」 |
+| DELETE | `/settings/google-calendar` | コーチのみ | Google 側トークンを revoke 後に連携情報を物理削除。成功時 `/settings/profile?tab=meeting` へ redirect + フラッシュ「Googleカレンダー連携を解除しました。」(連携なしでも冪等に成功扱い) |
+
+> 既存 mentoring の `POST /enrollments/{enrollment}/meetings`(予約成立)/ `POST /meetings/{meeting}/cancel`(キャンセル)/ `GET /enrollments/{enrollment}/meetings/availability`(空き枠取得)に **本チケットの拡張がフックされる**(これら URL 自体は提供 PJ で既存)。
+
+**ミドルウェア**: `auth` + `role:coach` を `settings/google-calendar` route group 全体に適用。
 
 ### データモデル
 
-**新規テーブル**: `coach_google_credentials`(ULID 主キー、SoftDelete 不採用 = 解除時は物理削除)
+**エンティティ**:
 
-| カラム | 型 | NOT NULL | FK / UNIQUE | 補足 |
-|---|---|:---:|---|---|
-| id | ulid | ✓ | PK | `$table->ulid('id')->primary()` |
-| coach_id | ulid | ✓ | users.id UNIQUE, ON DELETE CASCADE | `$table->foreignUlid('coach_id')->unique()->constrained('users')->cascadeOnDelete()`、1 コーチ : 1 認証情報 |
-| access_token | varchar(2048) | ✓ | | Google API リクエストヘッダーに付与する短命トークン |
-| refresh_token | varchar(512) | ✓ | | access_token 失効時に再発行するための長命トークン |
-| calendar_id | varchar(255) | ✓ | | デフォルト `primary`、将来の任意カレンダー切替の余地 |
-| connected_at | timestamp | ✓ | | 連携完了時刻、UI 表示用 |
-| created_at | timestamp | | | `$table->timestamps()` |
-| updated_at | timestamp | | | `$table->timestamps()` |
+| エンティティ (Model) | 主要属性 | 関係性 | 制約 |
+|---|---|---|---|
+| コーチ Google 連携情報 (`CoachGoogleCredential`) | アクセストークン / リフレッシュトークン / カレンダー ID(既定 `primary`)/ 連携日時(業務語彙) | コーチ(`User`)に 1:1 所属(`User::googleCredential` HasOne / `coach()` BelongsTo) | ULID 主キー / `coach_id` UNIQUE + FK `cascadeOnDelete`(1 コーチ : 1 連携情報)/ SoftDelete 不採用 = 解除時は物理削除 / トークン 2 カラムを Model `$hidden` に追加 |
+| 面談 (`Meeting`、既存に列追加) | Google Event 識別子(`google_event_id`、業務語彙) | — | `google_event_id` は varchar(255) nullable(`completed_at` の後に追加)/ Event 作成成功時のみセット、失敗時 / 連携なし時は NULL |
 
-- **インデックス**: `coach_id` UNIQUE のみ(検索条件は coach_id だけ)
-- **リレーション**: `CoachGoogleCredential::coach(): BelongsTo<User>` / `User::googleCredential(): HasOne<CoachGoogleCredential>`(`'coach_id'` を FK 指定)
-- **`$hidden`**: `['access_token', 'refresh_token']` を Model `$hidden` に追加(toArray / JSON 出力にトークンを漏らさない)
-- **削除戦略**: 物理削除のみ(SoftDelete 不採用、解除 = LMS 側で完全消失が要件)
+> **制約列に集約する情報**: `coach_google_credentials` は `coach_id` UNIQUE + `cascadeOnDelete`(コーチ退会で連携情報も自動削除)、SoftDelete 不採用(解除 = LMS 側で完全消失が要件)。`meetings.google_event_id` は nullable で Event 連携の有無を表す。
 
-**既存テーブル変更**: `meetings` テーブルに `google_event_id` カラムを追加
+**Enum**: 本チケットで新規 Enum なし。
 
-| カラム | 型 | NOT NULL | FK / UNIQUE | 補足 |
-|---|---|:---:|---|---|
-| google_event_id | varchar(255) | | | `$table->string('google_event_id', 255)->nullable()->after('completed_at')`。Event 作成成功時のみセット、失敗時 / 連携なし時は NULL |
+**インデックス用途**:
 
-### バリデーション
+- `coach_google_credentials.coach_id` UNIQUE(検索条件は coach_id のみ、1 コーチ 1 連携情報の保証も兼ねる)
 
-本チケットでは FormRequest ベースの入力検証は最小限。`/settings/google-calendar/connect` のクエリ `redirect_path` は連携完了後の戻り先パスとして `Request::query('redirect_path')` で受け取り、未指定なら `/settings/profile?tab=meeting` を既定値とする。
+**初期データ Seeder(必須)**:
 
-OAuth コールバック(`/settings/google-calendar/callback`)は Google からの正当な引数を期待するが、改ざんを想定して以下を Action 内で検証する:
+- `CoachGoogleCredentialSeeder`: 担当コーチ 1 名分のダミー連携情報 1 件(`calendar_id = 'primary'` / `connected_at` = 現在時刻 / access_token・refresh_token は Factory のダミー文字列)。連携なしコーチも併設して「ダミートークン経由のフォールバック」「未連携経由のフォールバック」両ルートを動作確認できる構成
+- 動作確認用途: 連携中表示 + 解除ボタン活性 / 解除実行後に DB 行が消えること / 受講生予約画面で連携済コーチの freebusy 呼び出し(ダミートークンのため Service フォールバックで空 busy 扱い)。GCal の実 API を確認する場合はコーチがブラウザから自分の Google アカウントで連携し直す(別途手順で案内)
+- DatabaseSeeder 順序: `UserSeeder` の後、既存の `CertificationCoachAssignmentSeeder` / `CoachAvailabilitySeeder` 等の後
 
-| 項目 | 検証内容 | 失敗時の挙動 |
-|---|---|---|
-| `code` クエリ | 空文字でないこと | `GoogleOAuthException::stateMismatch()`(400) |
-| `state` クエリ | JSON デコード可能 / `coach_id` キー存在 / `coach_id` が現在ログイン中のコーチ ID と一致 | `GoogleOAuthException::stateMismatch()`(400)推奨メッセージ「Google 認証情報の検証に失敗しました。再度連携をお試しください。」 |
-| 認可コード交換結果 | `refresh_token` キーが含まれていること(初回連携時は必ず返る、`prompt=consent` を OAuth URL に付与して再連携時も強制発行) | `GoogleOAuthException::missingRefreshToken()`(400)推奨メッセージ「Google から永続トークンを取得できませんでした。Google アカウントの権限を取り消してから再度連携してください。」 |
+### コンポーネント
 
-### 認可設計
+**Controller** (`app/Http/Controllers/Settings/`)
+- `CoachGoogleCredentialController` — `redirect`(認可 URL へ 302)/ `callback`(code 交換 + 連携情報保存)/ `destroy`(revoke + 物理削除)
 
-**Policy**: `CoachGoogleCredentialPolicy`(本チケットで新設、または Route Middleware `role:coach` で十分なら Policy 不要)
+**Action** (`app/UseCases/CoachGoogleCredential/`、Advance 範囲)
+- `FetchAuthUrlAction` — `state`(`coach_id` + `redirect_path`)を組んで認可 URL を生成
+- `StoreAction` — callback で `state.coach_id === auth ユーザー` を検証 → code 交換 → 連携情報を upsert(再連携対応)
+- `DestroyAction` — Google 側 revoke + 連携情報の物理削除
 
-| メソッド | ロール × 判定 |
-|---|---|
-| connect / callback / destroy | コーチ(coach)のみ ✅(`role:coach` Middleware で route group に適用)/ 受講生 / 管理者は 403 |
+**Action 組込み**(既存 mentoring Action に拡張、Advance 範囲)
+- `Meeting\StoreAction` — `DB::afterCommit` 内で連携済コーチへ Event 作成 + `meetings.google_event_id` 更新
+- `Meeting\CancelAction` — `DB::afterCommit` 内で `google_event_id` ありの面談の Event 削除
 
-- **連携情報の所有者検証**: コールバックの `state.coach_id === auth()->id()` で他人の連携を奪うリスクをガード(Policy ではなく Action 内で具象例外 throw)
-- **解除時の対象特定**: ログイン中コーチに紐づく credential を `auth()->user()->googleCredential` で取得し、存在すれば削除、なければ 404 ではなく成功扱い(冪等性)
+**Service** (`app/Services/Google/`、新規、Advance 範囲、`final` 不採用 = Mockery 互換)
+- `GoogleOAuthService` — `buildClient` / `getAuthUrl(array $state)` / `exchangeCode(string $code)` / `revoke(string $token)`(認可フロー専用、stateless)
+- `GoogleCalendarService` — `freebusy(CoachGoogleCredential, Carbon, Carbon)` / `insertEvent(CoachGoogleCredential, Meeting): ?string` / `deleteEvent(CoachGoogleCredential, string): void` + private `refresh`(`GoogleOAuthService` を DI、トークン自動更新と失敗フォールバックを内包)
 
-### API 仕様 (該当しない)
+**Service 拡張**(既存)
+- `MeetingAvailabilityService::slotsForCertification` — 担当コーチ集合のうち連携済コーチにのみ `freebusy` を呼び、busy 区間と重なるスロットから当該コーチを `available_coach_count` から除外
 
-本チケットは画面遷移ベースで、JSON API endpoint は追加しない。
+**Policy**
+- なし(`role:coach` Middleware でロール確認、連携情報の所有者検証は `StoreAction` 内の `state.coach_id` 照合で実施)
 
-### テスト観点
+**Model + Enum** (`app/Models/`)
+- `CoachGoogleCredential`(新規)/ `Meeting`($fillable に `google_event_id` 追加)/ `User`(`googleCredential` HasOne 追加)
 
-| 種別 | 観点 |
-|---|---|
-| Unit | `CoachGoogleCredential` Model リレーション(coach)/ `GoogleCalendarService::freebusy/insertEvent/deleteEvent` の Mockery でスタブした `Google\Client` を経由した成功・失敗フォールバック / トークン期限切れ時の refresh フロー |
-| Feature | `/settings/google-calendar/connect`(コーチ → 302 redirect / 受講生・管理者 → 403)/ `/settings/google-calendar/callback`(正常 code 交換 → DB に行追加 + リダイレクト + フラッシュ / `state.coach_id` 不一致 → 400 / refresh_token 欠落 → 400) / `/settings/google-calendar`(DELETE で行削除 + リダイレクト + フラッシュ) / 既存 `MeetingControllerTest::store` に GCal 連携済コーチが選出された場合の `google_event_id` セット検証(Mockery で `GoogleCalendarService::insertEvent` をスタブ)/ 既存 `MeetingControllerTest::cancel` に `google_event_id` ありの面談キャンセルで `GoogleCalendarService::deleteEvent` 呼び出し検証 |
-| Service | `MeetingAvailabilityService::slotsForCertification` のテストで GCal 連携済コーチの busy 反映 / 未連携コーチ無影響 / API 失敗フォールバックを Mockery で網羅 |
+**View**(提供 PJ 既存、ロック対象)
+- `resources/views/settings/_partials/tab-meeting.blade.php` — 面談設定タブの Google カレンダー連携セクション(連携 / 解除ボタン + 連携状態表示)
 
-### アーキテクチャ判断
+**Migration / Seeder**
+- `database/migrations/*_create_coach_google_credentials_table.php`
+- `database/migrations/*_add_google_event_id_to_meetings_table.php`
+- `database/seeders/CoachGoogleCredentialSeeder.php` + `database/factories/CoachGoogleCredentialFactory.php`
 
-- **採用技術**: `google/apiclient` パッケージ(`Google\Client` + `Google\Service\Calendar`) + `App\Services\Google\GoogleOAuthService`(認可 URL 発行 / code 交換 / revoke) + `App\Services\Google\GoogleCalendarService`(freebusy / insertEvent / deleteEvent + トークン自動 refresh) + `App\UseCases\CoachGoogleCredential\{FetchAuthUrl,Store,Destroy}Action` + `App\Http\Controllers\Settings\CoachGoogleCredentialController` + `App\Exceptions\Mentoring\GoogleOAuthException`(400)
-- **設計判断**:
-  1. **OAuth 状態の引き渡し**: `state` パラメータに `coach_id` と `redirect_path` を JSON エンコードして含める(セッションに頼らず stateless にし、認可 URL の再現性を高める)。コールバック時に `state.coach_id === auth()->id()` を必ず検証して連携の取り違えを防ぐ
-  2. **Service 二層化**: `GoogleOAuthService`(認可 URL / code 交換 / revoke のみ)と `GoogleCalendarService`(API リクエスト + トークン自動 refresh)に分離。OAuth フロー責務とカレンダー操作責務を別 Service にすることで、テストでもそれぞれ独立に Mockery でスタブ可
-  3. **`GoogleCalendarService` の例外吸収方針**: `freebusy` 失敗時は空配列 / `insertEvent` 失敗時は null / `deleteEvent` 失敗時は何もせず warning ログのみ。GCal は **付加機能** であり、API 失敗で面談予約画面の根幹機能(連携なしコーチでも空き枠は出る / 予約は成立する)を壊さない設計。同じ理由で `GoogleCalendarService` のメソッドは `try { ... } catch (\Throwable $e) { Log::warning(...) }` で包む
-  4. **トークン自動 refresh**: `Google\Client::isAccessTokenExpired()` で期限切れを検知し、`fetchAccessTokenWithRefreshToken($credential->refresh_token)` で更新。成功時に `coach_google_credentials.access_token` を `update()` で永続化。refresh 自体も失敗したら警告ログのみで上位はフォールバック
-  5. **`Meeting\StoreAction` への組込み**: GCal Event 作成は `DB::afterCommit` 内で実行する(DB トランザクション commit 後に外部 API を叩く設計)。Event 作成失敗で `meeting_quota_transactions` の INSERT が ROLLBACK されると残数が会計上ずれるため、`afterCommit` で外部 API を分離して内部の DB 操作を保護する
-  6. **`Meeting\CancelAction` への組込み**: 同様に GCal Event 削除も `DB::afterCommit` 内で実行。`meetings.google_event_id` が NULL なら何もしない(未連携 / Event 作成失敗時の互換性)
-  7. **`MeetingAvailabilityService::slotsForCertification` への組込み**: 担当コーチ集合のうち `coach->googleCredential` を持つコーチに対してのみ `GoogleCalendarService::freebusy` を 1 コーチずつ呼び、各スロットで busy 区間と重なるなら当該コーチを `available_coach_count` から除外する。「N コーチ × 1 freebusy API 呼び出し」で 1 受講生予約画面ロードの API コストを上限化(複数 calendar を 1 リクエストで叩く API は OAuth scope の都合で避ける、`NFR-mentoring-012`)
-  8. **トークン平文保存(教材判断)**: `access_token` / `refresh_token` は DB に平文で保存する(`encrypt()` / `decrypt()` は採用しない)。教材として OAuth フローの可視性を優先、`README` で本番運用時の暗号化推奨を明記する(`NFR-mentoring-013` 準拠)
-  9. **`final` を Service で外す**: `GoogleCalendarService` / `GoogleOAuthService` は Action テスト時に Mockery でスタブする想定なので `final` を付けない(`backend-services.md` 「Mockery でテストする Service は final 不採用可」方針)
-  10. **設定画面 UI の責務分担**: 連携ボタン / 解除ボタン / 連携状態表示は `settings-profile` Feature が所有する設定画面の面談設定タブ(`/settings/profile?tab=meeting`)に埋め込まれる。本 Feature は OAuth フロー本体 + API ラッパー + DB 操作を所有(`mentoring` Feature 内に Controller を配置するが、URL は `/settings/google-calendar/*` で settings-profile と協調)
+**例外** (`app/Exceptions/Mentoring/`)
+- `GoogleOAuthException`(400、`stateMismatch()` / `missingRefreshToken()` の static factory)
 
-### 関連ファイルメモ
+**Routes** (`routes/web.php`)
+- `settings.google-calendar.*`(`redirect` / `callback` / `destroy`、`auth` + `role:coach`)
 
-- `app/Models/CoachGoogleCredential.php`(新規 Model + Factory)
-- `app/Models/User.php` に `googleCredential(): HasOne<CoachGoogleCredential>` リレーションを追加
-- `app/Models/Meeting.php` の `$fillable` に `google_event_id` を追加
-- `app/Services/Google/GoogleOAuthService.php`(新規、認可 URL / code 交換 / revoke)
-- `app/Services/Google/GoogleCalendarService.php`(新規、freebusy / insertEvent / deleteEvent + 自動 refresh)
-- `app/UseCases/CoachGoogleCredential/{FetchAuthUrl,Store,Destroy}Action.php`(新規)
-- `app/Http/Controllers/Settings/CoachGoogleCredentialController.php`(新規)
-- `app/Exceptions/Mentoring/GoogleOAuthException.php`(新規、400)
-- `app/Services/MeetingAvailabilityService.php` の `slotsForCertification()` を GCal 統合版に拡張(担当コーチ集合に対する freebusy 呼出ループ + busy 重なり判定)
-- `app/UseCases/Meeting/StoreAction.php` の `DB::afterCommit` 内に GCal Event 作成 + `meetings.google_event_id` 更新を追加
-- `app/UseCases/Meeting/CancelAction.php` の `DB::afterCommit` 内に GCal Event 削除を追加
-- `config/services.php` に `'google' => ['client_id', 'client_secret', 'redirect_uri', 'scopes']` 設定を追加(`.env` から読込、`scopes = ['calendar.readonly', 'calendar.events']`)
-- `database/migrations/*_create_coach_google_credentials_table.php`(新規、ULID 主キー + coach_id UNIQUE + token カラム)
-- `database/migrations/*_add_google_event_id_to_meetings_table.php`(新規、`google_event_id` カラム追加)
-- `database/factories/CoachGoogleCredentialFactory.php`(新規、ダミートークン文字列で Seeder / テスト共用)
-- `database/seeders/CoachGoogleCredentialSeeder.php`(新規、コーチ X 用 1 件のダミー連携を投入)
-- `resources/views/settings/_partials/tab-meeting.blade.php` に Google カレンダー連携セクションを埋め込み(提供 PJ で既存)
-- `routes/web.php` に `Route::middleware(['auth', 'role:coach'])->prefix('settings/google-calendar')->name('settings.google-calendar.')->group(...)` を追加
-- `composer.json` に `"google/apiclient": "^2.x"` を追加(Wave 0b で確定済の場合は本チケット範囲外、未追加なら本チケットで追加)
+**設定 / 依存**
+- `config/services.php` に `google`(`client_id` / `client_secret` / `redirect_uri` / `scopes`)を追加(`.env` 経由、`scopes = ['calendar.readonly', 'calendar.events']`)
+- `composer.json` に `google/apiclient`(Wave 0b で確定済なら本チケット範囲外)
+
+### 異常系
+
+**入力検証**:
+
+- `connect` のクエリ `redirect_path`: 任意、未指定なら `/settings/profile?tab=meeting` を既定値とする(FormRequest は使わず Action 内で処理)
+- `callback` の `code` / `state`: FormRequest ではなく `StoreAction` 内で検証
+
+**業務例外**:
+
+- `state.coach_id` がログイン中コーチと不一致 (`GoogleOAuthException::stateMismatch()`) → 400
+- 認可コード交換結果に永続トークンが含まれない (`GoogleOAuthException::missingRefreshToken()`) → 400
+
+**外部 API フォールバック**:
+
+- `freebusy` 失敗 → 空配列(当該コーチは busy なし扱い)
+- `insertEvent` 失敗 → null(`google_event_id` は NULL のまま、予約は成立)
+- `deleteEvent` 失敗 → warning ログのみ(410 Gone = 既削除は成功扱い、キャンセルは成立)
+- アクセストークン期限切れ → `refresh_token` で自動更新してリトライ、refresh も失敗なら当該 API をスキップ
+
+### 設計判断
+
+- **OAuth 状態の stateless 引き渡し**: `state` に `coach_id` と `redirect_path` を JSON エンコードして含める(セッションに頼らず認可 URL の再現性を高める)。コールバック時に `state.coach_id === auth()->id()` を必ず照合して連携の取り違え / なりすましを防ぐ
+- **Service 二層化(OAuth / Calendar)**: `GoogleOAuthService`(認可 URL / code 交換 / revoke、stateless)と `GoogleCalendarService`(`CoachGoogleCredential` を引数で受け、API 呼出 + トークン自動 refresh を内包)に分離。責務が異なり、テストでもそれぞれ独立に Mockery でスタブできる
+- **GCal は付加機能としてのフォールバック設計**: `GoogleCalendarService` の全メソッドは `try/catch` で例外を吸収し、空配列 / null / void で返す。API 失敗で「連携なしコーチでも空き枠は出る / 予約は成立する / キャンセルは成立する」という根幹機能を壊さない
+- **外部 API は `DB::afterCommit` で分離**: `Meeting\StoreAction` / `Meeting\CancelAction` の Event 作成 / 削除は DB トランザクション commit 後に実行。Event 操作失敗で `meeting_quota_transactions` の INSERT が ROLLBACK され残数が会計上ずれるのを防ぐ
+- **freebusy は 1 コーチ 1 リクエスト**: 複数カレンダーを 1 リクエストで叩く API は OAuth scope の都合で避け、担当コーチ N 名 × freebusy 1 リクエスト / 受講生予約画面ロード 1 回 を上限とする(1 コーチ単位のフォールバックを明示する意図も兼ねる)
+- **トークン平文保存**: `access_token` / `refresh_token` は平文保存(`encrypt()` / `decrypt()` 不採用)。OAuth フローの可視性を優先し、本番運用時の暗号化推奨を README に明記
+- **Service の `final` 不採用**: `GoogleOAuthService` / `GoogleCalendarService` は Action テスト時に Mockery でスタブする想定のため `final` を付けない
+- **設定画面 UI は settings-profile が所有**: 連携 / 解除ボタン + 連携状態表示は設定画面の面談設定タブに埋め込む(本 Feature は OAuth フロー本体 + API ラッパー + DB 操作を所有し、URL `/settings/google-calendar/*` で settings-profile と協調)
+- **テスト観点**: 「connect でコーチは 302 / 受講生・管理者は 403」「callback の state 不一致・refresh_token 欠落で 400」「連携済コーチの busy 反映 / 未連携無影響 / API 失敗フォールバック(Mockery で `GoogleCalendarService` をスタブ)」「予約成立時の `google_event_id` セット / 連携なしで NULL」「トークン期限切れ → refresh フロー」が本チケット固有の検証観点
 
 ## 補足
 
-### 想定ヒアリング Q&A
+### 想定 Q&A
 
 | 質問 | 回答 |
 |---|---|
-| 連携できるのは誰? | コーチのみ。受講生 / 管理者は連携ボタンが表示されず、コーチ専用ルートに直接アクセスしても 403 |
-| コーチオンボーディング時に連携必須? | 必須ではない。コーチはオンボーディング後にいつでも連携 / 解除を切替え可能 |
-| 1 コーチが複数 Google アカウントを連携できる? | 不可。1 コーチ : 1 認証情報を強制(`coach_id` UNIQUE 制約)。アカウント切替は一度解除してから再連携 |
-| 連携するカレンダーは選べる? | 本チケットではプライマリカレンダー固定(`calendar_id = 'primary'`)。複数カレンダーから選ぶ UI はスコープ外 |
-| Google API が失敗したら受講生の予約画面はどうなる? | 連携済コーチについて busy 取得失敗 → 当該コーチの busy なし扱い(連携なしと同等)で空き枠は引き続き表示される。画面はエラーにならない |
-| 予約成立時に Event 作成が失敗したら? | 面談予約自体は成立扱い(面談レコードは作成され、面談回数も消費される、コーチ宛通知も発火)。面談レコードの Event ID は NULL のまま |
-| キャンセル時に Event 削除が失敗したら? | 面談キャンセル自体は成立扱い(面談ステータスはキャンセルに遷移し、面談回数も返却される)。Google 側に Event が残る可能性はある |
-| アクセストークンの期限は? | Google 仕様で短命(通常 1 時間)。期限切れ時は LMS 側でリフレッシュトークンを使って自動更新する |
-| リフレッシュトークンも失効したら? | 当該 API リクエストはスキップされる(連携なしと同等のフォールバック挙動)。コーチが再連携するまで GCal 連動は止まる |
-| 連携解除時に Google カレンダーの既存 Event は消える? | 消えない(将来の予約からの新規 Event 作成は止まるが、解除前に作られた既存 Event は残る)。面談レコードの Event ID も保持し、再連携してキャンセルすれば再び削除リクエストを送れる挙動を維持 |
-| 認可コールバックで `state` に何を入れる? | `coach_id`(現在ログイン中のコーチ ID)と `redirect_path`(連携完了後の戻り先パス)を JSON エンコード。コールバック時にコーチ ID が一致しなければ 400 で拒否 |
-| Google から `refresh_token` が返らないケースは? | `prompt=consent` を OAuth URL に付与しているため、再連携時も強制的に同意画面が出てリフレッシュトークンが返る前提。それでも返らない場合は 400 + フラッシュエラーで再連携を促す |
-| Event の件名 / 説明 / 場所には何が入る? | 件名: `「{受講生名} と {資格名} の面談」` / 説明: 話題 + 面談 URL の案内文 / 場所: コーチの固定面談 URL(`users.meeting_url`)。文字列は `lang/ja/mentoring.php` に集約 |
-| Google Meet URL は動的生成する? | しない。コーチがプロフィールで設定した固定面談 URL(`users.meeting_url`)を Event に焼き込むのみ |
-| 連携状態の表示位置は? | 設定画面の面談設定タブ(`/settings/profile?tab=meeting`)に「未連携」または「連携中(連携日時)」が表示され、対応するボタン(連携 / 解除)が活性化する |
-| トークンは暗号化保存する? | 本チケットでは平文保存(教材として OAuth フローの可視性を優先)。本番運用時は暗号化を推奨と README に明記 |
-| 1 リクエストで複数コーチのカレンダーをまとめて取れる? | API としては可能だが、本チケットでは 1 コーチ 1 リクエストで実装する(OAuth scope の都合 + 1 コーチ単位のフォールバックを明示するため)。担当コーチ N 名 × freebusy 1 リクエスト / 受講生予約画面ロード 1 回 が上限 |
-| 連携済コーチが LMS の連携解除を経由せず Google 側で直接アクセス権を剥奪したら? | LMS 側は気づけず、次に API リクエストを送ると失敗する(リフレッシュトークン更新も失敗)。フォールバックで連携なしと同等の挙動になり、コーチが LMS 側でも明示的に解除して再連携することが想定運用 |
-| Google API のレート制限超過時の挙動は? | 当該 API リクエストは失敗扱い(warning ログ)、リトライは自前では行わない。受講生予約画面なら busy なしフォールバック / 予約成立 / キャンセル時は Event 操作なしで通過 |
+| 連携できるのは誰? | コーチのみ。受講生 / 管理者は連携ボタンが表示されず、連携ルートに直接アクセスしても 403 |
+| コーチオンボーディング時に連携必須? | 必須ではない。コーチはいつでも連携 / 解除を切替可能 |
+| 1 コーチが複数 Google アカウントを連携できる? | 不可。1 コーチ : 1 連携情報を強制(`coach_id` UNIQUE)。アカウント切替は一度解除してから再連携 |
+| 連携するカレンダーは選べる? | 本チケットではプライマリカレンダー固定(`calendar_id = 'primary'`)。複数カレンダー選択 UI はスコープ外 |
+| Google API が失敗したら受講生の予約画面はどうなる? | 連携済コーチの busy 取得失敗 → 当該コーチは busy なし扱い(連携なしと同等)で空き枠は引き続き表示。画面はエラーにならない |
+| 予約成立時に Event 作成が失敗したら? | 面談予約自体は成立(面談作成 + 面談回数消費 + コーチ宛通知発火)。`google_event_id` は NULL のまま |
+| キャンセル時に Event 削除が失敗したら? | 面談キャンセル自体は成立(ステータスがキャンセルに遷移 + 面談回数返却)。Google 側に Event が残る可能性はある |
+| アクセストークンの期限は? | Google 仕様で短命(通常 1 時間)。期限切れ時はリフレッシュトークンで自動更新する |
+| リフレッシュトークンも失効したら? | 当該 API リクエストはスキップ(連携なし相当のフォールバック)。コーチが再連携するまで GCal 連動は止まる |
+| 連携解除時に Google カレンダーの既存 Event は消える? | 消えない(将来の予約からの新規 Event 作成は止まるが、解除前に作られた Event は残る)。面談の Event 識別子も保持し、再連携してキャンセルすれば再び削除リクエストを送れる |
+| 認可コールバックで `state` には何を入れる? | `coach_id`(ログイン中コーチ)と `redirect_path`(連携完了後の戻り先)を JSON エンコード。コールバック時にコーチ ID が一致しなければ 400 |
+| Google から永続トークンが返らないケースは? | 認可 URL に `prompt=consent` を付与しているため、再連携時も同意画面が出てリフレッシュトークンが返る前提。それでも返らない場合は 400 + フラッシュエラーで再連携を促す |
+| Event の件名 / 説明 / 場所には何が入る? | 件名: 受講生名 + 資格名 / 説明: 話題 + 面談 URL の案内 / 場所: コーチの固定面談 URL。文言は `lang/ja/mentoring.php` に集約 |
+| 面談 URL はどこから取る? | 予約成立時に面談へスナップショットされたコーチの固定面談 URL を Event に焼き込む(予約後にコーチがプロフィール URL を変えても、その面談の Event 内容は予約時点で固定) |
+| Google Meet URL は動的生成する? | しない。コーチが設定した固定面談 URL を Event に焼き込むのみ |
+| 連携状態の表示位置は? | 設定画面の面談設定タブ(`/settings/profile?tab=meeting`)に「未連携 / 連携中(連携日時)」と対応ボタンを表示 |
+| トークンは暗号化保存する? | 本チケットでは平文保存(OAuth フローの可視性を優先)。本番運用時は暗号化を推奨と README に明記 |
+| 1 リクエストで複数コーチのカレンダーをまとめて取れる? | API としては可能だが本チケットでは 1 コーチ 1 リクエストで実装(OAuth scope の都合 + 1 コーチ単位のフォールバックを明示するため) |
+| 連携済コーチが LMS の解除を経由せず Google 側で直接アクセス権を剥奪したら? | LMS 側は気づけず、次の API リクエストで失敗(リフレッシュも失敗)。フォールバックで連携なし相当の挙動になり、コーチが LMS 側でも明示的に解除して再連携するのが想定運用 |
+| Google API のレート制限超過時は? | 当該 API リクエストは失敗扱い(warning ログ)、自前リトライはしない。受講生予約画面なら busy なしフォールバック / 予約・キャンセル時は Event 操作なしで通過 |

@@ -13,10 +13,6 @@
 | 工数 (h) | 7 |
 | 依存チケット | (なし) |
 
-## 概要
-
-Certify LMS の全ロール(受講生 / コーチ / 管理者)が自分自身のプロフィール情報を管理する設定画面を実装する。`/settings/profile` 配下に画面内タブ切替で「プロフィール編集」「パスワード変更」を提供し、各タブから氏名 / 自己紹介 / アバター画像 / パスワード を更新できる。コーチには加えて固定面談 URL(`meeting_url`)の編集フィールドを提供する。本チケットでは Basic 範囲に絞り、面談可能時間枠 / Google Calendar 連携 のコーチ専用タブは Advance スコープで別途扱う。
-
 ## 背景・目的
 
 - **現状の問題**: 提供 PJ のユーザーは招待時に管理者から登録されるが、その後の自己情報(氏名表記の変更 / 自己紹介の追記 / アイコン画像のアップロード / パスワード変更)を更新する画面が存在しない。受講生は学習者としての自分の見え方をコントロールできず、コーチも担当する受講生に対する自己紹介を整えられず、管理者もパスワード変更などの基本セキュリティ動線が無い。
@@ -29,216 +25,175 @@ Certify LMS の全ロール(受講生 / コーチ / 管理者)が自分自身の
 - **受講生として**、パスワードを安全に変更したい。なぜなら、定期的な変更や漏洩懸念時の対応を自己完結したいから。
 - **コーチ(coach)として**、上記に加え固定面談 URL を編集したい。なぜなら、面談ツール(Google Meet / Zoom 等)の URL を変更したときに自己更新したいから。
 - **管理者(admin)として**、プロフィール表示 / パスワード変更 / アバター画像変更 を全ロール共通の動線で利用したい。なぜなら、管理者も同じ自己管理ニーズを持つから。
-- **修了済(graduated)受講生として**、プラン機能はロックされても自分のプロフィール / パスワード変更 / アバター更新は引き続き使いたい。なぜなら、修了後にもアカウント情報を保守する必要があるから。
+- **修了済(graduated)の受講生として**、プラン機能はロックされても自分のプロフィール / パスワード変更 / アバター更新は引き続き使いたい。なぜなら、修了後にもアカウント情報を保守する必要があるから。
 
-## やること
+## 要件
 
 ### プロフィール表示・編集(全ロール)
 
-- **表示**: 認証ユーザー本人の氏名 / メール(読み取り専用)/ 自己紹介 / アイコン画像 / ロール / アカウント状態 を表示
-- **編集**: 氏名(必須、1〜50 文字)と自己紹介(任意、最大 1000 文字)を更新可能、メールは編集不可
-- **コーチ専用フィールド**: コーチが編集フォームを開いたときのみ「固定面談 URL」入力欄を表示、コーチが値を送信したときのみ更新される(他ロールが偽装送信しても無視)
-- **修了済受講生のアクセス**: `graduated` 状態の受講生も本画面にはアクセス可(プラン機能ロック Middleware の対象外)
+- 本人の氏名 / メール(読み取り専用) / 自己紹介 / アイコン画像 / ロール / アカウント状態の表示
+- 氏名(必須 / 1〜50 文字)と自己紹介(任意 / 1000 文字以内)の編集、メールは編集不可
+- 修了済受講生も本画面にアクセス可(プラン機能ロックの対象外)
+
+### コーチ固定面談 URL(コーチのみ)
+
+- コーチの編集フォームにのみ固定面談 URL 入力欄を表示し、コーチ本人のみ更新可(URL 形式 / 500 文字以内、空入力でクリア)
+- 受講生 / 管理者には入力欄を表示せず、偽装送信されても更新しない
 
 ### パスワード変更(全ロール)
 
-- **変更フォーム**: 現在のパスワード / 新パスワード / 新パスワード(確認)の 3 入力で構成
-- **検証**: 現在のパスワードが照合一致しないと拒否、新パスワードは 8 文字以上、新パスワード(確認)と一致しない場合は拒否
-- **更新成功時の挙動**: 設定画面のパスワードタブにリダイレクトし、フラッシュメッセージ(Laravel Fortify 標準の `password-updated` ステータス)が表示される
+- 現在のパスワード / 新パスワード / 新パスワード(確認)の 3 入力で変更
+- 現在のパスワード照合一致 + 新パスワード 8 文字以上 + 確認一致を満たすときのみ更新
 
-### アバター画像変更(全ロール)
+### アバター画像(全ロール)
 
-- **アップロード**: PNG / JPEG / WebP のいずれか、ファイルサイズ 2 MB 以下を許容。サーバ側 MIME 検証とサイズ検証を実施
-- **置き換え動作**: 新ファイルを保存後、旧ファイルを Storage から自動削除して `users.avatar_url` を新パスに更新
-- **削除**: アイコン画像削除ボタンで `users.avatar_url` を NULL に戻し、`<x-avatar>` コンポーネントがイニシャル表示にフォールバックする
-- **エラーハンドリング**: 新ファイル保存失敗時はエラーフラッシュを返し、既存アバターは変更しない
+- 画像のアップロード(PNG / JPEG / WebP / 2 MB 以下)と削除
+- アップロード成功時に旧画像を自動削除、削除時はアイコン未設定状態(イニシャル表示)に戻す
 
-### タブ切替(画面内)
+### タブ切替・共通
 
-- **タブ表示**: 全ロールに「プロフィール」「パスワード」の 2 タブを表示
-- **URL 反映**: 現在のタブが URL クエリパラメータ(`?tab=profile` / `?tab=password`)で表現され、リロード後も同じタブで再表示
-- **タブ間の状態保持**: バリデーションエラー時は該当タブ(プロフィール編集失敗ならプロフィールタブ)で入力値とエラーメッセージが表示される
+- プロフィール / パスワードの 2 タブ、現在のタブを URL に反映しリロード後も同じタブで再表示
+- バリデーションエラー時は該当タブで入力値とエラーメッセージを表示
+- 全エンドポイント認証必須、自分以外のユーザー情報は更新できない
 
-### 共通の振る舞い
+## スコープ外
 
-- 全エンドポイントは認証必須、未認証ユーザーはログイン画面にリダイレクト
-- 自分以外のユーザー情報を更新できない(URL を直接叩いて他人の `user_id` を指定する経路がない)
-- 修了済 / 退会済ユーザーも本画面は利用可能(プラン機能の有効期限とは独立)
-
-## やらないこと
-
-- **面談設定タブ**(コーチ専用、面談可能時間枠カレンダー)— `S-A-01`(mentoring 関連 / Google Calendar 連携)で扱う
-- **Google Calendar 連携の連携 / 解除 UI**(コーチ専用) — 同上 `S-A-01`
+- **面談設定タブ**(コーチ専用、面談可能時間枠カレンダー)— 本チケットでは扱わない(Google Calendar 連携の責務)
+- **Google Calendar 連携の連携 / 解除 UI**(コーチ専用) — 本チケットでは扱わない(同上)
 - **メールアドレスの変更動線** — 管理者経由のみ(`user-management` Feature の責務)
 - **自己退会動線** — 管理者経由のオペレーションに集約、LMS 内に動線なし
 - **自己ロール変更** — 管理者経由のみ
 - **2FA / IP 制限 / ログイン履歴の詳細管理** — MVP 外
 - **API トークン(Sanctum PAT)の発行 / 失効 UI** — 不採用
 - **学習時間目標(`LearningHourTarget`)の編集 UI** — `learning` Feature が別画面で所有
-- **通知設定 UI(種別 × チャネル ON/OFF)** — 不採用(全通知が DB + メール固定送信、`S-B-04` 設計準拠)
+- **通知設定 UI(種別 × チャネル ON/OFF)** — 不採用(全通知が DB + メール固定送信、通知基盤の設計準拠)
 - **プラン情報表示 / 追加面談購入 CTA** — ダッシュボードの「プラン情報パネル」に集約
 - **アバター画像の自動リサイズ / 圧縮** — 採用しない、2 MB 上限のみで運用
-- **クライアント側 JS バリデーション**(MIME / サイズの事前チェック) — Basic 段階は JS なし、サーバ側検証のみで担保
 
 ## 受け入れ条件
 
-- [ ] **画面表示 - 認証必須**: 未認証ユーザーが設定画面にアクセスするとログイン画面にリダイレクトされる
-- [ ] **画面表示 - 全ロール共通**: 認証済の受講生 / コーチ / 管理者すべてが `/settings/profile` を開ける(403 や 404 にならない)
-- [ ] **画面表示 - タブ構成**: プロフィール / パスワード の 2 タブが表示される(コーチも含めて 2 タブ、面談設定タブは本チケット範囲外)
-- [ ] **画面表示 - 修了済アクセス**: 修了済(graduated)受講生も `/settings/profile` を開ける(プラン機能ロック Middleware の対象外)
-- [ ] **プロフィール編集 - 成功時**: 氏名と自己紹介を更新成功で、プロフィールタブ(`?tab=profile`)にリダイレクトされ、フラッシュメッセージが表示される
-- [ ] **プロフィール編集 - メール編集不可**: 編集フォームでメール入力欄は表示されない、または読み取り専用で送信されても無視される(`users.email` が UPDATE されない)
-- [ ] **プロフィール編集 - 氏名バリデーション**: 氏名が空 / 51 文字以上の場合、422 + プロフィールタブで入力値とエラーメッセージが表示される
-- [ ] **プロフィール編集 - 自己紹介バリデーション**: 自己紹介が 1001 文字以上の場合、422 + プロフィールタブで入力値とエラーメッセージが表示される
-- [ ] **コーチ専用フィールド - 表示**: コーチが編集フォームを開くと「固定面談 URL」入力欄が表示される
-- [ ] **コーチ専用フィールド - 受講生 / 管理者非表示**: 受講生 / 管理者が編集フォームを開いたとき「固定面談 URL」入力欄は表示されない
-- [ ] **コーチ専用フィールド - 偽装拒否**: 受講生 / 管理者が `meeting_url` フィールドを偽装して送信しても、`users.meeting_url` は更新されない(silently drop)
-- [ ] **コーチ固定面談 URL - URL 形式バリデーション**: コーチが `meeting_url` に URL 形式でない値を送信すると 422 + 入力値とエラーメッセージが表示される
-- [ ] **コーチ固定面談 URL - 空値クリア**: コーチが空文字列で `meeting_url` を送信すると `users.meeting_url = NULL` に更新される
-- [ ] **パスワード変更 - 成功時**: 現在のパスワードが正しく、新パスワードが 8 文字以上 + 確認一致のとき、`users.password` が更新され、パスワードタブにリダイレクト + Fortify 標準ステータスメッセージが表示される
-- [ ] **パスワード変更 - 現在パスワード不一致**: 現在のパスワードが照合不一致のとき、422 + パスワードタブで「現在のパスワードが正しくありません」エラーが表示され、`users.password` は更新されない
-- [ ] **パスワード変更 - 新パスワード短すぎ**: 新パスワードが 8 文字未満のとき、422 + 「8 文字以上で入力してください」エラーが表示される
-- [ ] **パスワード変更 - 新パスワード確認不一致**: 新パスワードと確認パスワードが一致しないとき、422 + 「パスワード(確認用)が一致しません」エラーが表示される
-- [ ] **アバター - アップロード成功**: 認証ユーザーが許可された画像ファイル(PNG / JPEG / WebP、2 MB 以下)をアップロード成功で `users.avatar_url` が新しい URL に更新され、プロフィールタブにリダイレクト + フラッシュ表示
-- [ ] **アバター - 旧ファイル削除**: アバター更新時に旧ファイルが Storage から削除される(新ファイル保存成功後にベストエフォートで削除)
-- [ ] **アバター - 不正 MIME 拒否**: text/plain など画像でない MIME のファイルをアップロードすると 422 + 「許可された形式の画像をアップロードしてください」エラーが表示される
-- [ ] **アバター - サイズ超過拒否**: 2 MB を超えるファイルをアップロードすると 422 + 「ファイルサイズが大きすぎます」エラーが表示される
-- [ ] **アバター - 削除**: アバター削除アクションで `users.avatar_url` が NULL になり、プロフィールタブにリダイレクト + フラッシュ表示。画面ではイニシャル表示にフォールバックする
+- [ ] 認証済の受講生 / コーチ / 管理者(修了済受講生を含む)が `/settings/profile` を開け、プロフィール / パスワードの 2 タブが表示される。未認証ユーザーはログイン画面にリダイレクトされる
+- [ ] プロフィール編集で氏名・自己紹介を更新成功すると、プロフィールタブにリダイレクトされ成功メッセージが表示される。メールは画面で編集できず、送信されても更新されない
+- [ ] コーチが編集フォームを開くと固定面談 URL 入力欄が表示され、コーチ本人のみ更新でき(空入力で値がクリアされる)、受講生 / 管理者には入力欄が表示されず偽装送信しても更新されない
+- [ ] プロフィール編集フォームでバリデーションが行われ、ルール違反時に該当タブで日本語のエラーメッセージが表示され入力値も復元される:
+  - 氏名: 必須 / 50 文字以内
+  - 自己紹介: 1000 文字以内
+  - 固定面談 URL(コーチ): URL 形式 / 500 文字以内
+- [ ] パスワード変更で現在のパスワードが正しく新パスワードが 8 文字以上 + 確認一致のとき更新され、パスワードタブにリダイレクト + 成功メッセージが表示される。現在パスワード不一致 / 新パスワード 8 文字未満 / 確認不一致のときはパスワードタブでエラーが表示されパスワードは更新されない
+- [ ] アバター画像のアップロード成功でアイコンが新しい画像に差し替わり(旧画像は自動削除)、プロフィールタブにリダイレクト + 成功メッセージが表示される。画像でない形式 / 2 MB 超のファイルは拒否されエラーが表示される
+- [ ] アバター画像の削除でアイコンが未設定状態(イニシャル表示)に戻り、プロフィールタブにリダイレクト + 成功メッセージが表示される
+- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
-## 実装方針
+## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の設計を組み立てる。
+> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
 
-### 主要 URL
+### インターフェース(必須)
 
-| メソッド | パス | 振る舞い |
-|---|---|---|
-| GET | `/settings/profile?tab={profile\|password}` | 設定画面表示(タブ切替で表示内容を変える、ロールに応じてコーチ固定面談 URL 欄を出し分け) |
-| PATCH | `/settings/profile` | プロフィール更新(氏名 / 自己紹介 / コーチのみ固定面談 URL)、成功時 `/settings/profile?tab=profile` リダイレクト + フラッシュ「プロフィールを更新しました。」 |
-| POST | `/settings/avatar` | アバター画像アップロード、成功時 `/settings/profile?tab=profile` リダイレクト + フラッシュ「アバター画像を更新しました。」 |
-| DELETE | `/settings/avatar` | アバター画像削除、成功時 `/settings/profile?tab=profile` リダイレクト + フラッシュ「アバター画像を削除しました。」 |
-| PUT | `/settings/password` | パスワード更新、成功時 `/settings/profile?tab=password` リダイレクト + `session('status')='password-updated'` |
+**エンドポイント**:
 
-> route 名は `settings.profile.edit` / `settings.profile.update` / `settings.avatar.store` / `settings.avatar.destroy` / `settings.password.update`(`Route::prefix('settings')->name('settings.')->group(...)` 配下)。`auth` Middleware で保護、ロール Middleware は不要(全ロール共通)。
+| HTTP | パス | 認可 | 振る舞い |
+|---|---|---|---|
+| GET | `/settings/profile?tab={profile\|password}` | 全ロール(本人) | 設定画面表示(タブ切替で表示を変える、コーチのみ固定面談 URL 欄を表示) |
+| PATCH | `/settings/profile` | 全ロール(本人のみ) | プロフィール更新(氏名 / 自己紹介 / コーチのみ固定面談 URL)、成功時 `?tab=profile` リダイレクト + フラッシュ「プロフィールを更新しました。」 |
+| POST | `/settings/avatar` | 全ロール(本人のみ) | アバター画像アップロード、成功時 `?tab=profile` リダイレクト + フラッシュ「アバター画像を更新しました。」 |
+| DELETE | `/settings/avatar` | 全ロール(本人のみ) | アバター画像削除、成功時 `?tab=profile` リダイレクト + フラッシュ「アバター画像を削除しました。」 |
+| PUT | `/settings/password` | 全ロール(本人のみ) | パスワード更新、成功時 `?tab=password` リダイレクト + 成功メッセージ |
+
+> route 名は `settings.profile.edit` / `settings.profile.update` / `settings.avatar.store` / `settings.avatar.destroy` / `settings.password.update`(`Route::prefix('settings')->name('settings.')->group(...)` 配下)。本人判定は各 FormRequest / Controller の `updateSelf` 認可で担保する。
+
+**ミドルウェア**: 全ルートに `auth` 適用。ロール Middleware は不要(全ロール共通)。`EnsureActiveLearning` は適用しない(修了済受講生も自分の情報を保守できる)。
 
 ### データモデル
 
-> **既存テーブル**(`users` テーブル、新規 Migration なし)。本チケットは `users.name` / `bio` / `meeting_url` / `avatar_url` / `password` カラムの読み書きのみ。
+既存 `users` テーブルの `name` / `bio` / `meeting_url` / `avatar_url` / `password` カラムの読み書きのみで、テーブル / Model / Enum の新規追加はない。`email` / `role` / `status` は読み取りのみ。
 
-| カラム | 型 | NOT NULL | 補足 |
-|---|---|:---:|---|
-| id | ulid | ✓ | PK |
-| name | varchar(255) | ✓ | 氏名(プロフィール編集対象) |
-| email | varchar(255) | ✓ | 編集不可(本フォームでは読み取り専用) |
-| bio | text | | 自己紹介(プロフィール編集対象) |
-| avatar_url | varchar(500) | | Storage public URL、NULL でイニシャル表示 |
-| meeting_url | varchar(500) | | 固定面談 URL(コーチのみ編集対象) |
-| password | varchar(255) | ✓ | bcrypt ハッシュ済(パスワードタブで更新) |
-| role | string | ✓ | UserRole Enum(本チケットでは読み取りのみ) |
-| status | string | ✓ | UserStatus Enum(本チケットでは読み取りのみ) |
+- **アバターストレージ**: `Storage::disk('public')` の `avatars/{ulid}.{ext}` に保存し、`/storage/avatars/...` の publicUrl で配信(`php artisan storage:link` 済を提供 PJ に同梱)。`avatar_url` が NULL のときはアイコンコンポーネントがイニシャル表示にフォールバック
+- **初期データ Seeder**: 既存 `UserSeeder` で各ロール(受講生 / コーチ / 管理者)+ 修了済受講生 + アバター設定済 / 未設定が揃っていれば本チケットの動作確認は可能。新規 Seeder は不要
 
-ストレージ: `Storage::disk('public')` の `avatars/{ulid}.{ext}` パスにアバターファイル保存、`/storage/avatars/...` の publicUrl で配信。
+### コンポーネント
 
-### バリデーション
+**Controller** (`app/Http/Controllers/Settings/`)
+- `ProfileController` — 設定画面表示 + プロフィール更新(`edit` / `update`)
+- `AvatarController` — アバター画像アップロード / 削除(`store` / `destroy`)
+- `PasswordController` — パスワード更新(`update`、Fortify Action へ委譲)
 
-`Profile/UpdateRequest`:
+**FormRequest** (`app/Http/Requests/`)
+- `Profile\UpdateRequest` — 氏名 / 自己紹介 / 固定面談 URL の検証 + `authorize()` で `updateSelf` を委譲
+- `Avatar\StoreRequest` — アバター画像の形式 / サイズ検証
 
-| 入力項目 | ルール | 推奨エラーメッセージ例 |
-|---|---|---|
-| name | required / string / min:1 / max:50 | 氏名は必須です。<br>氏名は 50 文字以内で入力してください。 |
-| bio | nullable / string / max:1000 | 自己紹介は 1000 文字以内で入力してください。 |
-| meeting_url | nullable / string / url / max:500 | 固定面談 URL は有効な URL 形式で入力してください。<br>固定面談 URL は 500 文字以内で入力してください。 |
+**Action** (`app/UseCases/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+- `Profile\UpdateAction` — 氏名 / 自己紹介更新 + コーチのみ固定面談 URL 反映(非コーチは silently drop、空入力は NULL 保存)
+- `Avatar\StoreAction` / `Avatar\DestroyAction` — 新ファイル保存 + 旧ファイル削除 / アバター URL クリア + ファイル削除
 
-`meeting_url` フィールドはバリデーション層では全ロール受け入れ、Controller / Action 内で `role !== Coach` のときに silently drop する(受講生 / 管理者の偽装送信を防御層で無効化、エラーにはしない)。
+**Fortify Action** (`app/Actions/Fortify/`、Fortify 公式パターンの例外領域、本プロジェクトの UseCase Action とは別物)
+- `UpdateUserPassword` — 現在パスワード照合 + 新パスワード検証 + ハッシュ更新(`PasswordController` から直接呼出)
 
-`Avatar/StoreRequest`:
+**Policy** (`app/Policies/`)
+- `UserPolicy::updateSelf` — 本人(`auth->id === target->id`)のみ true。他者編集 / ロール変更動線は LMS に存在しないため `update` は持たない
 
-| 入力項目 | ルール | 推奨エラーメッセージ例 |
-|---|---|---|
-| avatar | required / file / image / mimetypes:image/png,image/jpeg,image/webp / max:2048 | アバター画像は必須です。<br>PNG / JPEG / WebP のいずれかでアップロードしてください。<br>ファイルサイズは 2 MB 以下にしてください。 |
+**Model + Enum** (`app/Models/`, `app/Enums/`)
+- `User` / `UserRole`(本チケットでは読み取りのみ)
 
-`max:2048` は Laravel 標準で KB 単位(2048 KB = 2 MB)。
+**View**(提供 PJ 既存、ロック対象)
+- `resources/views/settings/profile.blade.php` + `_partials/tab-profile.blade.php` / `_partials/tab-password.blade.php`
+- `resources/views/components/avatar.blade.php`(アイコン未設定時のイニシャル表示フォールバック)
 
-パスワード変更は Fortify が提供する `Actions\Fortify\UpdateUserPassword` を利用、FormRequest を新規作成せず Controller 内で `$action->update($user, $request->only(['current_password', 'password', 'password_confirmation']))` を呼ぶ。
+**例外** (`app/Exceptions/SettingsProfile/`)
+- `AvatarStorageFailedException`(任意、Storage 書込失敗時 500)
 
-### 認可設計
+**Routes** (`routes/web.php`)
+- `auth` グループ内の `settings.*`(`Route::prefix('settings')->name('settings.')->group(...)`)5 ルート
 
-**Policy**: `UserPolicy::updateSelf` を新設(または既存 `UserPolicy` に追加)
+### 異常系
 
-| メソッド | 判定 |
-|---|---|
-| updateSelf | `$auth->id === $target->id`(自分自身のみ true、他人は false) |
+**入力検証**(FormRequest クラス名 + ルール記法):
 
-- 各 FormRequest の `authorize()` で `$this->user()->can('updateSelf', $this->user())` を呼ぶ
-- `/settings/availability` などコーチ専用ルートは本チケットスコープ外(`S-A-01`)
-- アバター / パスワードは認証ユーザーが自分自身に対して操作するためロール無関係
-- `EnsureActiveLearning` Middleware は適用しない(`graduated` 受講生も自分のプロフィール / パスワード / アバター変更可能)
+- プロフィール更新 (`Profile\UpdateRequest`):
+  - `name`: `required` / `string` / `min:1` / `max:50`
+  - `bio`: `nullable` / `string` / `max:1000`
+  - `meeting_url`: `nullable` / `string` / `url` / `max:500`(全ロール受理し、Action 内でコーチ以外は反映しない)
+- アバターアップロード (`Avatar\StoreRequest`):
+  - `avatar`: `required` / `file` / `image` / `mimetypes:image/png,image/jpeg,image/webp` / `max:2048`(`max:2048` は KB 単位 = 2 MB)
+- パスワード更新: Fortify `UpdateUserPassword` が検証(`current_password` 照合 / `password` は `min:8` + `confirmed`)。専用 FormRequest は新設しない
 
-### テスト観点
+> 推奨エラーメッセージの日本語文言例は想定 Q&A に集約。
 
-| 種別 | 観点 |
-|---|---|
-| Unit | `UserPolicy::updateSelf` の真偽判定(自己 true / 他人 false)/ `Profile\UpdateAction` の `role !== Coach` 時の `meeting_url` silently drop / `meeting_url = ''` 時の NULL 保存 |
-| Feature(プロフィール)| GET `/settings/profile` のロール別タブ表示(全ロールで 2 タブ表示、コーチのみ `meeting_url` 入力欄が現れる)/ 修了済受講生のアクセス可 / 未認証時のログイン画面リダイレクト / PATCH `/settings/profile` の成功時リダイレクト + フラッシュ / バリデーション失敗時の 422 + 入力値復元 / メールが UPDATE されない / `meeting_url` の coach のみ更新 / 受講生 / 管理者の `meeting_url` silently drop |
-| Feature(アバター)| POST `/settings/avatar` の成功時 `users.avatar_url` 更新 + 旧ファイル削除 / 不正 MIME 拒否 / サイズ超過拒否 / DELETE `/settings/avatar` の成功時 `users.avatar_url = NULL` + Storage ファイル削除 / フラッシュ表示 |
-| Feature(パスワード)| PUT `/settings/password` の成功時 `users.password` 更新 + `session('status')='password-updated'` / 現在パスワード不一致時の 422 / 新パスワード短すぎの 422 / 確認不一致の 422 |
+**業務例外**:
 
-### アーキテクチャ判断
+- アバター保存失敗 (`AvatarStorageFailedException`) → 500(任意、新ファイル保存に失敗した場合は既存アバターを変更しない)
 
-> **Basic 範囲制約**: 教材外の Action / Service は使わない前提で **Controller 内完結** を基本とする。Action(`Profile\UpdateAction` / `Avatar\StoreAction` / `Avatar\DestroyAction`)採用は受講生判断(チャレンジするなら歓迎)。パスワード変更のみ Fortify 公式の `App\Actions\Fortify\UpdateUserPassword` を利用する例外領域(教材 Action 規約とは別物、`backend-usecases.md` 参照)。
+### 設計判断
 
-- **採用技術**: Eloquent + Controller(受講生判断で Action 分割可)+ Policy + FormRequest + Fortify Password Update + Storage public driver + Blade(提供済み)
-- **設計判断**:
-  1. **画面構成**: タブ切替は `<x-tabs>`(`S-B-01` で利用したコンポーネント)+ URL クエリパラメータ(`?tab=profile|password`)で実現。タブごとの form は同一画面内に並ぶ partial として描画(プロフィールタブ partial / パスワードタブ partial)
-  2. **コーチ専用フィールドの 2 層防御**:
-     - **UI 層**: Blade で `@if (auth()->user()->role === UserRole::Coach)` で `meeting_url` 入力欄を出し分け
-     - **Controller / Action 層**: `role !== Coach` のとき `meeting_url` を silently drop(受講生 / 管理者の偽装送信を防御)
-  3. **アバターの 3 ステップ更新**: (1) 新ファイルを Storage に保存、(2) `DB::transaction` 内で `users.avatar_url` を UPDATE、(3) UPDATE 成功後に旧ファイルを `Storage::delete` でベストエフォート削除。新ファイル保存失敗時は DB / 旧ファイルともに未変更、DB UPDATE 失敗時は直前保存した新ファイルを削除して例外伝播
-  4. **アバターストレージドライバ**: `Storage::disk('public')` を使い、`php artisan storage:link` で `public/storage` シンボリックリンクを作成済(提供 PJ 同梱)。配信は `/storage/avatars/...` の publicUrl
-  5. **メール編集不可**: `UpdateRequest::rules()` に `email` を入れない(rules に無いと `validated()` から自動的に除外される)。Blade フォームでも `<input>` を出さないか、出すなら `readonly` 属性 + 編集できない注意書き
-  6. **Fortify Password Update 利用**: `App\Actions\Fortify\UpdateUserPassword::update($user, $input)` を Controller 内で直接呼ぶパターン。Fortify は `Hash::make` + `validateWithBag` を含むため、追加 FormRequest 不要。エラーは `ValidationException` で Laravel 標準の redirect back + error bag に流れる
-  7. **`EnsureActiveLearning` Middleware の不適用**: 設定画面は学習機能ではなくアカウント保守機能のため、修了済 / 退会済(ただし退会済は SoftDelete でログインクエリ自体に乗らない)ユーザーも操作可能。Middleware を route に付けない判断は spec / `product.md` の方針と整合
-
-### 関連ファイルメモ
-
-- `app/Http/Controllers/Settings/ProfileController.php`(`edit` / `update`)
-- `app/Http/Controllers/Settings/AvatarController.php`(`store` / `destroy`)
-- `app/Http/Controllers/Settings/PasswordController.php`(`update`)
-- `app/UseCases/Profile/UpdateAction.php`(※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
-- `app/UseCases/Avatar/{Store,Destroy}Action.php`(※ 同上)
-- `app/Actions/Fortify/UpdateUserPassword.php`(Fortify 公式パターン Action、`Laravel\Fortify\Contracts\UpdatesUserPasswords` 実装、本プロジェクトの UseCase Action とは別物)
-- `app/Http/Requests/Profile/UpdateRequest.php`
-- `app/Http/Requests/Avatar/StoreRequest.php`
-- `app/Policies/UserPolicy.php`(`updateSelf` メソッド追加 — 既存 `update`(管理者経由)と別メソッドで共存)
-- `app/Exceptions/SettingsProfile/AvatarStorageFailedException.php`(任意、Storage 書込失敗の例外、500)
-- `resources/views/settings/profile.blade.php`(提供 PJ 既存、ロック対象)+ `_partials/{tab-profile,tab-password}.blade.php`
-- `routes/web.php` の認証済グループ内に `Route::prefix('settings')->name('settings.')->group(...)` を追加し、5 ルートを定義
-- 類似パターン参考: ContactForm / BookShelf の管理者 CRUD パターン(本チケットは自己向けの簡易版)、`UserController`(`user-management` Feature)の管理者経由編集パターンとの責務分離
+- **コーチ専用フィールドの 2 層防御**: UI 層(Blade でコーチのみ固定面談 URL 欄を描画)+ Action 層(`role !== Coach` のとき `meeting_url` を silently drop)で守る。バリデーション層では全ロール受理し、偽装送信をエラーにせず防御層で無効化する(受講生 / 管理者が `meeting_url` を偽装しても更新されない)
+- **メール編集不可は rules 除外で担保**: `Profile\UpdateRequest::rules()` に `email` を含めないことで `validated()` から自動除外され UPDATE 対象に乗らない。Blade では読み取り専用表示
+- **アバターの 3 ステップ更新**: (1) 新ファイル保存 → (2) `DB::transaction` 内で `avatar_url` を UPDATE → (3) UPDATE 成功後に旧ファイルをベストエフォート削除。新ファイル保存失敗時は DB / 旧ファイルとも未変更にする
+- **パスワード変更は Fortify 公式 Action を利用**: `App\Actions\Fortify\UpdateUserPassword` を Controller から直接呼ぶ。`Hash::make` + `validateWithBag`(検証失敗時に redirect back + error bag)を内包するため追加 FormRequest 不要。本プロジェクトの UseCase Action とは別物の例外領域
+- **学習有効性ガード非適用**: 設定画面はアカウント保守機能のため `EnsureActiveLearning` を route に付けず、修了済受講生も自分の情報を更新できる
+- **テスト観点**: `UserPolicy::updateSelf` の真偽判定 + `Profile\UpdateAction` のコーチ以外 `meeting_url` drop / 空入力 NULL 保存 + 全ロールの 2 タブ表示 / コーチのみ固定面談 URL 欄表示 が本チケット固有の観点。アバターは `Storage::fake` で保存 / 旧削除を検証
 
 ## 補足
 
-### 想定ヒアリング Q&A
+### 想定 Q&A
 
 | 質問 | 回答 |
 |---|---|
-| 氏名 / 自己紹介の文字数上限は? | 氏名は 50 文字、自己紹介は 1000 文字 |
+| 氏名 / 自己紹介の文字数上限は? | 氏名は 1〜50 文字(必須)、自己紹介は 1000 文字以内(任意) |
 | メールアドレスは編集できる? | できない。本フォームでは読み取り専用、変更は管理者に依頼 |
 | 自己退会動線はある? | ない。退会は管理者に依頼するオペレーション、LMS 内に動線なし |
-| コーチの固定面談 URL は誰が編集できる? | コーチ本人のみ。受講生 / 管理者は本フォームから編集できず、偽装送信しても silently drop で無視される |
-| 固定面談 URL を空にするとどうなる? | `users.meeting_url = NULL` に更新される(クリア動作)。コーチのオンボーディング時に必須化されているが、クリア後の運用は管理者ガイダンス次第 |
-| 修了済(graduated)受講生は本画面を使える? | 使える。`EnsureActiveLearning` Middleware の対象外で、プラン機能はロックされても自分のプロフィール / パスワード / アバター変更は可能 |
-| アバター画像のサイズ上限は? | 2 MB |
-| アバター画像の形式は? | PNG / JPEG / WebP の 3 種 |
+| コーチの固定面談 URL は誰が編集できる? | コーチ本人のみ。受講生 / 管理者は本フォームから編集できず、偽装送信しても無視される |
+| 固定面談 URL を空にするとどうなる? | 値がクリア(NULL)される。コーチのオンボーディング時に必須化されているが、クリア後の運用は管理者ガイダンス次第 |
+| 修了済(graduated)受講生は本画面を使える? | 使える。学習有効性ガードの対象外で、プラン機能はロックされても自分のプロフィール / パスワード / アバター変更は可能 |
+| アバター画像のサイズ・形式の上限は? | 2 MB 以下 / PNG・JPEG・WebP の 3 種 |
 | アバター画像のリサイズ / 自動圧縮はある? | ない。MVP では上限 2 MB のみで運用 |
-| アバター画像をアップロードしたら旧画像はどうなる? | 自動的に Storage から削除される(ベストエフォート、削除失敗してもユーザー操作は成功扱い) |
-| アバター画像のクライアント側 JS バリデーションは? | Basic 段階では実装しない。サーバ側 MIME / サイズ検証のみで担保 |
+| アバター画像をアップロードしたら旧画像はどうなる? | 自動的に削除される(ベストエフォート、削除失敗してもユーザー操作は成功扱い) |
 | パスワード変更の最小文字数は? | 8 文字 |
-| パスワード変更で「現在のパスワード」を求める理由は? | 攻撃者がセッション奪取後にパスワード変更で恒久乗っ取りすることを防ぐ Laravel / Fortify 標準パターン |
-| パスワード変更成功時の遷移先は? | パスワードタブにリダイレクトし、Fortify 標準の `password-updated` ステータスメッセージを `<x-flash>` 経由で表示 |
+| パスワード変更で「現在のパスワード」を求める理由は? | セッション奪取後にパスワード変更で恒久乗っ取りされることを防ぐ標準パターン |
+| パスワード変更成功時の遷移先は? | パスワードタブにリダイレクトし、成功メッセージを表示 |
 | タブ状態は URL に反映される? | `?tab=profile` / `?tab=password` のクエリパラメータで反映、リロード後も同じタブで再表示 |
-| 通知設定タブはある? | ない。`S-B-04` の通知基盤は全通知 DB + メール固定送信で、種別 × チャネル ON/OFF UI は提供しない |
-| コーチに面談可能時間枠 / Google Calendar 連携タブはある? | 本チケット範囲外(`S-A-01` で扱う)。本チケットでは全ロール共通の 2 タブ(プロフィール / パスワード)のみ |
-| プロフィール編集失敗時の入力値は保持される? | 保持される(Laravel 標準の `old('name')` / `old('bio')` で復元)。エラーメッセージは該当フィールド横に表示 |
-| メールアドレスは画面に表示する? | 表示する(読み取り専用、ロックアイコン付き等で「編集不可」を視覚的に明示)。表示自体は本人確認のため必要 |
-| アカウント状態(受講中 / 修了済 等)は画面に表示する? | 表示する(badge コンポーネントで)。本人が自分の現状を把握できる |
-| フラッシュ文言の推奨は? | プロフィール更新「プロフィールを更新しました。」/ アバターアップロード「アバター画像を更新しました。」/ アバター削除「アバター画像を削除しました。」/ パスワード変更は Fortify 標準の `password-updated` ステータス(`<x-flash>` で「パスワードを更新しました。」相当を表示)(適切な日本語であれば文言の細部は採点対象外) |
+| 通知設定タブはある? | ない。通知は全件 DB + メール固定送信で、種別 × チャネル ON/OFF UI は提供しない |
+| コーチに面談可能時間枠 / Google Calendar 連携タブはある? | 本チケット範囲外。本チケットでは全ロール共通の 2 タブ(プロフィール / パスワード)のみ |
+| プロフィール編集失敗時の入力値は保持される? | 保持される(`old()` で復元)。エラーメッセージは該当フィールド横に表示 |
+| アカウント状態(受講中 / 修了済 等)は画面に表示する? | 表示する(本人が自分の現状を把握できる) |
+| フラッシュ文言の推奨は? | プロフィール更新「プロフィールを更新しました。」/ アバターアップロード「アバター画像を更新しました。」/ アバター削除「アバター画像を削除しました。」/ パスワード変更「パスワードを更新しました。」相当(適切な日本語であれば文言の細部は採点対象外) |
+| エラーメッセージの推奨例は? | 「氏名は必須です。」「氏名は 50 文字以内で入力してください。」「自己紹介は 1000 文字以内で入力してください。」「固定面談 URL は有効な URL 形式で入力してください。」「現在のパスワードが正しくありません。」「パスワードは 8 文字以上で入力してください。」「パスワード(確認用)が一致しません。」「PNG / JPEG / WebP のいずれかでアップロードしてください。」「ファイルサイズは 2 MB 以下にしてください。」 |

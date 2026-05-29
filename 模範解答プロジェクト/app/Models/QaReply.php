@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * 質問掲示板スレッドへの回答を表す Model。
  *
- * 編集 / 削除は本人 + admin に限り許可される。削除は物理削除。スレッドの削除可否判定では
- * 回答テーブルに行が残っているかで判断する (回答 0 件のみ投稿者削除可)。
+ * 編集 / 削除は本人 + admin に限り許可される。削除は物理削除。投稿者によるスレッド削除は、
+ * 回答が 1 件でも残っていれば DestroyAction が QaThreadHasRepliesException (409) で拒否する (admin は無条件削除)。
  *
  * 関連: QaThread / User(回答者)
  */

@@ -8,74 +8,56 @@
 | Feature 連番 | `content-management-01` |
 | Feature | content-management |
 | 種別 | Bug |
-| サブカテゴリ | 認可・認証(Policy 解禁) |
+| サブカテゴリ | 認可・認証 |
 | 難易度 | Basic |
 | 工数 (h) | 4 |
 | 依存チケット | (なし) |
 
 ## 概要
 
-コーチ(coach)が自分の担当資格配下の教材管理画面(Part / Chapter / Section / 演習問題 / 教材内画像 / 出題分野マスタ)にアクセスすると 403 が返り、本来できるはずの教材閲覧・編集・公開・並び替えが一切実行できない。同じ画面でも管理者(admin)は問題なくアクセスできるため、コーチ専用の運用導線が完全に塞がれている状態。
+コーチ(coach)が自分の担当資格配下の教材管理画面(Part / Chapter / Section / 演習問題 / 教材内画像 / 出題分野マスタ)にアクセスすると 403 が返り、本来できるはずの教材の閲覧・編集・公開・並び替えが一切実行できない。同じ画面でも管理者(admin)は問題なくアクセスできるため、コーチ専用の運用導線が完全に塞がれている。
 
 ## 再現手順
 
 **前提**: コーチ A としてログイン済み。コーチ A は資格 X の担当割当を持つ(その他資格は非担当)。
 
 1. コーチ A で資格 X の教材管理画面(Part 一覧)を開く
-2. → 403 Forbidden が返り、画面が表示されない
-3. 同様に Part 詳細 / Chapter 詳細 / Section 編集 / 演習問題一覧 / 出題分野マスタ一覧 のいずれを開いても 403
-4. (参考)同じ画面を管理者で開くと 200 で正常表示される
+2. → 403 が返り、画面が表示されない
+3. Part 詳細 / Chapter 詳細 / Section 編集 / 演習問題一覧 / 出題分野マスタ一覧 のいずれを開いても 403
+4. (対比)同じ画面を管理者で開くと正常に表示される
 
-## 期待する動作
+## 期待する結果
 
-コーチ A は担当資格 X 配下の教材管理画面に 200 でアクセスでき、Part / Chapter / Section / 演習問題 / 教材内画像 / 出題分野マスタの **作成・編集・削除・公開・非公開・並び替え** を実行できる。一方で、コーチ A が **担当していない資格** Y 配下の教材管理にアクセスすると引き続き 403 が返り、ロール横断のアクセスは遮断される。
+コーチ A は担当資格 X 配下の教材管理画面に正常にアクセスでき、Part / Chapter / Section / 演習問題 / 教材内画像 / 出題分野マスタの作成・編集・削除・公開・非公開・並び替えを実行できる。一方で、コーチ A が担当していない資格 Y 配下の教材管理にアクセスすると引き続き 403 が返る。
 
-## 実際の動作
+## 実際の結果
 
-コーチが教材管理関連の全画面・全操作(一覧表示 / 作成 / 編集 / 削除 / 公開・非公開 / 並び替え / 画像アップロード)に対して、担当資格・担当外資格を問わず 403 Forbidden が返る。Part 一覧の入口だけでなく、配下の Chapter / Section / 演習問題 / 教材内画像アップロード / 出題分野マスタの全操作が封鎖されている。管理者は同じ画面・操作で正常動作するため、コーチに対する認可判定だけが過剰拒否となっている。
+コーチが教材管理関連の全画面・全操作(一覧表示 / 作成 / 編集 / 削除 / 公開・非公開 / 並び替え / 画像アップロード)に対して、担当資格・担当外資格を問わず 403 が返る。Part 一覧の入口だけでなく、配下の Chapter / Section / 演習問題 / 教材内画像 / 出題分野マスタの全操作が封鎖されている。管理者は同じ画面・操作で正常動作するため、コーチに対する認可判定だけが過剰に拒否されている。
 
 ## 受け入れ条件
 
-- [ ] **担当資格 - 一覧表示**: 担当資格を持つコーチがログイン後、当該資格の教材管理画面(Part 一覧) を開くと 200 が返り、当該資格配下の Part 一覧が表示される(配下の Chapter 詳細 / Section 編集 / 演習問題一覧 / 出題分野マスタ一覧画面も同様に 200 で表示される)
-- [ ] **担当資格 - CRUD 実行**: 担当資格を持つコーチが、Part / Chapter / Section / 演習問題 / 出題分野マスタの新規作成・編集・削除・公開・非公開・並び替え、および教材内画像のアップロード・削除を実行すると成功し、対象画面へリダイレクトされる(認可で弾かれず操作が完了し、データに反映される)
-- [ ] **担当外資格 - 認可維持**: 担当資格を持たないコーチが他資格の教材管理画面(一覧 / 詳細 / 作成・編集・削除 / 状態遷移 / 並び替え / 画像アップロード / 出題分野マスタ)にアクセスすると 403 が返る(本修正で担当外資格まで開放されていないこと)
+- [ ] 担当資格を持つコーチが当該資格の教材管理画面(Part / Chapter / Section / 演習問題 / 教材内画像 / 出題分野マスタ)を開くと 200 で表示され、それぞれの作成・編集・削除・公開/非公開・並び替え・画像アップロード等の操作が認可で弾かれず実行できる
+- [ ] 担当資格を持たないコーチが他資格の教材管理画面・操作にアクセスすると 403 が返り、管理者は全資格の教材管理を従来どおり操作できる(本修正で担当外資格まで開放されておらず、管理者の正常系も壊れていない)
+- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
-## 実装方針
+## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の調査・修正方針を組み立てる。
+> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない(受講生は提供 PJ のコードリーディング + コーチへのヒアリングで調査・修正方針を組み立てる)。
 
-### 主要 URL
+### 原因
 
-> コーチ・管理者が利用する教材管理(content-management Feature)関連エンドポイント。本 Bug 発生時はこれらすべてでコーチが 403 を観測する。
-
-| メソッド | パス | 振る舞い |
-|---|---|---|
-| GET | `/admin/certifications/{certification}/parts` | Part 一覧 |
-| GET / POST | `/admin/certifications/{certification}/parts/create` / `/admin/certifications/{certification}/parts` | Part 新規作成 |
-| GET / PATCH / DELETE | `/admin/parts/{part}` ほか | Part 詳細 / 編集 / 削除 |
-| POST | `/admin/parts/{part}/publish` / `unpublish` | Part 公開 / 非公開 |
-| PATCH | `/admin/certifications/{certification}/parts/reorder` | Part 並び替え |
-| GET / POST / PATCH / DELETE | `/admin/parts/{part}/chapters` 配下、`/admin/chapters/{chapter}` ほか | Chapter CRUD + publish / unpublish / reorder |
-| GET / POST / PATCH / DELETE | `/admin/chapters/{chapter}/sections` 配下、`/admin/sections/{section}` ほか | Section CRUD + publish / unpublish / reorder / preview |
-| GET / POST / PATCH / DELETE | `/admin/sections/{section}/questions` 配下、`/admin/section-questions/{sectionQuestion}` ほか | 演習問題 CRUD + publish / unpublish |
-| POST / DELETE | `/admin/sections/{section}/images` / `/admin/section-images/{image}` | 教材内画像 アップロード / 削除 |
-| GET / POST / PATCH / DELETE | `/admin/certifications/{certification}/question-categories` 配下、`/admin/question-categories/{category}` ほか | 出題分野マスタ CRUD |
-
-### 原因箇所メモ
-
-- 原因の主要ファイル: `app/Policies/PartPolicy.php`
-- 関連ファイル: `app/Policies/ChapterPolicy.php` / `app/Policies/SectionPolicy.php` / `app/Policies/SectionQuestionPolicy.php` / `app/Policies/SectionImagePolicy.php` / `app/Policies/QuestionCategoryPolicy.php`
-- 仕込み内容(Step 4 引き算): 上記 6 Policy 内で coach ロールの判定箇所(`canManage()` / `viewAny()` / `view()` 内の `UserRole::Coach => ...` 分岐、および担当判定ヘルパー `assignedCoach()`)を「常に `false` を返す」状態に書き換える。`assignedCoach()` ヘルパーメソッドを持つ Policy(Part / Chapter / Section / SectionQuestion)はヘルパー戻り値が `false` 固定、ヘルパーを持たない Policy(SectionImage / QuestionCategory)は `match` 文の `UserRole::Coach` 分岐を `false` に直接置換するパターン。**Middleware(`auth + role:admin,coach`)はそのまま** で、ロール判定はパスする(role:coach がブロックされたら admin が混入しなくなり別問題に見えてしまうため、Policy 層だけで再現する)。
-- 受講生が辿るべき修正範囲: 6 Policy の coach 判定を「`certification_coach_assignments` 経由で担当資格判定し、担当ありなら true / 担当なしなら false」に戻す。担当判定の SQL は `$certification->coaches()->where('users.id', $coach->id)->exists()` で実装可能(`Certification::coaches()` リレーションが既存)。
+- **主要ファイル**: `app/Policies/PartPolicy.php`(教材 Part の認可判定)。同じ構造でコーチ判定を担う `ChapterPolicy` / `SectionPolicy` / `SectionQuestionPolicy` / `SectionImagePolicy` / `QuestionCategoryPolicy` を含む計 6 Policy が対象。
+- **仕込み内容**: 6 Policy のコーチ(coach)分岐が、担当資格かどうかを問わず常に拒否を返している。担当判定は本来 `Certification::coaches()` リレーション(`certification_coach_assignments` 中間テーブル)で「当該資格の担当コーチか」を `exists()` 判定する(Part / Chapter / Section / SectionQuestion は `assignedCoach()` ヘルパー、SectionImage / QuestionCategory は `canManage()` 内のインライン判定)が、その結果が常に拒否に固定されている。管理者(admin)分岐は許可のままなので管理者は影響を受けない。ロール存在確認の Middleware(`role:admin,coach`)はパスするため、リソース固有認可(Policy)層だけで拒否が起きている。
+- **修正範囲**: 6 Policy のコーチ判定を「担当資格なら許可 / 担当外なら拒否」に戻す。各 Policy 数行の修正で完結し、Controller / Middleware の変更は不要。
 
 ## 補足
 
-### 想定ヒアリング Q&A
+### 想定 Q&A
 
 | 質問 | 回答 |
 |---|---|
-| 修正後の正しい振る舞いは? | コーチ × 担当資格 → 教材管理画面の全 CRUD 可、コーチ × 担当外資格 → 403、管理者 → 全資格 CRUD 可、受講生 → 教材管理画面そのものへのアクセス導線なし(受講生の閲覧導線は learning Feature 経由の教材閲覧画面で、本 Bug の影響範囲外) |
-| 管理者の挙動は壊れていないか? | 壊れていない。管理者は本来の振る舞い(全資格 CRUD 可)が維持されている。動作確認時は管理者で同じ画面を開いて 200 を確認できる |
-| 受講生の閲覧導線は本 Bug の影響を受けるか? | 受けない。受講生は教材管理画面ではなく learning Feature の教材閲覧画面を経由してアクセスし、本 Bug の修正は受講生の閲覧経路に影響しない |
+| 修正後の正しい振る舞いは? | コーチ × 担当資格 → 教材管理の全操作可、コーチ × 担当外資格 → 403、管理者 → 全資格で操作可、受講生 → 教材管理画面そのものへの導線なし(受講生の閲覧導線は教材閲覧画面で、本 Bug の影響範囲外) |
+| 管理者の挙動は壊れていないか? | 壊れていない。管理者は本来の振る舞い(全資格で操作可)が維持されている。動作確認時は管理者で同じ画面を開いて正常表示を確認できる |
+| 受講生の教材閲覧導線は本 Bug の影響を受けるか? | 受けない。受講生は教材管理画面ではなく教材閲覧画面を経由してアクセスし、本 Bug の修正は受講生の閲覧経路に影響しない |
 | 学習有効性ガード(受講停止状態のブロック)の影響は? | 影響なし。これは受講生の利用状態(受講中 / 修了 / 退会 等)を制御する仕組みで、管理者 / コーチの経路には適用されていない |
-| 公開済 Part / Chapter の削除ガード(公開中は削除不可、409)が動かなくなることはあるか? | ない。状態ベースのガード(公開中状態では削除を拒否する判定)は認可とは別の仕組みで実装されており、本 Bug の認可修正の範囲とは独立 |
+| 公開済 Part / Chapter の削除ガード(公開中は削除不可)が動かなくなることはあるか? | ない。状態ベースのガード(公開中状態では削除を拒否する判定)は認可とは別の仕組みで、本 Bug の認可修正の範囲とは独立 |

@@ -28,7 +28,8 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
  * 質問掲示板スレッド Controller。受講生 / コーチ / admin 共通で利用される。
  *
  * リソース固有認可は QaThreadPolicy に集約。投稿は student のみ、編集 / 解決マークは投稿者本人のみ
- * (admin 代行不可)。削除は投稿者本人(回答 0 件のみ)または admin(無条件モデレーション削除)。
+ * (admin 代行不可)。削除は投稿者本人または admin が可能で、投稿者削除時の「回答あり = 削除不可」状態ガードは
+ * DestroyAction が QaThreadHasRepliesException (409) で担う(admin は無条件モデレーション削除)。
  */
 class QaThreadController extends Controller
 {
