@@ -56,6 +56,17 @@ jobs:
           sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
           php artisan key:generate
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build front-end assets (Vite manifest)
+        # view をレンダリングするテストは layouts の @vite() 解決に manifest を必要とする
+        run: |
+          npm ci
+          npm run build
+
       - name: Create testing database
         run: mysql -h 127.0.0.1 -P 3306 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS testing; GRANT ALL PRIVILEGES ON testing.* TO 'sail'@'%'; FLUSH PRIVILEGES;"
 

@@ -1,6 +1,5 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { login } = require('../../fixtures/auth');
 
 /**
  * mock-exam（受講生）— 振る舞いベース検証。
@@ -42,9 +41,7 @@ async function openInProgressTakePage(page) {
 }
 
 test.describe('mock-exam（受講生）', () => {
-    test.beforeEach(async ({ page }) => {
-        await login(page, 'student');
-    });
+    test.use({ storageState: '.auth/student.json' });
 
     test('受験履歴に採点済セッションが並ぶ', async ({ page }) => {
         await page.goto('/mock-exam-sessions');

@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { login, ACCOUNTS } = require('../../fixtures/auth');
+const { login } = require('../../fixtures/auth');
 
 test.describe('auth: ログイン', () => {
     test('ログイン画面が表示される', async ({ page }) => {
@@ -16,9 +16,10 @@ test.describe('auth: ログイン', () => {
         await expect(page).not.toHaveURL(/\/login$/);
     });
 
-    test('異常: 誤ったパスワードはログインできず /login に留まる', async ({ page }) => {
+    test('異常: 誤った認証情報ではログインできず /login に留まる', async ({ page }) => {
         await page.goto('/login');
-        await page.fill('input[name="email"]', ACCOUNTS.student.email);
+        // 固定アカウントの throttle 枠（5回/分）を消費しないよう、存在しないアドレスで負経路を検証
+        await page.fill('input[name="email"]', 'nonexistent-user@example.test');
         await page.fill('input[name="password"]', 'wrong-password');
         await page.click('button[type="submit"], input[type="submit"]');
         // 認証失敗 → /login のまま、入力フォームが再表示される
