@@ -43,8 +43,6 @@
 
 ## 実装方針(参考)
 
-> **粒度**: 業務語彙で原因要約 + 主要ファイルパス・クラス名・メソッド名を併記。修正コード片 / SQL 詳細は書かない(コードリーディングは受講生の作業)。
-
 ### 原因
 
 - **主要ファイル**: `app/Services/TermJudgementService.php` の `recalculate(Enrollment)`(学習ターム判定の集約 Service)。この Service は、受験セッションの状態変化を伴う `MockExamSession\{Start,Submit,Destroy}Action` が状態変更と同一トランザクション内で呼び出す

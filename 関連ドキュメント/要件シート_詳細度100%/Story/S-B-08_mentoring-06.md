@@ -15,7 +15,7 @@
 
 ## 背景・目的
 
-- **現状の問題**: 提供 PJ のコーチは面談予約・面談に紐づく議事メモは記録できるが、面談以外の日常観察(「最近 chat の応答が遅れている」「Q&A で躓いた論点」「次回面談で確認したい事項」等)を構造化して残す場所がない。複数受講生を持つコーチは私的なメモ帳や別ツールに分散管理することになり、引き継ぎや管理者監督が困難。
+- **現状の問題**: コーチは面談予約・面談に紐づく議事メモは記録できるが、面談以外の日常観察(「最近 chat の応答が遅れている」「Q&A で躓いた論点」「次回面談で確認したい事項」等)を構造化して残す場所がない。複数受講生を持つコーチは私的なメモ帳や別ツールに分散管理することになり、引き継ぎや管理者監督が困難。
 - **達成したい状態**: コーチが担当資格に登録した受講生の受講登録単位でメモを CRUD でき、時系列に履歴を残せる。複数コーチ体制下では各コーチが自分のメモのみ編集 / 削除でき、管理者は全コーチのメモを越境管理できる。受講生本人にはメモが完全に見えない(コーチ → 管理者の業務記録の性質を保つ)。
 - **価値・優先度**: 担当コーチが受講生の状況を継続観察するための **業務記録基盤**。本機能が整うとコーチ間の知見共有が促され、担当変更時の引き継ぎも円滑になる。新規エンティティの CRUD + ロール × 当事者の二重認可判定として Policy の典型実装が揃う Basic 構成。
 
@@ -78,8 +78,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 **エンドポイント**:
@@ -100,8 +98,6 @@
 | エンティティ (Model) | 主要属性 | 関係性 | 制約 |
 |---|---|---|---|
 | 受講生メモ (`EnrollmentNote`) | 本文 / 作成者(業務語彙) | 受講登録(`Enrollment`)に N:1 所属(`Enrollment::notes()` HasMany)/ 作成者(`User`、`coach_user_id` 経由 `author()` BelongsTo) | ULID 主キー / `enrollment_id` FK `cascadeOnDelete`(親受講登録削除で連動物理削除)/ `coach_user_id` FK `restrictOnDelete`(作成者 User の物理削除を阻む = 退会は論理削除で行う)/ SoftDelete 不採用 = 物理削除のみ |
-
-> **制約列に集約する情報**: `enrollment_id` は `cascadeOnDelete`(受講登録削除でメモも消える)、`coach_user_id` は `restrictOnDelete`(作成者を物理削除させず、`withTrashed()` で論理削除済作成者名を解決可能)。本テーブルは進捗・履歴系ではないが、誤削除は UI 確認ダイアログで防ぐ前提で SoftDelete を採らない。
 
 **Enum**: 本チケットで新規 Enum なし。
 
@@ -124,7 +120,7 @@
 **FormRequest** (`app/Http/Requests/EnrollmentNote/`)
 - `StoreRequest` / `UpdateRequest` — 本文の検証 + `authorize()` で Policy(`create` / `update`)を呼ぶ
 
-**Action** (`app/UseCases/EnrollmentNote/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/EnrollmentNote/`、※ Advance 範囲、Basic 受講生は Controller 内完結も可)
 - `StoreAction`(作成者に操作者を記録して INSERT)/ `UpdateAction`(本文のみ更新、作成者不変)/ `DestroyAction`(物理削除)
 
 **Policy** (`app/Policies/`)
@@ -133,7 +129,7 @@
 **Model** (`app/Models/`)
 - `EnrollmentNote`(新規)/ `Enrollment`(`notes()` HasMany を追加)
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/enrollment-note/edit.blade.php`(編集専用ページ)/ `resources/views/enrollment-note/_list.blade.php`(親 `enrollments.show` に埋め込むメモ一覧 + 追加フォーム)
 
 **Migration / Seeder**

@@ -15,9 +15,9 @@
 
 ## 背景・目的
 
-提供 PJ では通知ベル UI と通知一覧画面(`/notifications` 静的ページ)はあるが、ベルクリックで一覧画面に遷移するだけで「ちょい見・即既読化」のスナップ動線がない。学習中の受講生は通知の有無を知るためだけに画面遷移が必要で UX が断絶している。さらに提供 PJ の通知 JSON API が認証なしで公開されており、他人の通知 ID を直叩きすると個人通知が露出するセキュリティ上のリスクも残っている。
+通知ベル UI と通知一覧画面(`/notifications` 静的ページ)はあるが、ベルクリックで一覧画面に遷移するだけで「ちょい見・即既読化」のスナップ動線がない。学習中の受講生は通知の有無を知るためだけに画面遷移が必要で UX が断絶している。さらに通知 JSON API が認証なしで公開されており、他人の通知 ID を直叩きすると個人通知が露出するセキュリティ上のリスクも残っている。
 
-本チケットは提供 PJ の通知 JSON API に Sanctum Cookie 認証を後付けし、TopBar のベルアイコンにフックして「ベルクリックで API を非同期取得 → 通知ポップオーバーで動的表示」する JS フロントエンドを新規実装する。ポップオーバーには全件 / 未読タブ + 全件既読ボタン + フッターから全通知ページへの導線を備える。受講生学習体験のスナップアウト改善 + 通知 API のセキュリティ強化 + 実務で頻出する Sanctum SPA Cookie 認証 / `fetch` + CSRF 二段防御 / Resource クラスでの API レスポンス整形 を扱う Advance スコープの代表チケット。
+本チケットは既存の通知 JSON API に Sanctum Cookie 認証を後付けし、TopBar のベルアイコンにフックして「ベルクリックで API を非同期取得 → 通知ポップオーバーで動的表示」する JS フロントエンドを新規実装する。ポップオーバーには全件 / 未読タブ + 全件既読ボタン + フッターから全通知ページへの導線を備える。受講生学習体験のスナップアウト改善 + 通知 API のセキュリティ強化 + 実務で頻出する Sanctum SPA Cookie 認証 / `fetch` + CSRF 二段防御 / Resource クラスでの API レスポンス整形 を扱う Advance スコープの代表チケット。
 
 ## ユーザーストーリー
 
@@ -26,7 +26,7 @@
 - **受講生として**、ポップオーバーで全件既読ボタンを押すと一気に未読バッジが 0 になる体験を期待する。なぜなら、未読が溜まったときの一括処理を素早く済ませたいから。
 - **コーチ(coach)として**、同じ通知ポップオーバーを使う。なぜなら、受講生と同じ通知基盤を共有しており、専用 UI を覚えたくないから。
 - **管理者(admin)として**、本機能(ポップオーバー UI)は対象外。なぜなら、管理者は通知の受信側ではなく配信側で、別画面で運用情報を確認するから。
-- **管理者として**、通知 JSON API への直叩きアクセスが他人の通知を漏らさない構造を期待する。なぜなら、提供 PJ の認証なし API はセキュリティ上の負債で、本番運用前に必ず認証を後付けする必要があるから。
+- **管理者として**、通知 JSON API への直叩きアクセスが他人の通知を漏らさない構造を期待する。なぜなら、現状の認証なし API はセキュリティ上の負債で、本番運用前に必ず認証を後付けする必要があるから。
 - **管理者として**、API への認証は同一オリジンの Cookie ベースで実現しつつ、将来 BE-FE 別オリジン構成に展開できる素地を期待する。なぜなら、実務で BE-FE 別オリジン構成のセキュリティ要件を満たす運用を想定しているから。
 
 ## 要件
@@ -34,7 +34,7 @@
 ### Sanctum Cookie 認証の後付け(API 保護)
 
 - Sanctum stateful 設定の構成(stateful ドメイン定義、Cookie + CSRF 二段防御の有効化)
-- 通知 JSON API 3 ルートへの `auth:sanctum` Middleware 適用(提供 PJ の認証なし通知 JSON API を実用化)
+- 通知 JSON API 3 ルートへの `auth:sanctum` Middleware 適用(認証なし通知 JSON API を実用化)
 - Sanctum 提供の CSRF Cookie endpoint の公開(初回 GET で XSRF Cookie がブラウザにセットされる状態)
 - API 側を「対象ユーザー指定クエリ」から「認証ユーザー本人の通知」に切替(認証ユーザー自身の通知のみ取得 / 既読化、他者通知 ID 指定は 403)
 
@@ -96,8 +96,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 | HTTP | パス | 認可 | 振る舞い |
@@ -109,51 +107,51 @@
 
 **ミドルウェア**: `routes/api.php` の `v1` group 全体に `auth:sanctum` 適用(未通過は 401)。
 
-**既存 Web ルートとの共存**: `routes/web.php` の `/notifications` フルページ(提供 PJ 既存)はそのまま維持。本チケットは JSON API の `routes/api.php` 配下に Sanctum 認証を後付け + JS フロントを新規追加。
+**既存 Web ルートとの共存**: `routes/web.php` の `/notifications` フルページ(既存)はそのまま維持。本チケットは JSON API の `routes/api.php` 配下に Sanctum 認証を後付け + JS フロントを新規追加。
 
 **ロール別の UI 表示**: 受講生 / コーチには通知ポップオーバーを表示、管理者は対象外(JS 初期化スキップ、API 一覧は 0 件で返る)。
 
 ### データモデル
 
-提供 PJ の通知基盤(`notifications` テーブル + `BaseNotification` 抽象基底 + 4 通知種別クラス)を本チケットで再利用。本チケットでテーブル / Model / Enum の新規追加なし。
+既存の通知基盤(`notifications` テーブル + `BaseNotification` 抽象基底 + 4 通知種別クラス)を本チケットで再利用。本チケットでテーブル / Model / Enum の新規追加なし。
 
 ### コンポーネント
 
-**Controller** (`app/Http/Controllers/Api/V1/`、提供 PJ 既存、本チケットで `auth:sanctum` 適用 + 認証ユーザー絞り込みに切替)
+**Controller** (`app/Http/Controllers/Api/V1/`、既存、本チケットで `auth:sanctum` 適用 + 認証ユーザー絞り込みに切替)
 - `NotificationController` — `index` / `markAsRead` / `markAllAsRead`
 
-**FormRequest** (`app/Http/Requests/Api/V1/Notification/`、提供 PJ 既存、本チケットで `user_id` ルールを削除し認証ユーザーから取得に切替)
+**FormRequest** (`app/Http/Requests/Api/V1/Notification/`、既存、本チケットで `user_id` ルールを削除し認証ユーザーから取得に切替)
 - `IndexRequest` — タブ識別子 / 1 ページ件数の検証
 
-**Action** (`app/UseCases/Notification/`、提供 PJ 既存、本チケットで対象ユーザー解決方式を切替)
+**Action** (`app/UseCases/Notification/`、既存、本チケットで対象ユーザー解決方式を切替)
 - `Api\IndexAction` — 認証ユーザー本人の通知をページネーション + タブフィルタで取得
 - `Api\MarkAllAsReadAction` — 認証ユーザー本人の全未読通知を一括既読化
-- `MarkAsReadAction` — Web / API 共有(提供 PJ 既存)
+- `MarkAsReadAction` — Web / API 共有(既存)
 
-**Resource** (`app/Http/Resources/Api/V1/`、提供 PJ 既存を流用)
+**Resource** (`app/Http/Resources/Api/V1/`、既存を流用)
 - `NotificationResource` — 通知データ JSON 平坦化
 
 **View Composer** (`app/View/Composers/`、新規)
 - `NotificationBadgeComposer` — TopBar Blade に未読件数を渡す(1 リクエスト 1 回の `count` クエリで O(1))
 
-**Policy** (`app/Policies/`、提供 PJ 既存)
+**Policy** (`app/Policies/`、既存)
 - `NotificationPolicy::update` — 単一既読化対象が認証ユーザー本人宛か検証
 
 **Blade コンポーネント**(新規)
 - `resources/views/notifications/_partials/notification-popover.blade.php` — ポップオーバー HTML 構造 + 通知行テンプレ
-- `resources/views/layouts/_partials/topbar.blade.php`(提供 PJ 既存) — ベルアイコンに data 属性 + ポップオーバー組込
+- `resources/views/layouts/_partials/topbar.blade.php`(既存) — ベルアイコンに data 属性 + ポップオーバー組込
 
 **JS フロント** (`resources/js/`、新規)
 - `notification/notification-popover.js` — ポップオーバー制御(タブ切替 / 行クリック / 全件既読 / バッジ動的更新 / 遷移先 URL 解決)
 - `utils/fetch-json.js` — CSRF Cookie 取得管理 + JSON ヘッダ統一 wrapper
-- `app.js`(提供 PJ 既存) — `DOMContentLoaded` 時に管理者以外でポップオーバー初期化呼出を追加
+- `app.js`(既存) — `DOMContentLoaded` 時に管理者以外でポップオーバー初期化呼出を追加
 
 **Sanctum 認証層**(構成変更)
 - `config/sanctum.php` — stateful ドメイン群を環境変数経由で構成
 - `config/cors.php` — 同一オリジン運用の最小設定
 - `bootstrap/app.php` — api ミドルウェアグループに Sanctum 用 stateful Middleware を追加
 
-**Routes** (`routes/api.php`、提供 PJ 既存、本チケットで `auth:sanctum` を適用)
+**Routes** (`routes/api.php`、既存、本チケットで `auth:sanctum` を適用)
 - `v1` group の通知ルート 3 本に Sanctum 認証を後付け
 
 **環境設定**
@@ -182,7 +180,7 @@
 - **JS フロントは素の JavaScript + `fetch` API**: Vite ビルドで Vue / React 等リアクティブ FW は採用しない(実務で頻出する「リアクティブ FW なしでの通知 UI 実装」に相当)。バッジカウントは Blade に初期描画 + JS が `data-*` 属性経由で DOM を直接書き換える
 - **遷移先 URL 解決の二重管理**: 通知データに含まれる遷移先ルート名 + パラメータ から JS 側で URL 文字列を switch で組み立てる(Laravel ルート名と JS の URL 解決を二重管理 — 新通知種別追加時は両方を更新)
 - **TopBar バッジの初期値供給**: `NotificationBadgeComposer`(View Composer)で Blade に未読件数を渡す。JS は DOM の `data-*` 属性から読み取り(1 リクエスト 1 回の `count` クエリで O(1))
-- **認証なし通知 API の実用化**: 本チケットで `auth:sanctum` を後付け + 対象ユーザーを「クエリパラメータの `user_id` 指定」から「認証ユーザー本人」に切替。提供 PJ 時点の構造的脆弱性が解消される
+- **認証なし通知 API の実用化**: 本チケットで `auth:sanctum` を後付け + 対象ユーザーを「クエリパラメータの `user_id` 指定」から「認証ユーザー本人」に切替。現状の構造的脆弱性が解消される
 - **テスト観点**: 「Sanctum stateful 通過(認証ユーザーは 200、未認証は 401)」「他人通知 ID への既読化試行で 403」「CSRF Cookie なし POST で 419」「View Composer の未読件数注入(管理者以外でバッジ表示)」「JS ポップオーバーの行クリック既読化 → バッジ -1 → 遷移」が本チケット固有の Feature / ブラウザ動作確認観点
 
 ## 補足
@@ -205,14 +203,14 @@
 | 通知 0 件時の表示は? | リスト領域に「通知はありません。」のセンタリング表示。フッターリンクは表示維持 |
 | ベルバッジが 100 件以上の表示は? | 「99+」に固定 |
 | Pusher / WebSocket リアルタイム push は? | 本チケット範囲外(ベルクリックで fetch する同期動作のみ)。将来拡張余地として broadcast チャネルは Notification 側で既に実装可能な設計 |
-| API レスポンスの Resource は? | `App\Http\Resources\Api\V1\NotificationResource` で通知データ JSON を平坦化。提供 PJ で導入済の Resource を流用 |
+| API レスポンスの Resource は? | `App\Http\Resources\Api\V1\NotificationResource` で通知データ JSON を平坦化。既存の Resource を流用 |
 | CORS 設定は必要? | 同一オリジン運用なら最小設定。BE-FE 別オリジン構成時は許可オリジンに FE オリジンを明記する必要があり、README に規約として記載推奨 |
 | Sanctum API トークン(PAT)も併用する? | 併用しない(本チケットは SPA Cookie のみ) |
 | `routes/web.php` の `/notifications` フルページとの関係は? | 並列で維持。Web 側は Blade + リダイレクト動作(全件閲覧 / フィルタ / ページネーション)、API 側は JSON(ポップオーバー専用、最新 20 件)。Action は共有可能(単一既読化)、一覧 Action は paginate と Web 側の配列返却で別実装 |
 | エラー時のフラッシュ表示は? | ポップオーバーは JS フェッチでフラッシュを使わない(リスト維持)。フルページの既読化動作は Web 側でフラッシュ表示 |
 | 動画記録の長さの目安は? | 1〜2 分でカバー: ログイン → ベルクリック → ポップオーバー開 → 全件タブ → 未読タブ切替 → 行クリック既読化 + 遷移 → 戻る → 全件既読ボタン → バッジ 0 確認 |
-| 旧版(提供 PJ)の TopBar ベル動作との差は? | 提供 PJ ではベルクリックで `/notifications` フルページに直接遷移(JS なし)。本チケットでベルにフックして JS でポップオーバーを開く動作に置き換える。フルページ動線はフッターリンクで継続提供 |
+| 旧版の TopBar ベル動作との差は? | 現状ではベルクリックで `/notifications` フルページに直接遷移(JS なし)。本チケットでベルにフックして JS でポップオーバーを開く動作に置き換える。フルページ動線はフッターリンクで継続提供 |
 | ベルバッジ初期値(ページロード時)はどう取得? | 本チケットで View Composer を新規実装し、TopBar Blade に未読件数を渡す。JS は DOM の data 属性をそこから読む(1 リクエスト 1 回の `count` クエリで O(1)) |
-| TopBar 通知ベル + バッジは提供 PJ ではどう振る舞う? | 提供 PJ のベル Blade はクリックで `/notifications` フルページ遷移(通知基盤完成時点の状態)。バッジ表示と JS ポップオーバーは本チケットで後付け |
+| TopBar 通知ベル + バッジは現状どう振る舞う? | 現状のベル Blade はクリックで `/notifications` フルページ遷移(通知基盤完成時点の状態)。バッジ表示と JS ポップオーバーは本チケットで後付け |
 | 他 Feature の API(決済 / AI 相談 等)との関係は? | 独立。通知 API は notification Feature 専用で、他 Feature の API は本チケットスコープ外。Sanctum 認証基盤(CSRF Cookie + `auth:sanctum`)は本チケットで構築するが、他 Feature の API も将来同じ基盤を流用可能 |
-| 提供 PJ の認証なし通知 JSON API との差分は? | 提供 PJ の API は認証なし + 対象ユーザーをクエリパラメータで指定する設計。本チケットでは `auth:sanctum` 適用 + 対象ユーザーを認証ユーザー本人に切替(認証ユーザー以外の通知 ID 指定は 403)で実用化する |
+| 現状の認証なし通知 JSON API との差分は? | 現状の API は認証なし + 対象ユーザーをクエリパラメータで指定する設計。本チケットでは `auth:sanctum` 適用 + 対象ユーザーを認証ユーザー本人に切替(認証ユーザー以外の通知 ID 指定は 403)で実用化する |

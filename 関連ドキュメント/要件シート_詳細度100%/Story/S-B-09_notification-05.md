@@ -92,8 +92,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 | HTTP | パス | 認可 | 振る舞い |
@@ -139,7 +137,7 @@
 **FormRequest** (`app/Http/Requests/Announcement/`)
 - `StoreRequest` — タイトル / 本文 / 配信対象タイプ / 配信先資格 / 配信先ユーザーの検証 + 配信対象タイプとの組み合わせ整合性チェック(`required_if` / `prohibited_unless`)
 
-**Action** (`app/UseCases/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/`、※ Advance 範囲、Basic 受講生は Controller 内完結も可)
 - `Announcement\{Index,Show,Store}Action` — 配信履歴一覧取得 / 詳細取得 / 配信実行
 - `Notification\NotifyAnnouncementAction` — 配信対象集合解決 + 各受講生への `AnnouncementNotification` 配信 + 配信件数返却(※ 発火フック用ラッパー Action、Basic 受講生は Controller / StoreAction 内で直接通知発火も可)
 
@@ -152,7 +150,7 @@
 **Model + Enum** (`app/Models/`, `app/Enums/`)
 - `Announcement` / `AnnouncementTargetType`
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/announcement/management/{index,create,show}.blade.php` + `_partials/target-fields.blade.php`(配信対象タイプに応じた選択フィールドの動的切替)
 
 **Migration / Seeder**

@@ -15,7 +15,7 @@
 
 ## 背景・目的
 
-- **現状の問題**: 提供 PJ の面談機能は「面談可能時間枠 ∩ 既存予約なし」のみで空き判定しているため、コーチが LMS 外の予定(他社案件 / 私用 / 別 LMS の面談 等)で実際は埋まっている時刻でも受講生から予約成立してしまう。コーチは予約を受けてから「ダブルブッキングなのでキャンセルしてほしい」と運用でカバーしており、受講生体験を損なっている。
+- **現状の問題**: 面談機能は「面談可能時間枠 ∩ 既存予約なし」のみで空き判定しているため、コーチが LMS 外の予定(他社案件 / 私用 / 別 LMS の面談 等)で実際は埋まっている時刻でも受講生から予約成立してしまう。コーチは予約を受けてから「ダブルブッキングなのでキャンセルしてほしい」と運用でカバーしており、受講生体験を損なっている。
 - **達成したい状態**: コーチが自分の Google アカウントを LMS と任意連携することで、Google カレンダーで予定が入っている時刻は予約画面で最初から非表示になり、ダブルブッキングが構造的に消える。予約成立時にはコーチのカレンダーへ面談 Event が自動登録され、キャンセル時には連動削除される。連携・解除はコーチ本人がいつでも切り替えられ、未連携コーチは従来通りの空き判定で動く。
 - **価値・優先度**: コーチ側のスケジュール透明性を OAuth で取り込み、受講生・コーチ双方のダブルブッキング不快体験を構造的に消す。外部サービスへの OAuth クライアント連携(認可フロー + トークン管理 + API 失敗フォールバック)を扱う、実務で頻出する Advance スコープの代表チケット。
 
@@ -82,8 +82,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 **エンドポイント**:
@@ -94,7 +92,7 @@
 | GET | `/settings/google-calendar/callback` | コーチのみ | Google からの認可コールバック受信。`code` / `state` を検証し access_token / refresh_token に交換して連携情報を upsert。成功時 `state.redirect_path` 先へ redirect + フラッシュ「Googleカレンダーと連携しました。」 |
 | DELETE | `/settings/google-calendar` | コーチのみ | Google 側トークンを revoke 後に連携情報を物理削除。成功時 `/settings/profile?tab=meeting` へ redirect + フラッシュ「Googleカレンダー連携を解除しました。」(連携なしでも冪等に成功扱い) |
 
-> 既存 mentoring の `POST /enrollments/{enrollment}/meetings`(予約成立)/ `POST /meetings/{meeting}/cancel`(キャンセル)/ `GET /enrollments/{enrollment}/meetings/availability`(空き枠取得)に **本チケットの拡張がフックされる**(これら URL 自体は提供 PJ で既存)。
+> 既存 mentoring の `POST /enrollments/{enrollment}/meetings`(予約成立)/ `POST /meetings/{meeting}/cancel`(キャンセル)/ `GET /enrollments/{enrollment}/meetings/availability`(空き枠取得)に **本チケットの拡張がフックされる**(これら URL 自体は既存)。
 
 **ミドルウェア**: `auth` + `role:coach` を `settings/google-calendar` route group 全体に適用。
 
@@ -106,8 +104,6 @@
 |---|---|---|---|
 | コーチ Google 連携情報 (`CoachGoogleCredential`) | アクセストークン / リフレッシュトークン / カレンダー ID(既定 `primary`)/ 連携日時(業務語彙) | コーチ(`User`)に 1:1 所属(`User::googleCredential` HasOne / `coach()` BelongsTo) | ULID 主キー / `coach_id` UNIQUE + FK `cascadeOnDelete`(1 コーチ : 1 連携情報)/ SoftDelete 不採用 = 解除時は物理削除 / トークン 2 カラムを Model `$hidden` に追加 |
 | 面談 (`Meeting`、既存に列追加) | Google Event 識別子(`google_event_id`、業務語彙) | — | `google_event_id` は varchar(255) nullable(`completed_at` の後に追加)/ Event 作成成功時のみセット、失敗時 / 連携なし時は NULL |
-
-> **制約列に集約する情報**: `coach_google_credentials` は `coach_id` UNIQUE + `cascadeOnDelete`(コーチ退会で連携情報も自動削除)、SoftDelete 不採用(解除 = LMS 側で完全消失が要件)。`meetings.google_event_id` は nullable で Event 連携の有無を表す。
 
 **Enum**: 本チケットで新規 Enum なし。
 
@@ -148,7 +144,7 @@
 **Model + Enum** (`app/Models/`)
 - `CoachGoogleCredential`(新規)/ `Meeting`($fillable に `google_event_id` 追加)/ `User`(`googleCredential` HasOne 追加)
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/settings/_partials/tab-meeting.blade.php` — 面談設定タブの Google カレンダー連携セクション(連携 / 解除ボタン + 連携状態表示)
 
 **Migration / Seeder**

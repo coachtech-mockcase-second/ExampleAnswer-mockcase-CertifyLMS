@@ -79,8 +79,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 | HTTP | パス | 認可 | 振る舞い |
@@ -124,7 +122,7 @@
 **FormRequest** (`app/Http/Requests/EnrollmentGoal/`)
 - `StoreRequest` / `UpdateRequest` — 追加 / 編集の入力検証 + `authorize()` で `EnrollmentGoalPolicy` に委譲
 
-**Action** (`app/UseCases/EnrollmentGoal/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/EnrollmentGoal/`、※ Advance 範囲、Basic 受講生は Controller 内完結も可)
 - `StoreAction` / `UpdateAction` / `DestroyAction` / `MarkAchievedAction` / `UnmarkAchievedAction` — 各業務操作(達成マーク / 解除は達成日時を無条件 UPDATE する冪等処理)
 
 **Policy** (`app/Policies/`)
@@ -133,7 +131,7 @@
 **Model** (`app/Models/`)
 - `EnrollmentGoal`(`isAchieved()` + `Enrollment` への BelongsTo) / 親 `Enrollment` に `goals()` HasMany
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/enrollment-goal/edit.blade.php` + 入力共通 partial `enrollment-goal/_form.blade.php`。目標一覧 + 追加フォームは受講登録詳細画面(`enrollments.show`)内に表示
 
 **Migration / Seeder**

@@ -41,8 +41,6 @@
 
 ## 実装方針(参考)
 
-> **粒度**: 業務語彙で原因を要約 + 主要ファイルパス・クラス名・メソッド名を併記。修正コード片 / SQL 詳細は書かない(コードリーディングは受講生の作業)。
-
 ### 原因
 
 - **主要ファイル**: `app/UseCases/Plan/IndexAction.php`(プラン一覧取得の status / keyword フィルタ適用)。※ Action 内のため Basic 範囲外。Controller 内完結で実装する受講生は `PlanController::index` の一覧取得処理が対象

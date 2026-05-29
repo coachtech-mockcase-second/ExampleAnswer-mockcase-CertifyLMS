@@ -15,7 +15,7 @@
 
 ## 背景・目的
 
-提供 PJ には chat / Q&A / 面談予約 / 面談キャンセル の業務操作が完成しているが、当事者(やり取りの相手方 / 担当コーチ)への通知配信が無く、画面を開かないと新着 / 状態変更に気付けない。受講生は学習中の取りこぼし、コーチは複数受講生フォロー漏れのリスクを抱える。
+chat / Q&A / 面談予約 / 面談キャンセル の業務操作は完成しているが、当事者(やり取りの相手方 / 担当コーチ)への通知配信が無く、画面を開かないと新着 / 状態変更に気付けない。受講生は学習中の取りこぼし、コーチは複数受講生フォロー漏れのリスクを抱える。
 
 本チケットは業務イベント発生時にデータベース通知 + メール送信で即時配信する基盤を新規構築する。通知一覧画面 + 既読化動線(行クリック既読化 + 全件既読化)を備え、chat メッセージ受信 / Q&A 回答受信 / 面談予約 / 面談キャンセル の 4 業務イベントを発火点として通知を配信する。本チケットが揃わないと、受講生 / コーチが受動的に画面更新を待つ運用になり LMS としての運用体裁が整わない。
 
@@ -36,7 +36,7 @@
 - 行クリックによる既読化 + 通知種別に応じた業務画面へのリダイレクト(chat 通知 → chat ルーム / Q&A 通知 → Q&A スレッド / 面談予約・キャンセル通知 → 面談一覧)
 - 「全件既読にする」ボタンによる自分宛の全未読通知の一括既読化
 
-> TopBar 通知ベル + 未読件数バッジは本チケットでは扱わない。提供 PJ のベル Blade は既存だが、本チケットの段階ではクリック時の `/notifications` 遷移のみで未読バッジ表示なし。
+> TopBar 通知ベル + 未読件数バッジは本チケットでは扱わない。ベル Blade は既存だが、本チケットの段階ではクリック時の `/notifications` 遷移のみで未読バッジ表示なし。
 
 ### 通知発火(4 種類の業務イベント)
 
@@ -80,8 +80,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 | HTTP | パス | 認可 | 振る舞い |
@@ -123,7 +121,7 @@
 **FormRequest** (`app/Http/Requests/Notification/`)
 - `IndexRequest` — タブ識別子 / ページ番号の検証
 
-**Action** (`app/UseCases/Notification/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/Notification/`、※ Advance 範囲、Basic 受講生は Controller 内完結も可)
 - `{Index,MarkAsRead,MarkAllAsRead}Action` — 自分宛通知の取得 / 既読化
 - `Notify{ChatMessageReceived,QaReplyReceived,MeetingReserved,MeetingCanceled}Action` — 通知発火ラッパー(受信者集合解決 + Notification 配信実行、自己除外 / 自己回答スキップ / 担当コーチ判定の責務を集約。Basic 受講生は呼び出し元 Controller 内で `Notification::send()` を直接呼ぶ実装も可)
 
@@ -141,7 +139,7 @@
 **Model**(Laravel 標準 + Notifiable trait)
 - `User` モデルに `Notifiable` trait + Laravel 標準 `Notification` モデル
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/notifications/index.blade.php` + `_partials/notification-row.blade.php`
 
 **Migration / Seeder**
@@ -172,7 +170,7 @@
 
 ### 設計判断
 
-- **発火フックは業務トランザクション確定後に配置**: 模範解答 PJ は発火を業務 Action 内 `DB::afterCommit` で呼ぶ構成。業務トランザクション内で発火しないことで「業務 UPDATE ロールバック + 通知だけ残る」事故を回避。Basic 受講生は Controller 内同期発火に簡略化しても振る舞いは満たせる
+- **発火フックは業務トランザクション確定後に配置**: 既存実装は発火を業務 Action 内 `DB::afterCommit` で呼ぶ構成。業務トランザクション内で発火しないことで「業務 UPDATE ロールバック + 通知だけ残る」事故を回避。Basic 受講生は Controller 内同期発火に簡略化しても振る舞いは満たせる
 - **chat 通知の Mail 抑制**: `ChatMessageReceivedNotification` の `via()` で `mailEnabled=false` 時に `mail` を配列から除外する責務分担(発火側が判断、Notification は反映のみ)
 - **通知データ JSON のスナップショット化**: 発火時に送信者名 / スレッドタイトル等を `data` JSON に焼き込み、一覧描画時の eager load を不要にする。発火後のドメイン変更(送信者改名等)は通知行に反映されないが、通知ログとしては受信時点情報が正という考えと一致
 - **受信者集合解決の発火側責務**: 受信者の利用状態フィルタ(受講中以外スキップ)/ 管理者除外 / 自己除外 / Q&A 自己回答スキップ / 面談予約はコーチのみ / 面談キャンセルは相手方 等の判定を各発火ラッパー Action が個別に所有する設計。Notification クラスは「受け取ったら配信する」責務だけに専念

@@ -51,18 +51,12 @@
 
 ## 実装方針(参考)
 
-> **粒度**: 業務語彙 + 技術名(変更対象ファイルパス・クラス名・メソッド名)を併記。具体的なコード片 / SQL クエリは書かない。「どこを巻き戻すか」が機械的に判断できる粒度にする。
-
 ### 変更内容
 
-- **変更対象ファイル**(3 件、いずれも `app/Console/Commands/` 配下の `handle()`):
-  - `app/Console/Commands/GraduateExpiredUsersCommand.php` — プラン期間満了ユーザーの修了遷移(ループ内で `App\UseCases\Plan\GraduateUserAction` を呼び `status` を `in_progress` → `graduated` に更新)
-  - `app/Console/Commands/FailExpiredEnrollmentsCommand.php` — 受験日超過 受講登録の不合格遷移(ループ内の `DB::transaction` で `status` を `learning` → `failed` に更新 + `EnrollmentStatusChangeService` / `DefaultEnrollmentService` を呼出)
-  - `app/Console/Commands/Mentoring/AutoCompleteMeetingsCommand.php` — 終了超過 面談の完了遷移(ループ内で `App\UseCases\Meeting\AutoCompleteMeetingAction` を呼び `status` を `reserved` → `completed` に更新)
-- **変更前**(提供 PJ で受講生が直面する状態): 各コマンドの取得クエリが `->get()` で全件読み込みになっており、その結果を `foreach` で順次処理する(対象件数分の Eloquent モデルが常時メモリに常駐)
-- **変更後**(理想形): 各コマンドの取得クエリが `->orderBy('id')->chunkById(100, function ($items): void { foreach ($items as $item) { ... } })` の主キーカーソルベース分割処理になっている(1 チャンク 100 件のみメモリに載り、チャンク処理後は GC 対象)
-- **採用技術と判断理由**: Eloquent の `chunkById(N, ...)`(主キーカーソルベース分割)を採用。対象 3 件はいずれも `foreach` 内で WHERE 条件カラム(`status`)を更新するため、オフセットベースの `chunk()` では処理済みレコードが対象外になりオフセットがずれて**取りこぼし**が発生する → `chunkById()` が必須(他の選択肢ではない)。`cursor()` は「1 件ずつメモリに載せて流す」読み専用ストリーミング用途で、状態遷移 + ログ + 通知などの副作用を持つ本処理には不向き。チャンクサイズ 100 は Laravel コミュニティの一般値(過大だとメモリ削減効果が薄れ、過小だとクエリ往復が増える)。`chunk` / `chunkById` / `cursor` の使い分けの一般則 — `chunk()`: WHERE 列を処理中に更新しない分割 / `chunkById()`: WHERE 列を処理中に更新する分割(主キー順序付け制約あり)/ `cursor()`: 副作用を持たない読み専用ストリーミング
-- **テスト観点**: 既存の各コマンド Feature テスト(`tests/Feature/Commands/GraduateExpiredUsersCommandTest.php` / `FailExpiredEnrollmentsCommandTest.php` / `AutoCompleteMeetingsCommandTest.php`)で対象絞り込み・状態遷移・出力メッセージが変更前後で不変。加えて 1 チャンク件数を超える件数(例: 250 件)を投入して終了コード + 期待件数の状態遷移を検証する大量データ完走テストを追加(`memory_get_peak_usage(true)` の絶対値は実行環境依存のため厳密 assert せず参考記録に留める)
+- **対象**(3 件、いずれも `app/Console/Commands/` 配下の `handle()`): `GraduateExpiredUsersCommand.php`(プラン満了ユーザー修了遷移、`Plan\GraduateUserAction` で `status` を `in_progress` → `graduated`)/ `FailExpiredEnrollmentsCommand.php`(受験日超過 受講登録の不合格遷移、`DB::transaction` で `status` を `learning` → `failed` + `EnrollmentStatusChangeService` / `DefaultEnrollmentService` 呼出)/ `Mentoring/AutoCompleteMeetingsCommand.php`(終了超過 面談の完了遷移、`Meeting\AutoCompleteMeetingAction` で `status` を `reserved` → `completed`)
+- **変更前→後**: 各コマンドの取得クエリが `->get()` で全件読み込み + `foreach` 処理(対象件数分の Eloquent モデルが常時メモリ常駐) → `->orderBy('id')->chunkById(100, fn ($items) => ...)` の主キーカーソルベース分割(1 チャンク 100 件のみメモリに載り処理後は GC 対象)
+- **判断理由**: 対象 3 件はいずれも `foreach` 内で WHERE 列(`status`)を更新するため、オフセットベースの `chunk()` では処理済みレコード分だけ位置がずれて取りこぼしが発生 → `chunkById()` 必須。`cursor()` は副作用なしの読み専用ストリーミング用途で本処理(状態遷移 + ログ + 通知)に不向き。チャンクサイズ 100 は一般値(過大はメモリ削減効果減・過小はクエリ往復増)
+- **テスト**: 1 チャンク件数を超える件数(例 250 件)を投入してコマンド完走 + 全件が期待どおり状態遷移する大量データ完走テストを追加(`memory_get_peak_usage(true)` の絶対値は環境依存のため参考記録に留める)+ 既存各コマンド Feature テスト(`tests/Feature/Commands/{GraduateExpiredUsers,FailExpiredEnrollments,AutoCompleteMeetings}CommandTest.php`)の pass(対象絞り込み・状態遷移・出力が不変)
 
 ## 補足
 

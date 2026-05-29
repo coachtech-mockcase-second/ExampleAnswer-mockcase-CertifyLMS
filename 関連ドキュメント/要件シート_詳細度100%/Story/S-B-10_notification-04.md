@@ -80,8 +80,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 本チケットは HTTP エンドポイントを持たず、Schedule で起動する Artisan コマンドが機能トリガとなる。
@@ -132,7 +130,7 @@ $schedule->command('notifications:send-meeting-reminders --window=one_hour_befor
 **Console / Command** (`app/Console/Commands/Notification/`、新規)
 - `SendMeetingRemindersCommand` — `--window` オプション解析 + 配信対象クエリ組立 + `chunkById(100)` で巡回 + Action 呼出 + 処理件数のログ出力
 
-**Action** (`app/UseCases/Notification/`、新規、※ 模範解答 PJ で採用、Basic 受講生は Command 内完結も可)
+**Action** (`app/UseCases/Notification/`、新規、※ Advance 範囲、Basic 受講生は Command 内完結も可)
 - `NotifyMeetingReminderAction` — 受信者集合解決(`student` + `coach`) + 利用状態フィルタ(`UserStatus::InProgress`) + 同一 `(meeting_id, window)` 重複検査(`DatabaseNotification` の JSON path クエリ) + `Notification::send()` 実行
 
 **Notification** (`app/Notifications/Mentoring/`、新規)

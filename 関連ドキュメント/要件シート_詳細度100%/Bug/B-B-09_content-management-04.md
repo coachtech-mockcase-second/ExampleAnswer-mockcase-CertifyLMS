@@ -41,8 +41,6 @@
 
 ## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない(受講生は提供 PJ のコードリーディング + コーチへのヒアリングで調査・修正方針を組み立てる)。
-
 ### 原因
 
 - **主要ファイル**: `app/Http/Controllers/BrowseController.php` の `showPart()` / `showChapter()` / `showSection()`(受講生向け教材閲覧の各画面、`/learning/parts/{part}` ほか)。

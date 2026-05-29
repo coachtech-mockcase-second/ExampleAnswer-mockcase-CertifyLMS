@@ -41,8 +41,6 @@
 
 ## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の調査・修正方針を組み立てる。
-
 ### 原因
 
 - **主要ファイル**: `app/UseCases/Auth/OnboardAction.php`(オンボーディング完了ユースケース、`__invoke`)。冒頭の検証ガードは招待が未使用(`InvitationStatus::Pending`)かつ期限内であることを確認し、不正なら `App\Exceptions\Auth\InvalidInvitationTokenException`(410)を throw する。

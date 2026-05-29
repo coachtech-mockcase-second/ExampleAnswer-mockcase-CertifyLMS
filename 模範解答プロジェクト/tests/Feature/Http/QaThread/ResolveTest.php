@@ -34,26 +34,35 @@ class ResolveTest extends TestCase
         $this->assertNull($thread->resolved_at);
     }
 
-    public function test_double_resolve_returns_409(): void
+    public function test_resolve_is_idempotent_when_already_resolved(): void
     {
         $author = User::factory()->student()->create();
         $cert = Certification::factory()->published()->create();
-        $thread = QaThread::factory()->forCertification($cert)->byUser($author)->resolved()->create();
+        $thread = QaThread::factory()->forCertification($cert)->byUser($author)->resolved()->create(['resolved_at' => now()->subDay()]);
+        $originalResolvedAt = $thread->resolved_at->toDateTimeString();
 
-        $response = $this->actingAs($author)->postJson(route('qa-board.resolve', $thread));
+        $response = $this->actingAs($author)->post(route('qa-board.resolve', $thread));
 
-        $this->assertSame(409, $response->status());
+        $response->assertRedirect(route('qa-board.show', $thread));
+        $response->assertSessionHas('success');
+        $thread->refresh();
+        $this->assertSame(QaThreadStatus::Resolved, $thread->status);
+        $this->assertSame($originalResolvedAt, $thread->resolved_at->toDateTimeString(), '再 resolve でも解決日時は変わらないはず');
     }
 
-    public function test_unresolve_open_thread_returns_409(): void
+    public function test_unresolve_is_idempotent_when_already_open(): void
     {
         $author = User::factory()->student()->create();
         $cert = Certification::factory()->published()->create();
         $thread = QaThread::factory()->forCertification($cert)->byUser($author)->unresolved()->create();
 
-        $response = $this->actingAs($author)->postJson(route('qa-board.unresolve', $thread));
+        $response = $this->actingAs($author)->post(route('qa-board.unresolve', $thread));
 
-        $this->assertSame(409, $response->status());
+        $response->assertRedirect(route('qa-board.show', $thread));
+        $response->assertSessionHas('success');
+        $thread->refresh();
+        $this->assertSame(QaThreadStatus::Open, $thread->status);
+        $this->assertNull($thread->resolved_at);
     }
 
     public function test_non_author_cannot_resolve(): void

@@ -15,7 +15,7 @@
 
 ## 背景・目的
 
-- **現状の問題**: 提供 PJ では受講生の残面談回数は受講プラン契約時に初期付与される分のみで、使い切った後は次の契約更新まで増やせない。残数 0 で予約不可になった受講生は学習リズムを崩しコーチ面談を諦めるしかなく、運営も追加収益機会を取り逃している。
+- **現状の問題**: 受講生の残面談回数は受講プラン契約時に初期付与される分のみで、使い切った後は次の契約更新まで増やせない。残数 0 で予約不可になった受講生は学習リズムを崩しコーチ面談を諦めるしかなく、運営も追加収益機会を取り逃している。
 - **達成したい状態**: 受講生が残数 0 になっても自力でその場で追加面談パックを購入でき、決済完了後すぐに予約画面で残数加算が反映される。運営は admin で面談パックを管理するだけで、価格 / 回数の運用を柔軟にコントロールできる。
 - **価値・優先度**: 学習継続率の維持 + 追加収益動線の構築 + 外部決済連携(Stripe Checkout / Webhook 冪等性 / 署名検証)という実務で頻出する題材を兼ねる Advance スコープの代表チケット。
 
@@ -72,7 +72,7 @@
 - Stripe 以外の決済プロバイダ(PayPal / Square / Pay.jp 等)
 - 返金フロー(受講生主導)— admin が Stripe ダッシュボードから手動操作(返金通知受信で購入記録の状態は更新しうるが、残数返却の自動記録はせず admin の手動判断に委ねる)
 - 面談パックの在庫管理(デジタル商品で無限在庫)
-- 管理者による面談回数の手動付与 UI — 提供 PJ に既存の付与処理を使うが、本チケットでは購入動線のみを扱う
+- 管理者による面談回数の手動付与 UI — 既存の付与処理を使うが、本チケットでは購入動線のみを扱う
 - 残数ゼロ通知 / 購入リマインダーのプッシュ通知
 - 面談パックのまとめ買い割引 / クーポンコード — 単品購入のみ
 - 領収書 / 請求書 PDF 自動発行 — Stripe ダッシュボードからの手動操作で代替
@@ -92,8 +92,6 @@
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
-
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
 
 ### インターフェース(必須)
 
@@ -118,12 +116,12 @@
 |---|---|---|---|
 | 決済 (`Payment`) | 購入者 / 決済種別(`extra_meeting_quota` 固定) / 対象面談パック / Stripe PaymentIntent ID / Stripe Checkout Session ID / 決済額(円スナップショット) / 購入回数(スナップショット) / 状態 / 決済確定日時 | 購入者 受講者(User)N-1 / 面談パック N-1 / 残数取引(`MeetingQuotaTransaction`)1-N(`related_payment_id` 経由) | 購入者・面談パック FK `restrictOnDelete` / **SoftDelete 採用(会計監査要件)** / Checkout Session ID は UNIQUE(NOT NULL)/ PaymentIntent ID は UNIQUE(nullable、決済成功時にセット) |
 
-> `meeting_quota_transactions` は提供 PJ 既存(初期付与 / 消費 / 返却 / 管理者付与の取引を記録)。本チケットでは新規カラムを追加せず、購入(`Purchased`)取引の INSERT で利用する。
+> `meeting_quota_transactions` は既存(初期付与 / 消費 / 返却 / 管理者付与の取引を記録)。本チケットでは新規カラムを追加せず、購入(`Purchased`)取引の INSERT で利用する。
 
 **Enum**:
 
 - 決済状態 (`PaymentStatus`、新規): 処理中 (`Pending`) / 完了 (`Succeeded`) / 失敗 (`Failed`) / 返金 (`Refunded`)。`label()` で「処理中」「完了」「失敗」「返金」
-- 残数取引種別 (`MeetingQuotaTransactionType`、提供 PJ 既存): 本チケットでは 購入 (`Purchased`) を加算(正値)で使用。他に 初期付与 (`GrantedInitial`) / 消費 (`Consumed`) / 返却 (`Refunded`) / 管理者付与 (`AdminGrant`)
+- 残数取引種別 (`MeetingQuotaTransactionType`、既存): 本チケットでは 購入 (`Purchased`) を加算(正値)で使用。他に 初期付与 (`GrantedInitial`) / 消費 (`Consumed`) / 返却 (`Refunded`) / 管理者付与 (`AdminGrant`)
 
 **インデックス用途**:
 
@@ -166,7 +164,7 @@
 **Model + Enum** (`app/Models/`, `app/Enums/`)
 - `Payment` / `PaymentStatus`(新規)、`MeetingQuotaTransaction` / `MeetingQuotaTransactionType`(既存)、`MeetingPack` に `payments()` リレーション追加 / `User` に `payments()` リレーション追加
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/meeting-quota/{checkout-select,success}.blade.php`
 
 **Migration / Seeder / Factory**

@@ -17,7 +17,7 @@
 
 受講生(student) / コーチ(coach)が予約済みの面談をキャンセルすると、面談はキャンセル状態になるのに、消費されていた面談回数が残数に返却されない。キャンセルしても残数が戻らないため、受講生が使える面談回数が実際より少なく集計されてしまう(会計上の不整合)。
 
-> **※ Basic 範囲外への例外注記**: 模範解答 PJ では面談キャンセル処理を `app/UseCases/Meeting/CancelAction.php` の Action に分離しており、面談回数の返却もその中で行う(返却記録自体の生成は `app/UseCases/MeetingQuota/RefundQuotaAction.php`)。原因箇所は Action ファイル内にあるため、本 Bug は構造上 Basic 範囲外を参照する。Basic 受講生は Controller 内完結で実装してよく、その場合は対応する Controller メソッド(`MeetingController::cancel`)内で残数返却を行う形を修正対象とする。いずれの構成でも受け入れ条件の振る舞いを満たせばよい。
+> **※ Basic 範囲外への例外注記**: 既存実装では面談キャンセル処理を `app/UseCases/Meeting/CancelAction.php` の Action に分離しており、面談回数の返却もその中で行う(返却記録自体の生成は `app/UseCases/MeetingQuota/RefundQuotaAction.php`)。原因箇所は Action ファイル内にあるため、本 Bug は構造上 Basic 範囲外を参照する。Basic 受講生は Controller 内完結で実装してよく、その場合は対応する Controller メソッド(`MeetingController::cancel`)内で残数返却を行う形を修正対象とする。いずれの構成でも受け入れ条件の振る舞いを満たせばよい。
 
 ## 再現手順
 
@@ -43,8 +43,6 @@
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
-
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない。受講生は提供 PJ コード + ヒアリングで自分の調査・修正方針を組み立てる。
 
 ### 原因
 

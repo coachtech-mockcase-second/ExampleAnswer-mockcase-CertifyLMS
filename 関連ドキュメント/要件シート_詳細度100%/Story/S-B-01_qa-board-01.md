@@ -15,7 +15,7 @@
 
 ## 背景・目的
 
-受講生は資格学習中の疑問を 1on1 のチャット(chat Feature、提供 PJ に完成済として同梱)でコーチに個別質問しているが、同じ疑問が複数受講生で繰り返されるため集合知が蓄積されない。コーチも類似質問への対応が重複し工数が膨らむ。
+受講生は資格学習中の疑問を 1on1 のチャット(chat Feature、完成済として同梱)でコーチに個別質問しているが、同じ疑問が複数受講生で繰り返されるため集合知が蓄積されない。コーチも類似質問への対応が重複し工数が膨らむ。
 
 本チケットでは公開型の Q&A 掲示板を新規実装し、過去の質問・回答が他受講生にも参照可能な状態にする。受講生は自己解決率が向上し、コーチは未対応スレッドだけをフォローすればよい状態を達成する。集合知の蓄積によって学習効率向上とコーチ対応工数削減を同時に実現する中核機能。
 
@@ -79,7 +79,7 @@
 - 管理者によるスレッド・回答の内容編集 / 解決マーク代行
 - 同時編集競合の楽観ロック
 - SoftDelete / 削除済表示トグル — 物理削除のみ(削除履歴は保持しない)
-- 1on1 チャット機能(別 Feature `chat` で提供 PJ に完成済として同梱)
+- 1on1 チャット機能(別 Feature `chat` で完成済として同梱)
 - **回答受信時の通知発火** — 本チケットでは通知関連を一切扱わない
 - **未対応件数のサイドバーバッジ表示** — 本機能は提供しない
 
@@ -88,7 +88,7 @@
 - [ ] 受講生が `/qa-board/create` から資格選択 + タイトル + 本文を入力してスレッドを投稿でき、成功時に作成されたスレッド詳細(`/qa-board/{thread}`)にリダイレクト + フラッシュメッセージが表示される
 - [ ] 投稿者本人がタイトル・本文を編集できる(資格は変更不可)。投稿者以外がアクセスすると 403。成功時にスレッド詳細にリダイレクト + フラッシュ表示
 - [ ] 投稿者本人が回答 0 件のスレッドを物理削除でき、回答有のスレッドに対する削除操作は 409 + フラッシュエラーで拒否される
-- [ ] 投稿者本人のみがスレッドを解決マーク / 解除でき、コーチ・管理者・他受講生が操作すると 403(管理者であっても代行不可)。マーク時に解決状態と解決日時が同時に書き込まれ、解除時に両方クリアされる(状態整合性が崩れない)。重複操作(既解決を更にマーク / 未解決を更に解除)は 409
+- [ ] 投稿者本人のみがスレッドを解決マーク / 解除でき、コーチ・管理者・他受講生が操作すると 403(管理者であっても代行不可)。マーク時に解決状態と解決日時が同時に書き込まれ、解除時に両方クリアされる(状態整合性が崩れない)。既に同じ状態のとき(解決済を再マーク / 未解決を再解除)は冪等な no-op として成功し、エラーにならず解決日時も変わらない
 - [ ] 受講生 / コーチが回答投稿・編集・自削除でき、編集はインライン編集ではなく専用ページに遷移して行う。管理者は回答投稿不可で 403、各操作の成功時にフラッシュ表示
 - [ ] スレッド一覧で受講生は公開済資格すべて、コーチは担当資格のみのスレッドを資格別 / 解決状態 / キーワード(タイトル / 本文 / 回答本文の OR 部分一致)で絞り込みでき、新着順 20 件 / ページのページネーションにフィルタ状態が引き継がれる。詳細画面で配下回答が新着順で全件表示される(回答ページネーションなし)。一覧では関連データ(投稿者 / 資格 / 回答数)を一括取得し、スレッド件数増加に対して取得時間が線形に増えない
 - [ ] 管理者は `/admin/qa-board` 経由で全資格(公開停止資格含む)のスレッドを横断閲覧でき、任意のスレッド / 回答を無条件で物理削除可(スレッド削除時に配下回答も連動削除)。管理者の投稿 / 編集 / 解決マーク代行操作は 403 で拒否される
@@ -100,8 +100,6 @@
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
-
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
 
 ### インターフェース(必須)
 
@@ -116,8 +114,8 @@
 | GET | `/qa-board/{thread}/edit` | 投稿者本人のみ(他 403) | 編集フォーム |
 | PATCH | `/qa-board/{thread}` | 投稿者本人のみ | スレッド編集(資格変更不可)、スレッド詳細リダイレクト + フラッシュ「質問を更新しました。」 |
 | DELETE | `/qa-board/{thread}` | 投稿者本人 | スレッド削除(回答 0 件時に成功)。回答ありは状態ガードで 409 + フラッシュエラー「回答が付いているスレッドは削除できません。」 |
-| POST | `/qa-board/{thread}/resolve` | 投稿者本人のみ(管理者代行不可) | 解決マーク、状態 + 日時の同時更新、既解決時 409 |
-| POST | `/qa-board/{thread}/unresolve` | 投稿者本人のみ | 解決解除、状態 + 日時クリアの同時更新、未解決時 409 |
+| POST | `/qa-board/{thread}/resolve` | 投稿者本人のみ(管理者代行不可) | 解決マーク、状態 + 日時の同時更新。既に解決済なら冪等 no-op(解決日時を変えず成功) |
+| POST | `/qa-board/{thread}/unresolve` | 投稿者本人のみ | 解決解除、状態 + 日時クリア。既に未解決なら冪等 no-op(成功) |
 | POST | `/qa-board/{thread}/replies` | 受講生 / コーチ可(管理者 403) | 回答投稿 |
 | GET | `/qa-board/{thread}/replies/{reply}/edit` | 投稿者本人のみ | 回答編集フォーム(専用ページ、インライン編集なし) |
 | PATCH | `/qa-board/{thread}/replies/{reply}` | 投稿者本人のみ | 回答編集 |
@@ -175,7 +173,7 @@ DatabaseSeeder 順序: `UserSeeder` → `CertificationSeeder` → `Certification
 - `QaThread\{Store,Update}Request` — スレッド投稿・編集
 - `QaReply\{Store,Update}Request` — 回答投稿・編集(親スレッド経由の認可委譲)
 
-**Action** (`app/UseCases/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/`、※ Advance 範囲、Basic 受講生は Controller 内完結も可)
 - `QaThread\{Index,Show,Store,Update,Destroy,Resolve,Unresolve}Action` — 一覧時 Eager Loading(`with(['certification', 'user'])` + `withCount('replies')`) / 削除時の投稿者条件分岐 + 配下回答連動 / 解決マーク・解除時の状態 + 日時の同時更新
 - `QaReply\{Store,Update,Destroy}Action`
 
@@ -186,7 +184,7 @@ DatabaseSeeder 順序: `UserSeeder` → `CertificationSeeder` → `Certification
 **Model + Enum** (`app/Models/`, `app/Enums/`)
 - `QaThread` / `QaReply` / `QaThreadStatus`
 
-**View**(提供 PJ 既存、ロック対象、`$isAdminContext = request()->routeIs('admin.*')` で route 動的化)
+**View**(既存、ロック対象、`$isAdminContext = request()->routeIs('admin.*')` で route 動的化)
 - `resources/views/qa-thread/{index,show,create,edit,reply-edit}.blade.php` + `_thread-card` / `_filter` / `_reply` / `_reply-form` partials
 
 **Migration / Seeder**
@@ -195,7 +193,7 @@ DatabaseSeeder 順序: `UserSeeder` → `CertificationSeeder` → `Certification
 - `database/seeders/QaBoardSeeder.php` / `database/factories/QaThreadFactory.php` / `database/factories/QaReplyFactory.php`
 
 **例外** (`app/Exceptions/QaBoard/`)
-- `QaThreadHasRepliesException` / `QaThreadAlreadyResolvedException` / `QaThreadNotResolvedException`(いずれも HTTP 409)
+- `QaThreadHasRepliesException`(HTTP 409、投稿者削除時の「回答あり」状態ガード)
 
 **Routes** (`routes/web.php`)
 - 公開 `qa-board.*`(認証済受講生 / コーチ向け 13 ルート) + 管理者モデレーション `admin.qa-board.*`(`role:admin` 適用、4 ルート)
@@ -220,13 +218,16 @@ DatabaseSeeder 順序: `UserSeeder` → `CertificationSeeder` → `Certification
 **業務例外**(状態ベースガード + HTTP 409):
 
 - 回答ありスレッド削除 (`QaThreadHasRepliesException`) — 投稿者本人の削除で配下回答が 1 件以上ある場合
-- 既解決スレッドへの再マーク (`QaThreadAlreadyResolvedException`) — 既解決を resolve しようとした場合
-- 未解決スレッドへの解除 (`QaThreadNotResolvedException`) — 未解決を unresolve しようとした場合
+
+**冪等な状態トグル**(エラーにしない):
+
+- 解決マーク / 解除は、既に目的状態(解決済 / 未解決)なら no-op で成功扱い。再 resolve でも解決日時を上書きせず、専用例外も持たない(二重送信 / 古いタブ対策)
 
 ### 設計判断
 
-- **公開と管理者モデレーションで Controller / Blade を共通化**: `qa-board.*` と `admin.qa-board.*` の 2 系統で同一 Controller / 同一 Blade を使い、Policy + `@can` + `$isAdminContext` で出し分け。`backend-http.md`「ロール別 namespace 禁止」と整合し、将来のロール追加時のリネームコストを避ける
+- **公開と管理者モデレーションで Controller / Blade を共通化**: `qa-board.*` と `admin.qa-board.*` の 2 系統で同一 Controller / 同一 Blade を使い、Policy + `@can` + `$isAdminContext` で出し分け。ロール別に namespace を分けないことで、将来のロール追加時のリネームコストを避ける
 - **状態整合性は同時更新で担保**: `status` Enum と `resolved_at` を同じ UPDATE 内で書き込み、「`status=resolved` ⇔ `resolved_at != null`」の不変条件を維持(他 Feature の `Enrollment.status + passed_at` と整合するパターン)
+- **解決トグルは冪等(409 ガードを置かない)**: resolve / unresolve は 2 状態(open ⇄ resolved)のトグルで、UI も現在状態に応じて片方のボタンしか出さない。既に目的状態のときの再操作(二重送信 / 古いタブ)は 409 で弾かず冪等 no-op として成功扱いにし、再 resolve でも解決日時は上書きしない。多状態マスタ(Plan / MeetingPack)の遷移ガード(不正遷移を 409 で拒否)とは別物で、2 状態トグルには冪等性のほうが UX・堅牢性ともに適すると判断
 - **削除の認可と状態ガードを分離(Policy = 人ベース / Action = 状態ベース)**: 「投稿者本人か / 管理者か」は `QaThreadPolicy::delete`(人ベース認可)、「回答が付いていて削除不可か」は `DestroyAction` の `QaThreadHasRepliesException`(409)に分担する。回答有無を Policy に混ぜると認可と状態判定が癒着し、削除ボタンの出し分けが状態依存で複雑化するため、マスタ削除(公開中ガード)と同じ責務分離パターンに揃える
 - **列挙攻撃防御は 403 / リソース非公開は 404 の使い分け**: コーチ担当外資格指定は 403(担当外であることを明示)、公開停止資格は 404(資格自体が見えない = リソース不在扱い)で隠蔽レベルを変える
 - **検索は LIKE のみ**: FULLTEXT INDEX / 外部全文検索エンジン不採用、`title` / `body` / `replies.body` の OR 部分一致で MVP として十分とする
@@ -243,7 +244,7 @@ DatabaseSeeder 順序: `UserSeeder` → `CertificationSeeder` → `Certification
 | 公開停止資格のスレッドにアクセスしたら 403 / 404? | 受講生・コーチには **404**(資格自体が見えない = リソース存在しない扱い)、管理者は引き続き閲覧可 |
 | スレッド削除条件は? | 投稿者本人は自分のスレッドを削除可。ただし回答が 1 件でも付いていると 409 で拒否され、回答 0 件のときのみ削除が成功する。管理者は無条件で削除可(配下回答も連動削除) |
 | 解決マーク / 解除は管理者も代行できる? | いいえ、投稿者本人のみ。管理者であっても代行不可 |
-| 解決マーク / 解除の重複操作は? | 既解決状態に対する resolve / 未解決状態に対する unresolve は 409 |
+| 解決マーク / 解除の重複操作は? | 既に同じ状態(解決済を再マーク / 未解決を再解除)なら冪等な no-op として成功扱い。エラーにせず、再マーク時も解決日時は最初のまま変えない(二重送信 / 古いタブ対策)。なお UI では現在状態に応じて片方のボタンしか出さないため通常は発生しない |
 | 削除は SoftDelete / 物理削除? | 物理削除のみ(復旧 UX なし、SoftDelete 不採用) |
 | キーワード検索の対象範囲は? | スレッドタイトル / スレッド本文 / 配下回答本文の OR 部分一致(完全一致ではない)。資格別フィルタ・解決状態フィルタとは AND 結合 |
 | ページネーションは何件 / ページ? | スレッド一覧 20 件 / ページ。配下回答はページネーションなしで詳細画面に全件表示 |

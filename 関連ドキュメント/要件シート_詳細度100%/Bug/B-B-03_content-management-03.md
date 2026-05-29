@@ -13,7 +13,7 @@
 | 工数 (h) | 3 |
 | 依存チケット | (なし) |
 
-> **※ Basic 範囲外への例外注記**: 模範解答 PJ では受講生向け教材閲覧の取得処理を `app/UseCases/Learning/Show{Part,Chapter,Section}Action.php` の Action に分離しているため、原因箇所は Action ファイル内にある。Basic 受講生は通常 Controller 範囲で実装してよく、その場合は対応する Controller メソッド(`BrowseController::showPart` / `showChapter` / `showSection`)を修正対象とする。いずれの構成でも受け入れ条件の振る舞いを満たせばよい。
+> **※ Basic 範囲外への例外注記**: 既存実装では受講生向け教材閲覧の取得処理を `app/UseCases/Learning/Show{Part,Chapter,Section}Action.php` の Action に分離しているため、原因箇所は Action ファイル内にある。Basic 受講生は通常 Controller 範囲で実装してよく、その場合は対応する Controller メソッド(`BrowseController::showPart` / `showChapter` / `showSection`)を修正対象とする。いずれの構成でも受け入れ条件の振る舞いを満たせばよい。
 
 ## 概要
 
@@ -42,8 +42,6 @@
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
-
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない(受講生は提供 PJ のコードリーディング + コーチへのヒアリングで調査・修正方針を組み立てる)。
 
 ### 原因
 

@@ -40,8 +40,6 @@
 
 ## 実装方針(参考)
 
-> **粒度**: 業務語彙で原因要約 + 主要ファイルパス・クラス名・メソッド名を併記。修正コード片 / SQL 詳細は書かない(コードリーディングは受講生の作業)。
-
 ### 原因
 
 - **主要ファイル**: `app/Services/ChatUnreadCountService.php`(個人別未読件数の集計)。集計結果はサイドバーバッジ(`SidebarBadgeComposer` → `roomCountForUser`)と、チャット画面のルーム別バッジ(`ChatRoomController::show` → `messageCountsByRoomForUser`)から利用される。**※ 集計が Service 内にあるため Basic 範囲外**。Basic 受講生が未読集計を Controller / View Composer 内に書いている場合は、その実装箇所(サイドバー = `SidebarBadgeComposer`、チャット画面 = `ChatRoomController::show`)を修正対象とする。

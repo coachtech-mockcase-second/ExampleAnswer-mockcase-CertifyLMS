@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\UseCases\QaThread;
 
 use App\Enums\QaThreadStatus;
-use App\Exceptions\QaBoard\QaThreadAlreadyResolvedException;
 use App\Models\QaThread;
 use App\UseCases\QaThread\ResolveAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,12 +28,18 @@ class ResolveActionTest extends TestCase
         ]);
     }
 
-    public function test_throws_when_already_resolved(): void
+    public function test_resolving_already_resolved_thread_is_noop_and_keeps_resolved_at(): void
     {
-        $thread = QaThread::factory()->resolved()->create();
+        $thread = QaThread::factory()->resolved()->create(['resolved_at' => now()->subDay()]);
+        $originalResolvedAt = $thread->resolved_at->toDateTimeString();
 
-        $this->expectException(QaThreadAlreadyResolvedException::class);
+        $result = app(ResolveAction::class)($thread);
 
-        app(ResolveAction::class)($thread);
+        $this->assertSame(QaThreadStatus::Resolved, $result->status);
+        $this->assertSame(
+            $originalResolvedAt,
+            $thread->fresh()->resolved_at->toDateTimeString(),
+            '既に解決済のスレッドを再 resolve しても解決日時は更新されないはず',
+        );
     }
 }

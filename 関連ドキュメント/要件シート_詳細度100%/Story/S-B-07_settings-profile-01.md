@@ -15,7 +15,7 @@
 
 ## 背景・目的
 
-- **現状の問題**: 提供 PJ のユーザーは招待時に管理者から登録されるが、その後の自己情報(氏名表記の変更 / 自己紹介の追記 / アイコン画像のアップロード / パスワード変更)を更新する画面が存在しない。受講生は学習者としての自分の見え方をコントロールできず、コーチも担当する受講生に対する自己紹介を整えられず、管理者もパスワード変更などの基本セキュリティ動線が無い。
+- **現状の問題**: ユーザーは招待時に管理者から登録されるが、その後の自己情報(氏名表記の変更 / 自己紹介の追記 / アイコン画像のアップロード / パスワード変更)を更新する画面が存在しない。受講生は学習者としての自分の見え方をコントロールできず、コーチも担当する受講生に対する自己紹介を整えられず、管理者もパスワード変更などの基本セキュリティ動線が無い。
 - **達成したい状態**: 全ロールが共通の設定画面から自分の情報を更新できる。プロフィール編集 / パスワード変更 / アバター画像変更 がタブ切替で完結し、コーチには固定面談 URL 編集フィールドが追加される。修了済(graduated)受講生も本画面にはアクセス可(プラン機能はロックされても自分の情報は触れる)。
 - **価値・優先度**: 本機能は全ロール共通の基本機能で、本 LMS の最低限のユーザー体験を整える土台。本チケットが揃わないと、運営側は些細な情報更新依頼まで管理者操作で代行することになり運用コストが増大する。
 
@@ -86,8 +86,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 **エンドポイント**:
@@ -108,7 +106,7 @@
 
 既存 `users` テーブルの `name` / `bio` / `meeting_url` / `avatar_url` / `password` カラムの読み書きのみで、テーブル / Model / Enum の新規追加はない。`email` / `role` / `status` は読み取りのみ。
 
-- **アバターストレージ**: `Storage::disk('public')` の `avatars/{ulid}.{ext}` に保存し、`/storage/avatars/...` の publicUrl で配信(`php artisan storage:link` 済を提供 PJ に同梱)。`avatar_url` が NULL のときはアイコンコンポーネントがイニシャル表示にフォールバック
+- **アバターストレージ**: `Storage::disk('public')` の `avatars/{ulid}.{ext}` に保存し、`/storage/avatars/...` の publicUrl で配信(`php artisan storage:link` 済を同梱)。`avatar_url` が NULL のときはアイコンコンポーネントがイニシャル表示にフォールバック
 - **初期データ Seeder**: 既存 `UserSeeder` で各ロール(受講生 / コーチ / 管理者)+ 修了済受講生 + アバター設定済 / 未設定が揃っていれば本チケットの動作確認は可能。新規 Seeder は不要
 
 ### コンポーネント
@@ -122,7 +120,7 @@
 - `Profile\UpdateRequest` — 氏名 / 自己紹介 / 固定面談 URL の検証 + `authorize()` で `updateSelf` を委譲
 - `Avatar\StoreRequest` — アバター画像の形式 / サイズ検証
 
-**Action** (`app/UseCases/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/`、※ Advance 範囲、Basic 受講生は Controller 内完結も可)
 - `Profile\UpdateAction` — 氏名 / 自己紹介更新 + コーチのみ固定面談 URL 反映(非コーチは silently drop、空入力は NULL 保存)
 - `Avatar\StoreAction` / `Avatar\DestroyAction` — 新ファイル保存 + 旧ファイル削除 / アバター URL クリア + ファイル削除
 
@@ -135,7 +133,7 @@
 **Model + Enum** (`app/Models/`, `app/Enums/`)
 - `User` / `UserRole`(本チケットでは読み取りのみ)
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/settings/profile.blade.php` + `_partials/tab-profile.blade.php` / `_partials/tab-password.blade.php`
 - `resources/views/components/avatar.blade.php`(アイコン未設定時のイニシャル表示フォールバック)
 

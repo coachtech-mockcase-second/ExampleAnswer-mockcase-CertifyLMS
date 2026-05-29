@@ -42,8 +42,6 @@
 
 ## 実装方針(参考)
 
-> **参考設計の一例**。受け入れ条件を満たせれば実装手段は問わない(受講生は提供 PJ のコードリーディング + コーチへのヒアリングで調査・修正方針を組み立てる)。
-
 ### 原因
 
 - **主要ファイル**: `app/Policies/PartPolicy.php`(教材 Part の認可判定)。同じ構造でコーチ判定を担う `ChapterPolicy` / `SectionPolicy` / `SectionQuestionPolicy` / `SectionImagePolicy` / `QuestionCategoryPolicy` を含む計 6 Policy が対象。

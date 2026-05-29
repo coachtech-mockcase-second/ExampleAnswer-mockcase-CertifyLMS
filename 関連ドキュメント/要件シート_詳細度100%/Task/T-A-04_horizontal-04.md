@@ -57,19 +57,12 @@
 
 ## 実装方針(参考)
 
-> **粒度**: 業務語彙 + 技術名(変更対象ファイルパス・クラス名・メソッド名)を併記。具体的なコード片は書かない。「どのテストを新設し / どれを拡充するか」が機械的に判断できる粒度にする。
-
 ### 変更内容
 
-- **変更対象ファイル**:
-  - 新規: `tests/Unit/Services/Google/GoogleOAuthServiceTest.php`(認可フロー Service `App\Services\Google\GoogleOAuthService` の単体テスト) / `tests/Unit/Services/Google/GoogleCalendarServiceTest.php`(Calendar 操作 Service `App\Services\Google\GoogleCalendarService` の単体テスト) — いずれも Mockery で `Google\Client` をスタブ化
-  - 既存拡充: `tests/Unit/Services/MeetingAvailabilityServiceTest.php` / `tests/Feature/UseCases/Meeting/StoreActionTest.php` / `tests/Feature/UseCases/Meeting/CancelActionTest.php` / `tests/Feature/Http/Settings/CoachGoogleCredentialControllerTest.php` — `$this->mock(GoogleCalendarService::class, ...)` / `$this->mock(GoogleOAuthService::class, ...)` の Service レベルモック化(確立済、境界ケースを拡充)
-  - 既存(参照): `tests/Unit/Repositories/GeminiLlmRepositoryTest.php`(`Http::fake` / `Http::fakeSequence` / `Http::assertSent`、正常系 / HTTP 500 / 空応答 / 503 → 200 リトライ / payload 検証の 5 ケース)/ `tests/Feature/Http/Webhooks/StripeWebhookControllerTest.php`(`private function sign()` HMAC-SHA256 ヘルパー + 有効署名 / 無効署名 400 / 署名欠落 400 / 冪等性)
-  - 基盤: `tests/TestCase.php`(または各外部依存テストの `setUp()`)に `Http::preventStrayRequests()` を組込み、各外部 API モックテストクラスに `#[Group('external')]` を付与
-- **変更前**(提供 PJ で受講生が直面する状態): 外部 API 連携機能には正常系中心のテストはあるが、Google 連携 Service 自体の単体テスト(`tests/Unit/Services/Google/`)が無く、`Http::preventStrayRequests()` も `#[Group('external')]` も未組込み(未モック通信があれば外部 API を実呼出してしまうリスク + CI で外部依存テストを除外する手段がない)
-- **変更後**(理想形): 上記 3 系統のモックテストが揃い、Google 連携 Service の単体テストが新設され、`Http::preventStrayRequests()` で未モック通信が遮断され、`#[Group('external')]` で `--exclude-group external` の分離実行が可能
-- **採用技術と判断理由**: モック手法を外部 API ライブラリの特性で使い分ける。**Service(Google Calendar / OAuth)= Mockery**: `google/apiclient` が独自 HTTP クライアントを内部構築するため `Http::fake` が効かない → Service クラスの `final` を外して(別の Refactoring Task で対応済)Mockery でスタブ化。**Repository(Gemini)= `Http::fake`**: `Illuminate\Support\Facades\Http` 経由なので完全にスタブ可能、Mockery は不要。**Webhook(Stripe)= 署名生成ヘルパー**: 受信側なので HMAC-SHA256 署名(`hash_hmac('sha256', $timestamp.'.'.$payload, $secret)`)を自前生成してヘッダに付与。利用側のテストで `Google\Client` を直接モックしないのは、業務ロジックが「正しく Service を呼ぶか」を検証対象とし、ライブラリ低レベル詳細との結合を避けるため。`Http::preventStrayRequests()` は未モック URL への通信を例外で止める最終ライン(API キー漏洩 / レート制限消費の防止)、`#[Group('external')]` はモック構造依存でライブラリ更新に弱いテストを CI で分離実行可能にする分類軸(実行時間ではなく「外部 API への実呼出リスク」で分類)
-- **テスト観点**: Gemini のリトライは `Http::fakeSequence()->push(..., 503)->push(..., 200)` で 1 回目失敗 → 2 回目成功を構成 / payload 検証は `Http::assertSent()` で `systemInstruction`・`contents`・role 変換(assistant → model)を assert / Stripe 冪等性は同一イベントの 2 回 POST で関連テーブルの INSERT が 1 件のままを確認 / Google Calendar は freebusy 正常系・期限切れリフレッシュ成功と失敗・イベント作成成功と失敗(null 返却)・削除の 410 Gone 成功扱いを網羅
+- **対象**: 新規 `tests/Unit/Services/Google/GoogleOAuthServiceTest.php` / `GoogleCalendarServiceTest.php`(`App\Services\Google\GoogleOAuthService` / `GoogleCalendarService` を Mockery で `Google\Client` スタブ化)+ 拡充 `tests/Unit/Services/MeetingAvailabilityServiceTest.php` / `tests/Feature/UseCases/Meeting/{Store,Cancel}ActionTest.php` / `tests/Feature/Http/Settings/CoachGoogleCredentialControllerTest.php`(`$this->mock(GoogleCalendarService::class, ...)` で境界ケース拡充)+ 既存(参照)`tests/Unit/Repositories/GeminiLlmRepositoryTest.php`(`Http::fake` / `fakeSequence` / `assertSent`)/ `tests/Feature/Http/Webhooks/StripeWebhookControllerTest.php`(`sign()` HMAC ヘルパー)+ 基盤 `tests/TestCase.php`(各外部依存テストの `setUp()` でも可)
+- **変更前→後**: 外部連携には正常系中心のテストはあるが Google 連携 Service の単体テスト(`tests/Unit/Services/Google/`)が無く `Http::preventStrayRequests()` / `#[Group('external')]` も未組込み(未モック通信が実呼出される + CI 除外手段なし)→ 3 系統のモックテストが揃い、Google 連携 Service 単体テスト新設、`Http::preventStrayRequests()` で未モック通信を遮断、`#[Group('external')]` で `--exclude-group external` の分離実行が可能になる
+- **判断理由**: モック手法をライブラリ特性で使い分ける(1 手法統一不可)。Service(Google Calendar / OAuth)= Mockery(`google/apiclient` が独自 HTTP クライアントで `Http::fake` が効かない、`final` は別 Task で除去済)/ Repository(Gemini)= `Http::fake`(`Http` Facade 経由で完全モック可)/ Webhook(Stripe)= 受信側のため HMAC-SHA256 署名(`hash_hmac('sha256', $timestamp.'.'.$payload, $secret)`)を自前生成。利用側で `Google\Client` を直接モックしないのは業務ロジックが「正しく Service を呼ぶか」の検証に集中しライブラリ低レベル詳細との結合を避けるため。`#[Group('external')]` は実行時間ではなく「外部 API 実呼出リスク」で分類
+- **テスト**: Gemini リトライは `Http::fakeSequence()->push(...,503)->push(...,200)` で 1 回目失敗 → 2 回目成功 / payload は `Http::assertSent()` で `systemInstruction`・`contents`・role 変換(assistant → model)を assert / Stripe 冪等性は同一イベント 2 回 POST で INSERT 1 件のまま / Google Calendar は freebusy 正常・リフレッシュ成功と失敗・イベント作成成功と失敗(null)・削除 410 Gone 成功扱いを網羅。既存正常系テストの pass(振る舞い不変)
 
 ## 補足
 

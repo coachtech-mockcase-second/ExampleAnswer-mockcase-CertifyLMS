@@ -81,8 +81,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 | HTTP | パス | 認可 | 振る舞い |
@@ -109,7 +107,7 @@
 **FormRequest** (`app/Http/Requests/Api/V1/Notification/`)
 - `IndexRequest` — 対象ユーザー ID / タブ識別子 / ページ番号 / 1 ページ件数の検証(MarkAllAsRead 用は受講生判断、`IndexRequest` の `user_id` ルールを流用する設計も可)
 
-**Action** (`app/UseCases/Notification/`、※ 模範解答 PJ で API 固有 Action を分離、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/Notification/`、※ Advance 範囲(API 固有 Action を分離)、Basic 受講生は Controller 内完結も可)
 - `Api\IndexAction` — 対象ユーザー解決 + タブフィルタ + ページネーション
 - `Api\MarkAllAsReadAction` — 自分宛未読通知の一括既読化 + 既読化件数返却
 - `MarkAsReadAction` — Web / API 共有(既存実装を Resource Binding 経由で同 Action を呼ぶ)

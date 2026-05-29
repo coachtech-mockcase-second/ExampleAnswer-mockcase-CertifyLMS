@@ -15,7 +15,7 @@
 
 ## 背景・目的
 
-- **現状の問題**: 提供 PJ では受講生が修了達成すると修了証レコードは作成されるが、実体の PDF ファイルが生成されず、受講生はダウンロードできない状態。修了の証明書を外部に提示できる成果物として出力する手段がなく、修了モチベーションを下げる構造ギャップが残っている。
+- **現状の問題**: 受講生が修了達成すると修了証レコードは作成されるが、実体の PDF ファイルが生成されず、受講生はダウンロードできない状態。修了の証明書を外部に提示できる成果物として出力する手段がなく、修了モチベーションを下げる構造ギャップが残っている。
 - **達成したい状態**: 修了達成 = 修了証受領のアクション直後に、日本語表記の修了証 PDF が同期生成され、受講生が個人のプライベート保管領域からいつでもダウンロードできる。コーチ / 管理者も担当範囲内で修了証を配信できる。
 - **価値・優先度**: 受講生の修了モチベーション向上 + 実務で価値のあるポートフォリオ証明書を提供。PDF 生成ライブラリ採用 / Blade テンプレートの PDF 化 / Storage プライベートディスク運用 / Policy ベース横断認可 を扱う Advance スコープ。
 
@@ -53,8 +53,8 @@
 
 ## スコープ外
 
-- 修了証発行ロジック本体の変更 — 既存の修了証受領フロー(受講生自己発火型、提供 PJ で実装済)からの呼び出しに繋ぐのみ
-- 修了認定の判定ロジック変更 — 公開模試すべて合格の判定は提供 PJ の修了判定機能の責務
+- 修了証発行ロジック本体の変更 — 既存の修了証受領フロー(受講生自己発火型、実装済)からの呼び出しに繋ぐのみ
+- 修了認定の判定ロジック変更 — 公開模試すべて合格の判定は既存の修了判定機能の責務
 - 修了通知メール / DB 通知の送信 — 受講生の操作直後のリダイレクト先画面で PDF ダウンロードリンクを提示するため通知は冗長
 - 修了証 PDF へのオフィシャル印章 / 公印画像の埋め込み — スコープ外
 - 修了証 PDF のテンプレートカスタマイズ(資格ごとの特別意匠) — 全資格共通テンプレ
@@ -63,7 +63,7 @@
 - 修了証 PDF の電子署名 / タイムスタンプ
 - 修了証一覧画面 / 検索 / ページネーション — ダウンロード単発エンドポイントのみ
 - 修了証メール添付送信機能
-- 修了証発行時の受講登録ステータス遷移 — 提供 PJ の修了証受領フローで既に行われている
+- 修了証発行時の受講登録ステータス遷移 — 既存の修了証受領フローで既に行われている
 - 退会(SoftDelete)済受講生の修了証ダウンロード — 認証セッションが切れているため到達不能
 
 ## 受け入れ条件
@@ -80,8 +80,6 @@
 
 ## 実装方針(参考)
 
-> **本セクションは「参考」、受講生ごとに異なる実装を許容**(AC を満たせば実装手段は問わない)。ただし **「(必須)」マーカー付きサブセクション**(インターフェース / データモデル > 初期データ Seeder)は AC・採点・動作確認のベース、ここに記載した内容を正確に実装する。
-
 ### インターフェース(必須)
 
 **エンドポイント**:
@@ -90,13 +88,13 @@
 |---|---|---|---|
 | GET | `/certificates/{certificate}/download` | 受講生(本人)/ コーチ(担当資格)/ 管理者(全件) | Storage から PDF をストリーミング DL(`certificate-{serial_no}.pdf`)。Policy 拒否は 403、PDF ファイル不在は 404 |
 
-> 既存 `POST /enrollments/{enrollment}/receive-certificate`(`ReceiveCertificateController::store`、提供 PJ 実装済)が修了証受領フローを起動し、その内部で `Enrollment\ReceiveCertificateAction` → `Certificate\IssueAction` → `CertificatePdfService::generate` のチェーンが走る。本チケットは `IssueAction` への PDF 生成の組込み + DL エンドポイントの新規追加。
+> 既存 `POST /enrollments/{enrollment}/receive-certificate`(`ReceiveCertificateController::store`、実装済)が修了証受領フローを起動し、その内部で `Enrollment\ReceiveCertificateAction` → `Certificate\IssueAction` → `CertificatePdfService::generate` のチェーンが走る。本チケットは `IssueAction` への PDF 生成の組込み + DL エンドポイントの新規追加。
 
 **ミドルウェア**: DL ルートは `auth` のみ適用。`EnsureActiveLearning`(`active-learning`)は適用しない(修了済 / 退会前の受講生も本人の修了証を DL 可能)。
 
 ### データモデル
 
-既存 `certificates` テーブル(提供 PJ で作成済、本チケットでカラム変更なし)を利用し、テーブル / Model の新規追加はない。本チケットでは採番 Service + PDF 実体生成 + DL を追加する。
+既存 `certificates` テーブル(本チケットでカラム変更なし)を利用し、テーブル / Model の新規追加はない。本チケットでは採番 Service + PDF 実体生成 + DL を追加する。
 
 **エンティティ**:
 
@@ -129,18 +127,18 @@
 - `CertificatePolicy::download`(新規) — 管理者: 全件 / 受講生: 本人発行分(`certificate.user_id === auth.id`)/ コーチ: 担当資格分(`certification.coaches` を `loadMissing` で 1 回解決して判定)
 
 **Model** (`app/Models/`)
-- `Certificate`(提供 PJ 既存、リレーション `user` / `enrollment` / `certification`)
+- `Certificate`(既存、リレーション `user` / `enrollment` / `certification`)
 
 **View**(新規、PDF テンプレート)
 - `resources/views/certificates/pdf.blade.php` — A4 横向き修了証(mpdf 制約のため軽量 HTML/CSS、Tailwind 非使用)
 
 **Migration / Seeder**
-- `database/migrations/*_create_certificates_table.php`(提供 PJ 既存)
+- `database/migrations/*_create_certificates_table.php`(既存)
 - `database/seeders/CertificateSeeder.php`(PDF 実体まで生成する版に)
 
 **例外** (`app/Exceptions/Certification/`)
 - `CertificateGenerationFailedException`(500)/ `CertificatePdfNotFoundException`(404)(新規)
-- `EnrollmentNotPassedException`(409)/ `CertificateAlreadyIssuedException`(409)(提供 PJ 既存、`IssueAction` で利用)
+- `EnrollmentNotPassedException`(409)/ `CertificateAlreadyIssuedException`(409)(既存、`IssueAction` で利用)
 
 **Routes** (`routes/web.php`)
 - `auth` グループ内に `certificates.download`(`active-learning` Middleware は適用しない)
