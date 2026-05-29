@@ -1,0 +1,14 @@
+{
+    "name": "certify-lms-e2e",
+    "private": true,
+    "type": "commonjs",
+    "description": "Certify LMS の E2E 検証スイート（模範解答PJの完璧性検証 + 振る舞いベース採点オラクルの種）。Laravel アプリ本体とは独立した Node プロジェクト。",
+    "scripts": {
+        "test": "playwright test",
+        "test:headed": "playwright test --headed",
+        "report": "playwright show-report"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.49.0"
+    }
+}

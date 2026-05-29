@@ -1,0 +1,146 @@
+name: Verify (PHPUnit + E2E)
+
+# 模範解答PJ の完璧性検証パイプライン（= 将来の振る舞いベース採点オラクルの種）。
+#   - phpunit ジョブ: バックエンドの振る舞い（既存 1702 テスト）
+#   - e2e ジョブ:     @playwright/test によるフルスタック/JS/UI 検証
+# 外部API（Gemini/Stripe/Pusher/Google）は内部機能テストでは叩かないため secrets 不要。
+#   実API疎通テストは別ワークフロー/別ジョブで secrets を与えて回す想定。
+#
+# PoC 方針: 手動トリガ（workflow_dispatch）のみ。push 自動実行は段階的に有効化する。
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'e2e/**'
+      - '模範解答プロジェクト/**'
+      - '.github/workflows/verify.yml'
+
+defaults:
+  run:
+    working-directory: 模範解答プロジェクト
+
+jobs:
+  phpunit:
+    name: PHPUnit (backend behavior)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: certify_lms
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, gd, intl, bcmath, pdo_mysql, zip, exif
+          coverage: none
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          php artisan key:generate
+
+      - name: Create testing database
+        run: mysql -h 127.0.0.1 -P 3306 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS testing; GRANT ALL PRIVILEGES ON testing.* TO 'sail'@'%'; FLUSH PRIVILEGES;"
+
+      - name: Run PHPUnit
+        run: php artisan test
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: certify_lms
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_USER: sail
+          MYSQL_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, gd, intl, bcmath, pdo_mysql, zip, exif
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare .env (CI 用に外部依存を無効化)
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^APP_URL=.*/APP_URL=http:\/\/127.0.0.1:8000/' .env
+          sed -i 's/^MAIL_MAILER=.*/MAIL_MAILER=log/' .env
+          sed -i 's/^BROADCAST_DRIVER=.*/BROADCAST_DRIVER=log/' .env
+          php artisan key:generate
+
+      - name: Build front-end assets (Vite manifest)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Migrate & seed (fresh)
+        run: php artisan migrate:fresh --seed --force
+
+      - name: Install E2E deps
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Serve app & run E2E
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/login >/dev/null && break
+            echo "waiting for app... ($i)"; sleep 2
+          done
+          cd ../e2e
+          E2E_BASE_URL=http://127.0.0.1:8000 npx playwright test
+
+      - name: Upload Playwright report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 14
+
+      - name: Upload test traces/videos
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: e2e/test-results
+          retention-days: 14
