@@ -1,3 +1,9 @@
+{{--
+    模試の問題セット一覧画面（管理側）。1 つの模試に紐づく問題をカードで並べて編集導線を出す。
+    構成: パンくず → ヘッダ（件数 + 問題追加ボタン）→ 問題カード一覧（0 件は empty-state）
+    各カード: 連番 + 出題分野バッジ + 並び順 / 問題文（line-clamp）/ 選択肢件数・正答件数（1 件以外は要修正の警告色）/ 操作（詳細・編集リンク + 削除フォーム）
+    フロント観点: JS なし。追加・編集・詳細はリンク遷移、削除は @method('DELETE') フォーム + confirm()。
+--}}
 @extends('layouts.app')
 
 @section('title', $mockExam->title . ' — 問題セット')
@@ -61,7 +67,7 @@
                                     <x-icon name="pencil-square" class="w-4 h-4" />
                                 </x-link-button>
                                 <form method="POST" action="{{ route('admin.mock-exam-questions.destroy', $question) }}"
-                                      onsubmit="return confirm('この問題を削除しますか?過去のセッションには影響しません(snapshot)。');">
+                                      onsubmit="return confirm('この問題を削除しますか?過去のセッションには影響しません。');">
                                     @csrf
                                     @method('DELETE')
                                     <x-button type="submit" variant="ghost" size="sm" class="text-danger-600">

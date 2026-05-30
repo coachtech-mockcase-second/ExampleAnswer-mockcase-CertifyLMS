@@ -1,3 +1,9 @@
+{{--
+    プロフィール設定画面。タブ切替で「プロフィール / パスワード / 面談設定」の各 partial を出し分けるホスト。
+    構成: パンくず → ヘッダ（タイトル + ロール / ステータスバッジ）→ タブ → 選択中タブの内容（_partials を @include）。
+    面談設定タブはコーチのみ表示。タブは ?tab= のクエリで切替（不正値はプロフィールに丸める）。
+    面談設定タブのときだけカレンダー操作用の JS を読み込む。
+--}}
 @extends('layouts.app')
 
 @section('title', 'プロフィール設定')
@@ -61,7 +67,6 @@
 @endsection
 
 @push('scripts')
-    @vite('resources/js/settings-profile/avatar.js')
     @if ($isCoach && $activeTab === 'meeting')
         @vite('resources/js/settings-profile/availability-calendar.js')
     @endif

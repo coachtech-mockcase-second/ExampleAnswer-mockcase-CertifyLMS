@@ -30,7 +30,7 @@ function appendMessage(data) {
     const isSelf = String(data.sender_user_id) === String(window.authUserId);
     if (isSelf) {
         root.classList.add('flex-row-reverse');
-        bubble.classList.remove('bg-surface-raised', 'text-ink-900', 'border', 'border-[var(--border-subtle)]');
+        bubble.classList.remove('bg-surface-raised', 'text-ink-900', 'border', 'border-subtle');
         bubble.classList.add('bg-primary-600', 'text-white');
         const wrap = node.querySelector('[data-body-wrap]');
         wrap.classList.remove('items-start');

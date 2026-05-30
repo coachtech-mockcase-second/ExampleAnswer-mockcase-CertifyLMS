@@ -40,7 +40,7 @@
 
 ### 機能要件 — admin の Enrollment 運用
 
-- **REQ-enrollment-023**: When admin が Enrollment の `exam_date` を変更する, the system shall `status != passed` を検証し、`exam_date` のみを UPDATE する（`status` / `current_term` / `passed_at` は本操作で更新しない、各々の専用 Action 経由のみとする）。
+- **REQ-enrollment-023**: When admin または受講生本人が Enrollment の `exam_date` を変更する, the system shall `status != passed` を検証し、`exam_date` のみを UPDATE する（`status` / `current_term` / `passed_at` は本操作で更新しない、各々の専用 Action 経由のみとする）。受講生本人は受講登録詳細画面 / ダッシュボードの導線から自分の目標受験日を設定・変更でき、admin は受講生に代わって変更できる（認可は `EnrollmentPolicy::updateExamDate` = admin または本人 student、いずれも `status != passed`）。
 
 > 旧 REQ-enrollment-020 〜 022(admin による受講生 × 資格の手動割当)は撤回。受講生は自己登録で完結し、admin が代行発行する業務必要性が薄いため。admin は閲覧 / 状態強制更新(失敗マーク / 試験日変更)のみ提供する。
 

@@ -1,3 +1,8 @@
+{{--
+    モーダルダイアログ。trigger を押すと中央にオーバーレイ表示する。
+    props: id(開閉対象の識別子、必須)・title・size(sm/md/lg/xl) + trigger / body / footer スロット。
+    開閉は素の JS(data-modal-trigger / data-modal-close)。背景クリック・Esc で閉じ、開いている間はフォーカスを内部に閉じ込める。
+--}}
 @props([
     'id',
     'title' => null,
@@ -30,7 +35,7 @@
 >
     <div class="w-full {{ $maxWidth }} bg-surface-raised rounded-3xl shadow-lg overflow-hidden">
         @if ($title)
-            <header class="border-b border-[var(--border-subtle)] px-6 py-4 flex items-center justify-between">
+            <header class="border-b border-subtle px-6 py-4 flex items-center justify-between">
                 <h2 id="{{ $id }}-title" class="text-base font-semibold text-ink-900">{{ $title }}</h2>
                 <button type="button" data-modal-close="{{ $id }}" aria-label="閉じる" class="text-ink-500 hover:text-ink-900 transition-colors">
                     <x-icon name="x-mark" class="w-5 h-5" />
@@ -45,7 +50,7 @@
         @endisset
 
         @isset($footer)
-            <footer class="border-t border-[var(--border-subtle)] px-6 py-4 flex items-center justify-end gap-2 bg-surface-sunken/50">
+            <footer class="border-t border-subtle px-6 py-4 flex items-center justify-end gap-2 bg-surface-sunken/50">
                 {{ $footer }}
             </footer>
         @endisset

@@ -1,3 +1,8 @@
+{{--
+    通知一覧ページ。
+    構成: ヘッダ(未読件数 + 全件既読ボタン) → タブ(全件 / 未読のみ) → 通知行リスト(0 件は empty-state) → ページネーション。
+    全件既読はフォーム POST(JS なし)。各行は notification-row partial。
+--}}
 @extends('layouts.app')
 
 @section('title', '通知')
@@ -38,7 +43,7 @@
                     />
                 </div>
             @else
-                <ul class="divide-y divide-[var(--border-subtle)]">
+                <ul class="divide-y divide-subtle">
                     @foreach ($notifications as $notification)
                         @include('notifications._partials.notification-row', ['notification' => $notification])
                     @endforeach

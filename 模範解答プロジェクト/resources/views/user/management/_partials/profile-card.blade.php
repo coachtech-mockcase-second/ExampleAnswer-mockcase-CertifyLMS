@@ -1,3 +1,9 @@
+{{--
+    詳細画面のプロフィールカード partial。ユーザーの基本情報と操作ボタンを束ねる。
+    構成: 左=アバター+氏名+メール+ロール/ステータスバッジ+自己紹介+登録/最終ログイン/退会日 / 右=操作ボタン群
+    操作ボタン(招待再送信・招待取消・プラン延長・面談付与・強制退会)はステータス/ロール条件で出し分け。
+    再送信は直接フォーム送信、それ以外は data-modal-trigger で対応モーダルを開く。
+--}}
 @php
     use App\Enums\UserRole;
     use App\Enums\UserStatus;
@@ -22,7 +28,7 @@
     $canGrantQuota = $isStudent && $isInProgress;
 @endphp
 
-<div class="mt-4 bg-surface-raised border border-[var(--border-subtle)] rounded-2xl shadow-sm overflow-hidden">
+<div class="mt-4 bg-surface-raised border border-subtle rounded-2xl shadow-sm overflow-hidden">
     <div class="px-6 py-6 sm:px-8 sm:py-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         {{-- 左: プロフィール --}}
         <div class="flex items-start gap-4 min-w-0 flex-1">

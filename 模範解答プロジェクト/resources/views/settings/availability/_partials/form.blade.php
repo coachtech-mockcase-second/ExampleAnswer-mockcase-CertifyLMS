@@ -1,10 +1,16 @@
+{{--
+    面談可能時間枠の入力フォーム（追加・編集モーダルの本体に埋め込む共通部品）。
+    構成: 曜日セレクト → 開始 / 終了時刻（2 カラム）→ 有効化チェック → キャンセル / 保存ボタン。
+    呼び出し側が action / method（新規=POST・編集=PATCH）/ 編集対象 / モーダル id を渡す。
+    JS なし（フォーム POST + リダイレクト）。キャンセルは data-modal-close でモーダルを閉じる。
+--}}
 @php
     /**
-     * 共通フォーム部品(モーダル本体に埋め込む想定):
+     * 受け取るパラメータ:
      * - $action: form の action URL
-     * - $method: 'POST' (新規) or 'PATCH' (更新)
-     * - $availability: 編集対象 CoachAvailability(新規時 null)
-     * - $modalId: 紐づくモーダルの id(キャンセルボタン用)
+     * - $method: 'POST'（新規）or 'PATCH'（更新）
+     * - $availability: 編集対象の時間枠（新規時 null）
+     * - $modalId: 紐づくモーダルの id（キャンセルボタン用）
      */
     $availability = $availability ?? null;
     $dayOptions = [
@@ -62,7 +68,7 @@
         :checked="(bool) old('is_active', $defaults['is_active'])"
     />
 
-    <div class="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-subtle)]">
+    <div class="flex items-center justify-end gap-2 pt-3 border-t border-subtle">
         <x-button variant="ghost" data-modal-close="{{ $modalId }}" type="button">キャンセル</x-button>
         <x-button type="submit" variant="primary">保存する</x-button>
     </div>

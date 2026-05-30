@@ -1,3 +1,8 @@
+{{--
+    卒業生ダッシュボード画面。修了済資格の修了証を再ダウンロードする。
+    構成: 挨拶ヘッダ → 修了済資格カード(件数バッジ + 空状態 or 修了資格リスト[資格名 / 修了日・経過日数 / 修了バッジ / 修了証 PDF ボタン])
+    JS なし
+--}}
 @extends('layouts.app')
 
 @section('title', 'ダッシュボード')
@@ -33,7 +38,7 @@
                         $daysSince = (int) floor($passedAt->floatDiffInDays(now()));
                         $certificate = $enrollment->certificate;
                     @endphp
-                    <li class="grid items-center gap-3.5 py-3 border-b border-[var(--border-subtle)] last:border-b-0"
+                    <li class="grid items-center gap-3.5 py-3 border-b border-subtle last:border-b-0"
                         style="grid-template-columns: auto 1fr auto auto;">
                         <span class="inline-flex w-8 h-8 flex-shrink-0 items-center justify-center rounded-full bg-success-100 text-success-700">
                             <x-icon name="check-badge" class="w-4 h-4" />

@@ -1,3 +1,9 @@
+{{--
+    問題リストの 1 行カード partial（リスト画面で共用）。出題画面へのリンク。
+    構成: 連番バッジ（任意）+ 分野バッジ + 挑戦状況バッジ（未挑戦 / 最新正誤・挑戦回数）+ 問題文抜粋 + 矢印
+    JS なし（カード全体が href へのリンク）。挑戦状況は表示要素。
+    引数: question・href（遷移先）・index（一覧での連番、任意）。
+--}}
 @props([
     'question',
     'href',
@@ -11,7 +17,7 @@
 @endphp
 
 <a href="{{ $href }}"
-    class="block rounded-2xl border border-[var(--border-subtle)] bg-white p-5 transition-all hover:-translate-y-px hover:border-primary-300 hover:shadow-md">
+    class="block rounded-2xl border border-subtle bg-white p-5 transition-all hover:-translate-y-px hover:border-primary-300 hover:shadow-md">
     <div class="flex items-start gap-4">
         @if ($index !== null)
             <span class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-bold text-primary-700">

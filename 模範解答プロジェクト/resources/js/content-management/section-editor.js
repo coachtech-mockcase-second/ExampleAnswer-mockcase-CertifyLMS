@@ -1,5 +1,13 @@
 import { postJson } from '../utils/fetch-json.js';
 
+/**
+ * 教材セクション本文エディタのライブプレビュー。
+ * DOM フック: [.section-editor] を起点に [data-editor-input] の入力を監視し、
+ *   debounce 後に [data-editor-preview] へ整形結果を流し込む。[data-editor-counter] に文字数、
+ *   [data-editor-status] に状態（待機中 / 更新中 / 更新済 / 失敗）を表示する。
+ * 公開: なし（読み込み時に .section-editor を走査して自動初期化）。
+ */
+
 function initEditor(root) {
     const input = root.querySelector('[data-editor-input]');
     const preview = root.querySelector('[data-editor-preview]');

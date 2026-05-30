@@ -1,3 +1,11 @@
+/**
+ * 教材エディタの画像アップロード。
+ * DOM フック: [.image-uploader] を起点に [data-upload-input] の file 選択を監視し、
+ *   [data-upload-status] に進捗/結果を表示、成功時は [data-editor-input] のカーソル位置に
+ *   Markdown 画像記法を挿入する。
+ * 公開: なし（読み込み時に .image-uploader を走査して自動初期化）。
+ */
+
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 }

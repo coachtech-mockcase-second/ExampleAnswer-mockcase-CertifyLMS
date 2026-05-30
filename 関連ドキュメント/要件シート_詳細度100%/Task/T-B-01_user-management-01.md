@@ -40,7 +40,7 @@
 
 ### 変更内容
 
-- **対象**: `app/UseCases/User/IndexAction.php`(管理者ユーザー一覧取得。Controller 内完結なら `UserController::index` の一覧クエリ)/ 画面 一覧 Blade `resources/views/user/management/index.blade.php`(各行で `$u->plan?->name` を参照)
+- **対象**: `app/UseCases/User/IndexAction.php`(管理者ユーザー一覧取得)/ 画面 一覧 Blade `resources/views/user/management/index.blade.php`(各行で `$u->plan?->name` を参照)
 - **変更前→後**: 一覧取得クエリにプランの Eager Loading が無く各行のプラン名参照が件数分の遅延ロードを発火(N+1) → `->with('plan')` を追加しプラン情報を一括取得
 - **判断理由**: 表示で参照するリレーションはプラン名のみで集計表示が無いため `with('plan')` で十分(過剰な Eager Loading を避ける)。キャッシュ層(`Cache::remember()`)は導入しない(プラン情報は管理画面で頻繁に編集され、無効化コストが効果を上回る)
 - **テスト**: 受講生を多めに用意し各行の個別クエリが発火せず N+1 が再発しないこと(`DB::listen()` 等でクエリ監視、`tests/Feature/Http/Dashboard/DashboardQueryCountTest.php` が参考)+ 既存一覧 Feature テスト(`tests/Feature/Http/User/IndexTest.php`)の pass(振る舞い不変)

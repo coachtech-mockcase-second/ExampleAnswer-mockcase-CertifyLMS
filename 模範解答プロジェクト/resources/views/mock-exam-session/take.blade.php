@@ -1,3 +1,10 @@
+{{--
+    模試の受験画面（受講生）。問題に解答し、最後に答案を提出する中心画面。
+    構成: 集中受験用ヘッダ（退出リンク + 解答済カウンタ）→ 提出フォーム（空・ボタンから submit）→ 2 カラム（左: 問題カード一覧 / 右: sticky ナビゲーター + 提出ボタン）
+    各問題カード: 番号 + 出題分野バッジ / 問題文（whitespace-pre-line）/ ラジオ選択肢（選択中はハイライト）/ 保存ステータス行
+    ナビゲーター: 問番グリッド（解答済は緑、アンカーで各問へジャンプ）+ 解答済サマリ
+    フロント観点: 素の JS（answer-autosave.js を @push('scripts') で読み込み）。選択肢を選ぶと data-quiz-autosave-root 配下の data 属性経由で自動保存し、解答済カウンタ（data-answered-count）/ ナビ（data-nav-item）/ 保存ステータス（data-save-status）を更新。提出は confirm() 付きフォーム送信。
+--}}
 @extends('layouts.app')
 
 @section('title', $session->mockExam->title . ' を受験中')

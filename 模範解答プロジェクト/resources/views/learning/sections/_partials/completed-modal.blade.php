@@ -1,4 +1,8 @@
-{{-- 読了おめでとうモーダル: section_just_completed フラッシュが立っているときに自動表示 --}}
+{{--
+    読了完了モーダル（Section 読了直後に表示する祝福ダイアログ）。show.blade.php からのみ include。
+    構成: ヘッダ（タイトル + 閉じる）→ メッセージ → アクション（次の Section へ / 演習へ / Chapter 一覧へ戻る）
+    共通モーダル JS で制御（data-modal + data-auto-open で読み込み時に自動オープン、Esc / 閉じるボタンで閉じる）
+--}}
 <div
     id="sectionCompletedModal"
     role="dialog"
@@ -8,7 +12,7 @@
     data-auto-open
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm">
     <div class="w-full max-w-md overflow-hidden rounded-3xl bg-surface-raised shadow-lg">
-        <header class="border-b border-[var(--border-subtle)] px-6 py-4 flex items-center justify-between">
+        <header class="border-b border-subtle px-6 py-4 flex items-center justify-between">
             <h2 id="sectionCompletedTitle" class="text-base font-semibold text-ink-900">
                 🎉 読了おめでとう！
             </h2>

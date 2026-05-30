@@ -240,7 +240,7 @@
         <section class="space-y-4">
             <h2 class="text-xl font-bold">Sidebar (preview)</h2>
             <x-card padding="none">
-                <div class="grid md:grid-cols-3 divide-x divide-[var(--border-subtle)]">
+                <div class="grid md:grid-cols-3 divide-x divide-subtle">
                     <div>
                         <p class="eyebrow px-4 pt-4">student</p>
                         @include('layouts._partials.sidebar-student', ['sidebarBadges' => ['unfinishedMockExams' => 2, 'unattendedChat' => 1, 'notifications' => 7]])

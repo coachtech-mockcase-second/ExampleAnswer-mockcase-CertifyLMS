@@ -26,7 +26,7 @@
         </form>
     </x-card>
 @elseif (auth()->user()?->role === \App\Enums\UserRole::Admin)
-    <div class="bg-ink-50 border border-[var(--border-subtle,#E6EDEB)] rounded-2xl px-5 py-4 text-sm text-ink-600">
+    <div class="bg-ink-50 border border-subtle rounded-2xl px-5 py-4 text-sm text-ink-600">
         管理者は閲覧 + モデレーション削除のみ可能で、回答投稿はできません。
     </div>
 @endif

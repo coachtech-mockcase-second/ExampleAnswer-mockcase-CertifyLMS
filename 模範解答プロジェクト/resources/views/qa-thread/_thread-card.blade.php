@@ -23,7 +23,7 @@
 
 <a
     href="{{ route($showRoute, $thread) }}"
-    class="block bg-surface-raised border rounded-2xl px-4 py-4 transition hover:border-primary-200 hover:shadow-md {{ $isResolved ? 'bg-success-50/40 border-success-200' : 'border-[var(--border-subtle,#E6EDEB)]' }}"
+    class="block bg-surface-raised border rounded-2xl px-4 py-4 transition hover:border-primary-200 hover:shadow-md {{ $isResolved ? 'bg-success-50/40 border-success-200' : 'border-subtle' }}"
 >
     <div class="grid grid-cols-[auto_1fr_auto] items-start gap-4">
         <div class="flex flex-col items-center gap-0.5 min-w-[56px]">

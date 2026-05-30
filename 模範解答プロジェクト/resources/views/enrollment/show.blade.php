@@ -1,3 +1,9 @@
+{{--
+    受講登録の詳細ページ。
+    構成: パンくず → 見出し(資格名 + ステータスバッジ) → 学習進捗カード → 修了証受領パネル
+          → 2 カラム(左: 受講情報 + 各種操作フォーム / 状態遷移履歴 / 個人目標、右: 担当コーチ / コーチメモ)。
+    ロール・状態で各カード/フォームの表示を出し分け。削除・学習中止・修了証発行は confirm() で誤操作防止(JS なし)。
+--}}
 @extends('layouts.app')
 
 @section('title', $enrollment->certification->name . ' の受講登録')
@@ -50,7 +56,7 @@
         @endif
     </div>
 
-    {{-- 学習進捗カード(staff のみ表示、ProgressService の集計値) --}}
+    {{-- 学習進捗カード(staff のみ表示) --}}
     @if ($isStaff && $progress)
         <x-card class="mt-6" padding="md" shadow="sm">
             <x-slot:header>学習進捗</x-slot:header>
@@ -144,23 +150,26 @@
                     </form>
                 @endcan
 
-                {{-- 試験日変更フォーム(admin のみ、passed / trashed 時は非表示) --}}
-                @if ($isAdmin && $enrollment->status !== EnrollmentStatus::Passed && ! $enrollment->trashed())
-                    <form method="POST" action="{{ route('admin.enrollments.updateExamDate', $enrollment) }}" class="mt-4 flex items-end gap-3">
-                        @csrf
-                        @method('PATCH')
-                        <div class="flex-1">
-                            <x-form.input
-                                name="exam_date"
-                                label="目標受験日を変更"
-                                type="date"
-                                :value="old('exam_date', $enrollment->exam_date?->format('Y-m-d'))"
-                                :error="$errors->first('exam_date')"
-                            />
-                        </div>
-                        <x-button type="submit" variant="outline">更新</x-button>
-                    </form>
-                @endif
+                {{-- 試験日設定 / 変更フォーム(admin または受講生本人、passed / trashed 時は非表示) --}}
+                @can('updateExamDate', $enrollment)
+                    @unless ($enrollment->trashed())
+                        <form method="POST" action="{{ $isAdmin ? route('admin.enrollments.updateExamDate', $enrollment) : route('enrollments.updateExamDate', $enrollment) }}" class="mt-4 flex items-end gap-3">
+                            @csrf
+                            @method('PATCH')
+                            <div class="flex-1">
+                                <x-form.input
+                                    name="exam_date"
+                                    label="目標受験日"
+                                    type="date"
+                                    :value="old('exam_date', $enrollment->exam_date?->format('Y-m-d'))"
+                                    :error="$errors->first('exam_date')"
+                                    hint="本番試験の予定日。ダッシュボードの試験日カウントダウンに使われます。"
+                                />
+                            </div>
+                            <x-button type="submit" variant="outline">{{ $enrollment->exam_date ? '更新' : '設定' }}</x-button>
+                        </form>
+                    @endunless
+                @endcan
 
                 {{-- 手動学習中止フォーム(admin のみ、learning 状態かつ未削除のみ) --}}
                 @if ($isAdmin && $enrollment->status === EnrollmentStatus::Learning && ! $enrollment->trashed())

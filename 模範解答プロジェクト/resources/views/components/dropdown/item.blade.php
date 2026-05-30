@@ -1,3 +1,8 @@
+{{--
+    ドロップダウン項目。<x-dropdown> の中に並べるメニュー 1 件(リンク / フォーム送信 / ボタン)。
+    props: href(遷移先)・method(指定すると href へその HTTP メソッドで送信するボタンになる)・variant(default/danger)・icon(Heroicons 名) + ラベルスロット。
+    href のみ=リンク / href + method=送信フォーム / どちらも無し=ただのボタン、として描画し分ける。
+--}}
 @props([
     'href' => null,
     'method' => null,

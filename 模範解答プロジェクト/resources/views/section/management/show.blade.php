@@ -1,3 +1,8 @@
+{{--
+    Section 詳細・編集画面。Section の基本情報 / 本文（Markdown）/ 画像を編集する。
+    構成: パンくず → ヘッダ（タイトル + 状態バッジ + 演習問題リンク + 公開/削除 or 下書きに戻すボタン）→ 編集フォーム（基本情報カード + Markdown エディタカード）→ 画像カード（アップローダ + 画像一覧）→ 状態遷移確認モーダル群
+    フロント観点: Markdown エディタは入力に応じてプレビューを更新、画像はアップロード後に本文へ Markdown 自動挿入（いずれも素の JS）。公開・削除・下書き化はモーダル経由。下書き/公開でヘッダのボタンを出し分け。
+--}}
 @extends('layouts.app')
 
 @section('title', $section->title . ' — Section 詳細')
@@ -106,7 +111,7 @@
         <x-content-management.delete-confirm-modal
             id="section-delete-modal"
             title="Section を削除しますか？"
-            description="Section を SoftDelete します。"
+            description="Section を削除します。"
             :action="route('admin.sections.destroy', $section)"
         />
     @else

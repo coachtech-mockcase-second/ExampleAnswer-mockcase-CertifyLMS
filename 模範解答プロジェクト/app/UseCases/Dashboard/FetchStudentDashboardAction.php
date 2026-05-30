@@ -14,6 +14,7 @@ use App\Models\MeetingPack;
 use App\Models\User;
 use App\Services\CompletionEligibilityService;
 use App\Services\Contracts\WeaknessAnalysisServiceContract;
+use App\Services\LearningCalendarService;
 use App\Services\LearningHourTargetService;
 use App\Services\MeetingQuotaService;
 use App\Services\PlanExpirationService;
@@ -28,7 +29,7 @@ use Illuminate\Support\Collection;
  * 受講生ダッシュボードの ViewModel を組み立てる Action。
  *
  * プラン情報パネル(残面談 + 残日数 + 追加面談購入 CTA) + 受講中資格カード(learning + passed) +
- * 修了済資格セクション + ストリーク + 個人目標タイムライン + 今後の面談予定 を集約する。
+ * 修了済資格セクション + ストリーク + 学習カレンダー + 個人目標タイムライン + 今後の面談予定 を集約する。
  *
  * - 受講中資格カードの進捗集計は `ProgressService::batchCalculate` で N+1 回避
  * - 各セクション build は `safe()` で包み、Service 例外で画面全体が 500 化するのを防ぐ
@@ -42,6 +43,7 @@ final class FetchStudentDashboardAction
     public function __construct(
         private readonly ProgressService $progress,
         private readonly StreakService $streak,
+        private readonly LearningCalendarService $learningCalendar,
         private readonly LearningHourTargetService $hourTarget,
         private readonly WeaknessAnalysisServiceContract $weakness,
         private readonly CompletionEligibilityService $completion,
@@ -62,6 +64,7 @@ final class FetchStudentDashboardAction
             enrollmentCards: $this->buildEnrollmentCards($activeEnrollments),
             passedEnrollments: $this->buildPassedEnrollments($student),
             streak: $this->safe(fn () => $this->streak->calculate($student)),
+            learningCalendar: $this->safe(fn () => $this->learningCalendar->build($student)),
             goalTimeline: $this->safe(fn () => $this->buildGoalTimeline($student)),
             upcomingMeetings: $this->safe(fn () => $this->buildUpcomingMeetings($student)),
             hasNoEnrollment: $activeEnrollments->isEmpty(),
@@ -139,7 +142,8 @@ final class FetchStudentDashboardAction
     }
 
     /**
-     * 受講生が当事者の個人目標タイムライン。未達成優先 + 達成済を後ろにまとめて表示する。
+     * 受講生が当事者の個人目標タイムライン。未達成を先頭にし、その中で目標期日が近い順
+     * (期日未設定は末尾)、同条件は新しく作成した順に並べる。
      *
      * @return Collection<int, EnrollmentGoal>
      */
@@ -148,8 +152,7 @@ final class FetchStudentDashboardAction
         return EnrollmentGoal::query()
             ->whereHas('enrollment', fn ($q) => $q->where('user_id', $student->id))
             ->with('enrollment.certification')
-            ->orderBy('achieved_at')
-            ->latest()
+            ->displayOrder()
             ->get()
             ->values();
     }

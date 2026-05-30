@@ -1,3 +1,8 @@
+{{--
+    受講中資格スイッチャー。現在の資格を表示し、別の受講中資格へ切替 / デフォルト設定を行う。
+    props: variant(inline/sidebar=ドロップダウン型 / empty-state=カード一覧型)・current(現在の資格)・targetRoute(切替先ルート名)。
+    inline/sidebar はトリガーを押すと素の JS でメニューを開閉する(外側クリック / Esc で閉じる)。デフォルト設定はフォーム送信。
+--}}
 @props([
     'variant' => 'inline',
     'current' => null,

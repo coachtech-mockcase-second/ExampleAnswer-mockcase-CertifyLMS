@@ -28,8 +28,6 @@ class LearningHourTargetController extends Controller
 
     public function upsert(Enrollment $enrollment, UpsertRequest $request, UpsertAction $action): RedirectResponse
     {
-        $this->authorize('update', [LearningHourTarget::class, $enrollment]);
-
         $action($enrollment, $request->validated());
 
         return redirect()

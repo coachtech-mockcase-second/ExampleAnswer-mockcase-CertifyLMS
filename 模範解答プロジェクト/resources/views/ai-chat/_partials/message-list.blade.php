@@ -1,3 +1,7 @@
+{{--
+    メッセージ吹き出しを縦に並べるリスト。各行は message-bubble partial。
+    フロント観点: aria-live="polite" の live region で、JS が新着メッセージをこの <ul> に追記する。
+--}}
 @php
     /** @var \App\Models\AiChatConversation $conversation */
 @endphp

@@ -1,3 +1,7 @@
+{{--
+    教材コンテンツの公開状態バッジ。状態に応じて色（公開=success / 下書き=warning）と先頭ドットを出し分け。
+    props: status（表示する状態）
+--}}
 @props(['status'])
 
 @php

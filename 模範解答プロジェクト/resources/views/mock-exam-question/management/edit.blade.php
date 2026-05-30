@@ -1,3 +1,9 @@
+{{--
+    問題の編集フォーム画面（管理側）。既存の問題文・選択肢・正答をプリフィルして更新。
+    構成: パンくず → 見出し + 説明 → カード内フォーム（出題分野 / 問題文 / 解説 / 選択肢行 → 更新・キャンセル）
+    選択肢行: 正答ラジオ（correct_index）+ 連動する hidden（is_correct）+ 本文 textarea。行数は既存件数と 4 の大きい方。
+    フロント観点: 末尾の小さな inline JS（updateIsCorrect）が、選択した正答ラジオに合わせて各行の hidden（data-is-correct-input）を 1/0 に切り替えるのみ。送信は標準フォーム + @method('PUT') + リダイレクト、値は old() で現在値プリフィル。
+--}}
 @extends('layouts.app')
 
 @section('title', $mockExam->title . ' — 問題編集')
@@ -18,7 +24,7 @@
     @endphp
 
     <h1 class="mt-4 text-2xl font-bold text-ink-900">問題を編集</h1>
-    <p class="mt-1 text-sm text-ink-500">選択肢は delete-and-insert で同期されます。</p>
+    <p class="mt-1 text-sm text-ink-500">選択肢は保存時にまとめて更新されます。</p>
 
     <x-card class="mt-6 max-w-3xl" padding="md" shadow="sm">
         <form method="POST" action="{{ route('admin.mock-exam-questions.update', $question) }}" class="space-y-5">

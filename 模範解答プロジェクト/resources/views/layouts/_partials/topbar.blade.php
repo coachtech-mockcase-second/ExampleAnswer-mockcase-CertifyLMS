@@ -1,3 +1,8 @@
+{{--
+    認証後ヘッダ（全画面共通）。
+    左: モバイル用ハンバーガー + 教材検索バー（受講生のみ表示）。
+    右: 通知ベル（未読バッジ + 通知ポップオーバー partial を内包）+ ユーザーピル（ドロップダウン）。
+--}}
 @php
     $user = auth()->user();
     $notificationBadge = $notificationBadge ?? 0;
@@ -8,7 +13,7 @@
         : null;
 @endphp
 
-<header class="sticky top-0 z-20 flex items-center gap-3 lg:gap-4 px-4 lg:px-8 py-3 border-b border-[var(--border-subtle)] bg-surface-canvas/85 backdrop-blur-md">
+<header class="sticky top-0 z-20 flex items-center gap-3 lg:gap-4 px-4 lg:px-8 py-3 border-b border-subtle bg-surface-canvas/85 backdrop-blur-md">
     {{-- モバイル: ハンバーガー --}}
     <button
         type="button"
@@ -48,7 +53,7 @@
                 aria-expanded="false"
                 aria-controls="notification-popover-panel"
                 aria-label="通知 ({{ $notificationBadge }} 件未読)"
-                class="relative inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-ink-700 bg-white/50 border border-[var(--border-subtle)] hover:bg-white hover:border-primary-200 hover:text-primary-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 transition-all"
+                class="relative inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-ink-700 bg-white/50 border border-subtle hover:bg-white hover:border-primary-200 hover:text-primary-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 transition-all"
             >
                 <x-icon name="bell" class="w-[18px] h-[18px]" />
                 <span

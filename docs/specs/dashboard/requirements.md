@@ -4,11 +4,11 @@
 
 ## 概要
 
-ログイン直後の `/dashboard` で、ロール（admin / coach / student）に応じた学習・運用状況のサマリーを集約表示する **読み取り専用** Feature。本 Feature は独自モデル / 独自集計 Service を持たず、他 Feature が公開している Service（`ProgressService` / `StreakService` / `LearningHourTargetService` / `WeaknessAnalysisService` / `EnrollmentStatsService` / `CompletionEligibilityService` / `ChatUnreadCountService` / `MeetingQuotaService` / `PlanExpirationService`）と Eloquent モデルを DI で消費する集約点として機能する。**`StagnationDetectionService` は v3 で撤回されたため利用しない**。**`CoachActivityService` も v3(D3 確定)で dashboard では呼ばない**(個別管理画面で必要なら mentoring が提供を続ける)。
+ログイン直後の `/dashboard` で、ロール（admin / coach / student）に応じた学習・運用状況のサマリーを集約表示する **読み取り専用** Feature。本 Feature は独自モデル / 独自集計 Service を持たず、他 Feature が公開している Service（`ProgressService` / `StreakService` / `LearningCalendarService` / `LearningHourTargetService` / `WeaknessAnalysisService` / `EnrollmentStatsService` / `CompletionEligibilityService` / `ChatUnreadCountService` / `MeetingQuotaService` / `PlanExpirationService`）と Eloquent モデルを DI で消費する集約点として機能する。**`StagnationDetectionService` は v3 で撤回されたため利用しない**。**`CoachActivityService` も v3(D3 確定)で dashboard では呼ばない**(個別管理画面で必要なら mentoring が提供を続ける)。
 
 ## ロールごとのストーリー
 
-- **受講生（student）**: ログイン直後に「**プラン情報**（残面談回数 + プラン残日数 + 追加面談購入 CTA） / 試験日カウントダウン / 受講中資格の進捗 / 学習ストリーク / 直近模試の合格可能性スコア / 学習時間目標 / 個人目標タイムライン / **修了済資格セクション** / 直近通知 / 今後の面談予定」を 1 画面で確認し、能動的に次の学習行動を決める。修了条件（公開模試すべて合格）を満たした受講中資格は **「修了証を受け取る」ボタン** を押下できる（[[enrollment]] の `ReceiveCertificateAction` 起動）。
+- **受講生（student）**: ログイン直後に「**プラン情報**（残面談回数 + プラン残日数 + 追加面談購入 CTA） / 試験日カウントダウン / 受講中資格の進捗 / 学習ストリーク / 学習カレンダー / 直近模試の合格可能性スコア / 学習時間目標 / 個人目標タイムライン / **修了済資格セクション** / 直近通知 / 今後の面談予定」を 1 画面で確認し、能動的に次の学習行動を決める。修了条件（公開模試すべて合格）を満たした受講中資格は **「修了証を受け取る」ボタン** を押下できる（[[enrollment]] の `ReceiveCertificateAction` 起動）。
 - **コーチ（coach）**: ログイン直後に「**担当資格に登録した受講生** の一覧（最終活動日表示） / 今日・明日の面談予定 / 未読 chat 件数 / 未回答 Q&A 件数 / コーチ宛通知」を 1 画面で確認し、介入優先度を判断する。**弱点カテゴリ集計 / 受講生メモの最近更新 / 最終活動日降順ソートは v3 撤回**（個別画面で対応）。
 - **管理者（admin）**: ログイン直後に「全体 KPI（learning / passed / failed Enrollment 件数）/ 資格別の受講中人数 / 資格別修了率」を 1 画面で確認する。**修了申請承認 / プラン期限切れ間近一覧 / 滞留検知 / 直近通知は v3 撤回**（admin 宛通知は notification spec REQ-026 で発火しないため、運用情報は本 dashboard / 各 Feature 管理画面で集約）。
 
@@ -61,6 +61,7 @@
 ### 機能要件 — 受講生ダッシュボード（横断ウィジェット）
 
 - **REQ-dashboard-200**: The system shall `StreakService::calculate($student)` を学習ストリークパネルに表示する。
+- **REQ-dashboard-201**: The system shall `LearningCalendarService::build($student)` の日別学習時間マップ（直近 4 ヶ月）を **学習カレンダー** として GitHub 風の草グリッド（列=週・行=曜日・月曜始まり・横スクロール）で表示する。各セルはその日の学習時間合計を 0〜4 の濃淡レベルで示し、当日セルを強調、ホバーで日付と学習時間を表示する。カード見出しに当月の学習時間合計を併記する。濃淡レベルの離散化とグリッド構築はフロント（`resources/js/dashboard/learning-calendar.js`）が日別マップから行う。
 - **REQ-dashboard-210**: The system shall ログイン受講生の `EnrollmentGoal`（受講中資格に紐づく）を **目標タイムライン** として Wantedly 風表示する。
 - **REQ-dashboard-220**: The system shall `notifications()` の最新 5 件 + 未読件数を直近通知パネルに表示する。
 - **REQ-dashboard-230**: The system shall 受講生が当事者の `Meeting` のうち `status = reserved AND scheduled_at >= 今日 0:00` の最大 5 件を昇順で「今後の面談予定」として表示する。

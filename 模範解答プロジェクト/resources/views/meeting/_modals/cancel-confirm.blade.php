@@ -1,3 +1,8 @@
+{{--
+    面談キャンセル確認モーダル。props: meeting。
+    構成: トリガー(キャンセルボタン) → 本文(対象日時 + 返却・通知の注意書き) → フッタ(戻る / キャンセル実行フォーム)。
+    フロント挙動: モーダル開閉は素の JS(data-modal-trigger / data-modal-close)。実行は内部のフォーム送信。
+--}}
 @props(['meeting'])
 
 <x-modal id="cancel-meeting-modal" title="面談予約をキャンセル" size="md">
@@ -17,7 +22,7 @@
         </div>
     </div>
 
-    <footer class="border-t border-[var(--border-subtle)] px-6 py-4 flex items-center justify-end gap-3">
+    <footer class="border-t border-subtle px-6 py-4 flex items-center justify-end gap-3">
         <x-button variant="ghost" data-modal-close="cancel-meeting-modal">戻る</x-button>
         <form method="POST" action="{{ route('meetings.cancel', $meeting) }}" class="m-0">
             @csrf

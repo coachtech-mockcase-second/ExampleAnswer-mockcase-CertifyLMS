@@ -1,3 +1,8 @@
+{{--
+    削除確認モーダル。説明文 + キャンセル / 削除ボタン（danger）を表示する汎用部品。
+    props: id（モーダル識別）/ title / description / action（送信先）/ buttonLabel
+    フロント観点: <x-modal> ベース（data-modal-trigger で開く）。削除は DELETE メソッド偽装のフォーム送信。
+--}}
 @props([
     'id',
     'title' => '削除しますか？',

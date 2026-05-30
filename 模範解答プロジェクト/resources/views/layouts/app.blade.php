@@ -1,3 +1,8 @@
+{{--
+    認証後の共通レイアウト。全ロール（受講生 / コーチ / 管理者）の画面がこれを継承する。
+    構成: サイドバー（lg+ 固定 / lg 未満は drawer）→ TopBar → メインコンテンツ（@yield('content')）。
+    body 直下に Flash トースト + AI 相談フローティングウィジェット（表示条件つき）を配置。
+--}}
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -18,7 +23,7 @@
         {{-- サイドバー: lg+ で固定 / lg 未満で drawer --}}
         <aside
             data-sidebar
-            class="fixed lg:sticky lg:top-0 left-0 z-30 h-screen w-64 bg-surface-raised border-r border-[var(--border-subtle)] overflow-y-auto transform -translate-x-full lg:translate-x-0 transition-transform duration-normal ease-out-quint"
+            class="fixed lg:sticky lg:top-0 left-0 z-30 h-screen w-64 bg-surface-raised border-r border-subtle overflow-y-auto transform -translate-x-full lg:translate-x-0 transition-transform duration-normal ease-out-quint"
         >
             @auth
                 @include('layouts._partials.sidebar-' . auth()->user()->role->value)

@@ -43,7 +43,7 @@
 
 ### 原因
 
-- **主要ファイル**: `app/UseCases/User/IndexAction.php`(管理者ユーザー一覧の取得クエリ)。※ Action 内のため Basic 範囲外。Controller 内完結で実装する受講生は `UserController::index` の一覧取得処理が対象
+- **主要ファイル**: `app/UseCases/User/IndexAction.php`(管理者ユーザー一覧の取得クエリ)
 - **仕込み内容**: `User` は SoftDelete 採用で、退会済みユーザーは退会状態(`UserStatus::Withdrawn`)+ 論理削除済(`deleted_at` セット)のため通常クエリではグローバルスコープにより除外される。本来は「状態フィルタが退会のときだけ `withTrashed()`(論理削除済みを含める)を適用する」条件分岐だが、その条件が外れて `withTrashed()` が一覧取得の冒頭で常時呼ばれており、全フィルタで退会済みユーザーが混入する
 - **修正範囲**: `withTrashed()` を「退会フィルタが指定されたときのみ」適用する条件分岐に戻す。`UserController::index` から `User\IndexAction` を辿り、`withTrashed()` が無条件に呼ばれていることを発見する流れ。一覧取得冒頭の 1 箇所の修正で完結
 

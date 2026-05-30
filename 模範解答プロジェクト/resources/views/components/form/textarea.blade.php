@@ -1,3 +1,8 @@
+{{--
+    複数行テキスト入力。ラベル + テキストエリア + ヒント + エラーを縦積みにしたフォーム部品。
+    props: name(必須)・label・value・error・placeholder・hint・required・disabled・readonly・rows(行数)・maxlength(最大文字数)。
+    maxlength 指定時は右下に入力文字数カウンタを表示し、素の JS で入力に応じてリアルタイム更新する。
+--}}
 @props([
     'name',
     'label' => null,

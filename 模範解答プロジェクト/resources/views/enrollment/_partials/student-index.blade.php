@@ -1,6 +1,8 @@
 {{--
-    受講生本人向け enrollment 一覧 partial(進捗カード UI)。
-    enrollment/index.blade.php が role 判定して dispatch する。
+    受講生本人向けの受講登録一覧 partial(カードグリッド UI)。
+    構成: パンくず → 見出し + 「資格を追加」ボタン → 0 件は empty-state
+          → 各資格カード(ステータス / 現在ターム / 目標受験日カウントダウン / 個人目標数 / 担当コーチ / 「デフォルトに」操作 + 詳細・教材へリンク)。
+    デフォルト切替はフォーム POST(JS なし)。
 --}}
 
 @php

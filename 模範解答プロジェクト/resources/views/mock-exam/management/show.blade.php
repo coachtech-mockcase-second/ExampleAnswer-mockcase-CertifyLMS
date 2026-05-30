@@ -1,3 +1,9 @@
+{{--
+    模試マスタの詳細画面（管理側）。1 件の模試の情報表示と各種操作の起点。
+    構成: パンくず → ヘッダ（タイトル + 公開状態バッジ + メタ行 + 操作ボタン群）→ 説明カード（任意）→ メタ情報カード
+    操作ボタン: 問題セット編集 / 編集（専用ページ遷移）/ 公開・公開停止（フォーム POST）/ 削除（フォーム POST）
+    フロント観点: JS なし。公開切替・削除はいずれもフォーム送信 + confirm() で誤操作防止（外部 JS ファイル不要）。
+--}}
 @extends('layouts.app')
 
 @section('title', $mockExam->title)
@@ -58,7 +64,7 @@
             @endif
 
             <form method="POST" action="{{ route('admin.mock-exams.destroy', $mockExam) }}"
-                  onsubmit="return confirm('この模試マスタを削除しますか?この操作は取り消せません(SoftDelete)。');">
+                  onsubmit="return confirm('この模試マスタを削除しますか?この操作は取り消せません。');">
                 @csrf
                 @method('DELETE')
                 <x-button type="submit" variant="danger" size="sm">

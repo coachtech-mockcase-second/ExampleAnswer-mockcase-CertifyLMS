@@ -1,3 +1,7 @@
+{{--
+    修了済資格リスト。受講生ダッシュボードのメイン下部。
+    構成: ヘッダ（タイトル + 件数）→ 修了資格の行リスト（資格名 + 修了日 / 経過日数 + 修了バッジ + 修了証 PDF ダウンロード）。0 件は空状態。
+--}}
 @props([
     'enrollments',
 ])
@@ -23,7 +27,7 @@
                     $daysSince = (int) floor($passedAt->floatDiffInDays(now()));
                     $certificate = $enrollment->certificate;
                 @endphp
-                <li class="grid items-center gap-3.5 py-3 border-b border-[var(--border-subtle)] last:border-b-0"
+                <li class="grid items-center gap-3.5 py-3 border-b border-subtle last:border-b-0"
                     style="grid-template-columns: auto 1fr auto auto;">
                     <span class="inline-flex w-8 h-8 flex-shrink-0 items-center justify-center rounded-full bg-success-100 text-success-700">
                         <x-icon name="check-badge" class="w-4 h-4" />

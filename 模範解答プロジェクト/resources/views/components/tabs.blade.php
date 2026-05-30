@@ -1,3 +1,8 @@
+{{--
+    タブナビ。タブを横並び表示し、選択中のタブに下線を付ける。
+    props: tabs([キー => 表示名] の配列)・active(選択中キー、未指定は URL クエリから判定)・param(URL クエリ名)。
+    各タブは ?param=キー へのリンクで、クリックするとそのページに遷移して切替わる(JS なし)。
+--}}
 @props([
     'tabs' => [],
     'active' => null,
@@ -8,7 +13,7 @@
     $active = $active ?? request()->query($param, array_key_first($tabs));
 @endphp
 
-<div class="border-b border-[var(--border-subtle)]" {{ $attributes }}>
+<div class="border-b border-subtle" {{ $attributes }}>
     <nav class="-mb-px flex gap-6" aria-label="タブ">
         @foreach ($tabs as $key => $label)
             @php

@@ -1,3 +1,8 @@
+{{--
+    エラーページ共通テンプレート。各エラーページ（404 / 419 等）が code・heading・description を渡して @include する。
+    構成: 大きなエラーコード → 見出し → 説明文 → アクションボタン。
+    ボタンはログイン状態で出し分け（ログイン中はダッシュボードへ / 未ログインはログインへ）。静的表示のみ。
+--}}
 @extends('layouts.guest')
 
 @section('title', $code . ' | Certify LMS')

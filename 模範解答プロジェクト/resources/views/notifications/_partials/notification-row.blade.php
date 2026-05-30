@@ -1,3 +1,8 @@
+{{--
+    通知一覧の 1 行(notifications/index から繰り返し include)。
+    構成: 種別アイコン → タイトル(未読は太字 + ドット)→ メッセージ → 相対日時。行全体が既読化フォームの送信ボタン。
+    未読/既読で見た目を出し分け。既読化はフォーム POST(JS なし)。
+--}}
 @php
     /** @var \Illuminate\Notifications\DatabaseNotification $notification */
     $data = is_array($notification->data) ? $notification->data : [];

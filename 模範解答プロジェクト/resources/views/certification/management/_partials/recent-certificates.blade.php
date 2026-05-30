@@ -1,3 +1,7 @@
+{{--
+    資格詳細画面の直近修了証カード partial。
+    構成: ヘッダ(見出し + 発行件数) → 修了証行リスト(受講者アバター + 名前 / 通番 + 発行日 + PDF ダウンロードリンク、0 件時はプレースホルダ)
+--}}
 <x-card padding="lg" shadow="sm">
     <div class="flex items-center justify-between gap-2">
         <div>
@@ -11,7 +15,7 @@
             まだ修了証は発行されていません。
         </div>
     @else
-        <ul class="mt-4 divide-y divide-[var(--border-subtle)]">
+        <ul class="mt-4 divide-y divide-subtle">
             @foreach ($certification->certificates as $cert)
                 <li class="flex items-center justify-between gap-3 py-3">
                     <div class="flex items-center gap-3 min-w-0">

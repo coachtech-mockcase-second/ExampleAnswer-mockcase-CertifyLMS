@@ -1,3 +1,8 @@
+{{--
+    汎用アラート。type(success/error/info/warning) で色とアイコンを切替える注意喚起ボックス。
+    props: type(success/error/info/warning)・dismissible(true で × ボタン表示)・title + 本文スロット。
+    dismissible=true のとき、× ボタンを押すと素の JS でフェードアウトして閉じる。
+--}}
 @props([
     'type' => 'info',
     'dismissible' => false,

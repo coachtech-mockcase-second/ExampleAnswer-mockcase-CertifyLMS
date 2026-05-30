@@ -36,7 +36,7 @@
     <div class="flex flex-wrap items-center gap-2">
         <a
             href="{{ route($indexRoute, array_filter(['status' => $currentStatus, 'keyword' => $keyword])) }}"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition {{ $currentCertId === '' ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-[var(--border-default,#D2DEDB)] text-ink-700 hover:border-primary-200' }}"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition {{ $currentCertId === '' ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-default text-ink-700 hover:border-primary-200' }}"
             aria-pressed="{{ $currentCertId === '' ? 'true' : 'false' }}"
         >
             すべての資格
@@ -45,7 +45,7 @@
             @php $active = $currentCertId === $cert->id; @endphp
             <a
                 href="{{ route($indexRoute, array_filter(['certification_id' => $active ? null : $cert->id, 'status' => $currentStatus, 'keyword' => $keyword])) }}"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition {{ $active ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-[var(--border-default,#D2DEDB)] text-ink-700 hover:border-primary-200' }}"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition {{ $active ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-default text-ink-700 hover:border-primary-200' }}"
                 aria-pressed="{{ $active ? 'true' : 'false' }}"
             >
                 {{ $cert->name }}
@@ -70,7 +70,7 @@
             value="{{ $keyword }}"
             maxlength="100"
             placeholder="質問の本文を検索..."
-            class="w-full text-[13px] py-2 pl-9 pr-3 rounded-md bg-white border border-[var(--border-default,#D2DEDB)] placeholder:text-ink-400 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/15 transition-colors"
+            class="w-full text-[13px] py-2 pl-9 pr-3 rounded-md bg-white border border-default placeholder:text-ink-400 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/15 transition-colors"
             aria-label="質問本文を検索"
         >
     </div>

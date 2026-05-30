@@ -1,3 +1,8 @@
+{{--
+    汎用アバター。src があれば画像、なければ name の頭文字をイニシャル表示する円形アイコン。
+    props: src(画像 URL)・name(イニシャル / 背景色の元、未指定は ?)・size(sm/md/lg/xl)・alt。
+    背景色は name から決定的に算出するため、同じ名前は常に同じ色になる。
+--}}
 @props([
     'src' => null,
     'name' => null,

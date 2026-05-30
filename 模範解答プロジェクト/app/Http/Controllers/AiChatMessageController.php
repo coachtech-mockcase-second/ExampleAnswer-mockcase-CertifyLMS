@@ -25,8 +25,6 @@ class AiChatMessageController extends Controller
         StoreRequest $request,
         StoreAction $action,
     ): JsonResponse {
-        $this->authorize('view', $conversation);
-
         try {
             $result = $action($conversation, (string) $request->validated('content'));
         } catch (AiChatLlmFailedException $e) {

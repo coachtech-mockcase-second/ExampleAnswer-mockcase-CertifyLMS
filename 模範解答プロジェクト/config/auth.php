@@ -121,7 +121,7 @@ return [
     | Invitation Expire Days
     |--------------------------------------------------------------------------
     |
-    | [[auth]] Feature: 招待 URL（オンボーディング）の有効期限（日数）。
+    | 招待 URL（オンボーディング）の有効期限（日数）。
     | IssueInvitationAction が新規 Invitation を発行する際の expires_at に使用する。
     |
     */

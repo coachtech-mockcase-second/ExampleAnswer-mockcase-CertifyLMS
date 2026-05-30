@@ -1,3 +1,7 @@
+{{--
+    汎用ボタン。variant(primary/outline/ghost/danger/secondary) × size(sm/md/lg) でスタイルを切替。
+    disabled / loading で非活性化し、loading 時はスピナーを表示する。type 既定は button。
+--}}
 @props([
     'variant' => 'primary',
     'size' => 'md',

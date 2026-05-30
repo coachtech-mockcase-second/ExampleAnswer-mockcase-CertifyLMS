@@ -13,8 +13,6 @@
 | 工数 (h) | 3 |
 | 依存チケット | (なし) |
 
-> **※ Basic 範囲外への例外注記**: 既存実装では受講生向け教材閲覧の取得処理を `app/UseCases/Learning/Show{Part,Chapter,Section}Action.php` の Action に分離しているため、原因箇所は Action ファイル内にある。Basic 受講生は通常 Controller 範囲で実装してよく、その場合は対応する Controller メソッド(`BrowseController::showPart` / `showChapter` / `showSection`)を修正対象とする。いずれの構成でも受け入れ条件の振る舞いを満たせばよい。
-
 ## 概要
 
 受講生(student)が、公開停止(アーカイブ)された資格の教材(Part / Chapter / Section)を引き続き閲覧できてしまう。本来は資格が公開停止になった時点で、その資格の教材閲覧画面は閲覧不可になるべきだが、受講登録済みの受講生は教材詳細を開けてしまう。
@@ -45,7 +43,7 @@
 
 ### 原因
 
-- **主要ファイル**: `app/UseCases/Learning/ShowPartAction.php` / `ShowChapterAction.php` / `ShowSectionAction.php`(受講生向け教材閲覧の各取得)。Basic で Controller 内完結とする場合は `BrowseController::showPart` / `showChapter` / `showSection`。
+- **主要ファイル**: `app/UseCases/Learning/ShowPartAction.php` / `ShowChapterAction.php` / `ShowSectionAction.php`(受講生向け教材閲覧の各取得)。
 - **仕込み内容**: 各取得処理には「教材階層(Part / Chapter / Section)自体が公開状態(`ContentStatus::Published`)でなければ 404」の判定はあるが、「親資格が公開中(`CertificationStatus::Published`)でなければ 404」の判定が抜けている。このため教材階層が公開済みであれば、親資格が公開停止(アーカイブ / 下書き)でも受講登録済み受講生に教材が見えてしまう。
 - **修正範囲**: 各取得処理に「親資格が公開中でなければ 404」のガードを追加する。教材階層の公開判定の直後に資格状態の判定を 1 ブロック足す形で完結。
 

@@ -1,3 +1,9 @@
+{{--
+    管理者お知らせの新規配信フォーム画面（管理者向け）。
+    構成: ヘッダ（パンくず + 見出し + 注意文）→ カード内フォーム（タイトル / 本文 / 配信対象パーシャル）→ キャンセル + 配信ボタン。
+    配信対象の入力欄は _partials/target-fields パーシャルに分離。
+    JS なし: 専用ページでのフォーム POST 送信。配信後は編集・取消できない旨を明記。
+--}}
 @extends('layouts.app')
 
 @section('title', '管理者お知らせ — 新規配信')
@@ -39,7 +45,7 @@
 
                 @include('announcement.management._partials.target-fields')
 
-                <div class="flex items-center justify-end gap-3 pt-2 border-t border-[var(--border-subtle)]">
+                <div class="flex items-center justify-end gap-3 pt-2 border-t border-subtle">
                     <x-link-button :href="route('admin.announcements.index')" variant="ghost">キャンセル</x-link-button>
                     <x-button type="submit" variant="primary">この内容で配信する</x-button>
                 </div>
@@ -47,7 +53,3 @@
         </x-card>
     </div>
 @endsection
-
-@push('scripts')
-    @vite('resources/js/admin/announcement-form.js')
-@endpush

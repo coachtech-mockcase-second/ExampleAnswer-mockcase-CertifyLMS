@@ -1,3 +1,7 @@
+{{--
+    セレクトボックス。ラベル + プルダウン + ヒント + エラーを縦積みにしたフォーム部品。
+    props: name(必須)・label・options([値 => 表示名] の連想配列)・value(選択値)・error・placeholder(先頭の未選択肢)・hint・required・disabled。
+--}}
 @props([
     'name',
     'label' => null,

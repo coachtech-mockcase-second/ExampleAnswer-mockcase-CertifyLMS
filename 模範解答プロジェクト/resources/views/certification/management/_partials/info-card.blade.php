@@ -1,3 +1,7 @@
+{{--
+    資格詳細画面の基本情報カード partial。
+    構成: メタ情報グリッド(カテゴリ / 難易度 / 受講登録数 / 公開日時 / アーカイブ日時 / 最終更新) → 説明文(あれば)
+--}}
 <x-card class="mt-6" padding="lg" shadow="sm">
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div>
@@ -32,7 +36,7 @@
     </div>
 
     @if ($certification->description)
-        <div class="mt-6 border-t border-[var(--border-subtle)] pt-4">
+        <div class="mt-6 border-t border-subtle pt-4">
             <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">説明</div>
             <p class="mt-2 text-sm text-ink-700 whitespace-pre-line leading-relaxed">{{ $certification->description }}</p>
         </div>

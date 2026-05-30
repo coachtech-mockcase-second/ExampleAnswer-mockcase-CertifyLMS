@@ -1,3 +1,7 @@
+{{--
+    空状態プレースホルダ。一覧 0 件 / 未作成 / 権限なし時に中央寄せで案内を表示する。
+    props: icon(Heroicons 名)・title・description + action スロット(誘導ボタン等、任意)。
+--}}
 @props([
     'icon' => 'inbox',
     'title' => '',

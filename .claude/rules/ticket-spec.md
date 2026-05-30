@@ -317,23 +317,31 @@ AC を 2 つ以上書こうとしているとき、以下に該当するなら *
 - Basic チケットの実装方針は **Basic 範囲内**(Controller 内完結が前提)
 - Action / Service の使用は受講生判断で推奨(チャレンジするなら歓迎、必須ではない)
 - 模範解答 PJ は Advance 含む完成形のため、Basic チケットの想定実装と異なる箇所あり(詳細化時に Basic 範囲で書き直す)
-- **Bug 例外**: Action / Service ファイル内のバグなど構造上 Basic 範囲外を参照する必要がある場合、チケット内に「**※**」記号で例外説明を明記(具体的な書き方は 6.1)
+- **Bug / Task 例外**: Action / Service ファイル内に原因がある バグ / 既存改修 は、原因(Bug)/ 変更内容(Task)の主要ファイルでそのファイルを淡々と示すのみとする。Story と違い「Controller 内完結で実装してよい」の選択肢提示や「Basic 範囲外」の難易度ラベルは書かない(理由は 6.1)
 
-### 6.1 Bug 例外注記の書き方
+### 6.1 Bug / Task の Action / Service 内原因箇所の書き方
 
-Action / Service ファイル内のバグが構造上避けられない Basic Bug の場合、以下のように注記する。**短い注記を原則**とし、複数 Action / Service ファイルを跨ぐ等で理解難度が高い場合のみ長文注記をチケット冒頭(概要直下)に独立配置する。
+Bug / Task は **既存コードの該当箇所を読んで直す** チケット。原因 / 改修箇所が Action / Service 内にあっても、受講生は既存構造をそのまま使って修正するため、Story と違い「Controller 内完結で実装してよい」という選択肢は存在しない(コードが既に Action / Service にあり、選択の余地がない)。
 
-**短い注記**(該当サブセクション内に混在記載、デフォルト):
+したがって Bug / Task では、原因箇所が Action / Service にあっても **難易度ラベルや代替実装の案内を書かない**:
+
+- **「Basic 範囲外」等の難易度ラベルを書かない** — Bug / Task の難易度は「原因の理解・修正の認知負荷」で決まり、原因箇所がどの層(Controller / Action / Service)にあるかとは独立。層の所在を難易度として注記しない
+- **「Controller 内完結で実装してよい」「対応する Controller method を修正対象とする」の選択肢提示を書かない** — 既存コードの該当箇所(Action / Service)を直すのが Bug / Task。代替実装先を案内しない
+- 原因(Bug)/ 変更内容(Task)の **主要ファイルで、原因箇所の Action / Service ファイルを淡々と示す**(クラス名 + ファイルパス + 1 行責務)
+
+#### ❌ 悪い(難易度ラベル + Controller 代替提示)
 
 ```markdown
-`Auth\OnboardAction` の更新行を削除 (※ Action 内のため Basic 範囲外注記あり)
+- **主要ファイル**: `app/UseCases/User/IndexAction.php`。※ Action 内のため Basic 範囲外。Controller 内完結で実装する受講生は `UserController::index` が対象
 ```
 
-**長文注記**(チケット冒頭、概要直下に独立配置、例外運用):
+#### ✅ 良い(原因箇所を淡々と示すのみ)
 
 ```markdown
-> **※ Basic 範囲外への例外注記**: 本 Bug は構造上 `app/UseCases/{Feature}/{Action}.php` 内の修正が必要となる。Basic 受講生は通常 Controller 範囲で実装するが、本チケットでは模範解答 PJ の Action 構造を踏襲しているため、修正対象に Action ファイルが含まれる。受講生が Controller 内完結で実装している場合は、対応する Controller method を修正対象とする。
+- **主要ファイル**: `app/UseCases/User/IndexAction.php`(管理者ユーザー一覧の取得クエリ)
 ```
+
+> **Story は別**: Story は提供時にロジックが削除され受講生がゼロから実装するため、`コンポーネント` 節の inline ※ で「Action は Basic 範囲外(Controller 内完結でも可)」と実装自由度を示してよい(規約 2.4)。Bug / Task は既存コードを直すため、この自由度注記は付けない。
 
 ---
 

@@ -7,7 +7,7 @@ namespace App\Exceptions\Certification;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
- * 修了証 PDF の生成（Blade テンプレート → DomPDF → Storage 書き込み）が失敗した際の例外（HTTP 500）。
+ * 修了証 PDF の生成（Blade テンプレート → mpdf → Storage 書き込み）が失敗した際の例外（HTTP 500）。
  *
  * `Certificate\IssueAction` の DB::transaction 内で PDF 生成失敗時に throw され:
  * - DB トランザクションは ROLLBACK され Certificate INSERT が巻き戻る

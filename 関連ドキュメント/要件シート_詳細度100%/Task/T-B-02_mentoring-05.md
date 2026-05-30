@@ -39,7 +39,7 @@
 
 ### 変更内容
 
-- **対象**: `app/UseCases/Dashboard/FetchCoachDashboardAction.php`(Controller 完結なら `DashboardController::index()`)/ 画面 `GET /dashboard`(コーチビュー)
+- **対象**: `app/UseCases/Dashboard/FetchCoachDashboardAction.php`(コーチダッシュボードのデータ取得)/ 画面 `GET /dashboard`(コーチビュー)
 - **変更前→後**: 担当受講生一覧で受講生・担当資格・最終活動日時を遅延ロード(N+1) → `->with(['user', 'certification'])` + `->withMax('learningSessions as last_activity_at', 'started_at')` で一括取得
 - **判断理由**: BelongsTo は `with()`、最終活動日時は関連全件をロードせず `withMax` で集約取得(メモリ・転送量を最小化)。ページネーションは不要(担当受講生は少数)
 - **テスト**: N+1 が再発しないこと + 既存ダッシュボードテストの pass(振る舞い不変)

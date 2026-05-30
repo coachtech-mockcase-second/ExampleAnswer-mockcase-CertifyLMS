@@ -1,6 +1,13 @@
-// 面談設定タブの週次カレンダー(1 時間粒度)。
-// - 単純クリックは 1 時間枠(start = HH:00, end = HH+1:00)としてモーダルを開く
-// - 同一曜日内でのドラッグ選択は anchor の時刻 〜 drag 終端 + 1 時間 をモーダルに反映する
+/**
+ * 面談設定タブの週次カレンダー（1 時間粒度）で枠選択 → 登録モーダルを前埋めする。
+ * DOM フック: [data-availability-calendar] 内の [data-availability-cell]（data-day-of-week / data-hour）
+ *   をクリック/ドラッグで選択し、ハイライト表示する。確定時に
+ *   [data-modal-trigger="availability-create-modal"] を起動し、モーダル内の
+ *   day_of_week / start_time / end_time / is_active 入力へ選択値を反映する。
+ *   - 単純クリック: 1 時間枠（start = HH:00, end = HH+1:00）
+ *   - 同一曜日内ドラッグ: anchor 時刻 〜 drag 終端 + 1 時間
+ * 公開: なし（読み込み時に自動でカレンダーへバインド）。
+ */
 
 function formatHhmm(hour, minute) {
     return String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');

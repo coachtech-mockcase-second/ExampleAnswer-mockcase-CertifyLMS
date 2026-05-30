@@ -1,3 +1,7 @@
+{{--
+    受講登録一覧ページ。ロールで表示を出し分けるディスパッチャ。
+    構成: staff(管理者/コーチ)なら staff-index partial → それ以外は student-index partial。
+--}}
 @extends('layouts.app')
 
 @php

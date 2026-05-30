@@ -1,3 +1,7 @@
+{{--
+    資格カタログ一覧の 1 件分カード(certification/index から繰り返し描画)。
+    構成: カード全体が詳細へのリンク / 資格名 + カテゴリ + 受講中バッジ → 難易度バッジ → 説明抜粋(3 行省略)
+--}}
 <a href="{{ route('certifications.show', $certification) }}" class="group">
     <x-card padding="lg" shadow="sm" class="h-full transition-shadow group-hover:shadow-md group-hover:border-primary-200">
         <div class="flex items-start justify-between gap-2">
@@ -20,7 +24,7 @@
         </div>
 
         @if ($certification->description)
-            <p class="mt-4 text-sm text-ink-700 leading-relaxed line-clamp-3 border-t border-[var(--border-subtle)] pt-4">
+            <p class="mt-4 text-sm text-ink-700 leading-relaxed line-clamp-3 border-t border-subtle pt-4">
                 {{ $certification->description }}
             </p>
         @endif

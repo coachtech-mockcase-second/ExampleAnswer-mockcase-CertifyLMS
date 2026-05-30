@@ -1,3 +1,8 @@
+{{--
+    パスワード変更タブの中身。単一カード内の変更フォーム。
+    構成: 説明文 → フォーム（現在のパスワード / 新パスワード / 新パスワード確認）→ 変更ボタン。
+    JS なし（フォーム POST + リダイレクト）。エラーは各入力欄下に表示。
+--}}
 @php
     $hasError = $errors->updatePassword->isNotEmpty() || $errors->any();
     $passwordErrors = $errors->updatePassword->isNotEmpty() ? $errors->updatePassword : $errors;
@@ -45,7 +50,7 @@
             autocomplete="new-password"
         />
 
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-subtle">
             <x-button type="submit" variant="primary">パスワードを変更する</x-button>
         </div>
     </form>

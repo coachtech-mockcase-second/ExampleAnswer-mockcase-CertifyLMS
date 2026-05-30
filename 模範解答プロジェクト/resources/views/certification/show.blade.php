@@ -1,3 +1,8 @@
+{{--
+    受講生向け 資格詳細画面。
+    構成: パンくず → ヘッダ(資格名 + カテゴリ / 難易度 / 受講中バッジ + 受講登録ボタン) → 2 カラム(資格説明 / 担当コーチ一覧)
+    フロント観点: 受講登録は POST フォーム送信(JS なし)。受講済みなら disabled ボタン表示。
+--}}
 @extends('layouts.app')
 
 @section('title', $certification->name)
@@ -62,7 +67,7 @@
             @if ($certification->coaches->isEmpty())
                 <p class="mt-3 text-sm text-ink-500">担当コーチは未割当です。</p>
             @else
-                <ul class="mt-4 divide-y divide-[var(--border-subtle)]">
+                <ul class="mt-4 divide-y divide-subtle">
                     @foreach ($certification->coaches as $coach)
                         <li class="flex items-center gap-3 py-3">
                             <x-avatar :src="$coach->avatar_url" :name="$coach->name ?? '?'" size="sm" />

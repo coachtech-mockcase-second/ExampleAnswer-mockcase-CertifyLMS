@@ -1,3 +1,7 @@
+{{--
+    汎用バッジ。ステータス等を色付きの小さなピルで表示するラベル。
+    props: variant(success/warning/danger/info/primary/secondary/gray)・size(sm/md) + 表示文言スロット。
+--}}
 @props([
     'variant' => 'gray',
     'size' => 'md',

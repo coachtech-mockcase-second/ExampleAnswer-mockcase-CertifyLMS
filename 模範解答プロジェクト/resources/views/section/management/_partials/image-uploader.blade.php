@@ -1,3 +1,8 @@
+{{--
+    Section 本文用の画像アップローダ partial。ファイル選択 input + 補足説明 + 進捗ステータス表示。
+    props: section（アップロード先の対象）
+    フロント観点: ファイル選択で非同期アップロード（素の JS、data-upload-*）。完了後に本文へ Markdown を自動挿入し、ステータス欄に結果表示。
+--}}
 @props(['section'])
 
 <div

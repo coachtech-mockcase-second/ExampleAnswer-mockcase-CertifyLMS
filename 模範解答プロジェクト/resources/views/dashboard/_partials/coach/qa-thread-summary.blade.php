@@ -1,3 +1,8 @@
+{{--
+    コーチダッシュボードの未回答 Q&A サマリカード。
+    構成: 見出し(全件リンク) → フォールバック / 空文 or スレッド行リスト(タイトル + 資格バッジ + 相対時刻・投稿者、スレッドへリンク)
+    props: threads（スレッド行）・totalCount（全件数）
+--}}
 @props([
     'threads',
     'totalCount',
@@ -22,7 +27,7 @@
     @else
         <ul class="flex flex-col gap-2.5">
             @foreach ($threads as $thread)
-                <li class="px-3 py-2.5 bg-surface-canvas rounded-[10px] border border-[var(--border-subtle)]">
+                <li class="px-3 py-2.5 bg-surface-canvas rounded-[10px] border border-subtle">
                     <a href="{{ route('qa-board.show', $thread) }}" class="block">
                         <p class="text-sm font-semibold text-ink-900 line-clamp-2">{{ $thread->title }}</p>
                         <div class="text-[11px] text-ink-500 mt-1.5 flex gap-2 items-center">

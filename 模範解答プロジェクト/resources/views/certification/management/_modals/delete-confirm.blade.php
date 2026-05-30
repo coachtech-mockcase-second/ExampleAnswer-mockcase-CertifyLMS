@@ -1,3 +1,8 @@
+{{--
+    資格詳細画面「資格を削除」確認モーダル(delete-confirm-modal)。
+    構成: 確認文(対象資格名) → フッタ(キャンセル / 削除する)
+    フロント観点: data-modal-trigger で開くモーダル(JS あり)。確定で POST フォーム送信(@method('DELETE'))。
+--}}
 <x-modal id="delete-confirm-modal" title="資格を削除しますか？" size="md">
     <form method="POST" action="{{ route('admin.certifications.destroy', $certification) }}" id="delete-confirm-form">
         @csrf

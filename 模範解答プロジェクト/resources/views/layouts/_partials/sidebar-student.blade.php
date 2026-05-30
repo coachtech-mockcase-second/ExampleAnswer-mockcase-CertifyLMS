@@ -19,7 +19,7 @@
         <x-nav.item route="settings.profile.edit" icon="cog-6-tooth" label="設定" />
     </x-nav.sidebar>
 
-    <div class="px-3 pb-4 pt-3 border-t border-[var(--border-subtle)] shrink-0">
+    <div class="px-3 pb-4 pt-3 border-t border-subtle shrink-0">
         <p class="px-1 mb-1.5 text-[10px] uppercase tracking-wider text-ink-500">デフォルト資格</p>
         @php
             // 現在の Feature 文脈の中で資格を切り替えられるように、Feature 別の 2 階層目ルートへ向ける。

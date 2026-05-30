@@ -1,3 +1,8 @@
+{{--
+    キャンセル済みセッションへアクセスした際の案内画面（受講生）。
+    構成: パンくず → empty-state（キャンセル日時の説明 + 模試詳細へ戻るアクション）
+    フロント観点: JS なし（案内 + リンク遷移のみ）。
+--}}
 @extends('layouts.app')
 
 @section('title', $session->mockExam->title . ' — キャンセル済')

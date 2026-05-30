@@ -1,3 +1,9 @@
+{{--
+    問題の新規作成フォーム画面（管理側）。問題文・選択肢・正答を 1 画面で入力。
+    構成: パンくず → 見出し + 説明 → カード内フォーム（出題分野 select / 問題文 / 解説 textarea / 選択肢 4 行 → 追加・キャンセル）
+    選択肢行: 正答ラジオ（correct_index）+ 連動する hidden（is_correct）+ 本文 textarea。各行に order の hidden を持つ。
+    フロント観点: 末尾の小さな inline JS（updateIsCorrect）が、選択した正答ラジオに合わせて各行の hidden（data-is-correct-input）を 1/0 に切り替えるのみ。送信は標準フォーム POST + リダイレクト、エラーは old() 復元で表示。
+--}}
 @extends('layouts.app')
 
 @section('title', $mockExam->title . ' — 問題追加')

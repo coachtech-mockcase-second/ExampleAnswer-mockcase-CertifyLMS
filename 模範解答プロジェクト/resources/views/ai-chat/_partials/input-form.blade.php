@@ -1,8 +1,10 @@
+{{--
+    フル画面 AI 相談の入力欄（composer）。
+    構成: 自動リサイズ textarea + 送信ボタン → 補助行（⌘+Enter 送信ヒント）。
+    フロント観点: 通常のフォーム送信ではなく素の JS が data-* 属性を読んで非同期送信し、応答を画面に追記する。⌘+Enter ショートカット送信。
+--}}
 @php
     /** @var \App\Models\AiChatConversation $conversation */
-    $dailyLimit = (int) config('ai-chat.daily_message_limit', 50);
-    $usedToday = \Illuminate\Support\Facades\RateLimiter::attempts('ai-chat:'.auth()->id());
-    $quotaWarn = $usedToday >= max(1, (int) floor($dailyLimit * 0.8));
 @endphp
 
 <form data-ai-chat-form
@@ -11,7 +13,7 @@
     class="max-w-[760px] mx-auto w-full">
     @csrf
 
-    <div class="flex gap-2 items-end bg-white border border-[var(--border-default)] rounded-2xl pl-4 pr-1.5 py-1.5 shadow-sm focus-within:border-secondary-400 focus-within:shadow-[0_0_0_4px_rgba(124,58,237,0.10)] transition">
+    <div class="flex gap-2 items-end bg-white border border-default rounded-2xl pl-4 pr-1.5 py-1.5 shadow-sm focus-within:border-secondary-400 focus-within:shadow-[0_0_0_4px_rgba(124,58,237,0.10)] transition">
         <textarea name="content"
             rows="1"
             maxlength="2000"
@@ -31,7 +33,5 @@
 
     <div class="flex items-center gap-3 mt-2 px-4 text-[11px] text-ink-500">
         <span>⌘+Enter で送信 · AI の回答は参考情報です</span>
-        <span class="ml-auto tabular-nums {{ $quotaWarn ? 'text-warning-700 font-semibold' : '' }}"
-            data-ai-chat-quota>本日 {{ number_format($usedToday) }} / {{ number_format($dailyLimit) }} 通</span>
     </div>
 </form>

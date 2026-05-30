@@ -1,3 +1,8 @@
+{{--
+    詳細画面の受講中資格 partial。ユーザーが受講中の資格をカード内にリスト表示。
+    構成: カードヘッダ「受講中資格」+件数 → 0件なら空状態 / それ以外は資格名・ステータス・受験日の行リスト(各行に詳細リンク)
+    詳細リンクは Route::has() で遷移先が存在する時だけ表示。
+--}}
 @php
     $hasEnrollments = $user->relationLoaded('enrollments') && $user->enrollments->isNotEmpty();
 @endphp
@@ -14,7 +19,7 @@
     </x-slot:header>
 
     @if ($hasEnrollments)
-        <ul class="divide-y divide-[var(--border-subtle)]">
+        <ul class="divide-y divide-subtle">
             @foreach ($user->enrollments->take(10) as $enrollment)
                 <li class="px-6 py-3 flex items-center justify-between gap-4">
                     <div class="min-w-0 flex-1">

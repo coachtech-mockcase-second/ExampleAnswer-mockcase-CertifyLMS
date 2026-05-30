@@ -9,11 +9,14 @@ use App\Enums\PassProbabilityBand;
 use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\Enrollment;
+use App\Models\EnrollmentGoal;
 use App\Models\MeetingPack;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\CompletionEligibilityService;
 use App\Services\Contracts\WeaknessAnalysisServiceContract;
+use App\Services\Learning\LearningCalendar;
+use App\Services\LearningCalendarService;
 use App\Services\ProgressService;
 use App\Services\StreakService;
 use App\UseCases\Dashboard\FetchStudentDashboardAction;
@@ -149,6 +152,63 @@ class FetchStudentDashboardActionTest extends TestCase
         $vm = app(FetchStudentDashboardAction::class)($student);
 
         $this->assertTrue($vm->hasNoEnrollment);
+    }
+
+    public function test_learning_calendar_is_built_for_student(): void
+    {
+        // Arrange
+        $student = $this->makeStudentWithPlan();
+
+        // Act
+        $vm = app(FetchStudentDashboardAction::class)($student);
+
+        // Assert
+        $this->assertInstanceOf(LearningCalendar::class, $vm->learningCalendar);
+        $this->assertSame(now()->toDateString(), $vm->learningCalendar->today);
+        $this->assertIsArray($vm->learningCalendar->daysMap);
+    }
+
+    public function test_safe_helper_returns_null_when_learning_calendar_service_throws(): void
+    {
+        // Arrange
+        $student = $this->makeStudentWithPlan();
+
+        $calendarMock = Mockery::mock(LearningCalendarService::class);
+        $calendarMock->shouldReceive('build')->andThrow(new \RuntimeException('boom'));
+        $this->app->instance(LearningCalendarService::class, $calendarMock);
+
+        // Act
+        $vm = app(FetchStudentDashboardAction::class)($student);
+
+        // Assert
+        $this->assertNull($vm->learningCalendar);
+    }
+
+    public function test_goal_timeline_is_ordered_by_display_order(): void
+    {
+        // Arrange: 受講中 enrollment に 達成済(期日最短) + 未達成(期日遠 / 近) を投入
+        $student = $this->makeStudentWithPlan();
+        $cert = Certification::factory()->published()->create();
+        $enrollment = Enrollment::factory()->for($student)->for($cert)->learning()->create();
+        EnrollmentGoal::factory()->for($enrollment)->achieved()->create([
+            'title' => 'achieved', 'target_date' => now()->addDay()->toDateString(),
+        ]);
+        EnrollmentGoal::factory()->for($enrollment)->create([
+            'title' => 'far', 'target_date' => now()->addDays(30)->toDateString(), 'achieved_at' => null,
+        ]);
+        EnrollmentGoal::factory()->for($enrollment)->create([
+            'title' => 'near', 'target_date' => now()->addDays(5)->toDateString(), 'achieved_at' => null,
+        ]);
+
+        // Act
+        $vm = app(FetchStudentDashboardAction::class)($student);
+
+        // Assert
+        $this->assertSame(
+            ['near', 'far', 'achieved'],
+            $vm->goalTimeline->pluck('title')->all(),
+            'goalTimeline は未達成優先 → 期日昇順 → 達成済末尾で並ぶはず',
+        );
     }
 
     private function makeStudentWithPlan(int $maxMeetings = 0): User

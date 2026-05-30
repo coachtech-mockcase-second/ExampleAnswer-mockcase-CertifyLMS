@@ -1,7 +1,12 @@
+{{--
+    chat メッセージ送信フォーム partial。props 相当: room。
+    構成: 本文 textarea(文字数上限あり) → 補足文 + 送信ボタン。
+    フロント挙動: 通常の POST 送信に加え、素の JS が ⌘/Ctrl + Enter での送信や送信後の追記を扱う(data-chat-composer フック)。
+--}}
 <form
     method="POST"
     action="{{ route('chat.storeMessage', $room) }}"
-    class="border-t border-[var(--border-subtle)] px-6 py-4 bg-surface-raised"
+    class="border-t border-subtle px-6 py-4 bg-surface-raised"
     aria-label="メッセージ送信フォーム"
 >
     @csrf

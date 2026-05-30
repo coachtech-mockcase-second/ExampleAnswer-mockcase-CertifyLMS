@@ -1,3 +1,9 @@
+{{--
+    Part 詳細。資格→Part→Chapter→Section 階層の Part 段。配下 Chapter を一覧する。
+    構成: パンくず → Part ヘッダ（ラベル + タイトル + 説明）→ Chapter カードリスト（各 Chapter へリンク）
+    各カード: 読了済チェック / 「{読了数} / {総数} 読了」表示 / 達成率バー（画面に出る表示要素、算出済みの値を描画）
+    Chapter 0 件は empty-state。JS なし（カードはリンク遷移のみ）
+--}}
 @extends('layouts.app')
 
 @section('title', $part->title . ' ・ 教材・演習')
@@ -28,7 +34,7 @@
             @endphp
             <a href="{{ route('learning.chapters.show', $chapter) }}"
                 class="group block rounded-xl border bg-surface-raised px-5 py-4 shadow-sm hover:-translate-y-px hover:shadow-md transition-all
-                    {{ $isCompleted ? 'border-success-300 hover:border-success-400' : 'border-[var(--border-subtle)] hover:border-primary-300' }}">
+                    {{ $isCompleted ? 'border-success-300 hover:border-success-400' : 'border-subtle hover:border-primary-300' }}">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3 min-w-0">
                         @if ($isCompleted)

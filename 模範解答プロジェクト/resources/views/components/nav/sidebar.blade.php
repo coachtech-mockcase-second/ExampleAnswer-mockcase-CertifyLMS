@@ -1,3 +1,7 @@
+{{--
+    サイドバー本体。先頭にロゴ + ロール表示ピルを置き、その下にナビ項目を縦に並べる外枠。
+    props なし。スロットに <x-nav.item> / <x-nav.section> を並べる。
+--}}
 @php
     $user = auth()->user();
     $rolePillMap = [
@@ -9,7 +13,7 @@
 @endphp
 
 <nav {{ $attributes->merge(['class' => 'flex flex-col gap-1 px-3 py-4', 'aria-label' => 'メインナビゲーション']) }}>
-    <a href="{{ route('dashboard.index') }}" class="flex items-center gap-2.5 px-2 pt-1.5 pb-3.5 mb-2 border-b border-[var(--border-subtle)]">
+    <a href="{{ route('dashboard.index') }}" class="flex items-center gap-2.5 px-2 pt-1.5 pb-3.5 mb-2 border-b border-subtle">
         <img src="{{ asset('images/logo/logo-mark.svg') }}" alt="" class="w-7 h-7">
         <span class="font-display text-[18px] leading-none tracking-[-0.02em] text-ink-900">
             <span class="font-extrabold">Certify</span><span class="font-medium text-secondary-600"> LMS</span>

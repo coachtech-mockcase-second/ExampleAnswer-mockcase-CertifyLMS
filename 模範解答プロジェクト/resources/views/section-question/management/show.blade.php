@@ -1,3 +1,8 @@
+{{--
+    演習問題の詳細・編集画面。問題文・解説・出題分野・選択肢を編集し、状態遷移を操作する。
+    構成: パンくず → ヘッダ（問題本文抜粋 + 状態バッジ + 分野 + 公開/削除 or 下書きに戻すボタン）→ 編集フォーム（問題本文・解説カード[+ 分野セレクト partial] + 選択肢カード[option-fieldset partial]）→ 一覧へ戻る / 保存ボタン → 状態遷移確認モーダル群
+    フロント観点: 選択肢の正答ラジオ選択は素の JS（option-correct.js）で hidden 値に同期。公開・削除・下書き化はモーダル経由。下書き/公開でヘッダのボタンを出し分け。
+--}}
 @extends('layouts.app')
 
 @section('title', '演習問題詳細')
@@ -101,7 +106,7 @@
         <x-content-management.delete-confirm-modal
             id="question-delete-modal"
             title="演習問題を削除しますか？"
-            description="演習問題を SoftDelete します。受講生の解答履歴は保持されます。"
+            description="演習問題を削除します。受講生の解答履歴は保持されます。"
             :action="route('admin.section-questions.destroy', $question)"
         />
     @else

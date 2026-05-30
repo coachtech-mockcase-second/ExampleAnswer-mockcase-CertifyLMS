@@ -1,3 +1,7 @@
+{{--
+    KPI タイル。アイコン + ラベル + 大きな数値 + 任意の補足(delta)。featured で強調配色。
+    props: icon・label・value（必須）+ 配色 / delta / featured(任意) + chart スロット
+--}}
 @props([
     'icon' => 'chart-bar',
     'iconColor' => 'text-ink-500',
@@ -13,7 +17,7 @@
     $base = 'rounded-2xl border px-5 py-5 transition-colors duration-fast';
     $tone = $featured
         ? 'border-transparent bg-gradient-to-br from-warning-200 via-success-200 to-primary-200 text-ink-900'
-        : 'border-[var(--border-subtle)] bg-surface-raised shadow-sm hover:border-primary-200 hover:shadow-md';
+        : 'border-subtle bg-surface-raised shadow-sm hover:border-primary-200 hover:shadow-md';
 @endphp
 
 <div {{ $attributes->merge(['class' => "$base $tone"]) }}>

@@ -1,3 +1,7 @@
+{{--
+    ラジオボタン。ラベル付きの単一選択肢。同じ name で複数並べて 1 つを選ばせる。
+    props: name(必須)・value(この選択肢の値、必須)・label・checked(初期選択)・disabled。id は未指定なら name-value から自動生成。
+--}}
 @props([
     'name',
     'label' => null,

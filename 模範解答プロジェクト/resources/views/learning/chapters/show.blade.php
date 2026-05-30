@@ -1,3 +1,8 @@
+{{--
+    Chapter 詳細。資格→Part→Chapter→Section 階層の Chapter 段。配下 Section を一覧する。
+    構成: パンくず → Chapter ヘッダ（ラベル + タイトル + 説明）→ Section リスト（連番 + 読了済チェック + タイトル、各 Section へリンク）
+    Section 0 件は empty-state。JS なし（リンク遷移のみ）
+--}}
 @extends('layouts.app')
 
 @section('title', $chapter->title . ' ・ 教材・演習')
@@ -25,7 +30,7 @@
             <li>
                 <a href="{{ route('learning.sections.show', $section) }}"
                     class="group flex items-center gap-3 rounded-xl border bg-surface-raised px-5 py-4 shadow-sm hover:-translate-y-px hover:shadow-md transition-all
-                        {{ $isCompleted ? 'border-success-300 hover:border-success-400' : 'border-[var(--border-subtle)] hover:border-primary-300' }}">
+                        {{ $isCompleted ? 'border-success-300 hover:border-success-400' : 'border-subtle hover:border-primary-300' }}">
                     @if ($isCompleted)
                         <span class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-success-500 text-white" aria-label="読了済">
                             <svg class="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 8 7 12 13 5" stroke-linecap="round" stroke-linejoin="round"/></svg>

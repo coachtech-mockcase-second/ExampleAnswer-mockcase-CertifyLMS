@@ -1,3 +1,8 @@
+{{--
+    受講生の面談履歴一覧画面。登録中の全資格を横断して面談を時系列表示する。
+    構成: パンくず → ヘッダ(タイトル + 新規予約ボタン) → 状態フィルタタブ(今後/過去/すべて) → 面談カード一覧(ステータスバッジ + 日時 + 相談内容 + 担当コーチ) or 空状態 → ページネーション
+    JS なし(タブ・カードはリンク遷移、ページャもリンク)。
+--}}
 @extends('layouts.app')
 
 @section('title', '面談履歴')
@@ -48,7 +53,7 @@
         <div class="mt-6 space-y-3">
             @foreach ($meetings as $meeting)
                 <a href="{{ route('meetings.show', $meeting) }}"
-                   class="block bg-surface-raised border border-[var(--border-subtle)] rounded-2xl px-5 py-4 hover:border-primary-200 hover:shadow-md transition">
+                   class="block bg-surface-raised border border-subtle rounded-2xl px-5 py-4 hover:border-primary-200 hover:shadow-md transition">
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
  * 同日範囲のみ(`start_time < end_time`)で日跨ぎ枠は許容しない(アプリケーション層 FormRequest で保証)。
  * 「この月曜だけ休み」など臨時シフトは `is_active` 一時切替か枠の一時削除で運用し、別テーブルは持たない。
  *
- * 編集 UI は [[settings-profile]] が所有し、本テーブルの読み取りは [[mentoring]] が所有する。
+ * 編集 UI は設定・プロフィール機能が所有し、本テーブルの読み取りは面談予約機能が所有する。
  */
 return new class extends Migration
 {

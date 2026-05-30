@@ -1,3 +1,8 @@
+{{--
+    今後の面談予定リスト（ダッシュボード共通 partial、受講生 / コーチ両方で利用）。
+    構成: ヘッダ（タイトル + 予約導線）→ 直近面談の行リスト（日付チップ + 資格名 + 相手 + 時間帯）。0 件は空状態。
+    props: meetings / partnerAttribute(coach|student) / linkRoute / linkLabel。
+--}}
 @props([
     'meetings',
     'partnerAttribute' => 'coach',
@@ -26,7 +31,7 @@
                     $partner = $meeting->{$partnerAttribute};
                     $scheduled = $meeting->scheduled_at;
                 @endphp
-                <li class="flex items-center gap-3 py-2.5 border-b border-[var(--border-subtle)] last:border-b-0">
+                <li class="flex items-center gap-3 py-2.5 border-b border-subtle last:border-b-0">
                     <div class="flex-shrink-0 w-12 text-center bg-primary-50 text-primary-800 rounded-lg p-1.5">
                         <div class="font-display text-lg font-extrabold leading-none tabular-nums tracking-tight">{{ $scheduled->format('j') }}</div>
                         <div class="text-[9px] font-semibold mt-0.5">{{ $scheduled->format('n月') }} {{ ['日','月','火','水','木','金','土'][$scheduled->dayOfWeek] }}</div>

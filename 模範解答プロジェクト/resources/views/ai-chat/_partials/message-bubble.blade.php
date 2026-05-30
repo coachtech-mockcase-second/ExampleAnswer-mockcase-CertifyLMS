@@ -1,3 +1,8 @@
+{{--
+    メッセージ 1 件分の吹き出し（$message を受け取る）。
+    構成: アバター + 吹き出し本体（本文 / 応答待ちのローディングドット / エラー文 + 再送信ボタン）+ メタ行（時刻・応答時間・トークン数）。
+    フロント観点: 自分の発言と AI の発言で左右と配色を出し分け。AI 文は素の JS が Markdown をサニタイズ済 HTML に変換して描画。応答待ちはアニメーションのドット表示。エラー時の「再送信」は data-* を JS が拾って非同期で再実行。
+--}}
 @php
     /** @var \App\Models\AiChatMessage $message */
     $isMe = $message->role === \App\Enums\AiChatMessageRole::User;
@@ -38,7 +43,7 @@
         <div class="rounded-2xl px-4 py-3 text-sm leading-relaxed
             @if ($isError) bg-danger-50 border border-danger-200 text-danger-900
             @elseif ($isMe) bg-secondary-600 text-white rounded-br-md shadow
-            @else bg-white text-ink-900 rounded-tl-md shadow-sm border border-[var(--border-subtle)]
+            @else bg-white text-ink-900 rounded-tl-md shadow-sm border border-subtle
             @endif">
             @if ($isPending && $message->content === '')
                 <span class="inline-flex gap-1 py-1.5" aria-label="応答を生成中">

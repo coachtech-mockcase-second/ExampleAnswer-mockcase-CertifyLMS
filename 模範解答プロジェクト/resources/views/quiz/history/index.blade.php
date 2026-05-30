@@ -1,3 +1,8 @@
+{{--
+    解答履歴の一覧画面。1 資格に紐づく問題への解答ログを時系列で表示。
+    構成: パンくず → ヘッダ → 絞り込みフォーム（正誤 / 出題経路 / セクション / 出題分野の select、GET 送信）→ 履歴カード一覧（正誤・経路・分野バッジ + 問題文抜粋 + 選択した選択肢）→ ページネーション／ 0 件時は空状態
+    JS なし（GET フォームで絞り込み、ページャは x-paginator）。正誤・経路は表示要素。
+--}}
 @extends('layouts.app')
 
 @section('title', '解答履歴 ・ ' . $enrollment->certification->name)
@@ -36,7 +41,7 @@
         <p class="mt-1.5 text-sm text-ink-600">{{ $enrollment->certification->name }} に紐づく問題の解答履歴です。</p>
     </header>
 
-    <form method="GET" action="{{ route('quiz.history.index', $enrollment) }}" class="mt-6 grid gap-3 md:grid-cols-4 rounded-2xl border border-[var(--border-subtle)] bg-white p-4">
+    <form method="GET" action="{{ route('quiz.history.index', $enrollment) }}" class="mt-6 grid gap-3 md:grid-cols-4 rounded-2xl border border-subtle bg-white p-4">
         <label class="text-xs">
             <span class="block text-ink-600">正誤</span>
             <select name="is_correct" class="mt-1 w-full rounded-md border border-ink-200 px-3 py-2 text-sm">
@@ -105,7 +110,7 @@
                     $body = $question ? mb_strimwidth(strip_tags((string) $question->body), 0, 80, '…') : '(削除された問題)';
                 @endphp
 
-                <div class="rounded-2xl border border-[var(--border-subtle)] bg-white p-5">
+                <div class="rounded-2xl border border-subtle bg-white p-5">
                     <div class="flex flex-wrap items-center gap-2">
                         <x-badge :variant="$answer->is_correct ? 'success' : 'danger'" size="sm">
                             {{ $answer->is_correct ? '正解' : '誤答' }}
@@ -125,7 +130,7 @@
 
                     <p class="mt-2 text-sm leading-relaxed text-ink-800">{{ $body }}</p>
 
-                    <div class="mt-3 rounded-lg border border-[var(--border-subtle)] bg-ink-50/40 p-3 text-xs text-ink-700">
+                    <div class="mt-3 rounded-lg border border-subtle bg-ink-50/40 p-3 text-xs text-ink-700">
                         <span class="font-semibold text-ink-500">あなたの選択: </span>
                         <span>{{ $answer->selected_option_body }}</span>
                     </div>

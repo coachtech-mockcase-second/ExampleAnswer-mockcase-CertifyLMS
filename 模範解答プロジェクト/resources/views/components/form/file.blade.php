@@ -1,3 +1,7 @@
+{{--
+    ファイル入力。ラベル + ファイル選択 + ヒント + エラーを縦積みにしたフォーム部品。
+    props: name(必須)・label・accept(許可 MIME)・error・hint・required・disabled・multiple(複数選択)。
+--}}
 @props([
     'name',
     'label' => null,

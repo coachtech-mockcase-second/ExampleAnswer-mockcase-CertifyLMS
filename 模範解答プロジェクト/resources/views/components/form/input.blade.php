@@ -1,3 +1,8 @@
+{{--
+    テキスト入力。ラベル + 入力欄 + ヒント + エラーを縦積みにした基本フォーム部品。
+    props: name(必須)・label・type(text/email/password/date 等)・value・error・placeholder・hint・required・disabled・readonly。
+    error があれば入力欄を赤くしてエラー文を下に表示する。
+--}}
 @props([
     'name',
     'label' => null,

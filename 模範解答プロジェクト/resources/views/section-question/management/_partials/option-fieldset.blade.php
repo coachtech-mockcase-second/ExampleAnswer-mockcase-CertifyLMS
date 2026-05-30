@@ -1,3 +1,8 @@
+{{--
+    演習問題の選択肢入力 fieldset partial。各行 = 正答ラジオ + 本文テキストエリア。
+    props: options（既存/再入力の選択肢配列。4 行未満は空行で埋めて表示）
+    フロント観点: 正答ラジオを選ぶと素の JS（option-correct.js）が行ごとの hidden 値（is_correct）へ同期。
+--}}
 @props([
     'options' => [],
 ])

@@ -59,4 +59,26 @@ class IndexTest extends TestCase
             ->get(route('admin.certifications.parts.index', $cert))
             ->assertForbidden();
     }
+
+    public function test_parts_are_listed_in_order_ascending(): void
+    {
+        // Arrange: order を登録順とずらして作成(後から order=1 を登録)
+        $admin = User::factory()->admin()->create();
+        $cert = Certification::factory()->published()->create();
+        Part::factory()->forCertification($cert)->create(['order' => 3]);
+        Part::factory()->forCertification($cert)->create(['order' => 1]);
+        Part::factory()->forCertification($cert)->create(['order' => 2]);
+
+        // Act
+        $response = $this->actingAs($admin)
+            ->get(route('admin.certifications.parts.index', $cert));
+
+        // Assert: 登録順(3,1,2)ではなく order 昇順(1,2,3)で並ぶ
+        $response->assertOk();
+        $this->assertSame(
+            [1, 2, 3],
+            $response->viewData('parts')->pluck('order')->all(),
+            'Part 一覧は order 昇順で並ぶはず(登録順ではない)',
+        );
+    }
 }

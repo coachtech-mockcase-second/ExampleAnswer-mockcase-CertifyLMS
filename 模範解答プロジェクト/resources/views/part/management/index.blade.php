@@ -1,3 +1,9 @@
+{{--
+    教材階層（Part 一覧）管理画面。資格配下の Part を並べて管理する。
+    構成: パンくず → ヘッダ（タイトル + 新規 Part ボタン）→ Part 一覧（0 件時は空状態カード）→ Part 新規作成モーダル
+    各 Part カード: order 番号 / タイトルリンク / 状態バッジ / 説明 / 子件数サマリ
+    フロント観点: 一覧はドラッグで並び替え（素の JS、data-reorder-*）。新規作成はモーダル内フォーム送信。
+--}}
 @extends('layouts.app')
 
 @section('title', '教材階層 — ' . $certification->name)

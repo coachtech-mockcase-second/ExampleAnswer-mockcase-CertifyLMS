@@ -47,4 +47,31 @@ class StoreRequest extends FormRequest
             ],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'target_certification_id.required_if' => '配信対象タイプが「資格指定」のとき、配信対象の資格を選択してください。',
+            'target_certification_id.prohibited_unless' => '配信対象タイプが「資格指定」のときのみ、配信対象の資格を指定できます。',
+            'target_user_id.required_if' => '配信対象タイプが「ユーザー指定」のとき、配信対象のユーザーを選択してください。',
+            'target_user_id.prohibited_unless' => '配信対象タイプが「ユーザー指定」のときのみ、配信対象のユーザーを指定できます。',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'title' => 'タイトル',
+            'body' => '本文',
+            'target_type' => '配信対象タイプ',
+            'target_certification_id' => '配信対象の資格',
+            'target_user_id' => '配信対象のユーザー',
+        ];
+    }
 }

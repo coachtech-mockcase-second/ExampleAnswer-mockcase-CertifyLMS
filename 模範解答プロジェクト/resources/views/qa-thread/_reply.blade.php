@@ -1,3 +1,8 @@
+{{--
+    回答 1 件分の表示ブロック（$reply を受け取る）。
+    構成: ヘッダ（アバター + 投稿者名 + コーチ/自分バッジ + 日時）+ 操作（編集リンク + 削除フォーム）→ 本文。
+    フロント観点: JS なし。編集は専用ページへリンク遷移、削除はフォーム POST + confirm()。本文は e() + nl2br() で XSS 対策。
+--}}
 @php
     // 回答 1 件分の表示ブロック（$reply を受け取る）
     $viewer = auth()->user();
@@ -8,7 +13,7 @@
     $destroyRoute = $isAdminContext ? 'admin.qa-board.replies.destroy' : 'qa-board.replies.destroy';
 @endphp
 
-<article id="reply-{{ $reply->id }}" class="bg-surface-raised border border-[var(--border-subtle,#E6EDEB)] rounded-2xl px-5 py-4">
+<article id="reply-{{ $reply->id }}" class="bg-surface-raised border border-subtle rounded-2xl px-5 py-4">
     <header class="flex items-start gap-3">
         <x-avatar :src="$reply->user?->avatar_url" :name="$reply->user?->name ?? '?'" size="md" />
         <div class="flex-1 min-w-0">

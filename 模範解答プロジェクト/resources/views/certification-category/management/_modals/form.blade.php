@@ -1,3 +1,8 @@
+{{--
+    資格カテゴリの作成 / 編集 兼用フォームモーダル。カテゴリ index が modalId・タイトル・送信先・メソッド・対象を渡して使い回す($category が null なら作成)。
+    構成: 入力フォーム(分類名 / スラッグ / 表示順) → フッタ(キャンセル / 保存)
+    フロント観点: data-modal-trigger で開くモーダル(JS あり)。保存で POST フォーム送信(編集時は @method で動詞偽装)。
+--}}
 <x-modal :id="$modalId" :title="$title" size="md">
     <form method="POST" action="{{ $action }}" id="{{ $modalId }}-form" class="space-y-4">
         @csrf

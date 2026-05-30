@@ -69,6 +69,20 @@ class EnrollmentPolicyTest extends TestCase
         $this->assertFalse($policy->updateExamDate($admin, $passed), 'passed enrollment の exam_date は変更不可');
     }
 
+    public function test_student_can_update_own_exam_date_only_when_not_passed(): void
+    {
+        $student = User::factory()->student()->create();
+        $other = User::factory()->student()->create();
+        $learning = Enrollment::factory()->for($student)->learning()->create();
+        $passed = Enrollment::factory()->for($student)->passed()->create();
+        $othersLearning = Enrollment::factory()->for($other)->learning()->create();
+        $policy = new EnrollmentPolicy;
+
+        $this->assertTrue($policy->updateExamDate($student, $learning), '本人 + learning は変更可');
+        $this->assertFalse($policy->updateExamDate($student, $passed), 'passed は本人でも変更不可');
+        $this->assertFalse($policy->updateExamDate($student, $othersLearning), '他人の enrollment は変更不可');
+    }
+
     public function test_admin_can_fail_only_learning_enrollment(): void
     {
         $admin = User::factory()->admin()->create();

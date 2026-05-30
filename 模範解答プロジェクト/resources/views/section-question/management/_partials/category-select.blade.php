@@ -1,3 +1,7 @@
+{{--
+    出題分野の選択 partial。共通セレクトに分野候補を流し込む薄いラッパ。
+    props: categories（候補コレクション）/ selected（初期選択値）
+--}}
 @props([
     'categories',
     'selected' => null,

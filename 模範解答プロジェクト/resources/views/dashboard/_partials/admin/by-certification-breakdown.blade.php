@@ -1,3 +1,8 @@
+{{--
+    管理者ダッシュボードの資格別 受講中人数カード。
+    構成: 見出し(件数 + 資格マスタへのリンク) → 空文 or 行リスト(資格名リンク + 修了/学習中止の補足 + 受講中人数バー + 人数)
+    props: rows（資格ごとの内訳の行）
+--}}
 @props([
     'rows',
 ])
@@ -26,7 +31,7 @@
                 @php
                     $widthPct = (int) round($row['learning'] / $maxLearning * 100);
                 @endphp
-                <li class="grid items-center gap-2.5 py-2.5 border-b border-[var(--border-subtle)] last:border-b-0"
+                <li class="grid items-center gap-2.5 py-2.5 border-b border-subtle last:border-b-0"
                     style="grid-template-columns: 1fr auto auto;">
                     <div>
                         <a href="{{ route('admin.certifications.show', $row['certification_id']) }}"

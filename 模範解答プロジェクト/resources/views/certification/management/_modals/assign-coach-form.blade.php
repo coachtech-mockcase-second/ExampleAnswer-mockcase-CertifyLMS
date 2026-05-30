@@ -1,3 +1,8 @@
+{{--
+    資格詳細画面「コーチを追加」モーダル(assign-coach-modal)。
+    構成: 説明文 → 担当コーチ select → フッタ(キャンセル / 追加する)
+    フロント観点: data-modal-trigger で開く確認モーダル。末尾の inline script が select の選択値を action URL の __COACH__ 部分に差し込んでから POST 送信する。
+--}}
 @php
     $coachOptions = $assignableCoaches
         ->mapWithKeys(fn ($c) => [$c->id => ($c->name ?? '(未設定)').' ('.$c->email.')'])

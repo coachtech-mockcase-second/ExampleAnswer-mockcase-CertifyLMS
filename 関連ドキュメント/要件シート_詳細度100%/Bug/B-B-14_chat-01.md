@@ -42,7 +42,7 @@
 
 ### 原因
 
-- **主要ファイル**: `app/Services/ChatUnreadCountService.php`(個人別未読件数の集計)。集計結果はサイドバーバッジ(`SidebarBadgeComposer` → `roomCountForUser`)と、チャット画面のルーム別バッジ(`ChatRoomController::show` → `messageCountsByRoomForUser`)から利用される。**※ 集計が Service 内にあるため Basic 範囲外**。Basic 受講生が未読集計を Controller / View Composer 内に書いている場合は、その実装箇所(サイドバー = `SidebarBadgeComposer`、チャット画面 = `ChatRoomController::show`)を修正対象とする。
+- **主要ファイル**: `app/Services/ChatUnreadCountService.php`(個人別未読件数の集計)。集計結果はサイドバーバッジ(`SidebarBadgeComposer` → `roomCountForUser`)と、チャット画面のルーム別バッジ(`ChatRoomController::show` → `messageCountsByRoomForUser`)から利用される。
 - **仕込み内容**: 未読集計の各メソッド(`messageCountInRoom` / `messageCountsByRoomForUser` / `roomCountForUser`)から「送信者が自分でない」絞り込み(`where('sender_user_id', '!=', $user->id)`)が抜けている。同じ条件が 3 メソッドに分散しているため、再現するには全メソッドから削除する必要がある。
 - **修正範囲**: 各集計メソッドのクエリに「送信者が自分でない」条件を戻す(「自分の最終既読時刻より後」の未読時刻条件はそのまま維持)。3 メソッドに同種の条件があるため、漏れなく修正する。
 

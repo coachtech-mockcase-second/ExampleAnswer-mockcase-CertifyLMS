@@ -1,3 +1,8 @@
+{{--
+    修了証の受領パネル(受講詳細ページ内)。
+    構成: 学習中なら受領カード(条件達成で発行ボタン / 未達なら無効ボタン) → 修了済なら PDF ダウンロード alert。
+    発行ボタンは confirm() で誤操作防止(JS なし)。
+--}}
 @php
     use App\Enums\EnrollmentStatus;
     use App\Services\CompletionEligibilityService;

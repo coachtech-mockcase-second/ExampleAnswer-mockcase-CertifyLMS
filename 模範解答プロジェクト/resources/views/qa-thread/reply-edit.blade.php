@@ -3,6 +3,11 @@
 @section('title', '回答を編集')
 
 @section('content')
+    {{--
+        回答編集フォーム。本文のみ更新する専用ページ。
+        構成: パンくず → カード（見出し + 本文 textarea + 更新/キャンセル）。
+        フロント観点: JS なし（フォーム POST + @method('PATCH') で更新、編集はインラインでなく専用ページ遷移）。
+    --}}
     {{-- パンくず --}}
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],

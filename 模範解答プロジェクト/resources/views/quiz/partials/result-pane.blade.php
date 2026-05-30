@@ -1,3 +1,9 @@
+{{--
+    解答結果の内訳 partial（結果画面で共用）。
+    構成: 正誤バナー（正解 / 不正解で配色切替）→ 全選択肢の一覧（自分の選択・正答を色とアイコンで強調）→ 解説（あれば、改行保持表示）→ この問題の累計統計（試行回数 / 正解回数 / 正答率）
+    JS なし。各選択肢のマーカー色分けは表示用の match で分岐するだけ（正誤値は渡された結果をそのまま描画）。
+    引数: question・answer（自分の解答）・correctOption・attempt（累計、任意）。
+--}}
 @props([
     'question',
     'answer',
@@ -44,7 +50,7 @@
                     'correct' => 'border-success-500 bg-success-50',
                     'wrong' => 'border-danger-400 bg-danger-50',
                     'is-answer' => 'border-success-400 bg-success-50',
-                    default => 'border-[var(--border-subtle)] bg-white',
+                    default => 'border-subtle bg-white',
                 };
 
                 $keyBg = match ($variant) {
@@ -77,7 +83,7 @@
     @endif
 
     @if ($attempt)
-        <div class="rounded-2xl border border-[var(--border-subtle)] bg-white px-5 py-4">
+        <div class="rounded-2xl border border-subtle bg-white px-5 py-4">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-500">この問題の累計</p>
             <dl class="mt-2 grid grid-cols-3 gap-3 text-center">
                 <div>

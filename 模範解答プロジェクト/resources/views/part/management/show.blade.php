@@ -1,3 +1,8 @@
+{{--
+    Part 詳細・編集画面。Part 情報の編集と配下 Chapter の管理を行う。
+    構成: パンくず → ヘッダ（タイトル + 状態バッジ + 公開/削除 or 下書きに戻すボタン）→ Part 情報編集フォーム → Chapter 一覧（0 件時は空状態カード）→ Chapter 新規作成モーダル + 状態遷移確認モーダル群
+    フロント観点: Chapter 一覧はドラッグで並び替え（素の JS、data-reorder-*）。新規作成・公開・削除・下書き化はモーダル経由。下書き/公開でヘッダのボタンを出し分け。
+--}}
 @extends('layouts.app')
 
 @section('title', $part->title . ' — Part 詳細')
@@ -157,7 +162,7 @@
         <x-content-management.delete-confirm-modal
             id="part-delete-modal"
             title="Part を削除しますか？"
-            description="Part を SoftDelete します。配下の Chapter / Section も連鎖的に非表示になります。"
+            description="Part を削除します。配下の Chapter / Section も一緒に削除されます。"
             :action="route('admin.parts.destroy', $part)"
             button-label="削除する"
         />

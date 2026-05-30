@@ -1,3 +1,8 @@
+{{--
+    受講中資格カード（1 資格 = 1 枚）。受講生ダッシュボードの主役。
+    構成: ヘッダ（資格名 + ターム/合格可能性バッジ + 受験日カウントダウン）→ 進捗バー
+          → 残学習時間 / 日次推奨 / 弱点カテゴリ → 操作（教材へ）→ 修了証の受領 / ダウンロード（修了時）。
+--}}
 @props([
     'card',
 ])
@@ -9,24 +14,30 @@
     $bandLabel = $card->passProbabilityBand?->label();
     $termColor = $card->currentTerm->value === 'mock_practice' ? 'secondary' : 'info';
 
-    $countdownBadge = null;
+    $countdownLabel = '試験日まで';
+    $countdownColor = 'text-primary-700';
+    $countdownUnit = '日';
     if ($card->daysUntilExam !== null) {
         if ($card->daysUntilExam < 0) {
-            $countdownBadge = ['label' => '受験日経過', 'color' => 'text-danger-700'];
+            $countdownLabel = '受験日から';
+            $countdownColor = 'text-danger-700';
+            $countdownUnit = '日経過';
         } elseif ($card->daysUntilExam === 0) {
-            $countdownBadge = ['label' => '本日', 'color' => 'text-warning-700'];
+            $countdownLabel = '受験日';
+            $countdownColor = 'text-warning-700';
+            $countdownUnit = '';
         }
     }
 @endphp
 
-<article class="bg-surface-raised border border-[var(--border-subtle)] rounded-2xl px-5 py-5 shadow-sm flex flex-col gap-3.5">
-    <header class="flex items-start gap-3.5">
-        <span class="inline-flex w-10 h-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-            <x-icon name="academic-cap" class="w-5 h-5" />
+<article class="bg-surface-raised border border-subtle rounded-2xl px-4 py-3.5 shadow-sm flex flex-col gap-3">
+    <header class="flex items-start gap-3">
+        <span class="inline-flex w-9 h-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+            <x-icon name="academic-cap" class="w-4 h-4" />
         </span>
         <div class="flex-1 min-w-0">
-            <a href="{{ route('learning.enrollments.show', $card->enrollmentId) }}"
-               class="block font-display text-lg font-bold text-ink-900 tracking-tight truncate hover:text-primary-700 transition-colors">
+            <a href="{{ route('enrollments.show', $card->enrollmentId) }}"
+               class="block font-display text-base font-bold text-ink-900 tracking-tight truncate hover:text-primary-700 transition-colors">
                 {{ $card->certificationName }}
             </a>
             <div class="flex gap-1.5 items-center mt-1 flex-wrap">
@@ -40,15 +51,21 @@
         </div>
         <div class="text-right flex-shrink-0">
             @if ($card->daysUntilExam !== null)
-                <div class="font-display text-3xl font-extrabold text-primary-700 leading-none tabular-nums tracking-tight">
-                    {{ abs($card->daysUntilExam) }}
+                <div class="text-[10px] uppercase tracking-wider text-ink-500">{{ $countdownLabel }}</div>
+                <div class="font-display text-2xl font-extrabold {{ $countdownColor }} leading-none tabular-nums tracking-tight mt-0.5">
+                    @if ($card->daysUntilExam === 0)
+                        本日
+                    @else
+                        {{ abs($card->daysUntilExam) }}<span class="text-sm font-bold ml-0.5">{{ $countdownUnit }}</span>
+                    @endif
                 </div>
-                <div class="text-[10px] uppercase tracking-wider text-ink-500 mt-0.5">
-                    {{ $countdownBadge['label'] ?? '日後' }}
-                </div>
-                <div class="text-[11px] text-ink-600 font-mono mt-0.5">{{ $card->examDate->format('Y/m/d') }}</div>
+                <div class="text-[11px] text-ink-600 font-mono mt-0.5">{{ $card->examDate->format('Y/m/d') }} 実施</div>
             @else
-                <div class="text-xs text-ink-500">受験日 未設定</div>
+                <a href="{{ route('enrollments.show', $card->enrollmentId) }}"
+                   class="inline-flex items-center gap-1 text-xs text-primary-700 hover:underline">
+                    <x-icon name="calendar" class="w-3 h-3" />
+                    受験日を設定
+                </a>
             @endif
         </div>
     </header>
@@ -57,7 +74,7 @@
         <div class="flex flex-col gap-1.5">
             <div class="flex justify-between items-baseline text-xs text-ink-600">
                 <span>進捗</span>
-                <span class="font-display text-lg font-bold tabular-nums tracking-tight text-ink-900">{{ $progressPercent }}%</span>
+                <span class="font-display text-base font-bold tabular-nums tracking-tight text-ink-900">{{ $progressPercent }}%</span>
             </div>
             <div class="h-2 bg-ink-100 rounded-full overflow-hidden">
                 <div class="h-full {{ $card->isPassed ? 'bg-success-500' : 'bg-primary-500' }} rounded-full" style="width: {{ $progressPercent }}%"></div>
@@ -67,7 +84,7 @@
         @include('dashboard._partials.empty-state', ['message' => '進捗を取得できませんでした。'])
     @endif
 
-    <div class="flex flex-wrap gap-4 pt-3 border-t border-[var(--border-subtle)] text-xs">
+    <div class="flex flex-wrap gap-3 pt-2.5 border-t border-subtle text-xs">
         @if ($card->learningHourTarget !== null)
             <div class="flex flex-col">
                 <span class="text-[10px] uppercase tracking-wider font-semibold text-ink-500">残学習時間</span>
@@ -106,7 +123,15 @@
         @endif
     </div>
 
-    <div class="flex items-center justify-end gap-2 pt-1">
+    <div class="flex items-center justify-between gap-2">
+        @if (! $card->isPassed)
+            <p class="text-[11px] text-ink-500 flex items-center gap-1.5">
+                <x-icon name="information-circle" class="w-3 h-3 flex-shrink-0" />
+                修了条件: 公開模試すべての合格点超え
+            </p>
+        @else
+            <span></span>
+        @endif
         <x-link-button :href="route('learning.enrollments.show', $card->enrollmentId)" variant="primary" size="sm">
             <x-icon name="book-open" class="w-4 h-4" />
             教材へ
@@ -140,10 +165,5 @@
                 </button>
             </div>
         </form>
-    @else
-        <p class="text-[11px] text-ink-500 flex items-center gap-1.5">
-            <x-icon name="information-circle" class="w-3 h-3" />
-            修了条件: 公開模試すべての合格点超え
-        </p>
     @endif
 </article>

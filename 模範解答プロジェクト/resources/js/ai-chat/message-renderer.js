@@ -79,7 +79,7 @@ export function renderFullScreenMessage(container, message, options = {}) {
             retryBtn.textContent = '再送信';
             bubble.appendChild(retryBtn);
         } else {
-            bubble.classList.add('bg-white', 'text-ink-900', 'rounded-tl-md', 'shadow-sm', 'border', 'border-[var(--border-subtle)]');
+            bubble.classList.add('bg-white', 'text-ink-900', 'rounded-tl-md', 'shadow-sm', 'border', 'border-subtle');
         }
     }
 

@@ -1,3 +1,9 @@
+{{--
+    プロフィール設定タブの中身。2 カラム（左: 情報フォーム / 右: アイコン画像）。
+    左カード: 氏名 / 読み取り専用メール / 自己紹介、コーチのみ固定面談 URL 欄。フォーム POST で保存。
+    右カード: 現在のアバター表示 + 画像アップロードフォーム + （画像があれば）削除フォーム。
+    JS なし。画像削除は confirm() で確認後にフォーム送信。エラーは各入力欄下に表示。
+--}}
 @php
     use App\Enums\UserRole;
 @endphp
@@ -52,7 +58,7 @@
                 />
             @endif
 
-            <div class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-subtle">
                 <x-button type="submit" variant="primary">変更を保存</x-button>
             </div>
         </form>
@@ -78,7 +84,6 @@
                 action="{{ route('settings.avatar.store') }}"
                 enctype="multipart/form-data"
                 class="mt-5 space-y-3"
-                data-avatar-form
             >
                 @csrf
 
@@ -88,11 +93,10 @@
                     accept="image/png,image/jpeg,image/webp"
                     :error="$errors->first('avatar')"
                     hint="PNG / JPG / WebP、2MB 以内"
-                    data-avatar-input
                 />
 
                 <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                    <x-button type="submit" variant="primary" size="sm" data-avatar-submit>
+                    <x-button type="submit" variant="primary" size="sm">
                         アップロード
                     </x-button>
                 </div>
@@ -102,7 +106,7 @@
                 <form
                     method="POST"
                     action="{{ route('settings.avatar.destroy') }}"
-                    class="mt-3 border-t border-[var(--border-subtle)] pt-3"
+                    class="mt-3 border-t border-subtle pt-3"
                     onsubmit="return confirm('アイコン画像を削除します。よろしいですか?');"
                 >
                     @csrf

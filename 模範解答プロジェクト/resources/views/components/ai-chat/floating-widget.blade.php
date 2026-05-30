@@ -1,3 +1,9 @@
+{{--
+    どの画面の右下にも出せる AI 相談の浮遊ウィジェット（FAB + ミニチャットパネル）。
+    構成: 丸い起動ボタン(FAB) → パネル[ヘッダ(新規/フル画面/閉じる) → コンテキストバッジ → メッセージ領域(ウェルカム + サジェスト) → 入力欄]。
+    フロント観点: 開閉・メッセージの非同期送受信・サジェストのタップ入力はすべて素の JS（data-* フックで制御、パネルは hidden/flex を class で切替）。⌘+Enter 送信。Markdown 応答は JS で整形描画。
+    props: sectionId・sectionTitle（教材から開いた時の文脈）/ certificationName（資格文脈）。いずれも無ければ「全般相談」表示。
+--}}
 @props([
     'sectionId' => null,
     'sectionTitle' => null,
@@ -6,9 +12,6 @@
 
 @php
     $model = (string) config('ai-chat.gemini.model', 'gemini-2.5-flash');
-    $dailyLimit = (int) config('ai-chat.daily_message_limit', 50);
-    $usedToday = \Illuminate\Support\Facades\RateLimiter::attempts('ai-chat:'.auth()->id());
-    $quotaWarn = $usedToday >= max(1, (int) floor($dailyLimit * 0.8));
 
     if ($sectionId && $sectionTitle) {
         $ctxLabel = '📚 '.$sectionTitle;
@@ -95,7 +98,7 @@
         </div>
 
         {{-- Context badge --}}
-        <div class="flex items-center gap-2 px-4 py-2.5 bg-surface-canvas border-b border-[var(--border-subtle)] text-xs">
+        <div class="flex items-center gap-2 px-4 py-2.5 bg-surface-canvas border-b border-subtle text-xs">
             <span data-ai-chat-context class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border {{ $ctxClass }} font-semibold">
                 {{ $ctxLabel }}
             </span>
@@ -115,7 +118,7 @@
                     </svg>
                 </span>
                 <div>
-                    <div class="bg-white rounded-[13px] border border-[var(--border-subtle)] px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-900">
+                    <div class="bg-white rounded-[13px] border border-subtle px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-900">
                         <p class="m-0 mb-1.5">こんにちは {{ auth()->user()->name }}さん 👋
                             @if ($ctxType === 'section') いま読んでいる教材について追加で質問できます。
                             @elseif ($ctxType === 'cert') この資格について学習相談できます。
@@ -128,28 +131,28 @@
                     <div class="flex flex-col gap-1.5 mt-2" data-ai-chat-suggestions>
                         @if ($ctxType === 'section')
                             <button type="button" data-ai-chat-suggestion="このセクションの要点を 3 行でまとめて"
-                                class="flex items-start gap-2 px-3 py-2 bg-white border border-[var(--border-subtle)] rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
+                                class="flex items-start gap-2 px-3 py-2 bg-white border border-subtle rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 text-secondary-600 flex-shrink-0 mt-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                                 要点を 3 行でまとめて
                             </button>
                             <button type="button" data-ai-chat-suggestion="この概念を中学生でもわかるように説明して"
-                                class="flex items-start gap-2 px-3 py-2 bg-white border border-[var(--border-subtle)] rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
+                                class="flex items-start gap-2 px-3 py-2 bg-white border border-subtle rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 text-secondary-600 flex-shrink-0 mt-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"/></svg>
                                 かみくだいて説明して
                             </button>
                             <button type="button" data-ai-chat-suggestion="このセクションから試験頻出のパターンを教えて"
-                                class="flex items-start gap-2 px-3 py-2 bg-white border border-[var(--border-subtle)] rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
+                                class="flex items-start gap-2 px-3 py-2 bg-white border border-subtle rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 text-secondary-600 flex-shrink-0 mt-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"/></svg>
                                 試験頻出パターンは?
                             </button>
                         @else
                             <button type="button" data-ai-chat-suggestion="今日の学習内容を整理したい"
-                                class="flex items-start gap-2 px-3 py-2 bg-white border border-[var(--border-subtle)] rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
+                                class="flex items-start gap-2 px-3 py-2 bg-white border border-subtle rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 text-secondary-600 flex-shrink-0 mt-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                                 今日の学習を整理したい
                             </button>
                             <button type="button" data-ai-chat-suggestion="苦手分野の克服アプローチを教えて"
-                                class="flex items-start gap-2 px-3 py-2 bg-white border border-[var(--border-subtle)] rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
+                                class="flex items-start gap-2 px-3 py-2 bg-white border border-subtle rounded-[11px] text-xs text-ink-700 hover:border-secondary-300 hover:bg-secondary-50/40 text-left">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="w-3.5 h-3.5 text-secondary-600 flex-shrink-0 mt-0.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"/></svg>
                                 苦手分野の克服法
                             </button>
@@ -160,8 +163,8 @@
         </div>
 
         {{-- Composer --}}
-        <div class="bg-white border-t border-[var(--border-subtle)] px-3 py-2.5">
-            <div class="flex gap-1.5 items-end bg-surface-canvas border border-[var(--border-subtle)] rounded-[14px] p-1 focus-within:border-secondary-400 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.12)] transition">
+        <div class="bg-white border-t border-subtle px-3 py-2.5">
+            <div class="flex gap-1.5 items-end bg-surface-canvas border border-subtle rounded-[14px] p-1 focus-within:border-secondary-400 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.12)] transition">
                 <textarea
                     data-ai-chat-widget-input
                     rows="1"
@@ -178,11 +181,8 @@
                     </svg>
                 </button>
             </div>
-            <div class="flex justify-between items-center mt-1.5 px-1 text-[10px] text-ink-500">
+            <div class="flex items-center mt-1.5 px-1 text-[10px] text-ink-500">
                 <span>⌘+Enter で送信</span>
-                <span class="tabular-nums {{ $quotaWarn ? 'text-warning-700 font-semibold' : '' }}" data-ai-chat-widget-quota>
-                    本日 {{ number_format($usedToday) }} / {{ number_format($dailyLimit) }} 通
-                </span>
             </div>
         </div>
     </div>

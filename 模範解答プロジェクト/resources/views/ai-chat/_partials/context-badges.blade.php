@@ -1,9 +1,13 @@
+{{--
+    会話ヘッダに出すコンテキストバッジ（教材セクション / 資格 / 全般のいずれか 1 つ）。
+    構成: 📚 セクション名 → 🎓 資格名 → どちらも無ければ「全般相談」。
+    JS なし（表示のみ）。
+--}}
 @php
     /** @var \App\Models\AiChatConversation $conversation */
     $sectionTitle = $conversation->section?->title;
 
-    // 資格コンテキストの解決順序: 会話の enrollment_id → ログイン中ユーザーの default_enrollment_id
-    // (受講生が「いつもこの資格」と設定したもの)。learning / passed のみ表示する。
+    // 会話に紐づく受講中資格があればそれを、無ければユーザーの既定の受講資格をフォールバック表示する
     $enrollment = $conversation->enrollment ?? auth()->user()?->defaultEnrollment;
     $certName = $enrollment !== null
         && in_array($enrollment->status, [

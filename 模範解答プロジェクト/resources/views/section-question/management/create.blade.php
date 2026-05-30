@@ -1,3 +1,8 @@
+{{--
+    演習問題の新規作成画面。問題文・解説・出題分野・選択肢を 1 フォームで入力する。
+    構成: パンくず → タイトル → 作成フォーム（基本情報カード[問題文 / 解説 / 分野セレクト partial] + 選択肢カード[option-fieldset partial]）→ キャンセル / 保存ボタン
+    フロント観点: 選択肢の正答ラジオ選択は素の JS（option-correct.js）で hidden 値に同期。
+--}}
 @extends('layouts.app')
 
 @section('title', '演習問題を新規作成 — ' . $section->title)

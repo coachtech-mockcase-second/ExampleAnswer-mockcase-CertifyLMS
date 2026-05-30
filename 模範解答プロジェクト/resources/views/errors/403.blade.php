@@ -1,6 +1,8 @@
+{{--
+    403（アクセス権限なし）エラーページ。共通テンプレート errors._layout に表示内容を渡す。
+    個別メッセージが渡されていればそれを、なければ既定の説明文を表示する。静的表示のみ。
+--}}
 @php
-    // abort(403, 'カスタムメッセージ') 経由でドメイン側から渡されたメッセージを優先表示する
-    // (EnsureActiveLearning Middleware の卒業者向けメッセージ等)。
     $customMessage = isset($exception) ? trim($exception->getMessage()) : '';
 @endphp
 

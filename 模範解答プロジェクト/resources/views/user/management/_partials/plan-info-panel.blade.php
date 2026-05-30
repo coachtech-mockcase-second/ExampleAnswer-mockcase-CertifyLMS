@@ -1,3 +1,8 @@
+{{--
+    詳細画面の受講プラン情報パネル partial（受講生のみ表示）。カード内に定義リストで表示。
+    構成: カードヘッダ「受講プラン」 → 非受講生 or プラン未設定なら空状態 / それ以外はプラン名・受講期間・残日数・初期付与/残面談回数の dl
+    残日数・残面談回数が少ない場合は文字色を警告色に切替える表示処理のみ。
+--}}
 @php
     use App\Enums\UserRole;
     use App\Enums\UserStatus;
@@ -6,7 +11,6 @@
     $isWithdrawn = $user->status === UserStatus::Withdrawn;
     $isInvited = $user->status === UserStatus::Invited;
 
-    // 受講生招待時に Plan を複写し plan_expires_at は OnboardAction で確定する。invited 段階では NULL
     $plan = $user->plan;
     $expiresAt = $user->plan_expires_at;
     $startedAt = $user->plan_started_at;

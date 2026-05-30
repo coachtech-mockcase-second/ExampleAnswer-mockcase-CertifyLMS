@@ -1,3 +1,9 @@
+{{--
+    面談設定タブの中身（コーチ専用）。Google カレンダー連携と、面談可能時間枠の週間カレンダー。
+    構成: Google 連携カード（連携状態で表示分岐 / 連携・解除ボタン）→ 週間カレンダー（曜日 × 時間のグリッド、登録済の枠を色付きブロックで重ね描画 + 凡例）→ 追加モーダル + 各枠の編集 / 削除モーダル。
+    冒頭の処理は描画用の整形のみ（30 分保存値を 1 時間グリッドへ丸め、連続枠を 1 ブロックに連結）。
+    JS あり: 空セルのクリック / ドラッグ選択で枠追加、ブロッククリックで編集モーダルを開く（data-* フックで連携、別途読み込む JS が制御）。削除は confirm() 後にフォーム送信。
+--}}
 @php
     use Illuminate\Support\Carbon;
 
@@ -118,7 +124,7 @@
             </div>
         @else
             <div class="space-y-3">
-                <div class="rounded-xl bg-ink-50 border border-[var(--border-subtle)] px-4 py-3 text-sm text-ink-700">
+                <div class="rounded-xl bg-ink-50 border border-subtle px-4 py-3 text-sm text-ink-700">
                     Googleカレンダーと連携すると、面談予約が自動でカレンダーに登録され、
                     個人予定の入っている時間帯は受講生の予約画面から自動的に除外されます。
                 </div>
@@ -155,14 +161,14 @@
 
         <div class="overflow-x-auto">
             <div
-                class="min-w-[640px] grid border border-[var(--border-subtle)] rounded-md overflow-hidden select-none"
+                class="min-w-[640px] grid border border-subtle rounded-md overflow-hidden select-none"
                 data-availability-calendar
                 data-hour-start="{{ $hourStart }}"
                 data-hour-end="{{ $hourEnd }}"
                 style="grid-template-columns: 56px repeat(7, minmax(0, 1fr)); grid-template-rows: 28px repeat({{ $hoursCount }}, {{ $rowHeightPx }}px);"
             >
                 {{-- ヘッダ行 (grid-row 1) --}}
-                <div class="bg-surface-sunken/60 border-b border-r border-[var(--border-subtle)]"></div>
+                <div class="bg-surface-sunken/60 border-b border-r border-subtle"></div>
                 @foreach ($dayLabels as $dow => $label)
                     @php
                         $headerColor = match ($dow) {
@@ -171,7 +177,7 @@
                             default => 'text-ink-600',
                         };
                     @endphp
-                    <div class="text-center text-[11px] font-bold uppercase tracking-wider py-1 bg-surface-sunken/60 border-b border-r last:border-r-0 border-[var(--border-subtle)] {{ $headerColor }}">
+                    <div class="text-center text-[11px] font-bold uppercase tracking-wider py-1 bg-surface-sunken/60 border-b border-r last:border-r-0 border-subtle {{ $headerColor }}">
                         {{ $label }}
                     </div>
                 @endforeach
@@ -186,7 +192,7 @@
 
                     {{-- 時刻ラベル(セルと同じ border-b でラインを完全一致させる) --}}
                     <div
-                        class="text-[10px] text-ink-500 tabular-nums pr-1 text-right border-r border-b border-[var(--border-subtle)] flex items-start justify-end pt-0.5"
+                        class="text-[10px] text-ink-500 tabular-nums pr-1 text-right border-r border-b border-subtle flex items-start justify-end pt-0.5"
                         style="grid-row: {{ $gridRow }}; grid-column: 1;"
                     >
                         {{ $hhmm }}
@@ -195,7 +201,7 @@
                     @foreach ($dayLabels as $dow => $_)
                         <button
                             type="button"
-                            class="border-r last:border-r-0 border-b border-[var(--border-subtle)] hover:bg-primary-50 transition-colors duration-fast cursor-pointer text-left"
+                            class="border-r last:border-r-0 border-b border-subtle hover:bg-primary-50 transition-colors duration-fast cursor-pointer text-left"
                             data-availability-cell
                             data-day-of-week="{{ $dow }}"
                             data-hour="{{ $hour }}"
@@ -274,7 +280,7 @@
                 'modalId' => 'availability-edit-modal-' . $availability->id,
             ])
 
-            <div class="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-sm">
+            <div class="mt-4 pt-3 border-t border-subtle flex items-center justify-between gap-3 text-sm">
                 <p class="text-xs text-ink-500">この時間枠を削除すると、受講生の予約画面から外れます(既存の予約は影響を受けません)。</p>
                 <form
                     method="POST"

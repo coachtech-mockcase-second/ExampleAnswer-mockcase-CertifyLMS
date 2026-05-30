@@ -1,3 +1,8 @@
+{{--
+    苦手分野ドリルのカテゴリ選択画面。出題分野ごとに練習問題を絞り込む入口。
+    構成: パンくず → ヘッダ → カテゴリカードのグリッド（おすすめバッジ + 出題数・挑戦回数・正答率の数値）／ 0 件時は空状態
+    JS なし（カード全体がリンク）。正答率の数値は表示要素として描画。
+--}}
 @extends('layouts.app')
 
 @section('title', '苦手分野ドリル ・ ' . $enrollment->certification->name)
@@ -44,7 +49,7 @@
                 @endphp
 
                 <a href="{{ route('quiz.drills.category', ['enrollment' => $enrollment, 'questionCategory' => $category]) }}"
-                    class="block rounded-2xl border border-[var(--border-subtle)] bg-white p-5 transition-all hover:-translate-y-px hover:border-primary-300 hover:shadow-md">
+                    class="block rounded-2xl border border-subtle bg-white p-5 transition-all hover:-translate-y-px hover:border-primary-300 hover:shadow-md">
                     <div class="flex items-start gap-3">
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">

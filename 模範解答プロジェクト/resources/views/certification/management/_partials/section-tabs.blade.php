@@ -1,3 +1,8 @@
+{{--
+    資格マスタ管理画面の上部セクションタブ(資格マスタ管理 index / カテゴリ index が共通 include)。
+    構成: 「資格マスタ」「カテゴリ」の 2 タブ。現在ページに応じて aria-current + アクティブ装飾。
+    フロント観点: 単なるリンク切替(JS なし)。表示するタブは冒頭でロール判定して組み立て。
+--}}
 @php
     $sectionTabs = [
         [
@@ -19,7 +24,7 @@
     }
 @endphp
 
-<div class="mt-6 border-b border-[var(--border-subtle)]">
+<div class="mt-6 border-b border-subtle">
     <nav class="-mb-px flex gap-6" aria-label="資格マスタ管理タブ">
         @foreach ($sectionTabs as $tab)
             <a

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\EnrollmentStatus;
 use App\Enums\UserRole;
 use App\Http\Requests\Enrollment\StoreRequest;
+use App\Http\Requests\Enrollment\UpdateExamDateRequest;
 use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Services\ProgressService;
@@ -15,6 +16,7 @@ use App\UseCases\Enrollment\IndexAction;
 use App\UseCases\Enrollment\ResumeAction;
 use App\UseCases\Enrollment\ShowAction;
 use App\UseCases\Enrollment\StoreAction;
+use App\UseCases\Enrollment\UpdateExamDateAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,7 +24,7 @@ use Illuminate\View\View;
 /**
  * 受講登録 Controller。3 ロール共通の閲覧導線(index / show)を提供する。
  *
- * - student: 自分の受講登録 一覧 / 詳細 + 自己登録 / 受講解除 / failed からの再挑戦
+ * - student: 自分の受講登録 一覧 / 詳細 + 自己登録 / 受講解除 / failed からの再挑戦 + 目標受験日の設定
  * - coach: 担当資格に登録された受講生の一覧 / 詳細(進捗カード + コーチメモ + 個人目標閲覧)
  * - admin: 全件 + フィルタ + paginate / 詳細(状態遷移ログ + 試験日変更 + 学習中止リンク)
  *
@@ -153,5 +155,21 @@ class EnrollmentController extends Controller
         return redirect()
             ->route('enrollments.show', $enrollment)
             ->with('success', '学習を再開しました。');
+    }
+
+    /**
+     * 受講生本人による目標受験日の設定 / 変更。認可は UpdateExamDateRequest が
+     * EnrollmentPolicy::updateExamDate (admin or 本人、status != Passed) に委譲する。
+     */
+    public function updateExamDate(
+        Enrollment $enrollment,
+        UpdateExamDateRequest $request,
+        UpdateExamDateAction $action,
+    ): RedirectResponse {
+        $action($enrollment, $request->validated());
+
+        return redirect()
+            ->route('enrollments.show', $enrollment)
+            ->with('success', '目標受験日を更新しました。');
     }
 }

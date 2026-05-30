@@ -17,7 +17,8 @@ use App\Models\User;
  * - create / delete: 受講生本人(自己登録 / 自己解除)。delete は status == Learning のみ
  * - receiveCertificate: 受講生本人 + status == Learning のみ
  * - resume: 受講生本人 + status == Failed、または admin
- * - admin 専用操作: viewAdmin / fail / updateExamDate
+ * - updateExamDate: admin または受講生本人(いずれも status != Passed)
+ * - admin 専用操作: viewAdmin / fail
  *
  * coach の判定は certification.coaches リレーション(certification_coach_assignments 経由)で行う。
  */
@@ -44,8 +45,12 @@ class EnrollmentPolicy
 
     public function updateExamDate(User $user, Enrollment $enrollment): bool
     {
+        if ($enrollment->status === EnrollmentStatus::Passed) {
+            return false;
+        }
+
         return $user->role === UserRole::Admin
-            && $enrollment->status !== EnrollmentStatus::Passed;
+            || ($user->role === UserRole::Student && $enrollment->user_id === $user->id);
     }
 
     public function fail(User $user, Enrollment $enrollment): bool

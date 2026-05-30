@@ -59,6 +59,16 @@ export default {
                     sunken: '#EAF6F4',
                 },
             },
+            borderColor: {
+                subtle: 'var(--border-subtle)',
+                default: 'var(--border-default)',
+                strong: 'var(--border-strong)',
+            },
+            divideColor: {
+                subtle: 'var(--border-subtle)',
+                default: 'var(--border-default)',
+                strong: 'var(--border-strong)',
+            },
             fontFamily: {
                 display: ['"Bricolage Grotesque"', '"Noto Sans JP"', 'Inter', 'sans-serif'],
                 sans: ['Inter', '"Noto Sans JP"', 'system-ui', 'sans-serif'],

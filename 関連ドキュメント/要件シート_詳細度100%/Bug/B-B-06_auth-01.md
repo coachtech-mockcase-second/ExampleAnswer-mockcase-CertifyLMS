@@ -45,7 +45,7 @@
 
 - **主要ファイル**: `app/UseCases/Auth/OnboardAction.php`(オンボーディング完了ユースケース、`__invoke`)。冒頭の検証ガードは招待が未使用(`InvitationStatus::Pending`)かつ期限内であることを確認し、不正なら `App\Exceptions\Auth\InvalidInvitationTokenException`(410)を throw する。
 - **仕込み内容**: 完了処理内の「招待を使用済み(`InvitationStatus::Accepted` + 受諾日時 `accepted_at`)に更新する」処理が抜けている。使用済み化が漏れると招待は `Pending` のまま残り、同じトークンで何度でも冒頭ガードを通過して再オンボードできる(名前・パスワードの再上書きが成立する)。
-- **修正範囲**: オンボーディング完了時に招待を使用済み(`Accepted`)へ更新する処理を戻す。`OnboardAction` 内の数行(招待レコードの状態更新)で完結。**※ 原因は Action(`OnboardAction`)内 = Basic 範囲外**。Basic 受講生は Controller 内完結で実装してよく、その場合は `OnboardingController::store` に同等の状態更新を書く。いずれの構成でも受け入れ条件の振る舞いを満たせばよい。
+- **修正範囲**: オンボーディング完了時に招待を使用済み(`Accepted`)へ更新する処理を戻す。`OnboardAction` 内の数行(招待レコードの状態更新)で完結。
 
 ## 補足
 

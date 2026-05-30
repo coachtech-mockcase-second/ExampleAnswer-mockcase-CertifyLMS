@@ -1,3 +1,9 @@
+{{--
+    教材タブの中身（enrollments/show.blade.php の「教材」タブで include）。
+    構成: Part カード（連番 + タイトル + Chapter 数）→ 各 Chapter（タイトル + Section 数、Chapter ページへリンク）
+      → Section リスト（読了済チェック + タイトル、Section ページへリンク）
+    教材未公開時は empty-state。JS なし（リンク遷移のみ）
+--}}
 @php
     /** @var \Illuminate\Database\Eloquent\Collection $parts */
     /** @var array<int, string> $completedSectionIds */
@@ -27,7 +33,7 @@
 
                 <div class="space-y-4">
                     @foreach ($part->chapters as $chapter)
-                        <div class="rounded-lg border border-[var(--border-subtle)] bg-surface-canvas overflow-hidden">
+                        <div class="rounded-lg border border-subtle bg-surface-canvas overflow-hidden">
                             <a href="{{ route('learning.chapters.show', $chapter) }}"
                                 class="group/chapter flex items-baseline justify-between gap-3 px-4 py-3 bg-surface-sunken/40 hover:bg-primary-50 hover:text-primary-800 transition-colors">
                                 <span class="text-sm font-semibold text-ink-900 group-hover/chapter:text-primary-800">Chapter {{ $loop->iteration }} ・ {{ $chapter->title }}</span>
@@ -38,7 +44,7 @@
                             </a>
 
                             @if ($chapter->sections->isNotEmpty())
-                                <ul class="border-t border-[var(--border-subtle)] divide-y divide-[var(--border-subtle)] bg-white">
+                                <ul class="border-t border-subtle divide-y divide-subtle bg-white">
                                     @foreach ($chapter->sections as $section)
                                         @php $isCompleted = in_array($section->id, $completedSectionIds, true); @endphp
                                         <li>

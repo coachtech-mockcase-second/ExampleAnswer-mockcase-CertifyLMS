@@ -1,14 +1,18 @@
+{{--
+    ベル横に開く通知ポップオーバーの骨組み。
+    構成: ヘッダ(全件 / 未読タブ + 全件既読)→ ボディ(通知行リスト + 読み込み中 / 空表示)→ フッタ(「すべての通知を見る」リンク)→ 通知行テンプレート。
+--}}
 <div
     id="notification-popover-panel"
     data-notification-popover-panel
     role="dialog"
     aria-modal="false"
     aria-label="通知"
-    class="hidden absolute right-0 mt-2 w-[400px] max-w-[calc(100vw-1rem)] max-h-[70vh] z-30 origin-top-right rounded-lg shadow-lg border border-[var(--border-subtle)] bg-white opacity-0 -translate-y-1 transition duration-150 ease-out flex-col"
+    class="hidden absolute right-0 mt-2 w-[400px] max-w-[calc(100vw-1rem)] max-h-[70vh] z-30 origin-top-right rounded-lg shadow-lg border border-subtle bg-white opacity-0 -translate-y-1 transition duration-150 ease-out flex-col"
     style="display: none;"
 >
     {{-- ヘッダ: タブ + 全件既読 --}}
-    <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-[var(--border-subtle)]">
+    <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-subtle">
         <div class="inline-flex rounded-md bg-ink-50 p-0.5" role="tablist">
             <button
                 type="button"
@@ -48,7 +52,7 @@
         <div data-notification-popover-empty class="hidden p-6 text-center text-xs text-ink-500">
             通知はありません。
         </div>
-        <ul data-notification-popover-items class="divide-y divide-[var(--border-subtle)]"></ul>
+        <ul data-notification-popover-items class="divide-y divide-subtle"></ul>
     </div>
 
     {{-- フッタ: 「すべての通知を見る」リンク --}}
@@ -56,7 +60,7 @@
         <a
             href="{{ route('notifications.index') }}"
             data-notification-popover-footer-link
-            class="border-t border-[var(--border-subtle)] px-4 py-3 text-center text-xs font-semibold text-primary-700 hover:bg-primary-50/50 hover:text-primary-800 transition-colors rounded-b-lg"
+            class="border-t border-subtle px-4 py-3 text-center text-xs font-semibold text-primary-700 hover:bg-primary-50/50 hover:text-primary-800 transition-colors rounded-b-lg"
         >
             すべての通知を見る →
         </a>

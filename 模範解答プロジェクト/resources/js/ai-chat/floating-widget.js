@@ -5,10 +5,10 @@ import { renderMarkdown } from './markdown.js';
 /**
  * フローティング AI 相談ウィジェット (受講生 + 受講中限定で全画面右下に常駐)。
  *
- * - FAB クリックでパネルを開閉、sessionStorage で状態保持 (REQ-ai-chat-073)
- * - data-section-id があれば「教材コンテキスト」付きで会話を作成 / 再開 (REQ-ai-chat-071, 034)
+ * - FAB クリックでパネルを開閉、sessionStorage で状態保持
+ * - data-section-id があれば「教材コンテキスト」付きで会話を作成 / 再開
  * - 教材以外では「全般相談」モード
- * - 「フル画面で開く」ボタンで /ai-chat/conversations/{id} に遷移 (REQ-ai-chat-074)
+ * - 「フル画面で開く」ボタンで /ai-chat/conversations/{id} に遷移
  * - Esc キーでパネルを閉じる、aria-modal トグル (NFR-ai-chat-007)
  * - 入力 → 送信で POST /ai-chat/conversations/{id}/messages、応答を逐次バブル表示
  */
@@ -118,7 +118,7 @@ export function initAiChatWidget() {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3" aria-hidden="true"><path d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
             </span>
             <div>
-                <div class="bg-white border border-[var(--border-subtle)] rounded-[13px] px-3.5 py-2.5 text-[13px]">
+                <div class="bg-white border border-subtle rounded-[13px] px-3.5 py-2.5 text-[13px]">
                     <span class="inline-flex gap-1 py-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-secondary-400 animate-bounce" style="animation-delay:0ms"></span>
                         <span class="w-1.5 h-1.5 rounded-full bg-secondary-400 animate-bounce" style="animation-delay:160ms"></span>
@@ -136,7 +136,7 @@ export function initAiChatWidget() {
         removeWelcome();
         const bubbleCls = isError
             ? 'bg-danger-50 border border-danger-200 text-danger-900'
-            : 'bg-white border border-[var(--border-subtle)] text-ink-900';
+            : 'bg-white border border-subtle text-ink-900';
         // assistant: Markdown を sanitize して innerHTML、エラー文言は escapeHtml で literal 表示
         const inner = isError
             ? escapeHtml(content)
@@ -290,6 +290,9 @@ export function initAiChatWidget() {
     async function send(content) {
         sendBtn.disabled = true;
         input.disabled = true;
+        // 送信直後に入力欄をクリア(楽観的 UI、AI 応答を待たずに空へ戻す)
+        input.value = '';
+        input.style.height = '';
         appendUserBubble(content);
         const typingNode = appendTypingBubble();
 
@@ -313,8 +316,6 @@ export function initAiChatWidget() {
         } finally {
             sendBtn.disabled = false;
             input.disabled = false;
-            input.value = '';
-            input.style.height = '';
             input.focus();
         }
     }

@@ -51,7 +51,7 @@
 - [ ] **`FailExpiredEnrollmentsCommand` への [[default-enrollment]] 連携追加** — failed 遷移直後に `DefaultEnrollmentService::resolveAfterStatusChange` 呼出(REQ-default-enrollment-019)
 
 ## Controller / Route
-- [x] `EnrollmentController` (index / show / store / destroy)
+- [x] `EnrollmentController` (index / show / store / destroy / resume / updateExamDate【受講生本人の目標受験日設定】)
 - [x] `EnrollmentManagementController` (admin index / show / updateExamDate / fail。手動割当 store は撤回)
 - [x] `ReceiveCertificateController` (store)
 - [x] `EnrollmentGoalController` / `EnrollmentNoteController`

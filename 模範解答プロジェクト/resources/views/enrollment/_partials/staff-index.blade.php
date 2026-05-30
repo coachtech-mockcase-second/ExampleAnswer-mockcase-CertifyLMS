@@ -1,7 +1,8 @@
 {{--
-    staff(admin / coach)向け enrollment 一覧 partial(テーブル + フィルタ + paginate)。
-    coach は EnrollmentPolicy::view で担当範囲のみ閲覧可、admin は全件 + 削除済トグル可能。
-    UI 差(削除済トグル / 担当資格 fallback)は @if ($isAdmin) で出し分け。
+    管理者・コーチ向けの受講登録一覧 partial。
+    構成: パンくず → 見出し → 絞り込みフォーム(キーワード / ステータス / 資格 + 管理者のみ削除済トグル)
+          → 一覧テーブル(0 件は empty-state) → ページネーション。
+    管理者とコーチで見出し文言・列・トグルの有無を出し分け(GET フォームで絞り込み、JS なし)。
 --}}
 
 @php

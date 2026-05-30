@@ -1,3 +1,8 @@
+{{--
+    Section 本文の Markdown エディタ partial。左に入力テキストエリア、右にプレビューの 2 カラム。
+    props: section（プレビュー対象）/ body（初期本文）
+    フロント観点: 入力に応じてプレビューを更新 + 文字数カウンタ表示（素の JS、data-editor-*）。プレビューの HTML 描画元はサーバ応答。
+--}}
 @props([
     'section',
     'body' => '',

@@ -1,3 +1,8 @@
+{{--
+    面談予約フォーム画面。カレンダーで日付を選び、空き時刻スロットを選択して 60 分面談を予約する。
+    構成: パンくず → ヘッダ(残り面談回数 + 追加購入リンク) → 資格切替(inline) → 自動コーチ割当の案内カード → 残数不足アラート(条件) → 予約フォーム[左: 月送りカレンダー + 時刻スロット / 右: 選択内容サマリ + 相談内容 textarea + 送信ボタン]
+    フロント挙動: 素の JS でカレンダー日付セルと時刻スロットを描画し、日付選択→その日の空きスロット表示→スロット選択で右サマリ更新 + 送信ボタン活性化(hidden input に選択日時を反映)。月の前後送り / 今日ボタンあり。
+--}}
 @extends('layouts.app')
 
 @section('title', '面談を予約する')
@@ -77,19 +82,19 @@
 
         {{-- LEFT: Calendar + Slot picker --}}
         <div class="space-y-4 min-w-0">
-            <div class="rounded-2xl bg-surface-raised border border-[var(--border-subtle)] p-5 shadow-sm"
+            <div class="rounded-2xl bg-surface-raised border border-subtle p-5 shadow-sm"
                  data-meeting-calendar
                  data-availability-endpoint="{{ route('meetings.availability', $enrollment) }}">
                 <div class="flex items-center gap-2">
-                    <button type="button" data-cal-prev class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)] text-ink-700 hover:bg-ink-50">
+                    <button type="button" data-cal-prev class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-subtle text-ink-700 hover:bg-ink-50">
                         <x-icon name="chevron-left" class="w-4 h-4" />
                     </button>
                     <h2 class="font-display text-base font-bold tabular-nums" data-cal-title>—</h2>
-                    <button type="button" data-cal-next class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)] text-ink-700 hover:bg-ink-50">
+                    <button type="button" data-cal-next class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-subtle text-ink-700 hover:bg-ink-50">
                         <x-icon name="chevron-right" class="w-4 h-4" />
                     </button>
                     <div class="flex-1"></div>
-                    <button type="button" data-cal-today class="text-xs px-3 py-1 rounded-md border border-[var(--border-subtle)] text-ink-700 hover:bg-ink-50">今日</button>
+                    <button type="button" data-cal-today class="text-xs px-3 py-1 rounded-md border border-subtle text-ink-700 hover:bg-ink-50">今日</button>
                 </div>
 
                 <div class="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider">
@@ -113,7 +118,7 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl bg-surface-raised border border-[var(--border-subtle)] p-5 shadow-sm">
+            <div class="rounded-2xl bg-surface-raised border border-subtle p-5 shadow-sm">
                 <h3 class="font-display text-base font-bold text-ink-900" data-slots-title>日付を選択してください</h3>
                 <p class="text-xs text-ink-500 mt-1">所要時間: 60 分(固定) / 各枠は先着順 / コーチは自動割当</p>
 
@@ -130,7 +135,7 @@
 
         {{-- RIGHT: Booking form --}}
         <aside>
-            <div class="sticky top-20 rounded-2xl bg-surface-raised border border-[var(--border-subtle)] p-5 shadow-sm">
+            <div class="sticky top-20 rounded-2xl bg-surface-raised border border-subtle p-5 shadow-sm">
                 <h3 class="flex items-center gap-1.5 text-sm font-bold text-ink-900">
                     <x-icon name="check-badge" class="w-4 h-4 text-primary-600" />
                     予約内容
@@ -150,7 +155,7 @@
                 <div class="mt-4">
                     <label class="block text-xs font-semibold text-ink-800">面談で相談したいこと</label>
                     <textarea name="topic" rows="5" required maxlength="1000"
-                              class="mt-1.5 w-full rounded-md border border-[var(--border-default,var(--border-subtle))] bg-surface-raised px-3 py-2 text-sm text-ink-900 focus:border-primary-400 focus:ring-2 focus:ring-primary-200 focus:outline-none"
+                              class="mt-1.5 w-full rounded-md border border-default bg-surface-raised px-3 py-2 text-sm text-ink-900 focus:border-primary-400 focus:ring-2 focus:ring-primary-200 focus:outline-none"
                               placeholder="例: アルゴリズム分野の模試正答率が伸び悩んでいます。学習計画の見直しを相談したいです。">{{ old('topic') }}</textarea>
                     <x-form.error name="topic" />
                     <p class="mt-1 text-[11px] text-ink-500">事前に伝えておくとコーチが準備して臨めます。</p>

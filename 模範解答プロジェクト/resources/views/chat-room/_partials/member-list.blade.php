@@ -1,3 +1,8 @@
+{{--
+    chat ルームの参加メンバー一覧カード partial。props 相当: room, coaches。
+    構成: カード(ヘッダ「参加メンバー」) → メンバー行の繰り返し(アバター + 名前 + ロール) → 担当コーチ未割当時の注意ブロック。
+    JS なし。
+--}}
 <x-card>
     <x-slot:header>参加メンバー</x-slot:header>
 

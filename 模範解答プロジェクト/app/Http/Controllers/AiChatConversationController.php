@@ -97,8 +97,6 @@ class AiChatConversationController extends Controller
 
     public function update(AiChatConversation $conversation, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
-        $this->authorize('update', $conversation);
-
         $action($conversation, $request->validated());
 
         return redirect()

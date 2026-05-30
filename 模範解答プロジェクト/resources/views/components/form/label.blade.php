@@ -1,3 +1,7 @@
+{{--
+    フォームラベル。入力欄に紐づく見出し。required=true で必須マーク(*)を付ける。
+    props: for(紐付ける入力欄の id)・required(必須マーク表示) + ラベル文言スロット。
+--}}
 @props([
     'for' => null,
     'required' => false,

@@ -1,3 +1,7 @@
+{{--
+    リンクボタン。<x-button> と同じ見た目で <a> として描画する遷移用ボタン。
+    props: variant(primary/outline/ghost/danger/secondary)・size(sm/md/lg)・href(遷移先) + ラベルスロット。
+--}}
 @props([
     'variant' => 'primary',
     'size' => 'md',

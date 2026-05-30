@@ -1,3 +1,8 @@
+{{--
+    詳細画面の招待履歴 partial。このユーザー宛の招待発行履歴をカード内にリスト表示。
+    構成: カードヘッダ「招待履歴」+件数 → 0件なら空状態 / それ以外は各履歴行(ステータスバッジ・招待ロール・発行日時 / 有効期限・承認・取消日時 / 招待者)
+    JS なし(表示専用)。
+--}}
 @php
     use App\Enums\InvitationStatus;
 
@@ -27,7 +32,7 @@
             description="このユーザーへの招待発行はまだ記録されていません。"
         />
     @else
-        <ul class="divide-y divide-[var(--border-subtle)]">
+        <ul class="divide-y divide-subtle">
             @foreach ($invitations as $inv)
                 <li class="px-6 py-3">
                     <div class="flex items-center justify-between gap-3 flex-wrap">

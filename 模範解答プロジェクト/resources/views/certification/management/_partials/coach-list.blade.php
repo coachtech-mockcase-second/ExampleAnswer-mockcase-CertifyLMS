@@ -1,3 +1,8 @@
+{{--
+    資格詳細画面の担当コーチ一覧カード partial。
+    構成: ヘッダ(見出し + 人数 + 追加ボタン) → コーチ行リスト(アバター + 名前 / メール + 解除ボタン、0 名時はプレースホルダ)
+    フロント観点: 追加は data-modal-trigger でモーダルを開く(JS あり)。解除は行内の POST フォーム送信(@method('DELETE'))。
+--}}
 <x-card padding="lg" shadow="sm">
     <div class="flex items-center justify-between gap-2">
         <div>
@@ -19,7 +24,7 @@
             まだコーチが割り当てられていません。
         </div>
     @else
-        <ul class="mt-4 divide-y divide-[var(--border-subtle)]">
+        <ul class="mt-4 divide-y divide-subtle">
             @foreach ($certification->coaches as $coach)
                 <li class="flex items-center justify-between gap-3 py-3">
                     <div class="flex items-center gap-3 min-w-0">

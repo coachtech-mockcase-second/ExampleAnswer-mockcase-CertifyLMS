@@ -187,12 +187,12 @@ class SlotPicker {
 
             const baseClasses = 'rounded-md border-2 px-3 py-2 text-center transition w-full';
             if (!isAvailable) {
-                button.className = `${baseClasses} bg-ink-50 text-ink-300 border-[var(--border-subtle)] line-through cursor-not-allowed`;
+                button.className = `${baseClasses} bg-ink-50 text-ink-300 border-subtle line-through cursor-not-allowed`;
                 button.disabled = true;
             } else if (this.selectedSlot && this.selectedSlot.slot_start === slot.slot_start) {
                 button.className = `${baseClasses} bg-primary-600 text-white border-primary-600 shadow-md`;
             } else {
-                button.className = `${baseClasses} bg-surface-raised text-ink-900 border-[var(--border-subtle)] hover:border-primary-400`;
+                button.className = `${baseClasses} bg-surface-raised text-ink-900 border-subtle hover:border-primary-400`;
             }
 
             if (isAvailable) {

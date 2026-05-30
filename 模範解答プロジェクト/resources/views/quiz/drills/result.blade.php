@@ -1,3 +1,8 @@
+{{--
+    苦手分野ドリルの解答結果画面。
+    構成: パンくず → 問題カード（バッジ列 + 問題文 + 正誤結果 partial）→ フッタ操作（誤答時のみ「もう一度挑戦」/ 次問あれば「次の問題へ」）
+    JS なし（正誤の内訳表示は quiz.partials.result-pane を include）。
+--}}
 @extends('layouts.app')
 
 @section('title', '苦手分野ドリル ・ 解答結果')
@@ -10,7 +15,7 @@
         ['label' => '解答結果'],
     ]" />
 
-    <div class="mt-6 mx-auto max-w-[800px] rounded-2xl border border-[var(--border-subtle)] bg-white p-7 lg:p-9 shadow-sm">
+    <div class="mt-6 mx-auto max-w-[800px] rounded-2xl border border-subtle bg-white p-7 lg:p-9 shadow-sm">
         <div class="flex items-center gap-2">
             <x-badge variant="danger" size="sm">
                 <x-icon name="exclamation-triangle" class="w-3.5 h-3.5" />

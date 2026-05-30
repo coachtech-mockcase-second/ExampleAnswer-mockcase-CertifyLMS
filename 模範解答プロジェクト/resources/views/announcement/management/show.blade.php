@@ -1,3 +1,9 @@
+{{--
+    管理者お知らせの詳細画面（管理者向け、配信済み内容の閲覧専用）。
+    構成: ヘッダ（パンくず + タイトル）→ カード（配信対象 / 配信件数 / 配信日時 / 配信者のメタ情報 → 本文）→ 一覧戻り / 新規作成の導線。
+    本文は改行保持（whitespace-pre-wrap）+ 自動エスケープで XSS 対策。
+    JS なし: 閲覧専用、操作はリンク遷移のみ（配信後の編集・取消は不可）。
+--}}
 @extends('layouts.app')
 
 @section('title', '管理者お知らせ — 詳細')
@@ -40,7 +46,7 @@
                 </div>
             </div>
 
-            <hr class="my-4 border-[var(--border-subtle)]">
+            <hr class="my-4 border-subtle">
 
             <div>
                 <p class="text-xs uppercase tracking-wider text-ink-500 mb-2">本文</p>

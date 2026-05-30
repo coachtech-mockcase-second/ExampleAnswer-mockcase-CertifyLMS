@@ -1,9 +1,14 @@
+{{--
+    コーチダッシュボードの担当受講生一覧カード。
+    構成: 見出し(人数) → 空文 or 受講生リスト(アバター / 氏名 / 資格・ターム / ステータスバッジ / 最終活動の相対表示)
+    props: enrollments（担当受講生の行）
+--}}
 @props([
     'enrollments',
 ])
 
 <x-card padding="none">
-    <div class="px-5 py-4 flex items-center gap-3 border-b border-[var(--border-subtle)]">
+    <div class="px-5 py-4 flex items-center gap-3 border-b border-subtle">
         <h2 class="text-base font-bold text-ink-900">担当資格に登録した受講生</h2>
         <span class="text-xs text-ink-500">{{ $enrollments->count() }} 名</span>
         <span class="flex-1"></span>
@@ -23,7 +28,7 @@
                         $lastActivityAt = \Carbon\Carbon::parse((string) $lastActivityAt);
                     }
                 @endphp
-                <li class="grid items-center gap-3.5 px-5 py-3 border-b border-[var(--border-subtle)] last:border-b-0 hover:bg-surface-canvas/60"
+                <li class="grid items-center gap-3.5 px-5 py-3 border-b border-subtle last:border-b-0 hover:bg-surface-canvas/60"
                     style="grid-template-columns: auto 1fr auto auto;">
                     <x-avatar :name="$enrollment->user->name" size="md" />
                     <div class="min-w-0">

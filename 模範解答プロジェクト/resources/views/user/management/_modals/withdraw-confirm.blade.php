@@ -1,3 +1,8 @@
+{{--
+    強制退会の確認モーダル。詳細画面の「強制退会」ボタンから開く。
+    構成: 警告ボックス(取り消し不可・影響の説明) → 補足文 → フッタ(キャンセル / 退会処理を実行)
+    確認用モーダルで送信のみ(入力欄なし)。
+--}}
 <x-modal id="withdraw-confirm-modal" title="ユーザーを退会させる" size="md">
     <form method="POST" action="{{ route('admin.users.withdraw', $user) }}" id="withdraw-confirm-form" class="space-y-4">
         @csrf

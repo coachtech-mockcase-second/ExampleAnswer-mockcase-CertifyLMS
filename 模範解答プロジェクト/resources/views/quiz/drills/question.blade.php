@@ -1,3 +1,8 @@
+{{--
+    苦手分野ドリルの出題画面（1 問表示）。
+    構成: パンくず → 問題カード（バッジ列 + 最新正誤・挑戦回数 + 問題文 + 解答フォーム partial）→ カテゴリリストへ戻るリンク
+    JS なし（解答フォームは quiz.partials.answer-form を include）。
+--}}
 @extends('layouts.app')
 
 @section('title', '苦手分野ドリル ・ 出題')
@@ -10,7 +15,7 @@
         ['label' => '出題'],
     ]" />
 
-    <article class="mt-6 mx-auto max-w-[800px] rounded-2xl border border-[var(--border-subtle)] bg-white p-7 lg:p-9 shadow-sm">
+    <article class="mt-6 mx-auto max-w-[800px] rounded-2xl border border-subtle bg-white p-7 lg:p-9 shadow-sm">
         <div class="flex items-center gap-2">
             <x-badge variant="danger" size="sm">
                 <x-icon name="exclamation-triangle" class="w-3.5 h-3.5" />

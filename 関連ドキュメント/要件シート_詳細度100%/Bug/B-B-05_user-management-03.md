@@ -43,7 +43,7 @@
 
 ### 原因
 
-- **主要ファイル**: `app/UseCases/Auth/IssueInvitationAction.php`(招待発行)。※ Action 内のため Basic 範囲外。入力検証側 / Controller 内完結で実装する受講生はそれぞれの実装箇所が対象
+- **主要ファイル**: `app/UseCases/Auth/IssueInvitationAction.php`(招待発行)
 - **仕込み内容**: 招待発行の入力検証(`Invitation\StoreRequest`)にはメール重複の `unique` ルールが無く、重複チェックは Action 側ガードが唯一。本来は「在籍中(受講中 / 卒業)の同一メールユーザーが存在すれば `EmailAlreadyRegisteredException`(409)を投げる」ガードがあるが、それが削除されているため重複招待が素通りし、招待メールも送られる。招待中(`invited`)の同一メールユーザーは再利用される設計(再発行 UX)なので重複対象ではない
 - **修正範囲**: 「在籍中ユーザーと同一メールアドレスなら 409」の重複チェックを戻す(Action 内ガード、または入力検証での重複検査)。`InvitationController::store` → `Invitation\StoreAction`(ラッパー)→ `Auth\IssueInvitationAction` を辿り、在籍中ユーザー重複チェックが抜けていることを発見する流れ
 

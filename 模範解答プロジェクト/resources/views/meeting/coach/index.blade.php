@@ -1,3 +1,8 @@
+{{--
+    コーチの担当面談一覧画面。自動割当で入った担当面談を時系列表示する。
+    構成: パンくず → ヘッダ → 状態フィルタタブ(今後/過去/すべて) → 面談カード一覧(ステータスバッジ + 日時 + 相談内容 + 受講生名) or 空状態 → ページネーション
+    JS なし(タブ・カードはリンク遷移)。受講生側 index と類似だが、カード下部が「受講生名」表示。
+--}}
 @extends('layouts.app')
 
 @section('title', '担当面談一覧')
@@ -35,7 +40,7 @@
         <div class="mt-6 space-y-3">
             @foreach ($meetings as $meeting)
                 <a href="{{ route('meetings.show', $meeting) }}"
-                   class="block bg-surface-raised border border-[var(--border-subtle)] rounded-2xl px-5 py-4 hover:border-primary-200 hover:shadow-md transition">
+                   class="block bg-surface-raised border border-subtle rounded-2xl px-5 py-4 hover:border-primary-200 hover:shadow-md transition">
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">

@@ -1,3 +1,7 @@
+{{--
+    チェックボックス。ラベル付きの単一チェック入力。
+    props: name(必須)・label・value(チェック時の送信値)・checked(初期チェック)・disabled。id は未指定なら name から自動生成。
+--}}
 @props([
     'name',
     'label' => null,

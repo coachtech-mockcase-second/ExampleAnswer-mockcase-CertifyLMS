@@ -1,3 +1,8 @@
+{{--
+    受講生ダッシュボード。挨拶 + 受講状況サマリ → プラン情報パネル → メイン2カラム。
+    構成: 左(2/3) 受講中資格カード一覧 + 修了済資格 / 右(1/3) 学習カレンダー → 個人目標タイムライン → 面談予定。
+    受講中資格が無いときは空状態（資格カタログへの導線）を表示。
+--}}
 @extends('layouts.app')
 
 @section('title', 'ダッシュボード')
@@ -25,35 +30,37 @@
             </x-slot:action>
         </x-empty-state>
     @else
-        <div class="flex flex-col gap-5">
-            {{-- 上段: 個人目標 と 学習ストリーク / 面談予定 を 2 カラムのバンドに --}}
-            <div class="grid gap-5 lg:grid-cols-2">
-                @include('dashboard._partials.student.goal-timeline', ['goals' => $viewModel->goalTimeline])
+        {{-- 左 (2/3): 受講中資格 + 修了済資格(メイン) / 右 (1/3): 学習カレンダー → 個人目標 → 面談予定(サイド) --}}
+        <div class="grid gap-5 lg:grid-cols-3 lg:items-start">
+            <div class="lg:col-span-2 flex flex-col gap-5">
+                <section>
+                    <div class="flex justify-between items-baseline mb-2.5">
+                        <h2 class="font-display text-lg font-bold text-ink-900">受講中の資格</h2>
+                        <a href="{{ route('certifications.index') }}" class="text-xs text-primary-700 hover:underline">+ 資格を追加</a>
+                    </div>
+                    <div class="flex flex-col gap-3.5">
+                        @foreach ($viewModel->enrollmentCards as $card)
+                            @include('dashboard._partials.student.enrollment-card', ['card' => $card])
+                        @endforeach
+                    </div>
+                </section>
 
-                <div class="flex flex-col gap-5">
-                    @include('dashboard._partials.student.streak-panel', ['streak' => $viewModel->streak])
-
-                    @include('dashboard._partials.meeting-upcoming-list', [
-                        'meetings' => $viewModel->upcomingMeetings,
-                        'partnerAttribute' => 'coach',
-                    ])
-                </div>
+                @include('dashboard._partials.student.passed-enrollments', ['enrollments' => $viewModel->passedEnrollments])
             </div>
 
-            {{-- 受講中の資格は全幅 2 カラムグリッドで横スペースを活用し、縦の偏りをなくす --}}
-            <section>
-                <div class="flex justify-between items-baseline mb-2.5">
-                    <h2 class="font-display text-lg font-bold text-ink-900">受講中の資格</h2>
-                    <a href="{{ route('certifications.index') }}" class="text-xs text-primary-700 hover:underline">+ 資格を追加</a>
-                </div>
-                <div class="grid gap-3.5 lg:grid-cols-2">
-                    @foreach ($viewModel->enrollmentCards as $card)
-                        @include('dashboard._partials.student.enrollment-card', ['card' => $card])
-                    @endforeach
-                </div>
-            </section>
+            <div class="flex flex-col gap-5">
+                @include('dashboard._partials.student.learning-calendar', [
+                    'streak' => $viewModel->streak,
+                    'calendar' => $viewModel->learningCalendar,
+                ])
 
-            @include('dashboard._partials.student.passed-enrollments', ['enrollments' => $viewModel->passedEnrollments])
+                @include('dashboard._partials.student.goal-timeline', ['goals' => $viewModel->goalTimeline])
+
+                @include('dashboard._partials.meeting-upcoming-list', [
+                    'meetings' => $viewModel->upcomingMeetings,
+                    'partnerAttribute' => 'coach',
+                ])
+            </div>
         </div>
     @endif
 @endsection

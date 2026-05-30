@@ -1,3 +1,8 @@
+{{--
+    公開（または下書きに戻す）確認モーダル。説明文 + キャンセル / 実行ボタンを表示する汎用部品。
+    props: id（モーダル識別）/ title / description / action（送信先）/ buttonLabel / buttonVariant
+    フロント観点: <x-modal> ベース（data-modal-trigger で開く）。実行は POST フォーム送信。
+--}}
 @props([
     'id',
     'title' => '公開しますか？',

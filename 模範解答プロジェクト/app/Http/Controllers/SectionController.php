@@ -100,8 +100,6 @@ class SectionController extends Controller
 
     public function preview(Section $section, PreviewRequest $request, PreviewAction $action): JsonResponse
     {
-        $this->authorize('preview', $section);
-
         $html = $action($section, $request->validated()['body']);
 
         return response()->json(['html' => $html]);

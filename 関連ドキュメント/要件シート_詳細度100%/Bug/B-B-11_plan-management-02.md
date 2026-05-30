@@ -43,7 +43,7 @@
 
 ### 原因
 
-- **主要ファイル**: `app/UseCases/Plan/IndexAction.php`(プラン一覧取得の status / keyword フィルタ適用)。※ Action 内のため Basic 範囲外。Controller 内完結で実装する受講生は `PlanController::index` の一覧取得処理が対象
+- **主要ファイル**: `app/UseCases/Plan/IndexAction.php`(プラン一覧取得の status / keyword フィルタ適用)
 - **仕込み内容**: 状態フィルタの絞り込み条件が、画面で指定された状態値ではなく特定の状態(下書き = `PlanStatus::Draft`)で固定されている(状態 Enum 値のコピペミス)。これにより「公開中」を指定しても下書きで絞り込まれる。「下書き」を選んだときだけ偶然一致するため気づきにくい
 - **修正範囲**: 絞り込み条件を「フィルタで渡された状態値で `where('status', ...)` する」形に戻す。`PlanController::index` から `Plan\IndexAction` を辿り、絞り込みに固定値が書かれていることを発見する流れ。status 絞り込み 1 箇所の修正で完結
 

@@ -47,7 +47,7 @@
 ### 原因
 
 - **主要ファイル**: `app/UseCases/MockExamSession/GradeAction.php`(採点ロジック本体)。呼出経路は受験画面の「提出する」ボタン → `MockExamSessionController::submit` → `MockExamSession\SubmitAction`(提出 + 採点 + ターム再判定を 1 トランザクションで束ねる)→ `GradeAction`
-- **仕込み内容**: 得点率の算出で百分率への変換が欠落しており、正答率が 0〜1 のスケール(`0.80` 等)で保存される。合格判定は得点率と合格基準点スナップショット(`MockExamSession.passing_score_snapshot`、0〜100 の整数)を比較するため、スケール不一致で常に不合格側に倒れる。波及として、得点率を 0〜100 スケール前提で利用する弱点ヒートマップ / 合格可能性スコア(`WeaknessAnalysisService`)の数値も同時にずれる(※ Action / Service 内のため Basic 範囲外)
+- **仕込み内容**: 得点率の算出で百分率への変換が欠落しており、正答率が 0〜1 のスケール(`0.80` 等)で保存される。合格判定は得点率と合格基準点スナップショット(`MockExamSession.passing_score_snapshot`、0〜100 の整数)を比較するため、スケール不一致で常に不合格側に倒れる。波及として、得点率を 0〜100 スケール前提で利用する弱点ヒートマップ / 合格可能性スコア(`WeaknessAnalysisService`)の数値も同時にずれる
 - **修正範囲**: `GradeAction` 内の得点率算出を百分率スケールに直すだけで完結する。スキーマ(`score_percentage` カラムは `decimal(5,2)` で `100.00` まで表現可能)は変更不要。修正時は弱点ヒートマップ / 合格可能性スコアが 0〜100 スケールを前提にしている点も含めて整合を点検する
 
 ## 補足

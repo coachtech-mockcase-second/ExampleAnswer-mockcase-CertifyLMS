@@ -126,10 +126,11 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
     Route::get('contents/search', [ContentSearchController::class, 'search'])
         ->name('contents.search');
 
-    // 受講登録 — 自己登録 / 受講解除 / failed からの再挑戦(index / show は全ロール共有 group に移管済)
+    // 受講登録 — 自己登録 / 受講解除 / failed からの再挑戦 / 目標受験日設定(index / show は全ロール共有 group に移管済)
     Route::post('enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
     Route::delete('enrollments/{enrollment}', [EnrollmentController::class, 'destroy'])->name('enrollments.destroy');
     Route::post('enrollments/{enrollment}/resume', [EnrollmentController::class, 'resume'])->name('enrollments.resume');
+    Route::patch('enrollments/{enrollment}/exam-date', [EnrollmentController::class, 'updateExamDate'])->name('enrollments.updateExamDate');
 
     // 修了証受領(受講生自己発火、graduated は active-learning でブロックされるため新規受領不可)
     Route::post('enrollments/{enrollment}/receive-certificate', [ReceiveCertificateController::class, 'store'])

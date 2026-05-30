@@ -46,7 +46,7 @@
 
 - **主要ファイル**: `app/UseCases/Auth/OnboardAction.php`(オンボーディング完了ユースケース)。利用状態 `UserStatus`(`Invited` → `InProgress`)の更新を担う。
 - **仕込み内容**: 完了処理でユーザーの利用状態を在籍中(`UserStatus::InProgress`)へ更新する設定が抜けている。状態遷移の監査ログ(`UserStatusChangeService::record`)は遷移前 status を参照するため先に呼ばれログだけは残るが、実際の status カラムは `Invited` のまま残り、ログと状態が食い違う。ログイン認証(Fortify `AuthenticateUserUsing`、在籍中 `in_progress` / 修了 `graduated` のみ通過)と `EnsureActiveLearning`(在籍中のみ通過)が `Invited` を弾くため、完了直後の自動ログイン(`Auth::login`)だけは通り、再ログイン以降に詰む。
-- **修正範囲**: 完了処理でユーザーの利用状態を在籍中(`InProgress`)へ更新する設定を戻す。`OnboardAction` 内 1 行(更新属性への status 付与)で完結。**※ 原因は Action(`OnboardAction`)内 = Basic 範囲外**。Basic 受講生は Controller 内完結で実装してよく、その場合は `OnboardingController::store` に同等の状態更新を書く。いずれの構成でも受け入れ条件の振る舞いを満たせばよい。
+- **修正範囲**: 完了処理でユーザーの利用状態を在籍中(`InProgress`)へ更新する設定を戻す。`OnboardAction` 内 1 行(更新属性への status 付与)で完結。
 
 ## 補足
 

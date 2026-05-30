@@ -1,3 +1,8 @@
+{{--
+    chat ルーム表示画面。受講生・コーチ・管理者(監査=閲覧のみ)が共用し、閲覧者ロールで表示と権限を出し分ける。
+    構成: パンくず → 2 カラム[左: ルーム一覧ペイン(rooms-pane) / 右: ヘッダ(資格名 + 相手表示 + 監査/コーチ未割当バッジ) → メッセージ一覧領域(吹き出し item の繰り返し or 空メッセージ) → 送信フォーム(送信権限あり時) or 送信不可の注意文]
+    フロント挙動: 受講生・コーチ閲覧時のみ、メッセージ一覧をリアルタイム受信して追記する素の JS を読み込む(末尾に複製元 template を出力)。管理者監査時は JS なし。吹き出し本文は自動エスケープ表示(改行保持)。
+--}}
 @extends('layouts.app')
 
 @section('title', $room->enrollment->certification->name . ' の chat')
@@ -41,7 +46,7 @@
     ]" />
 
     <div
-        class="mt-4 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] bg-surface-raised border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-sm h-[calc(100vh-180px)] min-h-[560px]"
+        class="mt-4 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] bg-surface-raised border border-subtle rounded-2xl overflow-hidden shadow-sm h-[calc(100vh-180px)] min-h-[560px]"
     >
         @include('chat-room._partials.rooms-pane', [
             'navRooms' => $navRooms,
@@ -52,7 +57,7 @@
         ])
 
         <section class="flex flex-col overflow-hidden bg-surface-canvas min-w-0">
-            <header class="px-6 py-3 bg-surface-raised border-b border-[var(--border-subtle)] flex items-center gap-3">
+            <header class="px-6 py-3 bg-surface-raised border-b border-subtle flex items-center gap-3">
                 <x-avatar :name="$certName" size="md" />
                 <div class="min-w-0 flex-1">
                     <div class="font-display font-bold text-base text-ink-900 truncate">
@@ -96,7 +101,7 @@
                 @include('chat-room._partials.message-form', ['room' => $room])
             @else
                 @unless ($viewerIsAdmin)
-                    <div class="border-t border-[var(--border-subtle)] px-6 py-4 text-sm text-warning-700 bg-warning-50">
+                    <div class="border-t border-subtle px-6 py-4 text-sm text-warning-700 bg-warning-50">
                         @if ($coachUnassigned)
                             担当コーチが割り当てられていないため、メッセージを送信できません。
                         @else

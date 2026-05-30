@@ -7,6 +7,7 @@ namespace App\UseCases\Dashboard\ViewModels;
 use App\Models\Enrollment;
 use App\Models\EnrollmentGoal;
 use App\Models\Meeting;
+use App\Services\Learning\LearningCalendar;
 use App\Services\Learning\StreakSummary;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -30,6 +31,7 @@ final readonly class StudentDashboardViewModel
         public Collection $enrollmentCards,
         public EloquentCollection $passedEnrollments,
         public ?StreakSummary $streak,
+        public ?LearningCalendar $learningCalendar,
         public ?Collection $goalTimeline,
         public ?Collection $upcomingMeetings,
         public bool $hasNoEnrollment,

@@ -1,3 +1,8 @@
+{{--
+    招待取消の確認モーダル。詳細画面の「招待を取消」ボタンから開く。
+    構成: 警告ボックス(取消の影響説明) → フッタ(取り消さない / 招待を取消)
+    確認用モーダルで送信のみ(入力欄なし、@method('DELETE') で送信)。
+--}}
 <x-modal id="cancel-invitation-modal" title="招待を取り消す" size="md">
     <form method="POST" action="{{ route('admin.invitations.destroy', $invitation) }}" id="cancel-invitation-form">
         @csrf
