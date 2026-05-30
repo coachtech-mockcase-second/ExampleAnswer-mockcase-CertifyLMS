@@ -18,3 +18,6 @@ docs/steering/content-authoring.md
 .DS_Store
 **/.DS_Store
 .tmp-design-compare/
+
+# E2E 検証スイート（専用ブランチで管理、main では追跡しない）
+/e2e/
