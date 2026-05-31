@@ -37,7 +37,7 @@
                         受講登録済み
                     </x-button>
                 @else
-                    <form method="POST" action="{{ route('enrollments.store') }}">
+                    <form novalidate method="POST" action="{{ route('enrollments.store') }}">
                         @csrf
                         <input type="hidden" name="certification_id" value="{{ $certification->id }}">
                         <x-button type="submit" variant="primary">

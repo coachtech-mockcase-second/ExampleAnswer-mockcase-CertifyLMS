@@ -49,7 +49,7 @@
 
             @can('publish', $plan)
                 @if ($plan->status === PlanStatus::Draft)
-                    <form method="POST" action="{{ route('admin.plans.publish', $plan) }}" class="inline-block">
+                    <form novalidate method="POST" action="{{ route('admin.plans.publish', $plan) }}" class="inline-block">
                         @csrf
                         <x-button type="submit" variant="primary">
                             <x-icon name="check-circle" class="w-4 h-4" />
@@ -61,7 +61,7 @@
 
             @can('archive', $plan)
                 @if ($plan->status === PlanStatus::Published)
-                    <form method="POST" action="{{ route('admin.plans.archive', $plan) }}" class="inline-block">
+                    <form novalidate method="POST" action="{{ route('admin.plans.archive', $plan) }}" class="inline-block">
                         @csrf
                         <x-button type="submit" variant="secondary">
                             <x-icon name="archive-box" class="w-4 h-4" />
@@ -73,7 +73,7 @@
 
             @can('unarchive', $plan)
                 @if ($plan->status === PlanStatus::Archived)
-                    <form method="POST" action="{{ route('admin.plans.unarchive', $plan) }}" class="inline-block">
+                    <form novalidate method="POST" action="{{ route('admin.plans.unarchive', $plan) }}" class="inline-block">
                         @csrf
                         <x-button type="submit" variant="secondary">
                             <x-icon name="arrow-uturn-left" class="w-4 h-4" />
@@ -84,7 +84,7 @@
             @endcan
 
             @can('delete', $plan)
-                <form method="POST" action="{{ route('admin.plans.destroy', $plan) }}" class="inline-block"
+                <form novalidate method="POST" action="{{ route('admin.plans.destroy', $plan) }}" class="inline-block"
                       onsubmit="return confirm('このプランを削除しますか？(下書きかつ受講者未紐づきの場合のみ削除可能)');">
                     @csrf
                     @method('DELETE')

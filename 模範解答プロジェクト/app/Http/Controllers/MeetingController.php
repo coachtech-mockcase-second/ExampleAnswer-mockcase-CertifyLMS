@@ -12,6 +12,7 @@ use App\Http\Requests\Meeting\StoreRequest;
 use App\Http\Requests\Meeting\UpsertMemoRequest;
 use App\Models\Enrollment;
 use App\Models\Meeting;
+use App\Services\MeetingQuotaService;
 use App\UseCases\Meeting\CancelAction;
 use App\UseCases\Meeting\FetchAvailabilityAction;
 use App\UseCases\Meeting\IndexAction;
@@ -39,7 +40,7 @@ class MeetingController extends Controller
     /**
      * 受講生本人の面談一覧。filter (upcoming/past/all) クエリで履歴を切り替える。
      */
-    public function index(IndexRequest $request, IndexAction $action): View
+    public function index(IndexRequest $request, IndexAction $action, MeetingQuotaService $meetingQuota): View
     {
         $filter = $request->validated('filter') ?? 'upcoming';
         $meetings = $action($request->user(), $filter);
@@ -47,6 +48,7 @@ class MeetingController extends Controller
         return view('meeting.index', [
             'meetings' => $meetings,
             'filter' => $filter,
+            'meetingsRemaining' => $meetingQuota->remaining($request->user()),
         ]);
     }
 
@@ -81,7 +83,7 @@ class MeetingController extends Controller
     /**
      * 予約画面(受講生): URL に Enrollment を含む正規ルートで表示する。
      */
-    public function create(Enrollment $enrollment): View
+    public function create(Enrollment $enrollment, MeetingQuotaService $meetingQuota): View
     {
         $this->authorize('create', Meeting::class);
 
@@ -92,6 +94,7 @@ class MeetingController extends Controller
 
         return view('meeting.create', [
             'enrollment' => $enrollment,
+            'meetingsRemaining' => $meetingQuota->remaining(auth()->user()),
         ]);
     }
 

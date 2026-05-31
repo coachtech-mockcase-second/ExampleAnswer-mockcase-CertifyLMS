@@ -28,7 +28,7 @@ final class DownloadAction
 
         return $disk->download(
             $certificate->pdf_path,
-            "certificate-{$certificate->serial_no}.pdf",
+            "certificate-{$certificate->id}.pdf",
             ['Content-Type' => 'application/pdf'],
         );
     }

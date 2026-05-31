@@ -15,7 +15,7 @@
             <h2 class="text-sm font-bold text-ink-900">プロフィール情報</h2>
         </x-slot:header>
 
-        <form method="POST" action="{{ route('settings.profile.update') }}" class="space-y-5">
+        <form novalidate method="POST" action="{{ route('settings.profile.update') }}" class="space-y-5">
             @csrf
             @method('PATCH')
 
@@ -79,7 +79,7 @@
                 </p>
             </div>
 
-            <form
+            <form novalidate
                 method="POST"
                 action="{{ route('settings.avatar.store') }}"
                 enctype="multipart/form-data"
@@ -103,7 +103,7 @@
             </form>
 
             @if ($user->avatar_url)
-                <form
+                <form novalidate
                     method="POST"
                     action="{{ route('settings.avatar.destroy') }}"
                     class="mt-3 border-t border-subtle pt-3"

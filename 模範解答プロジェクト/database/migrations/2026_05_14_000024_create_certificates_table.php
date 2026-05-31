@@ -22,7 +22,6 @@ return new class extends Migration
             $table->foreignUlid('certification_id')
                 ->constrained('certifications')
                 ->restrictOnDelete();
-            $table->string('serial_no', 32)->unique();
             $table->string('pdf_path', 255);
             $table->timestamp('issued_at');
             $table->timestamps();

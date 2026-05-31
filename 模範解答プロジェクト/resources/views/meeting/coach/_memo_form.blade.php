@@ -15,7 +15,7 @@
         </div>
     </x-slot:header>
 
-    <form method="POST" action="{{ route('coach.meetings.memo', $meeting) }}">
+    <form novalidate method="POST" action="{{ route('coach.meetings.memo', $meeting) }}">
         @csrf
         @method('PUT')
 

@@ -1,6 +1,6 @@
 {{--
-    個人目標タイムライン（縦並び）。受講生ダッシュボードのサイド。
-    構成: ヘッダ（タイトル + 本日日付 + 追加導線）→ 目標の時系列リスト（目標期日 + 残日数ピル + タイトル + 資格リンク + 達成/進行中バッジ）。0 件は空状態。
+    個人目標タイムライン本体（縦並び）。見出し（タイトル + 本日日付 + 追加導線）は呼び出し側が用意する。
+    構成: 目標の時系列リスト（目標期日 + 残日数ピル + タイトル + 資格リンク + 達成/進行中バッジ）。0 件は空状態。
     達成済は控えめ表示（opacity）、期日が近い / 超過は色で強調（フロント表示のみ）。
 --}}
 @props([
@@ -8,19 +8,6 @@
 ])
 
 <x-card padding="md">
-    {{-- ヘッダ: タイトル + 本日の日付(期限までの距離の基準) + 受講中資格への追加導線 --}}
-    <div class="flex items-baseline gap-2 mb-3">
-        <h2 class="text-base font-bold text-ink-900 flex items-center gap-2">
-            <x-icon name="check-badge" class="w-4 h-4 text-secondary-600" />
-            個人目標
-        </h2>
-        <span class="text-[11px] text-ink-400 font-mono">本日 {{ now()->format('Y/m/d') }}</span>
-        <span class="flex-1"></span>
-        @if ($goals !== null && $goals->isNotEmpty())
-            <a href="{{ route('enrollments.index') }}" class="text-xs text-primary-700 hover:underline">受講中資格から追加 +</a>
-        @endif
-    </div>
-
     @if ($goals === null)
         @include('dashboard._partials.empty-state', ['message' => '個人目標を取得できませんでした。'])
     @elseif ($goals->isEmpty())

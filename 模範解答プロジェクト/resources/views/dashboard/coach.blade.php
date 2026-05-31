@@ -69,12 +69,20 @@
                 'totalCount' => $viewModel->unansweredQaCount,
             ])
 
-            @include('dashboard._partials.meeting-upcoming-list', [
-                'meetings' => $viewModel->todayAndTomorrowMeetings,
-                'partnerAttribute' => 'student',
-                'linkRoute' => 'coach.meetings.index',
-                'linkLabel' => '一覧 &rarr;',
-            ])
+            <x-card padding="md">
+                <div class="flex items-baseline gap-2 mb-3">
+                    <h2 class="text-base font-bold text-ink-900 flex items-center gap-2">
+                        <x-icon name="calendar-days" class="w-4 h-4 text-ink-600" />
+                        今後の面談予定
+                    </h2>
+                    <span class="flex-1"></span>
+                    <a href="{{ route('coach.meetings.index') }}" class="text-xs text-primary-700 hover:underline">一覧 &rarr;</a>
+                </div>
+                @include('dashboard._partials.meeting-upcoming-list', [
+                    'meetings' => $viewModel->todayAndTomorrowMeetings,
+                    'partnerAttribute' => 'student',
+                ])
+            </x-card>
         </div>
     </div>
 @endsection

@@ -31,7 +31,8 @@ class AnnouncementNotificationTest extends TestCase
         $this->assertSame('admin_announcement', $payload['notification_type']);
         $this->assertSame('年末メンテナンスのお知らせ', $payload['title']);
         $this->assertSame($announcement->id, $payload['admin_announcement_id']);
-        $this->assertSame('notifications.index', $payload['link_route']);
+        $this->assertSame('notifications.show', $payload['link_route'], 'お知らせは通知詳細ページへ遷移するはず');
+        $this->assertSame(['notification' => $notification->id], $payload['link_params'], '遷移先は自通知の詳細ページのはず');
     }
 
     public function test_to_mail_subject_includes_announcement_title(): void

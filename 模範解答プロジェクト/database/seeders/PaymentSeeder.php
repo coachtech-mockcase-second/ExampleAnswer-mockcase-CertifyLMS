@@ -25,7 +25,7 @@ use Illuminate\Support\Collection;
  *    決済履歴一覧 / status フィルタ / 再決済リンクの動作確認を可能にする。
  * 2. **MeetingQuotaTransaction の type 補完**: Purchased(succeeded Payment 連動) + AdminGrant(admin 手動付与)を投入。
  *    Consumed / Refunded は MentoringSeeder で投入済(面談予約 / キャンセル連動)。
- *    本 Seeder と合わせて GrantedInitial を除く 4 type が混在し、ユーザー詳細画面の履歴セクションを通しで動作確認できる状態にする。
+ *    GrantedInitial(初期付与)は UserLifecycleSeeder が投入するため、本 Seeder / MentoringSeeder と合わせて type 5 種すべてが混在し、ユーザー詳細画面の履歴セクションを通しで動作確認できる状態にする。
  * 3. **固定 student に手厚く**: succeeded Payment 1 件 + pending Payment 1 件 + admin_grant 1 件を投入し、PR スクショ参照を安定化。
  *
  * 依存順序: `UserSeeder` → `MeetingPackSeeder` → `MentoringSeeder` → 本 Seeder。

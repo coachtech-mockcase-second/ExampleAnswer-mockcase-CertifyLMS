@@ -12,7 +12,7 @@
     'questionCategoryId' => null,
 ])
 
-<form method="POST" action="{{ route('quiz.answers.store', $question) }}" class="mt-6 space-y-5">
+<form novalidate method="POST" action="{{ route('quiz.answers.store', $question) }}" class="mt-6 space-y-5">
     @csrf
     <input type="hidden" name="source" value="{{ $source }}">
 

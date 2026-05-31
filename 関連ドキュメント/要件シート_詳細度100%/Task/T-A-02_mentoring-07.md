@@ -1,4 +1,4 @@
-# T-A-02 mentoring の Controller method を Action 分離
+# T-A-02 面談機能のロジックを Action へ分離
 
 ## メタ情報
 
@@ -37,6 +37,7 @@ mentoring Feature の Controller(`MeetingController`)の各メソッドが抱え
 ## 受け入れ条件
 
 - [ ] 受講生予約 / 当事者キャンセル / コーチメモ upsert の状態変更 3 操作の業務ロジックが、Controller メソッド名と一致する単一責務 Action(`Meeting\StoreAction` / `CancelAction` / `UpsertMemoAction`)に切り出され、各 Controller メソッドは Action 呼出 + 認可委譲 + レスポンス整形のみの薄いラッパー(業務ロジックの if / 計算が 0 行)になっている
+  - 確認方法（コード）: 各 Controller メソッドが Action 呼出+認可+レスポンス整形のみで、業務ロジックの if / 計算を持たないことをコード確認
 - [ ] 受講生向け一覧 / コーチ向け一覧 / 面談詳細 / 空き枠取得の取得系 4 メソッドのデータ取得処理が、対応する Action(`Meeting\IndexAction` / `IndexAsCoachAction` / `ShowAction` / `FetchAvailabilityAction`)に切り出され、各 Controller メソッドはクエリ組み立てを持たず Action 呼出 + レスポンス整形のみになっている(予約フォーム表示の `create` / `createFallback` は Action を持たず対象外)
 - [ ] 状態変更を伴う Action はトランザクション境界で全副作用を囲み、整合性違反(残面談回数 0 / 枠外 / 候補コーチ 0 名 / 状態遷移不可 / 開始時刻超過 等)は Action 内で具象例外(`app/Exceptions/Mentoring/*` + `InsufficientMeetingQuotaException`)を throw する
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている(抽出した状態変更系 + 取得系の各 Action の単体テストを含む)

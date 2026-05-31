@@ -31,7 +31,7 @@
     </div>
 
     @if ($viewerIsAdmin)
-        <form method="GET" class="mt-6 flex flex-wrap gap-3 items-end">
+        <form novalidate method="GET" class="mt-6 flex flex-wrap gap-3 items-end">
             <div class="w-full max-w-xs">
                 <x-form.label for="keyword">受講生名 / メールで絞り込み</x-form.label>
                 <x-form.input

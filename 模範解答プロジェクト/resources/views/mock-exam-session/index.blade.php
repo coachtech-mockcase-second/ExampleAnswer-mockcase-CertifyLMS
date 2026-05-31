@@ -26,7 +26,7 @@
 
     {{-- フィルタ --}}
     <x-card class="mt-6" padding="sm" shadow="sm">
-        <form method="GET" action="{{ route('mock-exam-sessions.index') }}" class="grid gap-3 sm:grid-cols-[1fr_1fr_140px_auto]">
+        <form novalidate method="GET" action="{{ route('mock-exam-sessions.index') }}" class="grid gap-3 sm:grid-cols-[1fr_1fr_140px_auto]">
             <input
                 type="text"
                 name="certification_id"

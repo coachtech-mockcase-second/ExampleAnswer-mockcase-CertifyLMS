@@ -9,7 +9,7 @@
 @endphp
 
 <x-modal id="grant-meeting-quota-modal" title="面談回数を手動付与" size="md">
-    <form method="POST" action="{{ route('admin.users.grantMeetingQuota', $user) }}" id="grant-meeting-quota-form" class="space-y-4">
+    <form novalidate method="POST" action="{{ route('admin.users.grantMeetingQuota', $user) }}" id="grant-meeting-quota-form" class="space-y-4">
         @csrf
 
         <p class="text-sm text-ink-700 leading-relaxed">

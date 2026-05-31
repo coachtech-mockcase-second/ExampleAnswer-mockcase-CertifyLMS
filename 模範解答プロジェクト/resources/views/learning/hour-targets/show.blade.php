@@ -73,7 +73,7 @@
         <x-card padding="md" shadow="sm">
             <x-slot:header>目標設定</x-slot:header>
 
-            <form method="POST" action="{{ route('learning.hourTarget.upsert', $enrollment) }}" class="space-y-4">
+            <form novalidate method="POST" action="{{ route('learning.hourTarget.upsert', $enrollment) }}" class="space-y-4">
                 @csrf
                 @method('PUT')
 
@@ -91,7 +91,7 @@
                     <x-button type="submit" variant="primary">保存</x-button>
 
                     @if ($summary->targetTotalHours !== null)
-                        <form method="POST" action="{{ route('learning.hourTarget.destroy', $enrollment) }}" onsubmit="return confirm('学習時間目標を削除しますか?');">
+                        <form novalidate method="POST" action="{{ route('learning.hourTarget.destroy', $enrollment) }}" onsubmit="return confirm('学習時間目標を削除しますか?');">
                             @csrf
                             @method('DELETE')
                             <x-button type="submit" variant="ghost">削除</x-button>

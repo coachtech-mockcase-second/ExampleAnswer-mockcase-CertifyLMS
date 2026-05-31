@@ -36,7 +36,7 @@
 
 {{-- フィルタ --}}
 <x-card class="mt-6" padding="sm" shadow="sm">
-    <form method="GET" action="{{ route('enrollments.index') }}" class="grid gap-3 md:grid-cols-[1fr_180px_180px_auto]">
+    <form novalidate method="GET" action="{{ route('enrollments.index') }}" class="grid gap-3 md:grid-cols-[1fr_180px_180px_auto]">
         <div class="relative">
             <x-icon name="magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500" />
             <input

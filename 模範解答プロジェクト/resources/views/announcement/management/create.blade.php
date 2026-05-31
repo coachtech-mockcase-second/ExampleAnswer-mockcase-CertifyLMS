@@ -21,7 +21,7 @@
         </header>
 
         <x-card>
-            <form method="POST" action="{{ route('admin.announcements.store') }}" class="space-y-5">
+            <form novalidate method="POST" action="{{ route('admin.announcements.store') }}" class="space-y-5">
                 @csrf
 
                 <x-form.input

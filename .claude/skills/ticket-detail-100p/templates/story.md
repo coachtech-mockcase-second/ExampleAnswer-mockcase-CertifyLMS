@@ -123,7 +123,7 @@
 **FormRequest** (`app/Http/Requests/{Feature}/`)
 - `IndexRequest` / `StoreRequest` / `UpdateRequest` — {対応操作}
 
-**Action** (`app/UseCases/{Feature}/`、※ 模範解答 PJ で採用、Basic 受講生は Controller 内完結も可)
+**Action** (`app/UseCases/{Feature}/`、※ Advance 範囲、Basic 受講生は Controller 内完結も可)
 - `{Op1}Action` / `{Op2}Action` — {主要業務処理を 1 行で}
 
 **Service** (`app/Services/`、新規導入時のみ)
@@ -141,7 +141,7 @@
 **Model + Enum** (`app/Models/`, `app/Enums/`)
 - `{Model1}` / `{Model2}` / `{Enum1}` / `{Enum2}`
 
-**View**(提供 PJ 既存、ロック対象)
+**View**(既存、ロック対象)
 - `resources/views/{feature}/*.blade.php` + partials
 
 **Migration / Seeder**

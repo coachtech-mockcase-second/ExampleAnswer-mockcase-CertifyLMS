@@ -51,6 +51,13 @@ final class ContentSeeder extends Seeder
 
         $oyoCategories = $this->seedQuestionCategoriesForOyojoho($oyojoho);
         $this->seedOyojohoContents($oyojoho, $oyoCategories);
+
+        // TOEIC は演習(模試)主体の資格として出題分野のみ投入する(教材階層なし)。
+        // これにより MockExamSeeder が TOEIC にも公開模試を生成し、固定 student で合格可能性「注意」帯を再現できる。
+        $toeic = Certification::query()->where('name', 'TOEIC L&R 800 点コース')->first();
+        if ($toeic !== null) {
+            $this->seedQuestionCategoriesForToeic($toeic);
+        }
     }
 
     /**
@@ -86,6 +93,27 @@ final class ContentSeeder extends Seeder
                 ->state(['name' => '情報セキュリティ', 'slug' => 'security', 'sort_order' => 10])
                 ->create(),
         ];
+    }
+
+    /**
+     * TOEIC は演習(模試)主体の資格として出題分野マスタのみ投入する(教材階層は持たない)。
+     * MockExamSeeder がこの分野を使って TOEIC の公開模試を生成し、固定 student のダッシュボードで
+     * 合格可能性「注意(warning)」帯を動作確認できるようにするためのデータ。
+     */
+    private function seedQuestionCategoriesForToeic(Certification $certification): void
+    {
+        $data = [
+            ['name' => 'リスニング', 'slug' => 'listening', 'sort_order' => 10],
+            ['name' => 'リーディング', 'slug' => 'reading', 'sort_order' => 20],
+            ['name' => '文法・語彙', 'slug' => 'grammar', 'sort_order' => 30],
+        ];
+
+        foreach ($data as $row) {
+            QuestionCategory::factory()
+                ->forCertification($certification)
+                ->state($row)
+                ->create();
+        }
     }
 
     /**

@@ -26,7 +26,7 @@
                         <p class="text-sm text-ink-500 mt-1">
                             公開中の模試すべてで合格点を超えています。下記ボタンから修了証を受領できます。
                         </p>
-                        <form
+                        <form novalidate
                             method="POST"
                             action="{{ route('enrollments.receiveCertificate', $enrollment) }}"
                             class="mt-3"

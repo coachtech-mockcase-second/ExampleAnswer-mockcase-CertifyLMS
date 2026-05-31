@@ -162,6 +162,7 @@ namespace App\UseCases\Chat\Moderation;               // 既存 Entity namespace
 ## 必須事項
 
 - `@csrf` トークンはすべてのフォームに必須
+- すべての `<form>` に `novalidate` を付与（ブラウザ標準バリデーションを抑止し、FormRequest のサーバーサイドメッセージを表示させる。`<x-form.*>` 内の `required` / `type` / `maxlength` 等は a11y・UX のため残す）
 - `@method('PUT')` / `@method('DELETE')` で動詞偽装
 - 認可表示は `@can` / `@cannot` で制御
 - ナビゲーション表示は `@if(Route::has('xxx'))` で防衛（未実装ルートでのエラー防止）

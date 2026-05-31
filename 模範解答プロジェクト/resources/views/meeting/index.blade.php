@@ -1,6 +1,6 @@
 {{--
     受講生の面談履歴一覧画面。登録中の全資格を横断して面談を時系列表示する。
-    構成: パンくず → ヘッダ(タイトル + 新規予約ボタン) → 状態フィルタタブ(今後/過去/すべて) → 面談カード一覧(ステータスバッジ + 日時 + 相談内容 + 担当コーチ) or 空状態 → ページネーション
+    構成: パンくず → 予約/履歴タブ(+残り面談回数) → 見出し → 状態フィルタタブ(今後/過去/すべて) → 面談カード一覧(ステータスバッジ + 日時 + 相談内容 + 担当コーチ) or 空状態 → ページネーション
     JS なし(タブ・カードはリンク遷移、ページャもリンク)。
 --}}
 @extends('layouts.app')
@@ -10,18 +10,14 @@
 @section('content')
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
-        ['label' => '面談予約'],
+        ['label' => '面談'],
     ]" />
 
-    <div class="mt-4 flex items-center justify-between gap-4 flex-wrap">
-        <div>
-            <h1 class="text-2xl font-bold text-ink-900">面談履歴</h1>
-            <p class="text-sm text-ink-500 mt-1">登録中の全資格を横断して表示しています。</p>
-        </div>
-        <x-link-button href="{{ route('meetings.fallback.create') }}" variant="primary">
-            <x-icon name="plus" class="w-4 h-4" />
-            新しい面談を予約する
-        </x-link-button>
+    @include('meeting._partials.nav-tabs', ['meetingsRemaining' => $meetingsRemaining])
+
+    <div class="mt-4">
+        <h1 class="text-2xl font-bold text-ink-900">面談履歴</h1>
+        <p class="text-sm text-ink-500 mt-1">登録中の全資格を横断して表示しています。</p>
     </div>
 
     <div class="mt-6">

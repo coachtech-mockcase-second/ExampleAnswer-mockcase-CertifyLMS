@@ -113,7 +113,7 @@
                     既存の予約は LMS 内には残り、Google 側のイベントは削除されません。
                 </p>
 
-                <form method="POST" action="{{ route('settings.google-calendar.destroy') }}">
+                <form novalidate method="POST" action="{{ route('settings.google-calendar.destroy') }}">
                     @csrf
                     @method('DELETE')
                     <x-button type="submit" variant="outline" size="sm">
@@ -282,7 +282,7 @@
 
             <div class="mt-4 pt-3 border-t border-subtle flex items-center justify-between gap-3 text-sm">
                 <p class="text-xs text-ink-500">この時間枠を削除すると、受講生の予約画面から外れます(既存の予約は影響を受けません)。</p>
-                <form
+                <form novalidate
                     method="POST"
                     action="{{ route('settings.availability.destroy', $availability) }}"
                     onsubmit="return confirm('この時間枠を削除します。よろしいですか?');"

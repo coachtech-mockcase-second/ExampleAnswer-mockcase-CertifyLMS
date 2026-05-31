@@ -15,13 +15,6 @@
 @endphp
 
 <x-card class="lc-card" data-scheme="teal" padding="md">
-    <div class="lc-top">
-        <div class="lc-title">
-            <x-icon name="calendar-days" />
-            学習カレンダー
-        </div>
-    </div>
-
     {{-- ストリーク stat strip: 連続日数 (gradient hero) + 最長 + 今月の学習時間 --}}
     @if ($streak !== null)
         <div class="mb-4 rounded-2xl bg-gradient-to-br from-warning-200 via-success-200 to-primary-200 px-4 py-3.5 text-ink-900 shadow-sm">

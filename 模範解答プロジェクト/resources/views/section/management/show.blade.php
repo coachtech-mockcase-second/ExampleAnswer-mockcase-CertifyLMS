@@ -54,7 +54,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.sections.update', $section) }}" class="mt-6 space-y-6">
+    <form novalidate method="POST" action="{{ route('admin.sections.update', $section) }}" class="mt-6 space-y-6">
         @csrf
         @method('PATCH')
 

@@ -1,6 +1,6 @@
 {{--
     資格詳細画面の直近修了証カード partial。
-    構成: ヘッダ(見出し + 発行件数) → 修了証行リスト(受講者アバター + 名前 / 通番 + 発行日 + PDF ダウンロードリンク、0 件時はプレースホルダ)
+    構成: ヘッダ(見出し + 発行件数) → 修了証行リスト(受講者アバター + 名前 / 発行日 + PDF ダウンロードリンク、0 件時はプレースホルダ)
 --}}
 <x-card padding="lg" shadow="sm">
     <div class="flex items-center justify-between gap-2">
@@ -22,7 +22,6 @@
                         <x-avatar :src="$cert->user?->avatar_url" :name="$cert->user?->name ?? '?'" size="sm" />
                         <div class="min-w-0">
                             <div class="text-sm font-semibold text-ink-900 truncate">{{ $cert->user?->name ?? '(退会済)' }}</div>
-                            <div class="text-xs text-ink-500 font-mono">{{ $cert->serial_no }}</div>
                         </div>
                     </div>
                     <div class="text-right shrink-0">

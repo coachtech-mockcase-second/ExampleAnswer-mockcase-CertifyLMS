@@ -22,7 +22,7 @@
         <p class="mt-1 text-sm text-ink-500">{{ $thread->title }} への回答を編集します。</p>
 
         {{-- 更新フォーム。@csrf は全フォーム必須、@method('PATCH') で更新リクエストに偽装する --}}
-        <form
+        <form novalidate
             method="POST"
             action="{{ route('qa-board.replies.update', ['thread' => $thread->id, 'reply' => $reply->id]) }}"
             class="mt-4 flex flex-col gap-4"

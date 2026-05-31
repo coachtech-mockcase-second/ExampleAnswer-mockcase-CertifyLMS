@@ -4,7 +4,7 @@
     確認用モーダルで送信のみ(入力欄なし)。
 --}}
 <x-modal id="withdraw-confirm-modal" title="ユーザーを退会させる" size="md">
-    <form method="POST" action="{{ route('admin.users.withdraw', $user) }}" id="withdraw-confirm-form" class="space-y-4">
+    <form novalidate method="POST" action="{{ route('admin.users.withdraw', $user) }}" id="withdraw-confirm-form" class="space-y-4">
         @csrf
 
         <div class="rounded-md bg-danger-50 border border-danger-200 px-4 py-3 text-sm text-danger-800 leading-relaxed flex gap-2">

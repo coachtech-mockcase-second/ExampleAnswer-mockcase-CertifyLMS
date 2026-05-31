@@ -50,7 +50,7 @@
 
     <x-card class="mt-6" padding="md">
         <h2 class="text-sm font-semibold text-ink-700 uppercase tracking-wide">Part 情報の編集</h2>
-        <form method="POST" action="{{ route('admin.parts.update', $part) }}" class="mt-4 space-y-4">
+        <form novalidate method="POST" action="{{ route('admin.parts.update', $part) }}" class="mt-4 space-y-4">
             @csrf
             @method('PATCH')
             <x-form.input
@@ -123,7 +123,7 @@
 
     <x-modal id="chapter-create-modal" title="Chapter を新規作成" size="md">
         <x-slot:body>
-            <form id="chapter-create-form" method="POST" action="{{ route('admin.parts.chapters.store', $part) }}" class="space-y-4">
+            <form novalidate id="chapter-create-form" method="POST" action="{{ route('admin.parts.chapters.store', $part) }}" class="space-y-4">
                 @csrf
                 <x-form.input
                     name="title"

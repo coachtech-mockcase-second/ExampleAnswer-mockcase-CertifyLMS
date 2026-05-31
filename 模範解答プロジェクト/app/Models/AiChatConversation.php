@@ -15,8 +15,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 /**
  * 受講生 × AI の相談会話を表す Model。
  *
- * - user_id 必須 / enrollment_id・section_id は nullable (全般相談 / 資格相談 / 教材相談の 3 モード)
- * - SoftDelete: 受講生の削除操作で論理削除。メッセージは物理的には残る (history の整合性のため)
+ * - user_id 必須 / enrollment_id・section_id は nullable
+ *   - 全般相談: section_id・enrollment_id とも null (資格コンテキストは user.default_enrollment_id から解決)
+ *   - 教材相談: section_id あり + 所属資格の enrollment_id を自動補完
+ * - 物理削除: 受講生の削除操作で会話を物理削除。配下メッセージも外部キーの cascade で連動削除される
  * - last_message_at: 一覧の降順並べ替え + ウィジェットの既存会話再開判定用
  *
  * 関連: User(オーナー) / Enrollment(資格紐付け、nullable) / Section(教材紐付け、nullable) / AiChatMessage(発言)

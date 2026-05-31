@@ -32,7 +32,7 @@
     </div>
 
     <x-card class="mt-6" padding="lg" shadow="sm">
-        <form method="POST" action="{{ route('admin.certifications.store') }}" class="space-y-5">
+        <form novalidate method="POST" action="{{ route('admin.certifications.store') }}" class="space-y-5">
             @csrf
 
             <div class="grid gap-5 md:grid-cols-2">

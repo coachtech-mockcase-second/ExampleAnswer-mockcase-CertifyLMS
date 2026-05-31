@@ -27,7 +27,6 @@ class Certificate extends Model
         'user_id',
         'enrollment_id',
         'certification_id',
-        'serial_no',
         'pdf_path',
         'issued_at',
     ];

@@ -13,7 +13,7 @@
         8 文字以上で新しいパスワードを設定してください。
     </p>
 
-    <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-3.5">
+    <form novalidate method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-3.5">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
 

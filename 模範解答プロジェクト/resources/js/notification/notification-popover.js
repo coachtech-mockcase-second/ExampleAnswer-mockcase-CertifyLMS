@@ -275,6 +275,8 @@ function resolveTargetUrl(item) {
             return '/meetings';
         case 'coach.meetings.index':
             return '/coach/meetings';
+        case 'notifications.show':
+            return params.notification !== undefined ? `/notifications/${params.notification}` : null;
         case 'notifications.index':
             return '/notifications';
         default:

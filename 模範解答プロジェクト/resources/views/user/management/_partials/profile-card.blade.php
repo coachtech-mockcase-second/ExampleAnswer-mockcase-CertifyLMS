@@ -79,7 +79,7 @@
         @unless ($isWithdrawn)
             <div class="flex flex-col gap-2 sm:items-end sm:min-w-[200px]">
                 @if ($isInvited && $pendingInvitation)
-                    <form method="POST" action="{{ route('admin.invitations.resend', $user) }}">
+                    <form novalidate method="POST" action="{{ route('admin.invitations.resend', $user) }}">
                         @csrf
                         <x-button type="submit" variant="primary">
                             <x-icon name="paper-airplane" class="w-4 h-4" />

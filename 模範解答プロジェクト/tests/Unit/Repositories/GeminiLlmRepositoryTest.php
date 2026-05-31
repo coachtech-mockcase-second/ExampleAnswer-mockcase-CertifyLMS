@@ -17,7 +17,7 @@ class GeminiLlmRepositoryTest extends TestCase
         return new GeminiLlmRepository(
             endpoint: 'https://generativelanguage.googleapis.com/v1beta',
             apiKey: 'fake-key',
-            defaultModel: 'gemini-2.5-flash',
+            defaultModel: 'gemini-2.5-flash-lite',
         );
     }
 
@@ -43,7 +43,7 @@ class GeminiLlmRepositoryTest extends TestCase
         );
 
         $this->assertSame('ハッシュ法はキー値ペアを高速に格納する手法です。', $response->content);
-        $this->assertSame('gemini-2.5-flash', $response->model);
+        $this->assertSame('gemini-2.5-flash-lite', $response->model);
         $this->assertSame(120, $response->inputTokens);
         $this->assertSame(80, $response->outputTokens);
         $this->assertGreaterThanOrEqual(0, $response->responseTimeMs);
@@ -109,7 +109,7 @@ class GeminiLlmRepositoryTest extends TestCase
         );
 
         Http::assertSent(function ($request) {
-            if (! str_contains($request->url(), 'gemini-2.5-flash:generateContent')) {
+            if (! str_contains($request->url(), 'gemini-2.5-flash-lite:generateContent')) {
                 return false;
             }
             $data = $request->data();

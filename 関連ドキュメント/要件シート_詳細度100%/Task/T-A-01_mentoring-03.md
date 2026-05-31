@@ -10,7 +10,7 @@
 | 種別 | Task |
 | サブカテゴリ | パフォーマンス |
 | 難易度 | Advance |
-| 工数 (h) | 6 |
+| 工数 (h) | 5.5 |
 | 依存チケット | `S-A-01`(Google Calendar 連携 — `coach_google_credentials` テーブル + Google API 連携が前提) |
 
 ## 概要
@@ -35,8 +35,9 @@
 ## 受け入れ条件
 
 - [ ] 担当コーチが複数名いる資格の空き枠取得で、コーチごとに個別クエリが発火せず N+1 が解消されている(コーチ集合・空き枠・既存予約が一括取得される)
-- [ ] Google カレンダー未連携のコーチには空き時刻取得 API を発行しない(連携済コーチに対してのみ呼び出し、連携 0 名なら呼び出さない)
-- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
+  - 確認方法（テスト）: 同梱の `tests/Unit/Services/MeetingAvailabilityQueryCountTest.php::test_slots_query_count_does_not_grow_with_coach_count`(修正前は失敗)が pass する
+- [ ] 複数コーチ(Google 連携済 / 未連携が混在)の資格でも空き枠が正しく表示される(未連携コーチは Google を参照せず面談可能時間枠 + 既存予約のみで判定される)
+  - 確認方法（テスト）: 同梱の `tests/Unit/Services/MeetingAvailabilityServiceTest.php::test_does_not_call_gcal_for_uncredentialed_coach`(未連携コーチに外部 API を発行しないことを検証、修正前は失敗)が pass する
 
 ## 実装方針(参考)
 

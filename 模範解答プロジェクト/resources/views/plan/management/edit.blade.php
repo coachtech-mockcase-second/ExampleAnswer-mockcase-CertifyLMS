@@ -21,7 +21,7 @@
     </div>
 
     <x-card class="mt-6" padding="lg" shadow="sm">
-        <form method="POST" action="{{ route('admin.plans.update', $plan) }}" class="space-y-5">
+        <form novalidate method="POST" action="{{ route('admin.plans.update', $plan) }}" class="space-y-5">
             @csrf
             @method('PUT')
 

@@ -33,7 +33,7 @@
 ## 受け入れ条件
 
 - [ ] コーチダッシュボードの担当受講生一覧で、受講生情報・担当資格・最終活動日時が一括取得され N+1 が解消されている
-- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
+  - 確認方法（テスト）: 同梱の `tests/Feature/Http/Dashboard/DashboardQueryCountTest.php::test_coach_dashboard_does_not_explode_with_more_enrollments`(修正前は失敗)が pass する（担当受講生を増やしても発行クエリ数が増えないことを検証）
 
 ## 実装方針(参考)
 

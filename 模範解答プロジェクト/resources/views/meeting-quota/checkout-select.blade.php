@@ -49,7 +49,7 @@
                         <span class="text-sm text-ink-500">/ {{ $plan->meeting_count }} 回</span>
                     </div>
 
-                    <form method="POST" action="{{ route('meeting-quota.checkout.create') }}" class="mt-auto pt-6">
+                    <form novalidate method="POST" action="{{ route('meeting-quota.checkout.create') }}" class="mt-auto pt-6">
                         @csrf
                         <input type="hidden" name="meeting_pack_id" value="{{ $plan->id }}">
                         <x-button type="submit" variant="primary" class="w-full justify-center">

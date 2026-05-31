@@ -25,7 +25,7 @@
     'group',
     'bg-primary-50/30' => $isUnread,
 ])>
-    <form
+    <form novalidate
         method="POST"
         action="{{ route('notifications.markAsRead', $notification) }}"
         class="block"

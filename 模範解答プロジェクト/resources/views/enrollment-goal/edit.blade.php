@@ -16,7 +16,7 @@
     <h1 class="text-2xl font-bold mt-4">目標を編集</h1>
 
     <x-card class="mt-6" padding="lg" shadow="sm">
-        <form method="POST" action="{{ route('enrollment-goals.update', $goal) }}" class="space-y-4">
+        <form novalidate method="POST" action="{{ route('enrollment-goals.update', $goal) }}" class="space-y-4">
             @csrf
             @method('PATCH')
 

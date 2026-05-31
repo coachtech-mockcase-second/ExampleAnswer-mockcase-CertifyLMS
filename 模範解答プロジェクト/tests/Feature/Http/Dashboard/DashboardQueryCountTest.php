@@ -49,6 +49,33 @@ class DashboardQueryCountTest extends TestCase
         $this->assertLessThanOrEqual(25, $queries, "coach dashboard exceeded query budget: {$queries}");
     }
 
+    public function test_coach_dashboard_does_not_explode_with_more_enrollments(): void
+    {
+        // Arrange: コーチ + 担当資格 + 受講生 2 名 (基準)
+        $coach = User::factory()->coach()->inProgress()->create();
+        $cert = Certification::factory()->published()->create();
+        $cert->coaches()->attach($coach->id, [
+            'id' => (string) Str::ulid(),
+            'assigned_by_user_id' => User::factory()->admin()->create()->id,
+            'assigned_at' => now(),
+            'unassigned_at' => null,
+        ]);
+        Enrollment::factory()->for($cert)->learning()->count(2)->create();
+        $this->actingAs($coach);
+
+        // Act: 基準のクエリ数を計測 → 担当受講生を 6 名追加して再計測
+        $baseline = $this->countQueriesFor(fn () => $this->get(route('dashboard.index')));
+        Enrollment::factory()->for($cert)->learning()->count(6)->create();
+        $scaled = $this->countQueriesFor(fn () => $this->get(route('dashboard.index')));
+
+        // Assert: 担当受講生が増えても発行クエリ数はほぼ一定 (N+1 なら件数分増える)
+        $this->assertLessThanOrEqual(
+            $baseline + 3,
+            $scaled,
+            "コーチダッシュボードの担当受講生一覧で N+1 が再発している (基準 {$baseline} → 増加後 {$scaled})。受講生情報・担当資格・最終活動日時を一括取得しているか確認",
+        );
+    }
+
     public function test_student_dashboard_query_count_is_within_limit(): void
     {
         $plan = Plan::factory()->published()->create();

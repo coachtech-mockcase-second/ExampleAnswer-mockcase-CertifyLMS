@@ -36,7 +36,7 @@ class DownloadTest extends TestCase
 
         $response->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
-        $this->assertStringContainsString("certificate-{$cert->serial_no}.pdf", $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString("certificate-{$cert->id}.pdf", $response->headers->get('Content-Disposition'));
     }
 
     public function test_graduated_owner_can_still_download(): void

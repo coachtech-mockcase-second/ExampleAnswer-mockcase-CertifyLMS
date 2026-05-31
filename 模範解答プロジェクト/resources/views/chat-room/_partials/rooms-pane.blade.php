@@ -30,7 +30,7 @@
 
     @if ($coachFilters !== null)
         {{-- コーチ閲覧時の絞り込み: タブで未読/全件、キーワード検索。current room は変えずに query string を更新する --}}
-        <form method="GET" action="{{ route('chat.show', $currentRoom) }}" class="px-3 pt-3 pb-3 space-y-2 border-b border-subtle">
+        <form novalidate method="GET" action="{{ route('chat.show', $currentRoom) }}" class="px-3 pt-3 pb-3 space-y-2 border-b border-subtle">
             <div class="flex gap-1">
                 <button type="submit" name="filter" value="unread"
                     class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold transition {{ $coachFilter === 'unread' ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-700 hover:bg-ink-200' }}">
@@ -47,7 +47,7 @@
         </form>
     @elseif ($adminFilters !== null)
         {{-- 管理者監査時の絞り込み: キーワード検索のみ(全ルームが対象なので未読の概念は無い) --}}
-        <form method="GET" action="{{ route('admin.chat-rooms.show', $currentRoom) }}" class="px-3 pt-3 pb-3 border-b border-subtle">
+        <form novalidate method="GET" action="{{ route('admin.chat-rooms.show', $currentRoom) }}" class="px-3 pt-3 pb-3 border-b border-subtle">
             <input type="search" name="keyword" placeholder="受講生名 / メール"
                 value="{{ $adminKeyword }}"
                 class="w-full px-2.5 py-1.5 rounded-md border border-subtle bg-white text-xs focus:outline-none focus:ring-2 focus:ring-primary-500">

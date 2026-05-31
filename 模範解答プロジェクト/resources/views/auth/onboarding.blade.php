@@ -28,7 +28,7 @@
         </div>
     </dl>
 
-    <form method="POST" action="{{ $postUrl }}" class="flex flex-col gap-3.5">
+    <form novalidate method="POST" action="{{ $postUrl }}" class="flex flex-col gap-3.5">
         @csrf
 
         <x-form.input

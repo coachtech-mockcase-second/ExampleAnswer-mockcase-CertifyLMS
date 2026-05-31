@@ -21,7 +21,7 @@
     </p>
 
     <x-card class="mt-6" padding="sm">
-        <form method="GET" action="{{ route('contents.search') }}" class="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <form novalidate method="GET" action="{{ route('contents.search') }}" class="grid gap-3 sm:grid-cols-[1fr_auto]">
             <input type="hidden" name="certification_id" value="{{ $certification?->id }}">
             <div class="relative">
                 <x-icon name="magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500" />

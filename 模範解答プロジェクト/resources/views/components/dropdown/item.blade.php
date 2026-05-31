@@ -21,7 +21,7 @@
 
 @if ($method && $href)
     @php $formId = 'dd-form-' . md5($href . $method); @endphp
-    <form method="POST" action="{{ $href }}" id="{{ $formId }}" class="block">
+    <form novalidate method="POST" action="{{ $href }}" id="{{ $formId }}" class="block">
         @csrf
         @method(strtoupper($method))
     </form>

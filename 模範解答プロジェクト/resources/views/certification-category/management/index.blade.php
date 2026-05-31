@@ -86,7 +86,7 @@
                                 >
                                     <x-icon name="pencil" class="w-4 h-4" />
                                 </x-button>
-                                <form method="POST" action="{{ route('admin.certification-categories.destroy', $category) }}" onsubmit="return confirm('この分類を削除しますか？')">
+                                <form novalidate method="POST" action="{{ route('admin.certification-categories.destroy', $category) }}" onsubmit="return confirm('この分類を削除しますか？')">
                                     @csrf
                                     @method('DELETE')
                                     <x-button type="submit" variant="ghost" size="sm">

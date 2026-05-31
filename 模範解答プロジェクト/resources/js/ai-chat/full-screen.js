@@ -6,8 +6,7 @@ import { renderFullScreenMessage } from './message-renderer.js';
  *
  * - フォーム送信で AiChatClient.sendSync() を呼出
  * - 自分の発言と AI 応答を template から複製してリストに追記
- * - エラー時はリストにエラーバブル + 再送信ボタンを表示
- * - 「再送信」ボタンクリックで POST /ai-chat/messages/{id}/retry
+ * - エラー時はリストにエラーバブルを表示 (受講生は同じ内容を送り直して再質問できる)
  */
 
 function initForm() {
@@ -136,33 +135,6 @@ function initForm() {
             submit.disabled = false;
             clearTyping();
             scrollToBottom();
-        }
-    });
-
-    // 再送信ボタン (event delegation)
-    list.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-action="retry"]');
-        if (!btn) return;
-        const url = btn.dataset.retryUrl;
-        if (!url) return;
-        btn.disabled = true;
-        try {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            });
-            if (res.ok) {
-                window.location.reload();
-            } else {
-                btn.disabled = false;
-            }
-        } catch (err) {
-            btn.disabled = false;
         }
     });
 

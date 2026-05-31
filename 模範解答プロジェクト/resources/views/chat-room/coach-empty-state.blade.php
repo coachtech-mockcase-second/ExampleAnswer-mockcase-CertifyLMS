@@ -23,7 +23,7 @@
         <p class="text-sm text-ink-500 mt-1">担当受講生からのメッセージを資格ごとに確認できます。</p>
     </div>
 
-    <form method="GET" class="mt-4 flex flex-wrap gap-3 items-end">
+    <form novalidate method="GET" class="mt-4 flex flex-wrap gap-3 items-end">
         <div class="flex gap-1">
             <button type="submit" name="filter" value="unread"
                 class="px-3 py-2 rounded-md text-sm font-semibold transition {{ $filter === 'unread' ? 'bg-primary-600 text-white' : 'bg-ink-100 text-ink-700 hover:bg-ink-200' }}">

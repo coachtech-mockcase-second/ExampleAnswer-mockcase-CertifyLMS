@@ -1,7 +1,7 @@
 {{--
-    受講中資格カード（1 資格 = 1 枚）。受講生ダッシュボードの主役。
+    受講中の資格カード（1 資格 = 1 枚、学習中のみ）。受講生ダッシュボードの主役。
     構成: ヘッダ（資格名 + ターム/合格可能性バッジ + 受験日カウントダウン）→ 進捗バー
-          → 残学習時間 / 日次推奨 / 弱点カテゴリ → 操作（教材へ）→ 修了証の受領 / ダウンロード（修了時）。
+          → 残学習時間 / 日次推奨 / 弱点カテゴリ → 操作（教材へ）→ 修了条件達成時の修了証の受領。
 --}}
 @props([
     'card',
@@ -42,9 +42,7 @@
             </a>
             <div class="flex gap-1.5 items-center mt-1 flex-wrap">
                 <x-badge variant="{{ $termColor }}" size="sm">{{ $card->currentTerm->label() }}</x-badge>
-                @if ($card->isPassed)
-                    <x-badge variant="success" size="sm">{{ $card->status->label() }}</x-badge>
-                @elseif ($bandLabel !== null)
+                @if ($bandLabel !== null)
                     <x-badge variant="{{ $bandColor }}" size="sm">{{ $bandLabel }}</x-badge>
                 @endif
             </div>
@@ -77,7 +75,7 @@
                 <span class="font-display text-base font-bold tabular-nums tracking-tight text-ink-900">{{ $progressPercent }}%</span>
             </div>
             <div class="h-2 bg-ink-100 rounded-full overflow-hidden">
-                <div class="h-full {{ $card->isPassed ? 'bg-success-500' : 'bg-primary-500' }} rounded-full" style="width: {{ $progressPercent }}%"></div>
+                <div class="h-full bg-primary-500 rounded-full" style="width: {{ $progressPercent }}%"></div>
             </div>
         </div>
     @else
@@ -124,34 +122,18 @@
     </div>
 
     <div class="flex items-center justify-between gap-2">
-        @if (! $card->isPassed)
-            <p class="text-[11px] text-ink-500 flex items-center gap-1.5">
-                <x-icon name="information-circle" class="w-3 h-3 flex-shrink-0" />
-                修了条件: 公開模試すべての合格点超え
-            </p>
-        @else
-            <span></span>
-        @endif
+        <p class="text-[11px] text-ink-500 flex items-center gap-1.5">
+            <x-icon name="information-circle" class="w-3 h-3 flex-shrink-0" />
+            修了条件: 公開模試すべての合格点超え
+        </p>
         <x-link-button :href="route('learning.enrollments.show', $card->enrollmentId)" variant="primary" size="sm">
             <x-icon name="book-open" class="w-4 h-4" />
             教材へ
         </x-link-button>
     </div>
 
-    @if ($card->isPassed && $card->certificateDownloadUrl !== null)
-        <div class="flex items-center gap-2.5 px-3.5 py-2.5 bg-success-50 border border-success-200 rounded-[10px]">
-            <x-icon name="check-badge" class="w-4 h-4 text-success-700 flex-shrink-0" />
-            <span class="text-xs text-success-900 flex-1 leading-relaxed">
-                <b class="font-bold">修了済み</b> — 修了証 PDF をダウンロードできます。
-            </span>
-            <a href="{{ $card->certificateDownloadUrl }}"
-               class="bg-success-600 hover:bg-success-700 text-white px-3.5 py-2 text-xs font-bold rounded-lg inline-flex items-center gap-1 transition-colors">
-                <x-icon name="document-text" class="w-3 h-3" />
-                修了証 PDF
-            </a>
-        </div>
-    @elseif ($card->canReceiveCertificate)
-        <form method="POST" action="{{ route('enrollments.receiveCertificate', $card->enrollmentId) }}">
+    @if ($card->canReceiveCertificate)
+        <form novalidate method="POST" action="{{ route('enrollments.receiveCertificate', $card->enrollmentId) }}">
             @csrf
             <div class="flex items-center gap-2.5 px-3.5 py-2.5 bg-success-50 border border-success-200 rounded-[10px]">
                 <x-icon name="check-badge" class="w-4 h-4 text-success-700 flex-shrink-0" />

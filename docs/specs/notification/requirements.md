@@ -86,7 +86,8 @@
 - **REQ-notification-082**: When `target_type=AllStudents` の場合, the system shall `User::where('role', UserRole::Student)->where('status', UserStatus::InProgress)->get()` を対象とする。
 - **REQ-notification-083**: When `target_type=Certification` の場合, the system shall `User::query()->where('role', UserRole::Student)->where('status', UserStatus::InProgress)->whereHas('enrollments', fn ($q) => $q->where('certification_id', $announcement->target_certification_id)->where('status', EnrollmentStatus::Learning))->get()` を対象とする。
 - **REQ-notification-084**: When `target_type=User` の場合, the system shall `User::where('id', $announcement->target_user_id)->where('role', UserRole::Student)->where('status', UserStatus::InProgress)->get()` を対象とする。
-- **REQ-notification-086**: The system shall Announcement 通知の data に `admin_announcement_id` / `title` / `body` / `dispatched_at` / `target_type` / `link_route='notifications.index'` を格納する。
+- **REQ-notification-086**: The system shall Announcement 通知の data に `admin_announcement_id` / `title` / `body` / `dispatched_at` / `target_type` / `link_route='notifications.show'` / `link_params={notification: <通知 id>}` を格納する（お知らせは遷移先となる業務画面を持たないため、通知行クリック時は通知詳細ページへ遷移する）。
+- **REQ-notification-087**: The system shall 受講生がお知らせ通知をクリックした際に通知詳細ページ（`NotificationController::show` / `GET /notifications/{notification}` / route 名 `notifications.show` / `views/notifications/show.blade.php`）へ遷移させ、通知ペイロードの本文全文を表示する。認可は `NotificationPolicy::view`（受信者本人かのみ）で行い、表示時に既読化する。
 - **REQ-notification-089**: The system shall 配信済お知らせの再配信 / 取消 / 削除を提供しない。
 
 ### 機能要件 — 通知一覧・既読化（変更なし）

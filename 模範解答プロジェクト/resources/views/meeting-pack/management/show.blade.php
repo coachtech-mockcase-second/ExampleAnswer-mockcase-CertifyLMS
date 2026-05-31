@@ -57,7 +57,7 @@
 
             @can('publish', $plan)
                 @if ($plan->status === MeetingPackStatus::Draft)
-                    <form method="POST" action="{{ route('admin.meeting-packs.publish', $plan) }}" class="inline-block">
+                    <form novalidate method="POST" action="{{ route('admin.meeting-packs.publish', $plan) }}" class="inline-block">
                         @csrf
                         <x-button type="submit" variant="primary">
                             <x-icon name="check-circle" class="w-4 h-4" />
@@ -69,7 +69,7 @@
 
             @can('archive', $plan)
                 @if ($plan->status === MeetingPackStatus::Published)
-                    <form method="POST" action="{{ route('admin.meeting-packs.archive', $plan) }}" class="inline-block">
+                    <form novalidate method="POST" action="{{ route('admin.meeting-packs.archive', $plan) }}" class="inline-block">
                         @csrf
                         <x-button type="submit" variant="secondary">
                             <x-icon name="archive-box" class="w-4 h-4" />
@@ -81,7 +81,7 @@
 
             @can('unarchive', $plan)
                 @if ($plan->status === MeetingPackStatus::Archived)
-                    <form method="POST" action="{{ route('admin.meeting-packs.unarchive', $plan) }}" class="inline-block">
+                    <form novalidate method="POST" action="{{ route('admin.meeting-packs.unarchive', $plan) }}" class="inline-block">
                         @csrf
                         <x-button type="submit" variant="secondary">
                             <x-icon name="arrow-uturn-left" class="w-4 h-4" />
@@ -93,7 +93,7 @@
 
             @can('delete', $plan)
                 @if ($plan->status !== MeetingPackStatus::Published)
-                    <form method="POST" action="{{ route('admin.meeting-packs.destroy', $plan) }}" class="inline-block"
+                    <form novalidate method="POST" action="{{ route('admin.meeting-packs.destroy', $plan) }}" class="inline-block"
                           onsubmit="return confirm('この面談パックを削除しますか？(公開中は削除できません)');">
                         @csrf
                         @method('DELETE')

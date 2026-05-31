@@ -1,16 +1,13 @@
 {{--
     メッセージ 1 件分の吹き出し（$message を受け取る）。
-    構成: アバター + 吹き出し本体（本文 / 応答待ちのローディングドット / エラー文 + 再送信ボタン）+ メタ行（時刻・応答時間・トークン数）。
-    フロント観点: 自分の発言と AI の発言で左右と配色を出し分け。AI 文は素の JS が Markdown をサニタイズ済 HTML に変換して描画。応答待ちはアニメーションのドット表示。エラー時の「再送信」は data-* を JS が拾って非同期で再実行。
+    構成: アバター + 吹き出し本体（本文 / 応答待ちのローディングドット / エラー文）+ メタ行（時刻・応答時間・トークン数）。
+    フロント観点: 自分の発言と AI の発言で左右と配色を出し分け。AI 文は素の JS が Markdown をサニタイズ済 HTML に変換して描画。応答待ちはアニメーションのドット表示。
 --}}
 @php
     /** @var \App\Models\AiChatMessage $message */
     $isMe = $message->role === \App\Enums\AiChatMessageRole::User;
     $isError = $message->status === \App\Enums\AiChatMessageStatus::Error;
-    $isPending = in_array($message->status, [
-        \App\Enums\AiChatMessageStatus::Pending,
-        \App\Enums\AiChatMessageStatus::Streaming,
-    ], true);
+    $isPending = $message->status === \App\Enums\AiChatMessageStatus::Pending;
     $viewerName = auth()->user()?->name ?? 'YOU';
     $initials = mb_substr($viewerName, 0, 2);
 @endphp
@@ -68,18 +65,6 @@
                 <div class="break-words" data-message-content data-markdown>{{ $message->content }}</div>
             @endif
 
-            @if ($isError)
-                <button type="button"
-                    class="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-white border border-danger-200 text-danger-700 text-xs font-semibold hover:bg-danger-50"
-                    data-action="retry"
-                    data-message-id="{{ $message->id }}"
-                    data-retry-url="{{ route('ai-chat.messages.retry', $message) }}">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.36m0 0L17.59 7.69A8.25 8.25 0 1 0 6.343 17.657"/>
-                    </svg>
-                    再送信
-                </button>
-            @endif
         </div>
 
         <div class="text-[11px] text-ink-400 mt-1 px-0.5 tabular-nums">

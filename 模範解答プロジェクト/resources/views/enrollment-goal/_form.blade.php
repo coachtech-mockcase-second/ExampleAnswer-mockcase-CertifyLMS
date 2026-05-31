@@ -11,7 +11,7 @@
 @endphp
 
 @can('create', [EnrollmentGoal::class, $enrollment])
-    <form method="POST" action="{{ route('enrollments.goals.store', $enrollment) }}" class="space-y-3 pb-4 border-b border-ink-100">
+    <form novalidate method="POST" action="{{ route('enrollments.goals.store', $enrollment) }}" class="space-y-3 pb-4 border-b border-ink-100">
         @csrf
         <x-form.input
             name="title"
@@ -76,7 +76,7 @@
                 <div class="flex items-center gap-1">
                     @if ($goal->achieved_at)
                         @can('unmarkAchieved', $goal)
-                            <form method="POST" action="{{ route('enrollment-goals.unmarkAchieved', $goal) }}">
+                            <form novalidate method="POST" action="{{ route('enrollment-goals.unmarkAchieved', $goal) }}">
                                 @csrf
                                 @method('DELETE')
                                 <x-button type="submit" variant="ghost" size="sm">取消</x-button>
@@ -84,7 +84,7 @@
                         @endcan
                     @else
                         @can('markAchieved', $goal)
-                            <form method="POST" action="{{ route('enrollment-goals.markAchieved', $goal) }}">
+                            <form novalidate method="POST" action="{{ route('enrollment-goals.markAchieved', $goal) }}">
                                 @csrf
                                 <x-button type="submit" variant="ghost" size="sm">達成</x-button>
                             </form>
@@ -96,7 +96,7 @@
                         </x-link-button>
                     @endcan
                     @can('delete', $goal)
-                        <form
+                        <form novalidate
                             method="POST"
                             action="{{ route('enrollment-goals.destroy', $goal) }}"
                             onsubmit="return confirm('この目標を削除しますか？');"

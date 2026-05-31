@@ -27,7 +27,7 @@
     <p class="mt-1 text-sm text-ink-500">選択肢は保存時にまとめて更新されます。</p>
 
     <x-card class="mt-6 max-w-3xl" padding="md" shadow="sm">
-        <form method="POST" action="{{ route('admin.mock-exam-questions.update', $question) }}" class="space-y-5">
+        <form novalidate method="POST" action="{{ route('admin.mock-exam-questions.update', $question) }}" class="space-y-5">
             @csrf
             @method('PUT')
 

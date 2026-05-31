@@ -13,7 +13,8 @@ use Illuminate\Notifications\Messages\MailMessage;
  * 管理者から受講生集合への一斉お知らせを各受講生に通知する Notification。
  *
  * 配信ターゲットは `Announcement::target_type` で `AllStudents` / `Certification` / `User` を切替。
- * 通知行クリック後の遷移先は `/notifications` フルページ (お知らせ詳細は通知ペイロードに保持済)。
+ * お知らせは遷移先となる業務画面を持たないため、通知行クリック後は通知詳細ページ (`notifications.show`) へ遷移し、
+ * 通知ペイロードに保持した本文全文を表示する。
  */
 final class AnnouncementNotification extends BaseNotification
 {
@@ -35,8 +36,8 @@ final class AnnouncementNotification extends BaseNotification
             'body' => $this->announcement->body,
             'dispatched_at' => $this->announcement->dispatched_at?->toIso8601String() ?? now()->toIso8601String(),
             'target_type' => $this->announcement->target_type->value,
-            'link_route' => 'notifications.index',
-            'link_params' => [],
+            'link_route' => 'notifications.show',
+            'link_params' => ['notification' => $this->id],
         ];
     }
 
@@ -46,7 +47,7 @@ final class AnnouncementNotification extends BaseNotification
             ->subject('【Certify LMS】'.$this->announcement->title)
             ->greeting('管理者からのお知らせ')
             ->line($this->announcement->body)
-            ->action('お知らせ一覧を開く', route('notifications.index'))
+            ->action('お知らせを開く', route('notifications.show', $this->id))
             ->salutation('Certify LMS 運営チーム');
     }
 

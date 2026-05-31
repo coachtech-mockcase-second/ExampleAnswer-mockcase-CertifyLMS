@@ -103,6 +103,24 @@
 
                     <x-form.file name="avatar" label="プロフィール画像" accept="image/png,image/jpeg" hint="PNG / JPG、最大 2MB" />
                 </div>
+
+                {{-- 単体使用の補助コンポーネント（label / hint / error / fieldset を個別に組む場合）--}}
+                <div class="border-t border-subtle pt-4">
+                    <p class="eyebrow mb-2">Form helpers (standalone)</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="space-y-1.5">
+                            <x-form.label for="custom-name" :required="true">名前</x-form.label>
+                            <input id="custom-name" name="custom_name" class="block w-full rounded-md border border-ink-200 px-3 py-2 text-sm" />
+                            <x-form.hint>50 文字以内で入力してください</x-form.hint>
+                            <x-form.error message="名前は必須です" />
+                        </div>
+
+                        <x-form.fieldset legend="個人目標">
+                            <x-form.input name="goal_title" label="タイトル" placeholder="基本情報技術者に合格する" />
+                            <x-form.input name="goal_deadline" label="期限" type="date" />
+                        </x-form.fieldset>
+                    </div>
+                </div>
             </x-card>
         </section>
 
@@ -215,9 +233,13 @@
                         <x-slot:trigger>
                             <x-button variant="outline">操作 <x-icon name="chevron-down" class="w-4 h-4" /></x-button>
                         </x-slot:trigger>
+                        {{-- href のみ = リンク項目 --}}
                         <x-dropdown.item href="#" icon="pencil">編集</x-dropdown.item>
                         <x-dropdown.item href="#" icon="document-duplicate">複製</x-dropdown.item>
-                        <x-dropdown.item href="#" icon="trash" variant="danger">削除</x-dropdown.item>
+                        {{-- href + method = DELETE 偽装フォーム送信ボタン（内部で hidden form + CSRF を出力）--}}
+                        <x-dropdown.item href="#" method="delete" icon="trash" variant="danger">削除</x-dropdown.item>
+                        {{-- href なし = ただのボタン（onclick 等を呼び出し側で付与する用途）--}}
+                        <x-dropdown.item icon="arrow-path">ボタン項目</x-dropdown.item>
                     </x-dropdown>
 
                     <x-modal id="demo-modal" title="モーダルのデモ" size="md">
@@ -233,6 +255,64 @@
                         </x-slot:footer>
                     </x-modal>
                 </div>
+            </x-card>
+        </section>
+
+        {{-- Content status pill (Feature: content-management) --}}
+        <section class="space-y-4">
+            <h2 class="text-xl font-bold">Content status pill</h2>
+            <x-card>
+                <div class="flex flex-wrap items-center gap-3">
+                    <x-content-management.status-pill :status="\App\Enums\ContentStatus::Published" />
+                    <x-content-management.status-pill :status="\App\Enums\ContentStatus::Draft" />
+                </div>
+            </x-card>
+        </section>
+
+        {{-- Confirm modals (Feature: content-management) --}}
+        <section class="space-y-4">
+            <h2 class="text-xl font-bold">Confirm modals</h2>
+            <x-card>
+                <div class="flex flex-wrap items-start gap-4">
+                    <x-button data-modal-trigger="demo-publish-modal" variant="primary">公開する</x-button>
+                    <x-content-management.publish-confirm-modal id="demo-publish-modal" action="#" />
+
+                    <x-button data-modal-trigger="demo-draft-modal" variant="secondary">下書きに戻す</x-button>
+                    <x-content-management.publish-confirm-modal
+                        id="demo-draft-modal"
+                        title="下書きに戻しますか？"
+                        description="下書きに戻すと受講生の教材閲覧画面から非表示になります。"
+                        action="#"
+                        button-label="下書きに戻す"
+                        button-variant="secondary" />
+
+                    <x-button data-modal-trigger="demo-delete-modal" variant="danger">削除する</x-button>
+                    <x-content-management.delete-confirm-modal id="demo-delete-modal" action="#" />
+                </div>
+            </x-card>
+        </section>
+
+        {{-- Enrollment switcher（empty-state variant、受講中資格が無い状態のプレビュー）--}}
+        <section class="space-y-4">
+            <h2 class="text-xl font-bold">Enrollment switcher (empty-state)</h2>
+            <x-enrollment-switcher variant="empty-state" />
+        </section>
+
+        {{-- Paginator --}}
+        <section class="space-y-4">
+            <h2 class="text-xl font-bold">Paginator</h2>
+            @php
+                // ショーケース用にダミーのページネータを生成（全 47 件・10 件/頁・現在 2 頁目）
+                $demoPaginator = new \Illuminate\Pagination\LengthAwarePaginator(
+                    items: collect(range(11, 20)),
+                    total: 47,
+                    perPage: 10,
+                    currentPage: 2,
+                    options: ['path' => url('/_dev/components')],
+                );
+            @endphp
+            <x-card>
+                <x-paginator :paginator="$demoPaginator" />
             </x-card>
         </section>
 

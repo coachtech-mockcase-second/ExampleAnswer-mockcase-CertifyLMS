@@ -9,7 +9,6 @@ use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Support\Str;
 
 /**
@@ -25,24 +24,9 @@ class CertificateFactory extends Factory
             'user_id' => User::factory()->student(),
             'enrollment_id' => Enrollment::factory()->passed(),
             'certification_id' => Certification::factory()->published(),
-            'serial_no' => 'CT-'.now()->format('Ym').'-'.Str::upper(Str::random(5)),
             'pdf_path' => 'certificates/'.Str::ulid().'.pdf',
             'issued_at' => now(),
         ];
-    }
-
-    public function withSerial(string $serialNo): static
-    {
-        return $this->state(fn () => ['serial_no' => $serialNo]);
-    }
-
-    public function serials(): static
-    {
-        return $this->state(new Sequence(
-            fn (Sequence $sequence) => [
-                'serial_no' => 'CT-'.now()->format('Ym').'-'.str_pad((string) ($sequence->index + 1), 5, '0', STR_PAD_LEFT),
-            ],
-        ));
     }
 
     public function forEnrollment(Enrollment $enrollment): static

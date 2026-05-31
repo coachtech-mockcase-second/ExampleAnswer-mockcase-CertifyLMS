@@ -24,6 +24,12 @@ abstract class BaseNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * 一時的な送信失敗(SMTP / broadcast の一時障害)に備えた最大試行回数。
+     * 超過したジョブは failed_jobs に記録され、`queue:retry` で再投入できる。
+     */
+    public int $tries = 3;
+
     public function __construct()
     {
         $this->id = (string) Str::ulid();
@@ -51,5 +57,15 @@ abstract class BaseNotification extends Notification implements ShouldQueue
         return [
             'mail' => 'notifications',
         ];
+    }
+
+    /**
+     * 試行間の待機秒数(段階的バックオフ)。1 回目失敗後 10 秒 → 30 秒 → 60 秒。
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [10, 30, 60];
     }
 }

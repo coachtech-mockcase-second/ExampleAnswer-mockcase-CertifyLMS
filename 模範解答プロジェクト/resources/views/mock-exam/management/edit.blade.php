@@ -19,7 +19,7 @@
     <p class="mt-1 text-sm text-ink-500">資格の変更はできません。模試名・説明・並び順・合格点を更新できます。</p>
 
     <x-card class="mt-6 max-w-2xl" padding="md" shadow="sm">
-        <form method="POST" action="{{ route('admin.mock-exams.update', $mockExam) }}" class="space-y-5">
+        <form novalidate method="POST" action="{{ route('admin.mock-exams.update', $mockExam) }}" class="space-y-5">
             @csrf
             @method('PUT')
 

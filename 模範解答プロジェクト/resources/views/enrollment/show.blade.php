@@ -88,14 +88,8 @@
         </x-card>
     @endif
 
-    {{-- 修了証受領パネル(状態と認可に応じて表示) --}}
+    {{-- 修了証受領パネル(状態と認可に応じて表示。修了済なら PDF ダウンロード導線もここに常設) --}}
     @include('enrollment._partials.receive-certificate-button', ['enrollment' => $enrollment])
-
-    @if (session('certificate_download_url'))
-        <x-alert type="info" class="mt-4">
-            <a href="{{ session('certificate_download_url') }}" class="font-semibold underline">修了証 PDF をダウンロード</a>
-        </x-alert>
-    @endif
 
     <div class="mt-6 grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
@@ -125,7 +119,7 @@
                 </dl>
 
                 @can('resume', $enrollment)
-                    <form method="POST" action="{{ route('enrollments.resume', $enrollment) }}" class="mt-4">
+                    <form novalidate method="POST" action="{{ route('enrollments.resume', $enrollment) }}" class="mt-4">
                         @csrf
                         <x-button type="submit" variant="primary">
                             <x-icon name="arrow-path" class="w-4 h-4" />
@@ -135,7 +129,7 @@
                 @endcan
 
                 @can('delete', $enrollment)
-                    <form
+                    <form novalidate
                         method="POST"
                         action="{{ route('enrollments.destroy', $enrollment) }}"
                         class="mt-4"
@@ -153,7 +147,7 @@
                 {{-- 試験日設定 / 変更フォーム(admin または受講生本人、passed / trashed 時は非表示) --}}
                 @can('updateExamDate', $enrollment)
                     @unless ($enrollment->trashed())
-                        <form method="POST" action="{{ $isAdmin ? route('admin.enrollments.updateExamDate', $enrollment) : route('enrollments.updateExamDate', $enrollment) }}" class="mt-4 flex items-end gap-3">
+                        <form novalidate method="POST" action="{{ $isAdmin ? route('admin.enrollments.updateExamDate', $enrollment) : route('enrollments.updateExamDate', $enrollment) }}" class="mt-4 flex items-end gap-3">
                             @csrf
                             @method('PATCH')
                             <div class="flex-1">
@@ -173,7 +167,7 @@
 
                 {{-- 手動学習中止フォーム(admin のみ、learning 状態かつ未削除のみ) --}}
                 @if ($isAdmin && $enrollment->status === EnrollmentStatus::Learning && ! $enrollment->trashed())
-                    <form
+                    <form novalidate
                         method="POST"
                         action="{{ route('admin.enrollments.fail', $enrollment) }}"
                         class="mt-4 space-y-2"

@@ -12,7 +12,7 @@
     $publishedStatus ??= \App\Enums\CertificationStatus::Published;
 @endphp
 
-<form method="GET" action="{{ route($indexRoute) }}" class="flex flex-wrap items-center gap-3" id="qa-board-filter-form">
+<form novalidate method="GET" action="{{ route($indexRoute) }}" class="flex flex-wrap items-center gap-3" id="qa-board-filter-form">
     <input type="hidden" name="certification_id" value="{{ $currentCertId }}">
     <input type="hidden" name="status" value="{{ $currentStatus }}" data-filter-status>
 

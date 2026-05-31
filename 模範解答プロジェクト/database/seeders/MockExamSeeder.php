@@ -32,12 +32,12 @@ use Illuminate\Support\Collection;
  * 2. **MockExamQuestion + Option**: 各公開模試に 6 問、各問に 4 つの選択肢(正答 1 件)。
  *    既存の QuestionCategory(ContentSeeder で投入済)から循環使用し、ヒートマップが描画可能な分野分散を保つ。
  *
- * 3. **固定 student の MockExamSession 状態網羅**: `student@certify-lms.test` の learning Enrollment 配下に、
- *    各模試で異なる状態のセッションを 1 件ずつ作る:
- *      - 第1回: Graded(合格、80%)— 結果画面 + ヒートマップ確認用
- *      - 第2回: Graded(不合格、40%)— 弱点ドリル導線確認用
- *      - 第3回: InProgress(中断中)— 続きから再開バナー確認用
- *    + 追加で「キャンセル済」「未開始」のセッションも生成し、履歴一覧の状態フィルタを網羅。
+ * 3. **固定 student のセッション状態網羅 + 合格可能性バンド網羅**: `student@certify-lms.test` の 4 件の learning
+ *    Enrollment に、ダッシュボードの合格可能性バンドが資格ごとに異なって並ぶようセッションを作り分ける:
+ *      - 1 資格目: danger 帯(Graded 50% + 17%、直近平均 ≈ 33%)+ InProgress(再開バナー)+ Canceled(履歴フィルタ)
+ *      - 2 資格目: safe 帯(全公開模試 Graded 合格 100%、修了証ボタン活性化シナリオ)
+ *      - 3 資格目: warning 帯(公開模試 1 回のみ Graded 50%、残りは未受験で「未受験 → 受験開始」導線も確認)
+ *      - 4 資格目: データ不足帯(graded セッションなし、全模試未受験)
  *
  * 4. **demo student**: 残りの in_progress 受講生にもランダムに Graded セッションを散らし、
  *    admin / coach 画面の受験セッション一覧 + ヒートマップ集計動作を確認可能にする。
@@ -181,6 +181,7 @@ final class MockExamSeeder extends Seeder
     {
         $enrollments = $student->enrollments()
             ->where('status', EnrollmentStatus::Learning->value)
+            ->orderBy('created_at')
             ->get();
 
         foreach ($enrollments as $index => $enrollment) {
@@ -189,29 +190,32 @@ final class MockExamSeeder extends Seeder
                 continue;
             }
 
-            if ($index === 0) {
-                $this->seedVariedStatesForFixedStudent($enrollment, $student, $mockExams);
-            } else {
-                $this->seedAllPassedForFixedStudent($enrollment, $student, $mockExams);
-            }
+            // Enrollment ごとに合格可能性バンドを作り分ける(ダッシュボードで 4 帯すべてを 1 画面に並べる)。
+            match ($index) {
+                0 => $this->seedDangerBandForFixedStudent($enrollment, $student, $mockExams),
+                1 => $this->seedAllPassedForFixedStudent($enrollment, $student, $mockExams),
+                2 => $this->seedWarningBandForFixedStudent($enrollment, $student, $mockExams),
+                default => null, // 4 件目以降: graded セッションを作らず未受験のまま → 「データ不足」帯 + 全模試未受験動線
+            };
         }
     }
 
     /**
-     * 1 資格目の固定 student シナリオ: 各模試で異なる状態を持たせる。
+     * 1 資格目(合格可能性「要対策 danger」帯): 直近 graded の平均得点率を合格点(60%)の 70% 未満に抑える。
+     * 併せて InProgress / Canceled も作り、履歴フィルタと「続きから再開」バナーを確認可能にする。
      *
      * @param Collection<int, MockExam> $mockExams
      */
-    private function seedVariedStatesForFixedStudent(Enrollment $enrollment, User $student, Collection $mockExams): void
+    private function seedDangerBandForFixedStudent(Enrollment $enrollment, User $student, Collection $mockExams): void
     {
-        // 第1回: Graded 合格(100%、全問正解)
+        // 第1回: Graded(50% = 6 問中 3 問正解)
         if ($first = $mockExams->get(0)) {
-            $this->createGradedSession($first, $enrollment, $student, allCorrect: true, gradedDaysAgo: 10);
+            $this->createGradedSession($first, $enrollment, $student, allCorrect: false, gradedDaysAgo: 10, correctCount: 3);
         }
 
-        // 第2回: Graded 不合格(33% = 6 問中 2 問正解)
+        // 第2回: Graded(17% = 6 問中 1 問正解)→ 直近平均 ≈ 33% で danger 帯
         if ($second = $mockExams->get(1)) {
-            $this->createGradedSession($second, $enrollment, $student, allCorrect: false, gradedDaysAgo: 3, correctCount: 2);
+            $this->createGradedSession($second, $enrollment, $student, allCorrect: false, gradedDaysAgo: 3, correctCount: 1);
         }
 
         // 第3回: InProgress(2 問だけ解答済み、続きから再開バナーの確認用)
@@ -240,6 +244,20 @@ final class MockExamSeeder extends Seeder
                 allCorrect: true,
                 gradedDaysAgo: 15 - $i * 3,
             );
+        }
+    }
+
+    /**
+     * 3 資格目(合格可能性「注意 warning」帯): 公開模試を 1 回だけ受験し平均得点率を合格点の 70〜90% に収める。
+     * 残りの公開模試は未受験のまま残し、「未受験 → 受験開始」導線も同時に確認できるようにする。
+     *
+     * @param Collection<int, MockExam> $mockExams
+     */
+    private function seedWarningBandForFixedStudent(Enrollment $enrollment, User $student, Collection $mockExams): void
+    {
+        // 第1回のみ受験: Graded(50% = 6 問中 3 問正解)→ 合格点 60% に対し warning 帯(42 ≤ 50 < 54)
+        if ($first = $mockExams->get(0)) {
+            $this->createGradedSession($first, $enrollment, $student, allCorrect: false, gradedDaysAgo: 6, correctCount: 3);
         }
     }
 

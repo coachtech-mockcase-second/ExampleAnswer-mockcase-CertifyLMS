@@ -28,7 +28,7 @@
 @endphp
 
 <x-modal id="invite-user-modal" title="ユーザーを招待" size="md">
-    <form method="POST" action="{{ route('admin.invitations.store') }}" id="invite-user-form" class="space-y-4">
+    <form novalidate method="POST" action="{{ route('admin.invitations.store') }}" id="invite-user-form" class="space-y-4">
         @csrf
 
         <p class="text-sm text-ink-700 leading-relaxed">

@@ -13,7 +13,7 @@
 
 <x-modal :id="$id" :title="$title" size="md">
     <x-slot:body>
-        <form id="{{ $id }}-form" method="POST" action="{{ $action }}" class="space-y-4">
+        <form novalidate id="{{ $id }}-form" method="POST" action="{{ $action }}" class="space-y-4">
             @csrf
             @if ($method !== 'POST')
                 @method($method)

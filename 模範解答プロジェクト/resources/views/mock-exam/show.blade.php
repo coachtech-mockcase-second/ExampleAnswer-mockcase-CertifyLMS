@@ -51,7 +51,7 @@
                     進行中セッションあり ({{ $activeSession->status->label() }})。続きから再開できます。
                 </p>
             @else
-                <form method="POST" action="{{ route('mock-exam.sessions.store', ['enrollment' => $enrollment, 'mockExam' => $mockExam]) }}">
+                <form novalidate method="POST" action="{{ route('mock-exam.sessions.store', ['enrollment' => $enrollment, 'mockExam' => $mockExam]) }}">
                     @csrf
                     <x-button type="submit" variant="primary">
                         <x-icon name="play-circle" class="w-4 h-4" />

@@ -27,7 +27,7 @@
 
     {{-- 教材検索（受講生 + デフォルト資格設定時のみ。Enter で登録資格内 Section を全文検索） --}}
     @if ($searchCertificationId !== null && Route::has('contents.search'))
-        <form method="GET" action="{{ route('contents.search') }}" role="search" class="relative flex-1 max-w-[320px] hidden sm:block">
+        <form novalidate method="GET" action="{{ route('contents.search') }}" role="search" class="relative flex-1 max-w-[320px] hidden sm:block">
             <input type="hidden" name="certification_id" value="{{ $searchCertificationId }}">
             <x-icon name="magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500" />
             <input

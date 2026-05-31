@@ -96,6 +96,7 @@ Route::middleware('auth')->group(function () {
 
     // 通知
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 
@@ -126,7 +127,7 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->group(function (
     Route::get('contents/search', [ContentSearchController::class, 'search'])
         ->name('contents.search');
 
-    // 受講登録 — 自己登録 / 受講解除 / failed からの再挑戦 / 目標受験日設定(index / show は全ロール共有 group に移管済)
+    // 受講登録 — 自己登録 / 受講解除 / failed からの再挑戦 / 目標受験日設定(index / show は全ロール共有 group 側に定義)
     Route::post('enrollments', [EnrollmentController::class, 'store'])->name('enrollments.store');
     Route::delete('enrollments/{enrollment}', [EnrollmentController::class, 'destroy'])->name('enrollments.destroy');
     Route::post('enrollments/{enrollment}/resume', [EnrollmentController::class, 'resume'])->name('enrollments.resume');
@@ -274,7 +275,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('meeting-packs/{plan}/unarchive', [MeetingPackStatusController::class, 'unarchive'])
         ->name('admin.meeting-packs.unarchive');
 
-    // 受講登録管理 — 試験日変更 / 手動学習中止のみ admin 専用(一覧 / 詳細は全ロール共有 group に移管済)
+    // 受講登録管理 — 試験日変更 / 手動学習中止のみ admin 専用(一覧 / 詳細は全ロール共有 group 側に定義)
     Route::patch('enrollments/{enrollment}/exam-date', [EnrollmentManagementController::class, 'updateExamDate'])
         ->name('admin.enrollments.updateExamDate');
     Route::post('enrollments/{enrollment}/fail', [EnrollmentManagementController::class, 'fail'])
@@ -531,7 +532,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 // コーチ専用ルート — 担当資格受講生管理 / 面談管理 / メモ記録
 // ============================================================
 Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')->group(function () {
-    // 担当受講生の一覧 / 詳細は全ロール共有 `enrollments.index` / `enrollments.show` に統合済(認可は Policy で範囲を絞る)
+    // 担当受講生の一覧 / 詳細は全ロール共有 `enrollments.index` / `enrollments.show` 側に定義(認可は Policy で範囲を絞る)
 
     // 面談管理
     Route::get('meetings', [MeetingController::class, 'indexAsCoach'])->name('meetings.index');
@@ -617,12 +618,10 @@ if ((bool) config('ai-chat.enabled', true)) {
             Route::patch('conversations/{conversation}', [AiChatConversationController::class, 'update'])->name('conversations.update');
             Route::delete('conversations/{conversation}', [AiChatConversationController::class, 'destroy'])->name('conversations.destroy');
 
-            // メッセージ送信系は throttle:ai-chat で日次上限を適用
+            // メッセージ送信は throttle:ai-chat で日次上限を適用
             Route::middleware('throttle:ai-chat')->group(function () {
                 Route::post('conversations/{conversation}/messages', [AiChatMessageController::class, 'store'])
                     ->name('conversations.messages.store');
-                Route::post('messages/{message}/retry', [AiChatMessageController::class, 'retry'])
-                    ->name('messages.retry');
             });
         });
 }

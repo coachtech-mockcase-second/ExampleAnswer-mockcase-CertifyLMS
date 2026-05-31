@@ -14,6 +14,7 @@ use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\EnrollmentStatusLog;
 use App\Models\User;
+use App\Services\CertificatePdfService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -25,13 +26,12 @@ use Illuminate\Support\Str;
  * `UserSeeder` で生成される graduated 受講生 3 名に過去 Enrollment + Certificate を補完して
  * 「修了 → 卒業」フローの履歴を画面で見える状態にする。
  *
- * **設計思想(Seeder 業界標準: 状態補完 + シリアル番号 deterministic)**:
+ * **設計思想(Seeder 業界標準: 状態補完)**:
  *
  * 1. **graduated 受講生に過去 Enrollment + Certificate**: 各 graduated 受講生に 1 件の passed Enrollment を作り、
  *    Certificate を発行する。Certificate は永続データなので卒業後も DL 可能(プラン機能はロックされるが修了証 DL は可)。
- * 2. **シリアル番号 deterministic 化**: 'CT-' + 発行月 + 連番 5 桁ゼロパディング。
- *    動作確認・PR スクショで参照する番号が安定する。
- * 3. **EnrollmentStatusLog 同梱**: learning → passed の遷移ログを併せて INSERT し、状態遷移履歴が成立する状態にする。
+ *    PDF 実体も `CertificatePdfService` で生成し、`migrate:fresh --seed` 直後に本人 / 担当コーチ / 管理者がダウンロードできる状態にする。
+ * 2. **EnrollmentStatusLog 同梱**: learning → passed の遷移ログを併せて INSERT し、状態遷移履歴が成立する状態にする。
  *
  * 依存順序: `UserSeeder` → `PlanSeeder` → `CertificationSeeder` → `EnrollmentSeeder` → 本 Seeder。
  */
@@ -62,8 +62,6 @@ final class CertificateSeeder extends Seeder
             return;
         }
 
-        $serialIndex = $this->initialSerialIndex();
-
         foreach ($graduatedStudents as $i => $student) {
             $certification = $publishedCertifications->get($i % $publishedCertifications->count());
             if ($certification === null) {
@@ -71,7 +69,7 @@ final class CertificateSeeder extends Seeder
             }
 
             $enrollment = $this->createPastEnrollment($student, $certification, $i);
-            $this->issueCertificateForEnrollment($enrollment, $serialIndex++);
+            $this->issueCertificateForEnrollment($enrollment);
         }
     }
 
@@ -119,28 +117,21 @@ final class CertificateSeeder extends Seeder
     }
 
     /**
-     * Certificate を 1 件発行する。シリアル番号は deterministic('CT-' + YYYYMM + 連番 5 桁)。
+     * Certificate を 1 件発行する。
      */
-    private function issueCertificateForEnrollment(Enrollment $enrollment, int $serialIndex): void
+    private function issueCertificateForEnrollment(Enrollment $enrollment): void
     {
         $issuedAt = $enrollment->passed_at ?? now();
-        $serialNo = sprintf('CT-%s-%05d', $issuedAt->format('Ym'), $serialIndex);
 
-        Certificate::factory()
+        $certificate = Certificate::factory()
             ->forEnrollment($enrollment)
             ->state([
-                'serial_no' => $serialNo,
                 'pdf_path' => 'certificates/'.Str::ulid().'.pdf',
                 'issued_at' => $issuedAt,
             ])
             ->create();
-    }
 
-    /**
-     * 既存 Certificate(EnrollmentSeeder 発行分)と番号が重複しないよう、連番起点を後ろにずらす。
-     */
-    private function initialSerialIndex(): int
-    {
-        return Certificate::query()->count() + 1;
+        // 修了証 DL の実機確認用に PDF 実体まで生成する(発行フロー外での補完のため Service を直接呼ぶ)
+        app(CertificatePdfService::class)->generate($certificate);
     }
 }

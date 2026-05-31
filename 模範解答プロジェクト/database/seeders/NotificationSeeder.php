@@ -141,7 +141,7 @@ final class NotificationSeeder extends Seeder
             'body' => $announcement->body,
             'dispatched_at' => ($announcement->dispatched_at ?? now())->toIso8601String(),
             'target_type' => $announcement->target_type->value,
-            'link_route' => 'notifications.index',
+            'link_route' => 'notifications.show',
             'link_params' => [],
         ];
 
@@ -356,11 +356,18 @@ final class NotificationSeeder extends Seeder
      */
     private function insertNotification(string $type, User $notifiable, array $data, int $daysAgo, bool $read): void
     {
+        $id = (string) Str::ulid();
         $createdAt = now()->subDays($daysAgo);
         $readAt = $read ? $createdAt->copy()->addHours(2) : null;
 
+        // 通知詳細ページを遷移先とする自己完結型通知(お知らせ等)は、確定した通知 id を link_params に焼き込む
+        // (実配信時に AnnouncementNotification::toDatabase が $this->id を入れるのと同じ snapshot を再現する)
+        if (($data['link_route'] ?? null) === 'notifications.show') {
+            $data['link_params'] = ['notification' => $id];
+        }
+
         DB::table('notifications')->insert([
-            'id' => (string) Str::ulid(),
+            'id' => $id,
             'type' => $type,
             'notifiable_type' => User::class,
             'notifiable_id' => $notifiable->id,

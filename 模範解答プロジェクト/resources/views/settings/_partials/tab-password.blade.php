@@ -18,7 +18,7 @@
         新しいパスワードは 8 文字以上で指定する必要があります。
     </p>
 
-    <form method="POST" action="{{ route('settings.password.update') }}" class="mt-5 space-y-5">
+    <form novalidate method="POST" action="{{ route('settings.password.update') }}" class="mt-5 space-y-5">
         @csrf
         @method('PUT')
 

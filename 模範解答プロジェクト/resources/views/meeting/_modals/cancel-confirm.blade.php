@@ -24,7 +24,7 @@
 
     <footer class="border-t border-subtle px-6 py-4 flex items-center justify-end gap-3">
         <x-button variant="ghost" data-modal-close="cancel-meeting-modal">戻る</x-button>
-        <form method="POST" action="{{ route('meetings.cancel', $meeting) }}" class="m-0">
+        <form novalidate method="POST" action="{{ route('meetings.cancel', $meeting) }}" class="m-0">
             @csrf
             <x-button type="submit" variant="danger">
                 キャンセルを実行

@@ -13,7 +13,7 @@
         招待メールでアカウントを作成済みの方は、こちらからログインしてください。
     </p>
 
-    <form method="POST" action="{{ route('login') }}" class="flex flex-col gap-3.5">
+    <form novalidate method="POST" action="{{ route('login') }}" class="flex flex-col gap-3.5">
         @csrf
 
         <x-form.input

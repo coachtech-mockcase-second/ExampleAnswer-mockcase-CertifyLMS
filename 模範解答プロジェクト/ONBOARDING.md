@@ -41,6 +41,19 @@ resources/
 
 画面を作るときは `@extends('layouts.app')`（認証後）または `@extends('layouts.guest')`（認証前）で継承します。
 
+### レイアウト共通部品へのデータ供給 — View Composer
+
+サイドバーや TopBar のような **全画面に常駐する部品** は、特定の画面（コントローラ）に属さない横断的なデータ（未読件数・受講中資格一覧など）を必要とします。これを各コントローラで毎回渡すのは重複が多いため、Laravel の **View Composer**（`app/View/Composers/`）が「対象 View の描画直前に、自動でデータを差し込む」役割を担います。**これらは提供済みのインフラで、あなたが実装する必要はありません**（どこからデータが来るかを把握しておくと、レイアウトが読み解きやすくなります）。
+
+| View Composer | 供給先 | 渡すデータ |
+|---|---|---|
+| `SidebarBadgeComposer` | サイドバー | chat の未読ルーム数バッジ |
+| `NotificationBadgeComposer` | TopBar 通知ベル | 未読通知件数バッジ |
+| `EnrollmentSwitcherComposer` | 資格スイッチャー | 受講中の資格一覧 |
+| `SectionPageMetaComposer` | フローティング AI 相談ウィジェット | 閲覧中 Section の文脈（Section / 資格名） |
+
+`ServiceProvider` の `boot()` で対象 View に紐づけられ、`compose()` が `$view->with(...)` でデータを渡します。バッジ件数やウィジェットの文脈が「どの画面でも出る」のはこの仕組みのためです。あなたのバックエンドが生成したデータ（通知・チャット等）を、Composer がレイアウト表示用に集約している、と捉えてください。
+
 ---
 
 ## 3. 共通コンポーネント（`resources/views/components/` = `<x-...>`）

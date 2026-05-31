@@ -19,7 +19,7 @@
 
     <h1 class="mt-4 text-2xl font-bold text-ink-900">演習問題を新規作成</h1>
 
-    <form method="POST" action="{{ route('admin.sections.questions.store', $section) }}" class="mt-6 space-y-6">
+    <form novalidate method="POST" action="{{ route('admin.sections.questions.store', $section) }}" class="mt-6 space-y-6">
         @csrf
 
         <x-card padding="md">

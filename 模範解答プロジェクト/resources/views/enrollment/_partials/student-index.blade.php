@@ -122,7 +122,7 @@
 
                 <div class="mt-4 pt-3 border-t border-ink-100 flex justify-between items-center gap-2">
                     @if (! $isDefault && $canBeDefault)
-                        <form method="POST" action="{{ route('settings.default-enrollment.update', $enrollment) }}">
+                        <form novalidate method="POST" action="{{ route('settings.default-enrollment.update', $enrollment) }}">
                             @method('PUT')
                             @csrf
                             <input type="hidden" name="redirect_to" value="{{ route('enrollments.index') }}">

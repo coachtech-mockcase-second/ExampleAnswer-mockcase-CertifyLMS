@@ -17,6 +17,11 @@ class InvitationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    /**
+     * SMTP の一時障害に備えた最大試行回数。超過分は failed_jobs に記録される。
+     */
+    public int $tries = 3;
+
     public function __construct(public Invitation $invitation) {}
 
     public function envelope(): Envelope
@@ -41,5 +46,15 @@ class InvitationMail extends Mailable implements ShouldQueue
                 'url' => $url,
             ],
         );
+    }
+
+    /**
+     * 試行間の待機秒数(段階的バックオフ)。
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [10, 30, 60];
     }
 }

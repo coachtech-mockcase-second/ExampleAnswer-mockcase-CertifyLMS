@@ -19,7 +19,7 @@
     </div>
 
     <x-card class="mt-6" padding="md" shadow="sm">
-        <form method="POST" action="{{ route('qa-board.update', $thread) }}" class="flex flex-col gap-4">
+        <form novalidate method="POST" action="{{ route('qa-board.update', $thread) }}" class="flex flex-col gap-4">
             @csrf
             @method('PATCH')
 

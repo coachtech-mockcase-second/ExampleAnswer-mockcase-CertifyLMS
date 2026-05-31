@@ -33,7 +33,7 @@
     </div>
 
     <x-card class="mt-6" padding="lg" shadow="sm">
-        <form method="POST" action="{{ route('admin.certifications.update', $certification) }}" class="space-y-5">
+        <form novalidate method="POST" action="{{ route('admin.certifications.update', $certification) }}" class="space-y-5">
             @csrf
             @method('PUT')
 

@@ -22,7 +22,7 @@
     </x-slot:body>
     <x-slot:footer>
         <x-button variant="ghost" data-modal-close="{{ $id }}">キャンセル</x-button>
-        <form method="POST" action="{{ route('admin.question-categories.destroy', $category) }}" class="inline-block">
+        <form novalidate method="POST" action="{{ route('admin.question-categories.destroy', $category) }}" class="inline-block">
             @csrf
             @method('DELETE')
             <x-button type="submit" variant="danger" :disabled="($category->questions_count ?? 0) > 0">削除する</x-button>

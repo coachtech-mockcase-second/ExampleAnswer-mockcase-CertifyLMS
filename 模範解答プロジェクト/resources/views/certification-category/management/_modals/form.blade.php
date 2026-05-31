@@ -4,7 +4,7 @@
     フロント観点: data-modal-trigger で開くモーダル(JS あり)。保存で POST フォーム送信(編集時は @method で動詞偽装)。
 --}}
 <x-modal :id="$modalId" :title="$title" size="md">
-    <form method="POST" action="{{ $action }}" id="{{ $modalId }}-form" class="space-y-4">
+    <form novalidate method="POST" action="{{ $action }}" id="{{ $modalId }}-form" class="space-y-4">
         @csrf
         @if ($method !== 'POST')
             @method($method)

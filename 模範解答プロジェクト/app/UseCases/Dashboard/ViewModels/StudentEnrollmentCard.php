@@ -13,9 +13,9 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
- * 受講生ダッシュボードの「受講中資格カード」1 枚を表す ViewModel DTO。
+ * 受講生ダッシュボードの「受講中の資格カード」1 枚を表す ViewModel DTO。
  *
- * 受講中(learning) / 修了済(passed) 両方のカードを表現する。
+ * 学習中(learning)の資格のみを表現する(修了済は別セクションのリストで扱う)。
  * Service 例外で取得失敗したセクションは nullable プロパティに null が入り、Blade 側で empty-state 表示に切り替える。
  */
 final readonly class StudentEnrollmentCard
@@ -27,7 +27,6 @@ final readonly class StudentEnrollmentCard
         public string $enrollmentId,
         public string $certificationName,
         public EnrollmentStatus $status,
-        public bool $isPassed,
         public ?CarbonInterface $examDate,
         public ?int $daysUntilExam,
         public ?float $progressRatio,
@@ -36,6 +35,5 @@ final readonly class StudentEnrollmentCard
         public ?PassProbabilityBand $passProbabilityBand,
         public Collection $weakCategories,
         public bool $canReceiveCertificate,
-        public ?string $certificateDownloadUrl,
     ) {}
 }

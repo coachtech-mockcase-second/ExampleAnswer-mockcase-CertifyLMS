@@ -98,7 +98,7 @@
                         @endif
                         <span class="truncate">{{ $enrollment->certification->name }}</span>
                     </a>
-                    <form
+                    <form novalidate
                         method="POST"
                         action="{{ route('settings.default-enrollment.update', $enrollment) }}"
                         class="shrink-0"

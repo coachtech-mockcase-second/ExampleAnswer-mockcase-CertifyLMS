@@ -70,14 +70,6 @@ export function renderFullScreenMessage(container, message, options = {}) {
 
         if (isError) {
             bubble.classList.add('bg-danger-50', 'border', 'border-danger-200', 'text-danger-900');
-            const retryBtn = document.createElement('button');
-            retryBtn.type = 'button';
-            retryBtn.className = 'mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-white border border-danger-200 text-danger-700 text-xs font-semibold hover:bg-danger-50';
-            retryBtn.dataset.action = 'retry';
-            retryBtn.dataset.messageId = message.id;
-            retryBtn.dataset.retryUrl = `/ai-chat/messages/${message.id}/retry`;
-            retryBtn.textContent = '再送信';
-            bubble.appendChild(retryBtn);
         } else {
             bubble.classList.add('bg-white', 'text-ink-900', 'rounded-tl-md', 'shadow-sm', 'border', 'border-subtle');
         }

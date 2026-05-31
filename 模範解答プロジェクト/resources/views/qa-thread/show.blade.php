@@ -56,7 +56,7 @@
             @if ($canUpdate || $canDelete || $canResolve || $canUnresolve)
                 <div class="flex items-center gap-2 flex-wrap">
                     @if ($canResolve)
-                        <form method="POST" action="{{ route('qa-board.resolve', $thread) }}">
+                        <form novalidate method="POST" action="{{ route('qa-board.resolve', $thread) }}">
                             @csrf
                             <x-button type="submit" variant="primary" size="sm">
                                 <x-icon name="check-circle" class="w-4 h-4" />
@@ -65,7 +65,7 @@
                         </form>
                     @endif
                     @if ($canUnresolve)
-                        <form method="POST" action="{{ route('qa-board.unresolve', $thread) }}">
+                        <form novalidate method="POST" action="{{ route('qa-board.unresolve', $thread) }}">
                             @csrf
                             <x-button type="submit" variant="outline" size="sm">
                                 <x-icon name="arrow-uturn-left" class="w-4 h-4" />
@@ -83,7 +83,7 @@
                     @endif
                     {{-- 削除はフォーム送信。onsubmit の confirm() で誤操作を防ぐ（HTML 標準、JS ファイル不要）--}}
                     @if ($canDelete)
-                        <form method="POST" action="{{ route($destroyRoute, $thread) }}" onsubmit="return confirm('この質問を削除しますか？');">
+                        <form novalidate method="POST" action="{{ route($destroyRoute, $thread) }}" onsubmit="return confirm('この質問を削除しますか？');">
                             @csrf
                             @method('DELETE')
                             <x-button type="submit" variant="danger" size="sm">

@@ -18,7 +18,7 @@
     </x-slot:body>
     <x-slot:footer>
         <x-button variant="ghost" data-modal-close="{{ $id }}">キャンセル</x-button>
-        <form method="POST" action="{{ $action }}" class="inline-block">
+        <form novalidate method="POST" action="{{ $action }}" class="inline-block">
             @csrf
             <x-button type="submit" :variant="$buttonVariant">{{ $buttonLabel }}</x-button>
         </form>

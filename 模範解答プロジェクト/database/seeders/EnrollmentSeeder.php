@@ -16,6 +16,7 @@ use App\Models\EnrollmentGoal;
 use App\Models\EnrollmentNote;
 use App\Models\EnrollmentStatusLog;
 use App\Models\User;
+use App\Services\CertificatePdfService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -26,13 +27,13 @@ use Illuminate\Support\Carbon;
  * **設計思想(Seeder 業界標準: 状態網羅 + 固定アカウント、派生・運用系)**:
  *
  * 1. **固定アカウント**(deterministic): 動作確認・スクショ撮影で安定して参照できる「決まったユーザー」の受講登録を生成する。
- *    - `student@certify-lms.test` を CertificationSeeder 投入の published 資格 2 件(基本情報 / 応用情報)に learning で登録
+ *    - `student@certify-lms.test` を CertificationSeeder 投入の published 資格 4 件に learning で登録(ダッシュボードの合格可能性バンド safe / warning / danger / データ不足 を 1 画面で網羅するため)
  *    - 1 件目に達成済 / 未達成の個人目標を 2 件追加(目標 CRUD・達成マーク UI の即時確認用)
  *    - coach@(`coach1`) / coach2@ / admin@ が固定 student の Enrollment にメモを残す(他コーチ越境拒否シナリオ用)
  *
  * 2. **状態網羅 demo データ**(Factory + state + count): 一覧 / フィルタ / 状態遷移ボタン / 認可境界が各 status で動くことを実機確認する。
  *    - learning(基礎ターム)/ learning(実践ターム)/ passed / failed / learning(試験日未設定) の 5 パターンを demo student に循環配分
- *    - passed Enrollment には Certificate(`certificates`)を直接 INSERT(PDF DL リンク表示の実機確認用、pdf_path はダミー)
+ *    - passed Enrollment には Certificate(`certificates`)を INSERT し、PDF 実体も生成(修了済み → PDF DL の実機確認用)
  *    - 担当 coach が割り当てられている資格 Enrollment にはコーチメモを 1-2 件散らす(coach 動線の即時確認用)
  *
  * 依存順序: `UserSeeder` → `CertificationSeeder`(担当 coach 割当含む)→ 本 Seeder。
@@ -78,13 +79,16 @@ final class EnrollmentSeeder extends Seeder
     }
 
     /**
-     * 固定 student に published 資格 2 件を learning で登録し、個人目標 + コーチメモを添える。
+     * 固定 student に published 資格 4 件を learning で登録し、1 件目に個人目標 + 各件にコーチメモを添える。
+     *
+     * 4 件にするのは、ダッシュボードの合格可能性バンド(safe / warning / danger / データ不足)を 1 画面で
+     * 網羅させるため(各 Enrollment の模試スコアは MockExamSeeder が帯ごとに作り分ける)。
      *
      * @param Collection<int, Certification> $publishedCerts
      */
     private function enrollFixedStudent(User $student, $publishedCerts, ?User $admin): void
     {
-        $targets = $publishedCerts->take(2);
+        $targets = $publishedCerts->take(4);
 
         foreach ($targets as $index => $certification) {
             $enrollment = Enrollment::firstOrCreate(
@@ -260,10 +264,9 @@ final class EnrollmentSeeder extends Seeder
     }
 
     /**
-     * passed Enrollment に対し、修了証(`certificates`)行を直接 INSERT する。
+     * passed Enrollment に対し、修了証(`certificates`)行を INSERT し PDF 実体も生成する。
      *
-     * 受講生 enrollments.show の「修了済み → PDF DL リンク」表示の実機確認用。
-     * PDF 本体は seed しない(pdf_path はダミー値)。
+     * 受講生 enrollments.show の「修了済み → PDF DL リンク」と修了証 DL の実機確認用。
      */
     private function issueCertificate(Enrollment $enrollment, ?Carbon $passedAt): void
     {
@@ -271,10 +274,13 @@ final class EnrollmentSeeder extends Seeder
             return;
         }
 
-        Certificate::factory()
+        $certificate = Certificate::factory()
             ->forEnrollment($enrollment)
             ->create([
                 'issued_at' => $passedAt ?? now(),
             ]);
+
+        // 修了証 DL の実機確認用に PDF 実体まで生成する(発行フロー外での補完のため Service を直接呼ぶ)
+        app(CertificatePdfService::class)->generate($certificate);
     }
 }

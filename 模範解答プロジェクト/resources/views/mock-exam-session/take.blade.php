@@ -34,7 +34,7 @@
         </span>
     </div>
 
-    <form id="mock-exam-submit-form" method="POST" action="{{ route('mock-exam-sessions.submit', $session) }}"
+    <form novalidate id="mock-exam-submit-form" method="POST" action="{{ route('mock-exam-sessions.submit', $session) }}"
           onsubmit="return confirm('答案を提出して採点を実行しますか?提出後は解答を変更できません。');">
         @csrf
     </form>

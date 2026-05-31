@@ -28,10 +28,10 @@
 ├── 01_概要.md             # ターム内容 + 開発プロセス + 環境構築手順(後工程で別途作成)
 ├── Story/                 # 15 件(Basic 10 / Advance 5)
 ├── Bug/                   # 19 件(Basic 16 / Advance 3)
-└── Task/                  # 7 件(Basic 3 / Advance 4)
+└── Task/                  # 8 件(Basic 2 / Advance 6)
 ```
 
-**合計 41 件 / 目標 225h ± 10%**。Basic / Advance はファイル名(`S-B-XX` / `S-A-XX` 等)で識別する(サブディレクトリで階層化しない)。
+**合計 42 件 / 目標 225h ± 10%**。Basic / Advance はファイル名(`S-B-XX` / `S-A-XX` 等)で識別する(サブディレクトリで階層化しない)。
 
 > テンプレ(`story.md` / `bug.md` / `task.md`)は `.claude/skills/ticket-detail-100p/templates/` 配下。本ディレクトリには配置しない。
 
@@ -56,11 +56,10 @@
 
 | 評価シート大項目 | 中身 | 本シートとの関係 |
 |---|---|---|
-| ① チケット完了(≒65%) | 各チケットの受け入れ条件を採点行に展開 | 各 .md の **受け入れ条件** が 1 項目 = 1 採点行 |
-| ② 横断コード品質(≒20%) | Pint / 命名 / N+1 / Clean Architecture / 型宣言 / テスト品質 | 個別チケットではなく全コードベース横断 |
-| ③ 横断ドキュメント(≒15%) | README / ONBOARDING 改修 / 全 PR の 7 セクション記述率 / カバレッジ達成率 / 動的機能 PR の動画率 | 個別チケットではなく全 PR 横断 |
+| ① チケット完了(≒65〜70%) | 各チケットの受け入れ条件を採点行に展開 | 各 .md の **受け入れ条件** が 1 項目 = 1 採点行 |
+| ② 横断評価(≒30〜35%) | コード品質(Pint / 命名 / N+1 / 既存パターン踏襲 / 型宣言 / 外部 API の .env 管理) + テスト品質(全 pass / カバレッジ) + README(外部 API の .env 等の追記) + PR 7 セクション記述の全体達成度 | 個別チケットではなく全コードベース・全 PR 横断。配点抑えめの品質安全網 |
 
-「テスト pass」「PR 7 セクション完備」「動画記述」は **チケット個別の受け入れ条件には書かない**(全チケット共通の横断採点として ③ に集約)。
+「テスト品質(全 pass / カバレッジ)」「PR 7 セクション記述」は **チケット個別の受け入れ条件には書かない**(横断採点として ② に集約)。**PR は全 42 件を逐一二値判定せず**、① で各 PR を開く際に 7 セクション記述を併せて観察し ② で全体達成度を段階評価する。動画は各 PR の「動作確認」の一部、ONBOARDING 改修は対象外。テスト実装の有無のみ ① の各 AC 行に含む(3.5/3.6)。
 
 ## 詳細化規約
 
@@ -82,7 +81,7 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 - **Basic → Advance**: Advance は Basic 上に積む拡張(例: S-A-05 Sanctum は S-B-05 認証なし API の上に後付け)。Basic 確定後に Advance を詳細化するほうが整合が取りやすい
 - **Story → Bug → Task**: 記述スタイルが異なる(特に Bug は実装方針なし)ため、種別単位で進める
 
-## チケット一覧(41 件)
+## チケット一覧(42 件)
 
 > 出所: `../要件ブレインストーミング.md` § 2(2026-05-21 草案 fix)。Skill 実行時の入力情報源として使用。
 
@@ -90,26 +89,26 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
 |---|---|---|---|---|
-| `S-B-01` | `qa-board-01` | 質問掲示板の実装 | 新規機能の構築 | 13h |
-| `S-B-02` | `meeting-quota-01` | 面談パックマスタ管理(admin マスタ CRUD) | 既存機能の拡張 | 6h |
-| `S-B-03` | `plan-management-01` | プラン管理 Admin マスタ UI | 既存機能の拡張 | 6h |
-| `S-B-04` | `notification-01` | 通知(Laravel Notification、DB + Mail) | 新規機能の構築 | 12h |
-| `S-B-05` | `notification-02` | 通知 JSON API(認証なし) | 新規機能の構築 | 6h |
-| `S-B-06` | `enrollment-03` | 個人目標(EnrollmentGoal)CRUD | 新規機能の構築 | 8h |
-| `S-B-07` | `settings-profile-01` | 設定・プロフィール画面 | 既存機能の拡張 | 7h |
-| `S-B-08` | `mentoring-06` | コーチ用 受講生メモ(EnrollmentNote)編集 | 新規機能の構築 | 6h |
-| `S-B-09` | `notification-05` | admin お知らせ配信機能 | 新規機能の構築 | 8h |
-| `S-B-10` | `notification-04` | 面談リマインダー通知(前日 + 1 時間前) | 新規機能の構築 | 5h |
+| `S-B-01` | `qa-board-01` | 質問掲示板 | 新規機能の構築 | 12h |
+| `S-B-02` | `meeting-quota-01` | 面談パックのマスタ管理 | 既存機能の拡張 | 6h |
+| `S-B-03` | `plan-management-01` | プランのマスタ管理 | 既存機能の拡張 | 6h |
+| `S-B-04` | `notification-01` | 通知基盤（アプリ内＋メール） | 新規機能の構築 | 11h |
+| `S-B-05` | `notification-02` | 通知 JSON API（認証なし） | 新規機能の構築 | 5h |
+| `S-B-06` | `enrollment-03` | 個人学習目標の管理 | 新規機能の構築 | 6h |
+| `S-B-07` | `settings-profile-01` | 設定・プロフィール | 既存機能の拡張 | 6h |
+| `S-B-08` | `mentoring-06` | 受講生メモの管理（コーチ） | 新規機能の構築 | 6h |
+| `S-B-09` | `notification-05` | お知らせ配信（管理者） | 新規機能の構築 | 7h |
+| `S-B-10` | `notification-04` | 面談リマインダー通知（前日・1時間前） | 新規機能の構築 | 5h |
 
 ### Story Advance(5 件)
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
 |---|---|---|---|---|
-| `S-A-01` | `mentoring-01` | Google Calendar 連携(面談予約) | 既存機能の拡張 | 16.5h |
-| `S-A-02` | `ai-chat-01` | Gemini AI チャットボット | 新規機能の構築 | 12h |
-| `S-A-03` | `meeting-quota-02` | Stripe 連携(追加面談購入) | 新規機能の構築 | 16h |
-| `S-A-04` | `certification-management-01` | 修了証 PDF 出力 | 既存機能の拡張 | 6h |
-| `S-A-05` | `notification-03` | Sanctum Cookie 認証追加 + JS フロント通知表示 | 既存機能の拡張 | 13.5h |
+| `S-A-01` | `mentoring-01` | Google Calendar 連携（面談予約） | 既存機能の拡張 | 14h |
+| `S-A-02` | `ai-chat-01` | Gemini AI チャットボット | 新規機能の構築 | 11h |
+| `S-A-03` | `meeting-quota-02` | Stripe 連携（追加面談購入） | 新規機能の構築 | 13h |
+| `S-A-04` | `certification-management-01` | 修了証 PDF 出力 | 既存機能の拡張 | 5h |
+| `S-A-05` | `notification-03` | Sanctum Cookie 認証 + JS フロント通知表示 | 既存機能の拡張 | 12h |
 
 ### Bug Basic(16 件)
 
@@ -117,47 +116,64 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 | Step 4 仕込み方 |
 |---|---|---|---|---|---|
-| `B-B-01` | `content-management-01` | コーチ教材アクセス 403 → 編集可能化 | 認可・認証 | 4h | コーチ Policy で `denied` を返す |
-| `B-B-02` | `content-management-02` | 教材階層一覧(Part/Chapter/Section) ソート順無視 | 機能(ソート) | 3.5h | `Part\IndexAction`(Part 一覧、トップレベル `->ordered()`) / `Part\ShowAction`(Chapter、Eager Load クロージャ) / `Chapter\ShowAction`(Section、Eager Load クロージャ) の 3 箇所で整列(`->ordered()`)を削除 |
-| `B-B-03` | `content-management-03` | 受講生向け教材閲覧で archived 資格の教材が露出 | データ(絞り込み漏れ) | 3h | 模範解答 PJ の `Learning\Show{Part,Chapter,Section}Action` に「親資格が公開中(`CertificationStatus::Published`)でなければ 404」ガードを追加実装済(2026-05-24、`BrowseControllerTest` に archived 404 ケース 3 件追加 → 全通過) → Step 4 でこのガード 3 箇所を削除し、archive された資格の教材が受講登録済み受講生に閲覧可能になる。※ Action 内のため Basic 範囲外注記あり |
-| `B-B-04` | `user-management-02` | admin 受講生一覧で withdrawn も表示 | データ(クエリ漏れ) | 3h | `User\IndexAction` の `if ($status === UserStatus::Withdrawn) { $query->withTrashed(); }` 条件を取り払って `$query->withTrashed();` を冒頭で常時呼ぶ(通常一覧にも SoftDelete 済 withdrawn ユーザーが混入) |
-| `B-B-05` | `user-management-03` | ユーザー招待で重複 email 可能 | データ(バリデーション) | 2.5h | `Auth\IssueInvitationAction` の `EmailAlreadyRegistered` ガード(既存 in_progress / graduated user との email 重複チェック + 例外 throw)ブロックを削除(FormRequest に `unique` は元々存在しないため、Action ガード側を抜く) |
-| `B-B-06` | `auth-01` | 招待トークン使い回し可能 | セキュリティ(トークン期限管理) | 3h | `Auth\OnboardAction` の `$invitation->forceFill(['status' => InvitationStatus::Accepted, 'accepted_at' => $now])->save();` を削除(使用済化忘れ → status が Pending のまま → 同じトークンで何度でも再オンボード可能) |
-| `B-B-07` | `certification-management-02` | 資格分類マスタ削除後のフラッシュメッセージ表示忘れ(admin) | UI/UX(フラッシュ) | 2h | `CertificationCategoryController::destroy()` の `redirect()->route('admin.certification-categories.index')->with('success', '分類を削除しました。')` から `with('success', ...)` のみ削除(store / update は正常維持で destroy のみ漏れのコピペミス) |
-| `B-B-08` | `settings-profile-02` | 設定保存後のリダイレクト先誤り | UI/UX(リダイレクト) | 2h | Controller の `redirect()` 先誤り |
-| `B-B-09` | `content-management-04` | 受講生が未登録資格の教材詳細を直叩き閲覧可 | 認可・認証(IDOR) | 3h | 受講生向け教材閲覧 `Learning\BrowseController` の `showSection()` / `showPart()` / `showChapter()` / `showEnrollment()` から `$this->authorize('learning.section.view', ...)` 等の呼び出しを削除(対象は learning Feature であり、content-management の admin 系教材管理ではない) |
-| `B-B-10` | `meeting-quota-04` | 面談キャンセル時に残数が返却されない | データ(Tx 漏れ) | 3h | `Meeting\CancelAction` 内で `MeetingQuotaTransaction.refunded` INSERT 漏れ(※Basic 範囲外、Skill 生成時に「※」注記) |
-| `B-B-11` | `plan-management-02` | admin プラン管理一覧の status フィルタコピペミス | データ(クエリ条件誤り) | 3h | `Plan\IndexAction`(または `PlanController::index`)の status フィルタ条件で、`PlanStatus::Published` を指定したのに `where('status', PlanStatus::Draft->value)` を書いてしまう enum 値コピペミス(公開中プランが draft 扱いで非表示)。S-B-03(プラン管理 Admin UI)直後の連続学習として配置 |
-| `B-B-12` | `auth-02` | オンボーディング完了時の status 遷移漏れ | 機能(状態遷移) | 3h | `Auth\OnboardAction` の `$user->update(['status' => UserStatus::InProgress])` 行を削除 |
-| `B-B-13` | `auth-03` | オンボーディングで `password_confirmation` 漏れ | データ(バリデーション) | 2h | FormRequest の `'password' => 'confirmed'` ルールを抜く |
-| `B-B-14` | `chat-01` | chat 未読バッジで自分の発言もカウント | データ(クエリ条件誤り) | 3h | `ChatUnreadCountService` の未読集計 query で `where('sender_id', '!=', auth()->id())` 漏れ |
-| `B-B-15` | `auth-04` | コーチが管理者専用画面にアクセス可(ロールガード漏れ) | 認可・認証(Middleware チェック漏れ) | 3h | admin 専用ルート群(`routes/web.php`)の `role:admin` を `role:admin,coach` に書き換え(隣接する共有ルート群からのコピペミスを模す → コーチが管理者専用エリアに混入、受講生は引き続き 403)。**旧案「withdrawn ログイン可能」から差し替え**(2026-05-24): 退会ユーザーは必ず SoftDelete されログインクエリから除外されるため、status チェックを消しても観測不能 → 観測可能な role ガード漏れに変更 |
-| `B-B-16` | `auth-05` | graduated ユーザーがプラン機能アクセス可 | 認可・認証(Middleware チェック漏れ) | 3h | 既存 `EnsureActiveLearning` Middleware から status 判定行を削除 |
+| `B-B-01` | `content-management-01` | コーチが担当資格の教材管理にアクセスすると 403 | 認可・認証 | 4h | コーチ Policy で `denied` を返す |
+| `B-B-02` | `content-management-02` | 教材管理の階層一覧（Part / Chapter / Section）が並び順を無視して表示される | 機能(ソート) | 3.5h | `Part\IndexAction`(Part 一覧、トップレベル `->ordered()`) / `Part\ShowAction`(Chapter、Eager Load クロージャ) / `Chapter\ShowAction`(Section、Eager Load クロージャ) の 3 箇所で整列(`->ordered()`)を削除 |
+| `B-B-03` | `content-management-03` | 公開停止した資格の教材が受講生に閲覧できてしまう | データ(絞り込み漏れ) | 3h | 模範解答 PJ の `Learning\Show{Part,Chapter,Section}Action` に「親資格が公開中(`CertificationStatus::Published`)でなければ 404」ガードを追加実装済(2026-05-24、`BrowseControllerTest` に archived 404 ケース 3 件追加 → 全通過) → Step 4 でこのガード 3 箇所を削除し、archive された資格の教材が受講登録済み受講生に閲覧可能になる。※ Action 内のため Basic 範囲外注記あり |
+| `B-B-04` | `user-management-02` | 管理者の受講生一覧に退会済みユーザーが表示される | データ(クエリ漏れ) | 3h | `User\IndexAction` の `if ($status === UserStatus::Withdrawn) { $query->withTrashed(); }` 条件を取り払って `$query->withTrashed();` を冒頭で常時呼ぶ(通常一覧にも SoftDelete 済 withdrawn ユーザーが混入) |
+| `B-B-05` | `user-management-03` | 在籍中ユーザーと同じメールアドレスで重複招待ができてしまう | データ(バリデーション) | 2.5h | `Auth\IssueInvitationAction` の `EmailAlreadyRegistered` ガード(既存 in_progress / graduated user との email 重複チェック + 例外 throw)ブロックを削除(FormRequest に `unique` は元々存在しないため、Action ガード側を抜く) |
+| `B-B-06` | `auth-01` | 招待トークンが使い回せてしまう | セキュリティ(トークン期限管理) | 3h | `Auth\OnboardAction` の `$invitation->forceFill(['status' => InvitationStatus::Accepted, 'accepted_at' => $now])->save();` を削除(使用済化忘れ → status が Pending のまま → 同じトークンで何度でも再オンボード可能) |
+| `B-B-07` | `certification-management-02` | 資格分類マスタの削除後に成功メッセージが表示されない | UI/UX(フラッシュ) | 2h | `CertificationCategoryController::destroy()` の `redirect()->route('admin.certification-categories.index')->with('success', '分類を削除しました。')` から `with('success', ...)` のみ削除(store / update は正常維持で destroy のみ漏れのコピペミス) |
+| `B-B-08` | `settings-profile-02` | プロフィール更新後のリダイレクト先が間違っている | UI/UX(リダイレクト) | 2h | Controller の `redirect()` 先誤り |
+| `B-B-09` | `content-management-04` | 受講登録していない資格の教材詳細を直リンクで閲覧できてしまう | 認可・認証(IDOR) | 3h | 受講生向け教材閲覧 `Learning\BrowseController` の `showSection()` / `showPart()` / `showChapter()` / `showEnrollment()` から `$this->authorize('learning.section.view', ...)` 等の呼び出しを削除(対象は learning Feature であり、content-management の admin 系教材管理ではない) |
+| `B-B-10` | `meeting-quota-04` | 面談をキャンセルしても面談回数が返却されない | データ(Tx 漏れ) | 3h | `Meeting\CancelAction` 内で `MeetingQuotaTransaction.refunded` INSERT 漏れ(※Basic 範囲外、Skill 生成時に「※」注記) |
+| `B-B-11` | `plan-management-02` | プラン管理一覧の状態フィルタが正しく絞り込めない | データ(クエリ条件誤り) | 3h | `Plan\IndexAction`(または `PlanController::index`)の status フィルタ条件で、`PlanStatus::Published` を指定したのに `where('status', PlanStatus::Draft->value)` を書いてしまう enum 値コピペミス(公開中プランが draft 扱いで非表示)。S-B-03(プラン管理 Admin UI)直後の連続学習として配置 |
+| `B-B-12` | `auth-02` | オンボーディング完了後に再ログインできなくなる | 機能(状態遷移) | 3h | `Auth\OnboardAction` の `$user->update(['status' => UserStatus::InProgress])` 行を削除 |
+| `B-B-13` | `auth-03` | オンボーディングで確認用パスワードが一致しなくても登録できる | データ(バリデーション) | 2h | FormRequest の `'password' => 'confirmed'` ルールを抜く |
+| `B-B-14` | `chat-01` | チャットの未読バッジに自分の発言までカウントされる | データ(クエリ条件誤り) | 3h | `ChatUnreadCountService` の未読集計 query で `where('sender_id', '!=', auth()->id())` 漏れ |
+| `B-B-15` | `auth-04` | コーチが管理者専用の管理画面にアクセスできてしまう | 認可・認証(Middleware チェック漏れ) | 3h | admin 専用ルート群(`routes/web.php`)の `role:admin` を `role:admin,coach` に書き換え(隣接する共有ルート群からのコピペミスを模す → コーチが管理者専用エリアに混入、受講生は引き続き 403)。**旧案「withdrawn ログイン可能」から差し替え**(2026-05-24): 退会ユーザーは必ず SoftDelete されログインクエリから除外されるため、status チェックを消しても観測不能 → 観測可能な role ガード漏れに変更 |
+| `B-B-16` | `auth-05` | 修了したユーザーがプラン機能にアクセスできてしまう | 認可・認証(Middleware チェック漏れ) | 3h | 既存 `EnsureActiveLearning` Middleware から status 判定行を削除 |
 
 ### Bug Advance(3 件)
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 | Step 4 仕込み方 |
 |---|---|---|---|---|---|
-| `B-A-01` | `mentoring-02` | 面談予約時の悲観ロック漏れによる面談回数二重消費 | 並行性 | 6h | `MeetingQuota\ConsumeQuotaAction` の `User::query()->whereKey($user->id)->lockForUpdate()->first();` 行を削除(同時 2 リクエストで残数チェック → INSERT の間に TOCTOU が発生し、残数 1 件のユーザーが 2 件予約成立 → `MeetingQuotaTransaction` が 2 件 INSERT され残数 -1 の会計バグ) |
-| `B-A-02` | `mock-exam-04` | 模試採点ロジックバグ | 機能(計算) | 8h | `MockExamSession\GradeAction` の `$scorePercentage = round($totalCorrect / $totalQuestions * 100, 2)` から `* 100` を削除(75% のはずが 0.75% として保存され、合否判定 `>= passing_score_snapshot` で全員不合格扱い)。クラス名は `ScoringAction` / `ScoringService` ではなく `MockExamSession\GradeAction` |
-| `B-A-03` | `enrollment-04` | ターム判定ロジックの誤り | 機能(計算 + クエリ) | 4h | `TermJudgementService` の `status IN (...)` に `canceled` を含めるミス |
+| `B-A-01` | `mentoring-02` | 面談予約で同一コーチ・同一時刻枠が二重予約される | 並行性 | 5h | `meetings` テーブルの `$table->unique(['coach_id', 'scheduled_at']);` 行(migration)を削除(層2 = DB 一意制約のみ除去)。`Meeting\StoreAction` の予約済コーチ除外(層1、`findAvailableCoaches` の `whereDoesntHave`)と INSERT の `UniqueConstraintViolationException`→409 catch は **温存**(catch は受講生への手がかり)。逐次は層1が防ぐため二重予約は並行リクエストでのみ顕在。決定論採点は同コーチ×同時刻の `canceled` Meeting を事前 INSERT して層1をすり抜けさせ制約発火を確認(`StoreActionTest::test_unique_constraint_race_condition_converts_to_no_available_coach`) |
+| `B-A-02` | `mock-exam-04` | 模試の採点結果が常に不合格になる | 機能(計算) | 6h | `MockExamSession\GradeAction` の `$scorePercentage = round($totalCorrect / $totalQuestions * 100, 2)` から `* 100` を削除(75% のはずが 0.75% として保存され、合否判定 `>= passing_score_snapshot` で全員不合格扱い)。クラス名は `ScoringAction` / `ScoringService` ではなく `MockExamSession\GradeAction` |
+| `B-A-03` | `enrollment-04` | 模試をキャンセルしても学習タームが基礎タームに戻らない | 機能(計算 + クエリ) | 4h | `TermJudgementService` の `status IN (...)` に `canceled` を含めるミス |
 
-### Task Basic(3 件)
-
-| ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
-|---|---|---|---|---|
-| `T-B-01` | `user-management-01` | Admin ユーザー管理画面の N+1 解消 | パフォーマンス | 3.5h |
-| `T-B-02` | `mentoring-05` | コーチダッシュボードの担当受講生一覧 N+1 解消 | パフォーマンス | 4h |
-| `T-B-03` | `horizontal-01` | `chunk()` / `chunkById()` / `cursor()` でメモリ最適化 | パフォーマンス | 5.5h |
-
-### Task Advance(4 件)
+### Task Basic(2 件)
 
 | ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
 |---|---|---|---|---|
-| `T-A-01` | `mentoring-03` | 面談予約画面の N+1 解消 | パフォーマンス | 6h |
-| `T-A-02` | `mentoring-07` | mentoring の Controller method を Action 分離 | リファクタリング | 4h |
-| `T-A-03` | `mentoring-08` | Google Calendar 外部連携を Service 分離 | リファクタリング | 4h |
-| `T-A-04` | `horizontal-04` | モックを用いたテスト追加(外部 API 連携) | リファクタリング | 5.5h |
+| `T-B-02` | `mentoring-05` | コーチダッシュボードの担当受講生一覧の N+1 解消 | パフォーマンス | 4h |
+| `T-B-03` | `horizontal-01` | 大量レコードを扱う定期実行処理のメモリ最適化（chunk 処理） | パフォーマンス | 5h |
+
+### Task Advance(6 件)
+
+| ID | Feature 連番 | タイトル | サブカテゴリ | 工数 |
+|---|---|---|---|---|
+| `T-A-01` | `mentoring-03` | 面談予約画面の N+1 解消 | パフォーマンス | 5.5h |
+| `T-A-02` | `mentoring-07` | 面談機能のロジックを Action へ分離 | リファクタリング | 5h |
+| `T-A-03` | `mentoring-08` | Google Calendar 連携を Service へ分離 | リファクタリング | 4h |
+| `T-A-04` | `horizontal-04` | 外部 API 連携のモックテスト追加 | リファクタリング | 5.5h |
+| `T-A-05` | `horizontal-05` | 通知・メール配信の非同期化（キュー + worker） | パフォーマンス | 6.5h |
+| `T-A-06` | `dashboard-01` | 管理者ダッシュボード集計のキャッシュ化 | パフォーマンス | 5.5h |
+
+> **Task 改訂(2026-05-31)**: `T-B-01`(admin ユーザー一覧 N+1)は `T-B-02` / `T-A-01` と学習が重複するため廃止し、Advance パフォーマンス課題 `T-A-06`(管理者ダッシュボード集計のキャッシュ化)を追加。工数は相殺(−3.5h + 5.5h)、Task 計 8 件・全 42 件は不変。`T-B-01` の ID は欠番として扱う(歴史ログ `_review-log.md` / `_basic-constraint-audit.md` は当時のスナップショットとして保持)。
+
+## Bug 推奨着手順(難易度ランプ)
+
+Bug の着手順は自由だが、コードリーディング → 原因特定 → 修正の認知負荷が軽い順に並べた推奨ランプ(ID は変更しない / 同 Feature の依存 Story を終えている前提):
+
+1. **ウォームアップ(Controller 1 行)**: `B-B-07`(フラッシュ漏れ)→ `B-B-08`(リダイレクト先)
+2. **単純クエリ / 検証**: `B-B-04`(退会済み一覧混入)→ `B-B-05`(重複招待)→ `B-B-11`(プランフィルタ ※`S-B-03` 実装後)
+3. **認可(Policy / ガード)**: `B-B-01`(コーチ教材 403)→ `B-B-03`(archived 露出)→ `B-B-09`(IDOR)
+4. **認証ライフサイクル**: `B-B-06`(招待トークン使い回し)→ `B-B-12`(status 遷移)→ `B-B-13`(確認用パスワード)
+5. **クエリ / 集計**: `B-B-02`(教材階層ソート)→ `B-B-10`(面談残数返却)→ `B-B-14`(未読バッジ)
+6. **横断 Middleware 認可**: `B-B-15`(コーチの管理画面)→ `B-B-16`(修了者のプラン機能)
+7. **Advance(並行性 / 計算 / 集計)**: `B-A-02`(得点率計算)→ `B-A-03`(ターム判定)→ `B-A-01`(面談二重予約)
+
+> auth 系の `B-B-06` → `B-B-12` はオンボーディング完了フローの整合確認の都合でこの順が自然(強制依存ではない / 同一ファイル `OnboardAction` を触るが修正箇所が別で衝突なし)。
 
 ## 進捗トラッカー
 
@@ -165,8 +181,8 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 |---|---:|---:|---:|
 | Story | 10 / 10 | 5 / 5 | 15 / 15 |
 | Bug | 16 / 16 | 3 / 3 | 19 / 19 |
-| Task | 3 / 3 | 4 / 4 | 7 / 7 |
-| **計** | **29 / 29** | **12 / 12** | **41 / 41** |
+| Task | 2 / 2 | 6 / 6 | 8 / 8 |
+| **計** | **28 / 28** | **14 / 14** | **42 / 42** |
 
 ### 完成済み
 
@@ -196,20 +212,21 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 - ✅ `B-B-14 / chat-01` 未読バッジに自分の発言が混入(2026-05-24 詳細化 → **2026-05-28 規約刷新版で再生成**、AC 3 件[自分の発言を未読集計から除外 / 相手未読の正常系維持 / テスト実装]、実装方針を Bug 新テンプレ[原因のみ]に再編 + ※ Service 内 Basic 範囲外注記を原因サブセクションにインライン短縮、再現手順を Seeder 状態ベースに精緻化[`StoreMessageAction` / `ShowAction` が送信者の `last_read_at` を二重更新するため "送信→即サイドバー観測" では非再現と判明]、Step 4 = `ChatUnreadCountService` 3 メソッド[`messageCountInRoom` / `messageCountsByRoomForUser` / `roomCountForUser`]から送信者除外条件を削除、※ Service 内、依存なし)
 - ✅ `B-B-15 / auth-04` コーチが管理者専用画面にアクセス可(ロールガード漏れ)(2026-05-24 詳細化 + **題材差し替え**: 旧「withdrawn ログイン可能」は退会=SoftDelete で観測不能のため、観測可能な role ガード漏れに変更、Basic 範囲 = route/Middleware → **2026-05-28 規約刷新版で再生成**: Bug 新テンプレ[原因のみ] + 主要 URL 表廃止 + 期待/実際を「結果」に改名 + テスト AC 追加 + Q&A の B-B-01 交差参照除去、AC 3 件)
 - ✅ `B-B-16 / auth-05` 修了ユーザーがプラン機能アクセス可(2026-05-24 詳細化、Step 4 = `EnsureActiveLearning` の利用状態判定行を削除、Basic 範囲 = Middleware → **2026-05-28 規約刷新版で再生成**: Bug 新テンプレ[原因のみ] + 主要 URL 表廃止 + 期待/実際を「結果」に改名 + テスト AC 追加、AC 3 件、**qa-board の active-learning ガードを対象に維持**(実装 routes/web.php + `EnsureActiveLearning` docblock に整合 → S-B-01 の「永続閲覧/非適用」記述を「受講中のみ」へ訂正し B-B-16 と整合、ユーザー確認済 2026-05-28))
-- ✅ `B-A-01 / mentoring-02` 面談予約の並行リクエストで面談回数二重消費(2026-05-25 詳細化、Step 4 = `MeetingQuota\ConsumeQuotaAction` の `lockForUpdate()` 行 1 行削除、TOCTOU を露出、Advance 範囲 = Action のため「※」例外注記なし、サブカテゴリ「並行性」唯一の Bug、依存チケットなし → **2026-05-28 規約刷新版で再生成**: Bug 新テンプレ[原因のみ]に再編 + 主要URL/原因箇所メモ/採用技術/テスト方針 節を統合 + 期待/実際の「動作」→「結果」改称 + テスト AC 追加、AC 4 件 + **予約 URL を `POST /enrollments/{enrollment}/meetings` に訂正**(旧版 `/meetings/enrollments/{enrollment}` は誤り))
+- ✅ `B-A-01 / mentoring-02` 面談予約で同一コーチ・同一時刻枠が二重予約される(2026-05-25 初版 → 2026-05-28 規約刷新版で再生成 → **2026-05-31 題材を全面差し替え**: 旧「面談回数の二重消費(quota / `lockForUpdate`)」から「同一コーチ・同一時刻枠の二重予約(`meetings` の `(coach_id, scheduled_at)` UNIQUE 欠如)」へ。層2のみ仕込み[層1 = 予約済コーチ除外は温存]、採点は §3.6 〔テスト〕タグ[決定論 = canceled 衝突]、工数 6h→5h、AC 3 件。模範解答はコード変更不要[一意制約 + catch + 決定論テスト 既存])
 - ✅ `B-A-02 / mock-exam-04` 模試採点で得点率が 0〜1 スケールになり常に不合格(2026-05-25 詳細化、Step 4 = `MockExamSession\GradeAction` の得点率算出から `* 100` 削除、Advance 範囲 = Action のため「※」例外注記なし、波及範囲 `WeaknessAnalysisService` の弱点ヒートマップ / 合格可能性スコアまで Q&A で明示、依存チケットなし → **2026-05-28 規約刷新版で再生成**: Bug 新テンプレ[原因のみ]に再編 + 主要 URL / 採用技術 / テスト方針 節を廃止 + 構築側メタ[Step 4 表現]除去 + テスト AC 追加、AC 4 件、波及は原因 + Q&A に集約)
 - ✅ `B-A-03 / enrollment-04` 模試キャンセル後にタームが基礎タームに戻らない(2026-05-25 詳細化、Step 4 = `TermJudgementService` の `whereIn('status', [...])` に `'canceled'` を追加して判定対象を歪める、Advance 範囲 = Service のため「※」例外注記なし、依存チケットなし → **2026-05-28 規約刷新版で再生成**: Bug 新テンプレ[原因のみ]に再編 + 主要 URL / 採用技術 / テスト方針 節を廃止 + 構築側メタ[Step 4 表現]除去 + テスト AC 追加、AC 4 件[基礎/実践ターム判定 + 開始時実践化 + 不要 UPDATE スキップ + テスト])
-- ✅ `T-B-01 / user-management-01` 管理者のユーザー管理画面の N+1 解消(2026-05-25 詳細化 → **2026-05-28 新 Task 構造で再生成**: 背景・目的を概要へ統合 + やること/やらないこと→要件/スコープ外 + 実装方針を単一「変更内容」に集約 + 振る舞い不変 AC を §3.5 に従い除外 + 構築側メタ[Step 4 表現]除去、AC 2 件[N+1 解消 + テスト]、Step 4 = `User\IndexAction` の `->with('plan')` を取り除く / Before 最大 22 本 → After 3 本 / 単純 Eager Loading パターン、※ Action 内、依存チケットなし)
 - ✅ `T-B-02 / mentoring-05` コーチダッシュボードの担当受講生一覧 N+1 解消(2026-05-25 詳細化、Step 4 = `Dashboard\FetchCoachDashboardAction` の `->with(['user', 'certification'])` + `->withMax('learningSessions as last_activity_at', 'started_at')` を取り除く / Before 1+3N 本 → After 3 本 / 集約取得 + 複合 Eager Loading パターン、※ Action 内 → **2026-05-28 新 Task 構造で再生成**: 背景を概要へ統合 + やること/やらないこと→要件/スコープ外 + 実装方針を単一「変更内容」に集約 + AC 5→2 件[定数クエリ + テスト]に圧縮 + 振る舞い不変/Before-After を §3.5 に従い評価シート②へ)
 - ✅ `T-B-03 / horizontal-01` `chunk()` / `chunkById()` / `cursor()` でメモリ最適化(2026-05-25 詳細化、Step 4 = 3 Schedule Command [`GraduateExpiredUsersCommand` / `FailExpiredEnrollmentsCommand` / `Mentoring\AutoCompleteMeetingsCommand`] の `->chunkById(100, ...)` を `->get(); foreach` に巻き戻し、各処理が WHERE 列を更新するため `chunkById()` 必須教材として配置、🕐 `cursor()` 用例は模範解答に存在せず概念教育で補完 → **2026-05-28 新 Task 構造で再生成**: 背景を概要へ統合 + 旧「やること・やらないこと」→「要件・スコープ外」+ AC 3 件にフラット化 + 実装方針を単一「変更内容」に集約 + 構築側メタ[Step 4 表現]除去 + Action クラス名を実装準拠に修正(`Plan\GraduateUserAction` / インライン `EnrollmentStatusChangeService` / `Meeting\AutoCompleteMeetingAction`))
 - ✅ `T-A-01 / mentoring-03` 面談予約画面の N+1 解消(2026-05-25 詳細化、Step 4 = `MeetingAvailabilityService::slotsForCertification` の `with('googleCredential')` + `whereIn` を per-coach for-loop に巻き戻し → コーチ N 名で 1+3N クエリ + 連携未設定コーチへの `freebusy` 空打ち発生、`MeetingAvailabilityServiceTest` 既存ケースが振る舞い不変を担保、依存 `S-A-01` → **2026-05-28 新 Task 構造で再生成**: やること/やらないこと→要件/スコープ外 + 実装方針を単一「変更内容」に集約 + AC 5→3 件[定数クエリ + freebusy 連携済のみ + テスト]に圧縮、After = DB 4 本固定 + 連携済コーチのみ freebusy)
 - ✅ `T-A-02 / mentoring-07` mentoring の Controller method を Action 分離(2026-05-25 詳細化、Step 4 = `MeetingController::store/cancel/upsertMemo` 3 method に Action 内ロジックを展開 + `Meeting\{Store,Cancel,UpsertMemo}Action.php` 3 ファイル削除、取得系 4 method [`index/show/fetchAvailability/indexAsCoach`] は対象外、`DB::transaction` + 具象例外 throw の責務分離を学ばせる、依存 `S-A-01` → **2026-05-28 新 Task 構造で再生成**: やること/やらないこと→要件/スコープ外 + 実装方針を単一「変更内容」に集約 + Before/After コード片を削除 + AC 8→3 件に圧縮 + 振る舞い不変/既存テスト pass を §3.5 に従い評価シート②へ)
 - ✅ `T-A-03 / mentoring-08` Google Calendar 外部連携を Service 分離(2026-05-25 詳細化、Step 4 = `app/Services/Google/{GoogleCalendarService,GoogleOAuthService}.php` を削除し、`MeetingAvailabilityService` / `Meeting\StoreAction` / `Meeting\CancelAction` / `CoachGoogleCredentialController` 内に Google API ライブラリ直接呼出を展開 + トークン期限切れリフレッシュロジック 3 箇所重複、Service 2 分割の責務 [OAuth フロー = stateless / Calendar 操作 = 状態あり] を学ばせる、依存 `S-A-01` / `T-A-02` → **2026-05-28 新 Task 構造で再生成**: やること/やらないこと→要件/スコープ外 + 実装方針を単一「変更内容」に集約 + AC 8→3 件に圧縮 + **連携開始 URL を `/settings/google-calendar/connect`(method `redirect`)に訂正**(旧版 `/settings/google-calendar/redirect` は method 名と URL の取り違え))
 - ✅ `T-A-04 / horizontal-04` モックを用いたテスト追加(外部 API 連携)(2026-05-25 詳細化、Step 4 = `tests/Unit/Services/Google/{GoogleOAuthService,GoogleCalendarService}Test.php` / `tests/Unit/Repositories/GeminiLlmRepositoryTest.php` / `tests/Feature/Http/Webhooks/StripeWebhookControllerTest.php` を削除 or 正常系のみに削減 + `Http::preventStrayRequests()` / `#[Group('external')]` / HMAC 署名ヘルパー も剥がす、3 系統のモック手法 [Service = Mockery / Repository = `Http::fake` / Webhook = HMAC ヘルパー] の使い分けを学ばせる、依存 `S-A-01` / `S-A-02` / `S-A-03` / `T-A-03` → **2026-05-28 新 Task 構造で再生成**: 背景・目的/価値を概要へ統合 + AI 丸投げ耐性等の構築側メタ除去 + 主要URL・テスト方針・採用技術・改善対象コードメモを単一「変更内容」に集約 + AC 8→3 件 + ⚠️→✅ **模範解答 PJ ギャップ検出 → 対応完了**(commit `007063b` で Google Service 単体テスト 2 ファイル[OAuth 5 + Calendar 11 = 16 ケース]新設 + `Http::preventStrayRequests()` / `#[Group('external')]` 組込、Sail 16/16 pass 確認、_review-log に記録))
+- ✅ `T-A-05 / horizontal-05` 通知・メール配信の非同期化(2026-05-30 新規作成: 同期実行 → `database` キューへ移行、`BaseNotification` + `InvitationMail` の `ShouldQueue`[既存]を活性化 + `$tries` / `backoff` 追加 + jobs migration 追加 + worker 運用、Scenario X[Basic は Queue 無縁、`S-B-04` / `S-B-09` / `S-B-10` と整合]、AC 3 件[非同期配信 / リトライ + 失敗ジョブ / テスト]、依存 `S-B-04` / `S-B-09`、模範解答 1723 テスト緑 + `database` キュー round-trip 検証済)
+- ✅ `T-A-06 / dashboard-01` 管理者ダッシュボード集計のキャッシュ化(2026-05-31 新規作成: 重い admin 集計[全体 KPI / 資格別修了率]を、集計を所有する Service `EnrollmentStatsService` の `adminKpi()` / `completionRateByCertification()` で `Cache::remember`(キー・TTL は新規 `config/dashboard.php`、既定 300s)、受講状態遷移チョークポイント `EnrollmentStatusChangeService::recordStatusChange()` で `Cache::forget` による無効化 + TTL 失効のハイブリッド。既存 `DashboardArchitectureTest` の「dashboard UseCase で `Cache::` 禁止」に準拠しキャッシュは Service 層に配置(集約 Action は薄く維持)。同梱 `tests/Feature/UseCases/Dashboard/AdminDashboardCacheTest.php` 2 ケース[キャッシュヒット / 状態遷移時無効化]、Sail 緑(dashboard 関連 52 + enrollment/certificate 系 248 pass)、依存なし。`T-B-01` と工数相殺[swap]、Broadcasting・DB インデックスは Advance 宣言から除外)
 - ✅ `S-A-01 / mentoring-01` Google Calendar 連携(面談予約)(2026-05-25 詳細化、Advance 範囲 = Action / Service、新規 `coach_google_credentials` テーブル + `google_event_id` カラム追加 + `GoogleOAuthService` / `GoogleCalendarService` 2 分割 + `CoachGoogleCredential\{FetchAuthUrl,Store,Destroy}Action` + `Meeting\{Store,Cancel}Action` への組込み + `MeetingAvailabilityService` freebusy 統合 + トークン自動 refresh + API 失敗フォールバック、Step 4 = 全 GCal 関連コードを引き算で外す、依存チケットなし → **2026-05-28 新 Story 構造(実装方針 5 サブセクション + フラット AC)で再生成**: 概要を背景・目的へ統合 + やること/やらないこと→要件/スコープ外 + 実装方針を 5 サブセクションに再編 + AC 19→10 件にフラット化(規模大上限)+ テスト AC 追加 + **面談 Event の URL ソースを `meeting_url_snapshot` に訂正**(旧版 `users.meeting_url` 直参照は実装と不一致、予約時点スナップショットを Q&A に明記))
 - ✅ `S-A-02 / ai-chat-01` Gemini AI チャットボット(2026-05-25 詳細化、Advance 範囲 = Repository / Action / Service、新規 `ai_chat_conversations` / `ai_chat_messages` テーブル + `LlmRepositoryInterface` + `GeminiLlmRepository` + `AiChatPromptBuilderService`(Section パンくず + default_enrollment 解決) + フローティングウィジェット + 同期メッセージ送信 + Transaction A 先行 commit + タイトル LLM 自動生成 + `throttle:ai-chat` 日次 50 通 + 機能 OFF スイッチ、Step 4 = 全 AI 関連コードを引き算で外す、依存チケットなし)
 - ✅ `S-A-03 / meeting-quota-02` Stripe 連携(追加面談購入)(2026-05-25 詳細化、Advance 範囲 = Action / Middleware、新規 `payments` テーブル + `PaymentStatus` Enum + `CreateCheckoutSessionAction` + `StripeWebhook\HandleAction`(冪等性ガード + 3 イベント分岐)+ `PurchaseQuotaAction` + `MeetingQuotaCheckoutController` + `VerifyStripeSignature` Middleware + `MeetingQuotaPolicy::purchase` + Stripe SDK 採用、Step 4 = 全 Stripe 関連コードを引き算で外す、`meeting_quota_transactions` 基盤は提供 PJ 既存(消費 / 返却 / 管理者付与は提供 PJ 範囲)、依存 `S-B-02` → **2026-05-28 実装方針 5 サブセクション構造で再生成**、AC 18→10 件に圧縮(規模大上限)、やること/やらないこと→要件/スコープ外 改名 + 概要を背景・目的へ統合 + 独立 Seeder 設計節をデータモデル>初期データ Seeder へ統合(実 `PaymentSeeder` = 固定 student + demo×6 に事実修正)、Middleware エイリアス / CSRF 除外の所在を Laravel 10 構成(`app/Http/Kernel.php` の `$middlewareAliases` + `app/Http/Middleware/VerifyCsrfToken.php` の `$except`)に訂正(旧記述「bootstrap/app.php(Laravel 11+)」は本 PJ では誤り))
-- ✅ `S-A-04 / certification-management-01` 修了証 PDF 出力(2026-05-25 詳細化 → **2026-05-28 実装方針 5 サブセクション構造で再生成**、AC 22→9 件に圧縮、Seeder 設計節をデータモデル節に統合、Advance 範囲 = Service / Action、`certificates` テーブルは提供 PJ 既存、本チケットで PDF 生成部分を追加 = `CertificatePdfService`(mpdf、A4 横向き、日本語 CJK)+ `CertificateSerialNumberService`(`CT-{YYYYMM}-{NNNNN}` 月内連番 `lockForUpdate`)+ `Certificate\{Issue,Download}Action` + `CertificatePolicy::download`(admin 全件 / coach 担当資格 / student 本人)+ `resources/views/certificates/pdf.blade.php` + `active-learning` Middleware 非適用、Step 4 = PDF 生成 + DL エンドポイントを引き算で外す、依存チケットなし)
+- ✅ `S-A-04 / certification-management-01` 修了証 PDF 出力(2026-05-25 詳細化 → **2026-05-28 実装方針 5 サブセクション構造で再生成**、AC 22→9 件に圧縮、Seeder 設計節をデータモデル節に統合、Advance 範囲 = Service / Action、`certificates` テーブルは提供 PJ 既存、本チケットで PDF 生成部分を追加 = `CertificatePdfService`(mpdf、A4 横向き、日本語 CJK)+ `Certificate\{Issue,Download}Action` + `CertificatePolicy::download`(admin 全件 / coach 担当資格 / student 本人)+ `resources/views/certificates/pdf.blade.php` + `active-learning` Middleware 非適用、Step 4 = PDF 生成 + DL エンドポイントを引き算で外す、依存チケットなし)
 - ✅ `S-A-05 / notification-03` Sanctum Cookie 認証追加 + JS フロント通知表示(2026-05-25 詳細化 → 2026-05-26 規約刷新版で再生成 → **2026-05-28 実装方針 5 サブセクション構造で再々生成**、AC 11 件、Advance 範囲 = Sanctum + 素の JS、Sanctum stateful 設定 + `auth:sanctum` を通知 API 全 3 ルートに適用 + CSRF Cookie endpoint 公開 + 認証ユーザー本人の通知に切替 + 通知ポップオーバー Blade + JS ポップオーバー制御(タブ切替 / 行クリック既読化 + 遷移 / 全件既読)+ TopBar バッジ動的更新、管理者は対象外、Step 4 = `auth:sanctum` 取り外し + ポップオーバー JS + Blade 削除、依存 `S-B-05`)
 
 ## 関連ドキュメント

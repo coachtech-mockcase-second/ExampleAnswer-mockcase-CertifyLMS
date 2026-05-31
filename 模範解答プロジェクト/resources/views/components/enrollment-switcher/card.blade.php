@@ -28,7 +28,7 @@
             class="flex-1"
         >この資格を見る</x-link-button>
         @unless ($isDefault)
-            <form
+            <form novalidate
                 method="POST"
                 action="{{ route('settings.default-enrollment.update', $enrollment) }}"
                 class="flex-1"

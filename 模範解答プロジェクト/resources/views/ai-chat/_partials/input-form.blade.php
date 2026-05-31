@@ -7,7 +7,7 @@
     /** @var \App\Models\AiChatConversation $conversation */
 @endphp
 
-<form data-ai-chat-form
+<form novalidate data-ai-chat-form
     data-conversation-id="{{ $conversation->id }}"
     data-store-url="{{ route('ai-chat.conversations.messages.store', $conversation) }}"
     class="max-w-[760px] mx-auto w-full">

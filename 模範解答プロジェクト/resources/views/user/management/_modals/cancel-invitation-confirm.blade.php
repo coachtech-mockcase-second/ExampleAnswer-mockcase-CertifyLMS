@@ -4,7 +4,7 @@
     確認用モーダルで送信のみ(入力欄なし、@method('DELETE') で送信)。
 --}}
 <x-modal id="cancel-invitation-modal" title="招待を取り消す" size="md">
-    <form method="POST" action="{{ route('admin.invitations.destroy', $invitation) }}" id="cancel-invitation-form">
+    <form novalidate method="POST" action="{{ route('admin.invitations.destroy', $invitation) }}" id="cancel-invitation-form">
         @csrf
         @method('DELETE')
 

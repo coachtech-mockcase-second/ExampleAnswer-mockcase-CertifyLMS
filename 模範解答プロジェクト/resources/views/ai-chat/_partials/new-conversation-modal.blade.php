@@ -1,7 +1,7 @@
 {{-- AI 相談「新しい会話」を起こすモーダル。data-modal-trigger="new-ai-chat-modal" で開く。 --}}
 <x-modal id="new-ai-chat-modal" title="新しい相談を始める" size="md">
     <x-slot:body>
-        <form method="POST" action="{{ route('ai-chat.conversations.store') }}" id="new-ai-chat-form" class="space-y-4">
+        <form novalidate method="POST" action="{{ route('ai-chat.conversations.store') }}" id="new-ai-chat-form" class="space-y-4">
             @csrf
             <input type="hidden" name="source" value="full-screen">
 

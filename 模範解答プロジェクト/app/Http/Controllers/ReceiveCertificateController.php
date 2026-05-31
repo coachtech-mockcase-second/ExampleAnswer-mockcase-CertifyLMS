@@ -12,7 +12,8 @@ use Illuminate\Http\RedirectResponse;
  * 受講生による「修了証を受け取る」自己発火 Controller。
  *
  * 認可は EnrollmentPolicy::receiveCertificate(本人 + status==Learning) で完結。
- * 成功時は修了証詳細画面(certificates.show) へリダイレクト。
+ * 成功時は受講登録詳細画面(enrollments.show) へリダイレクトする。修了証 PDF の DL 導線は
+ * 同画面の修了証受領パネル(修了済の常設表示)が担うため、ここでは成功フラッシュのみ渡す。
  */
 class ReceiveCertificateController extends Controller
 {
@@ -20,11 +21,10 @@ class ReceiveCertificateController extends Controller
     {
         $this->authorize('receiveCertificate', $enrollment);
 
-        $certificate = $action($enrollment);
+        $action($enrollment);
 
         return redirect()
             ->route('enrollments.show', $enrollment)
-            ->with('success', '修了証を発行しました。おめでとうございます！')
-            ->with('certificate_download_url', route('certificates.download', $certificate));
+            ->with('success', '修了証を発行しました。おめでとうございます！');
     }
 }

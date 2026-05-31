@@ -14,7 +14,7 @@
 @endphp
 
 <x-modal id="assign-coach-modal" title="担当コーチを追加" size="md">
-    <form
+    <form novalidate
         method="POST"
         action="{{ str_replace('__COACH__', '', $attachUrlBase) }}"
         id="assign-coach-form"

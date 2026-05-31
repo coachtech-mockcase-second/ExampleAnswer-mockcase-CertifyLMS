@@ -51,7 +51,7 @@
         </x-alert>
 
         <div class="mt-8 flex flex-wrap items-center gap-3">
-            <form method="POST" action="{{ route('mock-exam-sessions.start', $session) }}">
+            <form novalidate method="POST" action="{{ route('mock-exam-sessions.start', $session) }}">
                 @csrf
                 <x-button type="submit" variant="primary" size="lg">
                     <x-icon name="play-circle" class="w-5 h-5" />
@@ -59,7 +59,7 @@
                 </x-button>
             </form>
 
-            <form method="POST" action="{{ route('mock-exam-sessions.destroy', $session) }}"
+            <form novalidate method="POST" action="{{ route('mock-exam-sessions.destroy', $session) }}"
                   onsubmit="return confirm('この受験セッションをキャンセルしますか?');">
                 @csrf
                 @method('DELETE')

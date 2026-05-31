@@ -1,6 +1,6 @@
 # ai-chat 設計
 
-> **2026-05 改訂**: 業界標準 + 必要最低限の設計に統一。本文書中で SSE ストリーミング / `StreamAction` / `streaming_enabled` / `AiChatRateLimiterService` / `current_term` プロンプト注入 / `max_context_tokens` 切詰め / 「資格相談モード」UI など **後述セクション内に残っている記述は削除済** とみなす(requirements.md 冒頭の改訂注記が SSoT)。本文冒頭の「主要な設計判断」表 + 「関連要件マッピング」 + 末尾の「ポイント」が最新仕様の正式記述。
+> **変更履歴（2026-05 改訂）**: 本機能は同期版のみ（SSE 不採用）・メッセージ再送信は専用動線を持たずフォールバック（error 状態で保存し受講生が送り直す）のみ・レート制限は Laravel 標準 `throttle:ai-chat` のみ・資格コンテキストは `users.default_enrollment_id` 経由で自動解決（資格相談モード UI なし）。
 
 ## アーキテクチャ概要
 
@@ -33,7 +33,7 @@ graph TB
     end
 
     subgraph External[外部 API]
-        GeminiAPI["Google Generative Language API<br/>gemini-2.5-flash"]
+        GeminiAPI["Google Generative Language API<br/>gemini-2.5-flash-lite"]
     end
 
     FullScreen --> ChatClient
@@ -129,86 +129,9 @@ sequenceDiagram
         MA->>DB: COMMIT (user message は残す)
         MA-->>CC: throw AiChatLlmFailedException
         CC-->>FB: 502 Bad Gateway + JSON { error, assistant_message_id }
-        FB->>S: 「AI が応答できませんでした。再試行」ボタンを表示
+        FB->>S: assistant バブルを error 状態で表示（同じ内容を入力フォームから送り直せる）
     end
 ```
-
-### SSE ストリーミングフロー（B-1 Step N+1）
-
-```mermaid
-sequenceDiagram
-    actor S as 受講生
-    participant JS as chat-client.js
-    participant CC as AiChatMessageController.stream
-    participant SA as StreamAction
-    participant PB as AiChatPromptBuilderService
-    participant LR as LlmRepositoryInterface
-    participant GR as GeminiLlmRepository
-    participant API as Gemini API streamGenerateContent
-    participant DB as DB
-
-    S->>JS: メッセージ送信
-    JS->>CC: POST /ai-chat/conversations/{id}/messages/stream<br/>{ content }<br/>fetch + ReadableStream
-    CC->>SA: __invoke(conversation, content)
-    SA->>DB: BEGIN
-    SA->>DB: INSERT user message (role=user, status=completed)
-    SA->>DB: INSERT assistant message (role=assistant, status=streaming, content='')
-    SA->>DB: COMMIT (先行コミットで途中断にも耐性)
-    SA->>PB: build()
-    PB-->>SA: systemPrompt
-    SA->>LR: streamChat(systemPrompt, history)
-    LR->>GR: streamChat(...)
-    GR->>API: POST streamGenerateContent
-    CC-->>JS: response.body (text/event-stream stream)
-    JS->>S: event meta { assistant_message_id }<br/>UI に空の assistant バブルを追加
-
-    loop chunk 受信
-        API-->>GR: chunk { text }
-        GR-->>LR: yield chunk text
-        LR-->>SA: yield chunk text
-        SA-->>CC: yield "event: chunk\ndata: {...}\n\n"
-        CC-->>JS: chunk
-        JS->>S: assistant バブルに text を append
-        SA->>SA: $buffer .= chunk
-    end
-
-    alt 正常完了
-        API-->>GR: stream end + usageMetadata
-        GR-->>LR: return LlmChatResponse(content=$buffer, tokens, time_ms)
-        LR-->>SA: response
-        SA->>DB: UPDATE assistant message SET content=$buffer, model, input_tokens, output_tokens, response_time_ms, status='completed'
-        SA->>DB: UPDATE conversation SET last_message_at=now
-        SA-->>CC: yield "event: done\ndata: {...}\n\n"
-        CC-->>JS: done event
-        JS->>S: 「応答完了」表示 + 再送信不可化
-    else エラー
-        API-->>GR: 5xx or timeout 中断
-        GR-->>LR: throw GeminiApiException
-        LR-->>SA: exception
-        SA->>DB: UPDATE assistant message SET error_detail, status='error'<br/>(content には部分受信分を保存)
-        SA->>DB: UPDATE conversation SET last_message_at=now
-        SA-->>CC: yield "event: error\ndata: {...}\n\n"
-        CC-->>JS: error event
-        JS->>S: エラーメッセージ表示 + 「再送信」ボタン
-    end
-```
-
-### Rate Limit カウント補正フロー
-
-```mermaid
-flowchart LR
-    Req["POST /ai-chat/.../messages"] --> TM["throttle:ai-chat Middleware"]
-    TM -->|Limit OK| Inc["RateLimiter::hit"]
-    Inc --> Ctrl[Controller]
-    Ctrl --> Act["StreamAction / StoreAction"]
-    Act --> Gem[Gemini API 呼出]
-    Gem -->|成功| End[応答返却]
-    Gem -->|失敗 5xx/timeout| Dec["RateLimiter キーから 1 デクリメント<br/>受講生クォータ保護"]
-    Dec --> Err["502 + AiChatLlmFailedException"]
-    TM -->|Limit 超過| Throttle["429 + AiChatRateLimitExceededException メッセージ"]
-```
-
-> Note: Laravel 標準の `throttle` ミドルウェアは「リクエスト到達」でカウントするため、Gemini 失敗時にデクリメントするには `RateLimiter::availableIn()` 等の Facade を Action 内から直接呼ぶ補正ロジックを併用する。`cache.default` (`redis` or `database`) のキーを直接操作する。
 
 ## データモデル
 
@@ -242,7 +165,7 @@ erDiagram
         ulid ai_chat_conversation_id FK
         string role "user|assistant"
         text content
-        string status "pending|streaming|completed|error"
+        string status "pending|completed|error"
         string model_nullable
         unsignedInt input_tokens_nullable
         unsignedInt output_tokens_nullable
@@ -258,7 +181,7 @@ erDiagram
 | Model | Enum | 値 | 日本語ラベル |
 |---|---|---|---|
 | `AiChatMessage.role` | `AiChatMessageRole` | `User` `Assistant` | `あなた` `AI` |
-| `AiChatMessage.status` | `AiChatMessageStatus` | `Pending` `Streaming` `Completed` `Error` | `待機中` `応答中` `完了` `エラー` |
+| `AiChatMessage.status` | `AiChatMessageStatus` | `Pending` `Completed` `Error` | `待機中` `完了` `エラー` |
 
 ### インデックス・制約
 
@@ -281,17 +204,12 @@ erDiagram
 ```mermaid
 stateDiagram-v2
     pending: pending（待機中）
-    streaming: streaming（応答中）
     completed: completed（完了）
     error: error（エラー）
 
     [*] --> pending: assistant message INSERT
     pending --> completed: 同期版 (StoreAction) で Gemini 応答取得成功
-    pending --> streaming: SSE 版 (StreamAction) で初回 chunk 受信
-    streaming --> completed: SSE chunk 完了 + LlmChatResponse 取得
     pending --> error: Gemini API 失敗 (同期)
-    streaming --> error: Gemini API 中断 (SSE)
-    error --> pending: retry エンドポイント呼出 (再生成)
     completed --> [*]
     error --> [*]
 ```
@@ -310,8 +228,6 @@ stateDiagram-v2
   - `destroy(AiChatConversation $conversation, DestroyAction $action)` → 204 No Content（Policy `delete`）
 - **`AiChatMessageController`** — メッセージ送信
   - `store(AiChatConversation $conversation, StoreRequest $request, StoreAction $action)` — 同期送信、200 JSON（Policy `view` で当該会話アクセス権を確認）
-  - `stream(AiChatConversation $conversation, StreamRequest $request, StreamAction $action)` — SSE ストリーミング、`response()->stream()` で text/event-stream 配信
-  - `retry(AiChatMessage $message, RetryAction $action)` — error 状態メッセージの再生成（Policy `update` で会話オーナーシップを確認）
 
 すべての Controller は `EnsureUserRole:student` Middleware 適用済。
 
@@ -388,7 +304,6 @@ class GenerateTitleAction
 {
     public function __construct(
         private LlmRepositoryInterface $llm,
-        private AiChatRateLimiterService $rateLimiter,
     ) {}
 
     /**
@@ -407,54 +322,18 @@ class StoreAction
     public function __construct(
         private LlmRepositoryInterface $llm,
         private AiChatPromptBuilderService $promptBuilder,
-        private AiChatRateLimiterService $rateLimiter,
     ) {}
 
     /**
      * 同期メッセージ送信。user message + assistant message を DB に INSERT し、
      * Gemini API を呼び出して assistant message を completed / error に UPDATE する。
+     * Gemini 失敗時は assistant message を error 状態で保存（user message は残す）して例外を投げ、
+     * 受講生は同じ内容を送り直して再質問できる。
      *
      * @throws AiChatLlmFailedException Gemini API 呼出失敗
-     * @throws AiChatRateLimitExceededException 日次上限超過（Middleware で先にチェックされるが防衛的に Action 側でも確認）
      */
     public function __invoke(AiChatConversation $conversation, string $content): array;
     // 戻り値: ['user_message' => AiChatMessage, 'assistant_message' => AiChatMessage]
-}
-
-// app/UseCases/AiChatMessage/StreamAction.php
-class StreamAction
-{
-    public function __construct(
-        private LlmRepositoryInterface $llm,
-        private AiChatPromptBuilderService $promptBuilder,
-        private AiChatRateLimiterService $rateLimiter,
-    ) {}
-
-    /**
-     * SSE ストリーミング送信。Generator を返し、Controller の response()->stream() が yield された SSE event を flush する。
-     *
-     * yield する SSE event:
-     *   - "event: meta\ndata: {...}\n\n"
-     *   - "event: chunk\ndata: {...}\n\n"  (複数回)
-     *   - "event: done\ndata: {...}\n\n"
-     *   - "event: error\ndata: {...}\n\n"  (エラー時)
-     */
-    public function __invoke(AiChatConversation $conversation, string $content): \Generator;
-}
-
-// app/UseCases/AiChatMessage/RetryAction.php
-class RetryAction
-{
-    public function __construct(
-        private StoreAction $store,
-    ) {}
-
-    /**
-     * error 状態の assistant message を再生成する。
-     *
-     * @throws AiChatMessageNotRetryableException status が error でない
-     */
-    public function __invoke(AiChatMessage $message): AiChatMessage;
 }
 ```
 
@@ -468,14 +347,9 @@ class RetryAction
   - `build(AiChatConversation $conversation, User $user): string`
   - 内部処理:
     1. `config('ai-chat.system_prompt_template')` を読み込む
-    2. プレースホルダ `{user_name}` / `{certification_name}` / `{section_context}` / `{current_term}` を置換
+    2. プレースホルダ `{user_name}` / `{certification_name}` / `{section_context}` を置換
     3. `section_id` 紐付け時、Section パンくず（`Part {order}「{title}」 > Chapter {order}「{title}」 > Section {order}「{title}」` 形式）を `{section_context}` に埋め込む。`Section.body` 本文は Gemini 無料枠保護のため埋め込まない（1 メッセージあたり数千トークンの固定削減、AI には教材の位置情報だけで十分な文脈が渡る）
-    4. トークン数チェック: `config('ai-chat.max_context_tokens', 30000)` を超える場合は履歴を古い順に切り詰める（粗い概算: 1 文字 = 1 トークンで計算）
-
-- **`AiChatRateLimiterService`** — Rate Limit のカウント補正
-  - `decrement(User $user): void` — Gemini エラー時に呼んでカウンタを 1 戻す
-  - `availableIn(User $user): int` — 次のリセットまでの秒数
-  - 内部実装: `RateLimiter::for('ai-chat', ...)` で定義したキーを `Cache` 経由で直接操作
+  - 履歴は `config('ai-chat.history_window')` 件数で制御し、自前のトークン切り詰めは持たない（context overflow は Gemini 側に委ねる）
 
 ### Repository
 
@@ -495,15 +369,6 @@ interface LlmRepositoryInterface
      * @throws LlmApiException
      */
     public function chat(string $systemPrompt, array $messages, ?string $model = null): LlmChatResponse;
-
-    /**
-     * ストリーミングチャット呼出。chunk text を yield する Generator を返す。
-     * Generator が return した時の値は LlmChatResponse（全文 + メタ情報）。
-     *
-     * @return \Generator yields string (chunk text), returns LlmChatResponse
-     * @throws LlmApiException
-     */
-    public function streamChat(string $systemPrompt, array $messages, ?string $model = null): \Generator;
 }
 ```
 
@@ -569,13 +434,6 @@ class GeminiLlmRepository implements LlmRepositoryInterface
             outputTokens: $json['usageMetadata']['candidatesTokenCount'] ?? 0,
             responseTimeMs: (int) ((microtime(true) - $start) * 1000),
         );
-    }
-
-    public function streamChat(string $systemPrompt, array $messages, ?string $model = null): \Generator
-    {
-        // streamGenerateContent + alt=sse でストリーミング、各 chunk から text を抽出して yield
-        // 完了時に return new LlmChatResponse(...)
-        // エラー時は AiChatLlmApiException throw
     }
 
     private function formatMessages(array $messages): array { /* OpenAI形式 → Gemini contents 形式へ変換 */ }
@@ -676,7 +534,6 @@ class UpdateRequest extends FormRequest
 
 ```php
 // StoreRequest.php (同期送信)
-// StreamRequest.php (SSE 送信)
 class StoreRequest extends FormRequest
 {
     public function authorize(): bool
@@ -707,8 +564,6 @@ Route::middleware(['auth', 'role:student'])->prefix('ai-chat')->name('ai-chat.')
     // メッセージ送信（throttle:ai-chat で日次上限ガード）
     Route::middleware('throttle:ai-chat')->group(function () {
         Route::post('/conversations/{conversation}/messages', [AiChatMessageController::class, 'store'])->name('messages.store');
-        Route::post('/conversations/{conversation}/messages/stream', [AiChatMessageController::class, 'stream'])->name('messages.stream');
-        Route::post('/messages/{message}/retry', [AiChatMessageController::class, 'retry'])->name('messages.retry');
     });
 });
 ```
@@ -739,17 +594,15 @@ RateLimiter::for('ai-chat', function (Request $request) {
 return [
     'enabled' => env('AI_CHAT_ENABLED', true),
     'driver' => env('AI_CHAT_DRIVER', 'gemini'),
-    'streaming_enabled' => env('AI_CHAT_STREAMING_ENABLED', true),
 
     'gemini' => [
         'endpoint' => env('GEMINI_API_ENDPOINT', 'https://generativelanguage.googleapis.com/v1beta'),
         'api_key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash-lite'),
     ],
 
     'daily_message_limit' => (int) env('AI_CHAT_DAILY_MESSAGE_LIMIT', 50),
     'history_window' => (int) env('AI_CHAT_HISTORY_WINDOW', 20),
-    'max_context_tokens' => (int) env('AI_CHAT_MAX_CONTEXT_TOKENS', 30000),
 
     'title_generation_enabled' => env('AI_CHAT_TITLE_GENERATION_ENABLED', true),
     'title_generation_prompt' => <<<'PROMPT'
@@ -773,7 +626,6 @@ PROMPT,
 
 現在の学習状況:
 - 対象資格: {certification_name}
-- 学習段階: {current_term}
 
 {section_context}
 
@@ -809,13 +661,10 @@ PROMPT,
   - 発生: `StoreAction`（会話作成）で受講生が当該資格未登録時
 - **`AiChatLlmFailedException`** — `HttpException(502)` 継承
   - メッセージ: 「AI が応答できませんでした。しばらく時間をおいて再試行してください。」
-  - 発生: `LlmRepositoryInterface::chat()` / `streamChat()` 実装内
+  - 発生: `LlmRepositoryInterface::chat()` 実装内
 - **`AiChatRateLimitExceededException`** — `HttpException(429)` 継承
   - メッセージ: 「本日の利用上限（{limit} 通）に達しました。明日 0:00 以降に再度ご利用ください。」
   - 発生: `RateLimiter::for('ai-chat')` の `response()` クロージャ
-- **`AiChatMessageNotRetryableException`** — `UnprocessableEntityHttpException` 継承（HTTP 422）
-  - メッセージ: 「このメッセージは再送信できません（エラー状態のメッセージのみ再送信可能です）。」
-  - 発生: `RetryAction` が `error` 状態以外のメッセージに対して呼ばれた場合
 - **`AiChatNotConfiguredException`** — `HttpException(500)` 継承
   - メッセージ: 「AI 相談機能は現在ご利用いただけません。管理者にお問い合わせください。」
   - 発生: Gemini API キー未設定時、`AppServiceProvider` の Repository binding 時
@@ -856,7 +705,7 @@ PROMPT,
 
 ```
 resources/js/ai-chat/
-├── chat-client.js         # SSE 接続 + 同期送信 + DOM 更新の共通ロジック
+├── chat-client.js         # 同期送信 (fetch + JSON) + DOM 更新の共通ロジック
 ├── floating-widget.js     # FAB 制御 + モーダル開閉 + sessionStorage 状態保持
 ├── full-screen.js         # フル画面画面の追加 UI（タイトル編集モーダル等）
 └── message-renderer.js    # メッセージバブル DOM 生成 + Markdown レンダリング（任意）
@@ -869,22 +718,21 @@ resources/js/ai-chat/
 import { postJson } from '../utils/fetch-json.js';
 
 export class AiChatClient {
-    constructor({ conversationId, onChunk, onDone, onError, onUserMessage }) {
+    constructor({ conversationId, onDone, onError, onUserMessage }) {
         this.conversationId = conversationId;
-        this.onChunk = onChunk;
         this.onDone = onDone;
         this.onError = onError;
         this.onUserMessage = onUserMessage;
     }
 
-    async sendStream(content) {
+    async sendSync(content) {
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const response = await fetch(`/ai-chat/conversations/${this.conversationId}/messages/stream`, {
+        const response = await fetch(`/ai-chat/conversations/${this.conversationId}/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrf,
-                'Accept': 'text/event-stream',
+                'Accept': 'application/json',
             },
             body: JSON.stringify({ content }),
         });
@@ -898,22 +746,10 @@ export class AiChatClient {
             return;
         }
 
-        // SSE 解析: response.body.getReader() を loop
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let currentEvent = null;
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            // "event: xxx\ndata: {...}\n\n" 形式を parse
-            // currentEvent + data を組合せて onChunk / onDone / onError 呼出
-        }
+        // 完全な応答 JSON { user_message, assistant_message, conversation } を受信
+        const data = await response.json();
+        this.onDone(data);
     }
-
-    async sendSync(content) { /* POST .../messages */ }
 }
 ```
 
@@ -948,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
 業界標準アクセシビリティ:
 - FAB は `<button aria-label="AI 相談を開く">` で命名
 - モーダルは `role="dialog" aria-modal="true" aria-labelledby="ai-chat-widget-title"` + フォーカストラップ
-- メッセージリストは `aria-live="polite"` で SSE chunk を読み上げ可能化
+- メッセージリストは `aria-live="polite"` で新着メッセージを読み上げ可能化
 - `Esc` でモーダル閉じる、`Tab` でモーダル内に閉じ込め
 
 ## エラーハンドリング
@@ -957,21 +793,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 - **Policy 拒否**: Controller の `$this->authorize()` で自動 403 → Laravel が `errors/403.blade.php` を表示
 - **Section 紐付け資格未登録**: `StoreAction` で `AiChatConversationCreationDeniedException` を throw、Laravel が 403
-- **Gemini API 失敗**: `LlmRepositoryInterface` 実装内で `AiChatLlmApiException` を throw、`StoreAction` / `StreamAction` がキャッチして:
-  - assistant message を `error` 状態 + `error_detail` に UPDATE
-  - `AiChatChatRateLimiterService::decrement()` で Rate Limit カウンタを 1 戻す
+- **Gemini API 失敗**: `LlmRepositoryInterface` 実装内で `AiChatLlmApiException` を throw、`StoreAction` がキャッチして:
+  - assistant message を `error` 状態 + `error_detail` に UPDATE（user message は残す）
   - `Log::channel('ai-chat')->error(...)` で記録
   - `AiChatLlmFailedException` を再 throw（Controller 経由で 502 + JSON）
 - **Rate Limit 超過**: Middleware で `AiChatRateLimitExceededException` を throw → 429 + メッセージ
 - **CSRF 失効**: Laravel 標準 419 → `errors/419.blade.php` 表示
 - **API キー未設定**: `AppServiceProvider::register()` の binding 時に `AiChatNotConfiguredException` を throw、500
 
-### SSE エラー event のクライアント処理
+### 失敗時のクライアント処理
 
-SSE の `event: error` を受信した場合、JS は:
+同期送信が 502（Gemini 失敗）を返した場合、JS は:
 1. メッセージリストの assistant バブルを `error` 状態スタイル（赤背景 + アイコン）に切替
-2. 「再送信」ボタンを表示（クリックで `POST /ai-chat/messages/{id}/retry`）
-3. Rate Limit 由来の場合は再送信ボタンを表示せず、「明日 0:00 にリセット」を表示
+2. 受講生は同じ内容を入力フォームから送り直して再質問する（専用の再送信動線は持たず、通常の送信フローをフォールバックとして用いる）
+3. Rate Limit 由来（429）の場合はエラーバブルではなく「明日 0:00 にリセット」を表示
 
 ## 関連要件マッピング
 
@@ -990,17 +825,16 @@ SSE の `event: error` を受信した場合、JS は:
 | REQ-ai-chat-033 | `AiChatConversationController::destroy` / `App\UseCases\AiChat\DestroyAction` で物理削除 + 配下 `ai_chat_messages` は FK cascadeOnDelete で連動削除 |
 | REQ-ai-chat-034 | `App\UseCases\AiChat\StoreAction::__invoke` の `$reuseExisting=true` 経路 + `(user_id, section_id)` INDEX |
 | REQ-ai-chat-040 | `AiChatMessageController::store` / `App\Http\Requests\AiChatMessage\StoreRequest` / `App\UseCases\AiChatMessage\StoreAction` (先行 DB::transaction で user/assistant INSERT → Gemini 呼出 → UPDATE。Controller 側で `AiChatLlmFailedException` を catch して 502 + upstream_status JSON 化) |
-| REQ-ai-chat-042 | `StoreAction` の先行 DB::transaction COMMIT で user メッセージ + error 状態 assistant メッセージを永続化 → 再送信ボタンで復旧可能 |
-| REQ-ai-chat-043 | `AiChatMessageController::retry` / `App\UseCases\AiChatMessage\RetryAction` + `AiChatMessageNotRetryableException` |
+| REQ-ai-chat-042 | `StoreAction` の先行 DB::transaction COMMIT で user メッセージ + error 状態 assistant メッセージを永続化 → エラー表示のまま残り、受講生は同じ内容を送り直して再質問できる |
 | REQ-ai-chat-050 | `App\Services\AiChatPromptBuilderService::build` + `config/ai-chat.php` `system_prompt_template` ({user_name} / {certification_context} / {section_context} の 3 プレースホルダ、current_term は持たない)。資格コンテキストは `resolveEnrollmentForContext` で `$conversation->enrollment ?? $user->defaultEnrollment` をフォールバック解決 |
-| REQ-ai-chat-051 | `AiChatPromptBuilderService::buildHistory` の `status != 'error'` フィルタ + `history_window` LIMIT (max_context_tokens 自前切り詰めは持たない) |
+| REQ-ai-chat-051 | `AiChatPromptBuilderService::buildHistory` の `status != 'error'` フィルタ + `history_window` LIMIT（自前のトークン切り詰めは持たず、context overflow は Gemini 側に委ねる）|
 | REQ-ai-chat-060 | `App\Providers\RouteServiceProvider::configureRateLimiting()` の `RateLimiter::for('ai-chat', ...)` / `routes/web.php` の `throttle:ai-chat` (補正ロジックは持たない、Laravel 標準のみ) |
 | REQ-ai-chat-070 | `resources/views/components/ai-chat/floating-widget.blade.php` + `resources/views/layouts/app.blade.php` 末尾の `@if` 条件レンダリング (status=in_progress + ai-chat.* ルート以外で表示) |
 | REQ-ai-chat-071 | [[learning]] Feature の `BrowseController::showSection` が `view()->share('pageMeta', ['section_id' => ..., 'section_title' => ..., 'certification_name' => ...])` で渡す + Widget Blade が `data-section-id` 属性として出力 + `floating-widget.js` が読み取り |
 | REQ-ai-chat-072 | `floating-widget.blade.php` のセミモーダル CSS (`fixed bottom-5 right-5 sm:w-[380px] sm:h-[600px]` 等、モバイル fullscreen)。資格バッジは `default_enrollment` 経由で自動表示 |
 | REQ-ai-chat-073 | `floating-widget.js` の `sessionStorage` 操作 (`certify.aichat.widget.open` / `certify.aichat.current_conversation_id` キー) |
 | REQ-ai-chat-074 | `floating-widget.js` のフル画面遷移ボタン handler (`window.location = ...`) |
-| REQ-ai-chat-080 | `App\Repositories\Contracts\LlmRepositoryInterface` (chat メソッドのみ、streamChat は持たない) / `App\Services\LlmChatResponse` / `App\Repositories\GeminiLlmRepository` / `App\Providers\AppServiceProvider::register` の binding |
+| REQ-ai-chat-080 | `App\Repositories\Contracts\LlmRepositoryInterface`（同期 `chat` メソッドのみ、ストリーミング呼出は持たない）/ `App\Services\LlmChatResponse` / `App\Repositories\GeminiLlmRepository` / `App\Providers\AppServiceProvider::register` の binding |
 | REQ-ai-chat-081 | `GeminiLlmRepository::chat` (`Illuminate\Support\Facades\Http` + 手動 retry ループで 5xx / ConnectionException のみ最大 2 回、429 はリトライしない、失敗時はレスポンス body 先頭 500 文字を例外に含める) |
 | REQ-ai-chat-082 | `AppServiceProvider::register` の binding closure 内で `config('ai-chat.gemini.api_key')` 空チェック → `AiChatNotConfiguredException` |
 | REQ-ai-chat-090 | `routes/web.php` の `if (config('ai-chat.enabled'))` ガード + サイドバー Blade の `Route::has` ガード + Widget の `@if(config('ai-chat.enabled'))` ガード |

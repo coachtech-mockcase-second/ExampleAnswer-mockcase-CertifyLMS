@@ -20,7 +20,7 @@
     </p>
 
     <x-card class="mt-6 max-w-2xl" padding="md" shadow="sm">
-        <form method="POST" action="{{ route('admin.mock-exams.store') }}" class="space-y-5">
+        <form novalidate method="POST" action="{{ route('admin.mock-exams.store') }}" class="space-y-5">
             @csrf
 
             <x-form.select

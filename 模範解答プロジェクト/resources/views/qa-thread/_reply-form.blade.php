@@ -5,7 +5,7 @@
 
 @if ($canReply)
     <x-card padding="md" shadow="sm" class="border border-primary-100/60">
-        <form method="POST" action="{{ route('qa-board.replies.store', $thread) }}" class="flex flex-col gap-3">
+        <form novalidate method="POST" action="{{ route('qa-board.replies.store', $thread) }}" class="flex flex-col gap-3">
             @csrf
             <x-form.textarea
                 name="body"

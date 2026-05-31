@@ -44,7 +44,7 @@
             </x-link-button>
 
             @if (! $mockExam->is_published)
-                <form method="POST" action="{{ route('admin.mock-exams.publish', $mockExam) }}"
+                <form novalidate method="POST" action="{{ route('admin.mock-exams.publish', $mockExam) }}"
                       onsubmit="return confirm('この模試を公開しますか?受講生がすぐに受験できるようになります。');">
                     @csrf
                     <x-button type="submit" variant="primary" size="sm">
@@ -53,7 +53,7 @@
                     </x-button>
                 </form>
             @else
-                <form method="POST" action="{{ route('admin.mock-exams.unpublish', $mockExam) }}"
+                <form novalidate method="POST" action="{{ route('admin.mock-exams.unpublish', $mockExam) }}"
                       onsubmit="return confirm('公開を停止しますか?受講生が新規受験できなくなります。進行中セッションには影響しません。');">
                     @csrf
                     <x-button type="submit" variant="outline" size="sm">
@@ -63,7 +63,7 @@
                 </form>
             @endif
 
-            <form method="POST" action="{{ route('admin.mock-exams.destroy', $mockExam) }}"
+            <form novalidate method="POST" action="{{ route('admin.mock-exams.destroy', $mockExam) }}"
                   onsubmit="return confirm('この模試マスタを削除しますか?この操作は取り消せません。');">
                 @csrf
                 @method('DELETE')

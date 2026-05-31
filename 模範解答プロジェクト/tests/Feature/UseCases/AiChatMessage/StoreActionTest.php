@@ -29,7 +29,7 @@ class StoreActionTest extends TestCase
 
     public function test_creates_user_and_assistant_messages_on_success(): void
     {
-        $fake = FakeLlmRepository::withContent(content: 'こんにちは!', model: 'gemini-2.5-flash');
+        $fake = FakeLlmRepository::withContent(content: 'こんにちは!', model: 'gemini-2.5-flash-lite');
         $this->app->instance(LlmRepositoryInterface::class, $fake);
 
         $conv = $this->makeConversation();
@@ -44,7 +44,7 @@ class StoreActionTest extends TestCase
         $this->assertSame(AiChatMessageRole::Assistant, $result['assistant_message']->role);
         $this->assertSame('こんにちは!', $result['assistant_message']->content);
         $this->assertSame(AiChatMessageStatus::Completed, $result['assistant_message']->status);
-        $this->assertSame('gemini-2.5-flash', $result['assistant_message']->model);
+        $this->assertSame('gemini-2.5-flash-lite', $result['assistant_message']->model);
         $this->assertSame(100, $result['assistant_message']->input_tokens);
         $this->assertSame(50, $result['assistant_message']->output_tokens);
 

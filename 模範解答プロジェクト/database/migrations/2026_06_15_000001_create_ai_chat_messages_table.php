@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * AI 相談会話の個別メッセージを表すテーブル。
  *
  * - role: 'user' / 'assistant' (OpenAI 形式)
- * - status: assistant role のみ意味を持つ ('pending' / 'streaming' / 'completed' / 'error')。user は INSERT 直後に completed 固定
+ * - status: assistant role のみ意味を持つ ('pending' / 'completed' / 'error')。user は INSERT 直後に completed 固定
  * - model / input_tokens / output_tokens / response_time_ms: assistant の応答メタ
  * - error_detail: assistant エラー時の内部ログ。受講生には汎用文言を表示する
  *

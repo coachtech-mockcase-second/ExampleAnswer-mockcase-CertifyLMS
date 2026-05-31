@@ -12,7 +12,6 @@ use App\Http\Controllers\CertificateController;
 use App\Models\Certificate;
 use App\Models\Enrollment;
 use App\Services\CertificatePdfService;
-use App\Services\CertificateSerialNumberService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -25,14 +24,13 @@ use Illuminate\Support\Str;
  * - 同一 Enrollment に対する二重呼出: CertificateAlreadyIssuedException（409、事前 lockForUpdate + exists で検出）
  * - PDF 生成失敗: CertificateGenerationFailedException（500、DB ROLLBACK + Storage 保険削除あり）
  *
- * 採番 + INSERT + PDF 生成 + Storage 保存はすべて `DB::transaction()` 内で実行する。
+ * INSERT + PDF 生成 + Storage 保存はすべて `DB::transaction()` 内で実行する。
  *
  * @see CertificateController
  */
 final class IssueAction
 {
     public function __construct(
-        private readonly CertificateSerialNumberService $serialService,
         private readonly CertificatePdfService $pdfService,
     ) {}
 
@@ -62,7 +60,6 @@ final class IssueAction
                 'user_id' => $enrollment->user_id,
                 'enrollment_id' => $enrollment->id,
                 'certification_id' => $enrollment->certification_id,
-                'serial_no' => $this->serialService->generate(),
                 'pdf_path' => 'certificates/'.Str::ulid().'.pdf',
                 'issued_at' => now(),
             ]);

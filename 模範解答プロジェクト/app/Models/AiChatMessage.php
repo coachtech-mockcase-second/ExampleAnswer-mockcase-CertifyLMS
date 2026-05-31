@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * AI 相談メッセージ (1 会話 N メッセージ) を表す Model。
  *
- * SoftDelete は持たない。親会話が SoftDelete されてもメッセージは残る (履歴整合性のため)。
+ * 物理削除。親会話が物理削除されると外部キーの cascade で連動削除される。
  * status は assistant role のみ意味を持つ。user role は INSERT 直後に Completed 固定。
  *
  * 関連: AiChatConversation(親)

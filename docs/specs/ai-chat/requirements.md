@@ -2,6 +2,7 @@
 
 > 業界標準 + 必要最低限の設計に統一(2026-05 改訂):
 > - **SSE ストリーミング全削除**: 同期版のみ提供(受講生学習負担削減)
+> - **メッセージ「再送信」専用動線削除**: AI 応答失敗時は assistant を `error` 状態で保存・表示するフォールバックのみとし、専用の retry エンドポイント / `RetryAction` / `AiChatMessageNotRetryableException` は持たない。受講生は同じ内容を送り直して再質問する
 > - **「資格相談」モード UI 削除**: 資格コンテキストは `users.default_enrollment_id` 経由で自動付与
 > - **タイトル LLM 自動生成は維持** (config OFF 可、毎回タイトル手入力する手間を回避する業界標準 UX)
 > - **`max_context_tokens` 自前切り詰め削除**: `history_window` 件数だけのシンプル制御
@@ -75,7 +76,7 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 - `role` string enum(`user` / `assistant`)— OpenAI 形式準拠
 - `content` text — メッセージ本文(user の入力 or assistant の応答)
 - `status` string enum(`pending` / `completed` / `error`)— assistant role のみ意味を持つ、user は常に `completed`
-- `model` nullable string — assistant のみ、LLM モデル識別子(例: `gemini-2.5-flash`)
+- `model` nullable string — assistant のみ、LLM モデル識別子(例: `gemini-2.5-flash-lite`)
 - `input_tokens` nullable unsignedInteger — assistant のみ、Gemini API 計測値
 - `output_tokens` nullable unsignedInteger — assistant のみ、Gemini API 計測値
 - `response_time_ms` nullable unsignedInteger — assistant のみ、Gemini API 呼出開始 → 完了までの経過時間
@@ -159,7 +160,7 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
   2. transaction 外で `AiChatPromptBuilderService::build()` でシステムプロンプト組立 + `buildHistory()` で過去メッセージ取得(最新 N 件、N は `config('ai-chat.history_window', 20)`)
   3. `LlmRepositoryInterface::chat()` 呼び出し
   4. 成功時: assistant message を `content` + `model` + `input_tokens` + `output_tokens` + `response_time_ms` + status=`completed` で UPDATE
-  5. 失敗時: assistant message を `error_detail` + status=`error` で UPDATE(user message は残す、受講生は「再送信」ボタンで再生成可能)
+  5. 失敗時: assistant message を `error_detail` + status=`error` で UPDATE(user message は残す、受講生は同じ内容を送り直して再質問できる)
   6. `last_message_at` を `now()` で UPDATE
   7. 初回 (user, assistant completed) ペア成立時にタイトル LLM 自動生成を試行(REQ-ai-chat-100)
 - The ai-chat Module shall リクエストボディに `content` を必須で受け取り、1〜2000 文字に制限する。
@@ -168,13 +169,7 @@ The ai-chat Module shall `ai_chat_messages` テーブルに以下のカラムを
 ### REQ-ai-chat-042: 失敗時の DB 永続化
 
 - If Gemini API 呼出が失敗した場合, then the ai-chat Module shall user メッセージ + assistant メッセージ(status=`error`)を DB に残し、`502 Bad Gateway` で例外を伝搬する。
-- When 受講生が後に同会話を再ロードした場合, the ai-chat Module shall error メッセージが一覧表示され、「再送信」ボタンから再生成できる状態を保つ。
-
-### REQ-ai-chat-043: メッセージ再送信
-
-- The ai-chat Module shall `POST /ai-chat/messages/{message_id}/retry` で `error` 状態の assistant メッセージを再生成する。
-- When 受講生が retry を呼び出した場合, the ai-chat Module shall 該当 assistant の直前の user メッセージを文脈として LLM を再呼出する。
-- The ai-chat Module shall retry は `error` 状態のメッセージに対してのみ可能とし、`completed` メッセージへの retry は HTTP 422 で拒否する。
+- When 受講生が後に同会話を再ロードした場合, the ai-chat Module shall error メッセージがエラー表示のまま一覧に残る(受講生は同じ内容を送り直して再質問できる)。
 
 ### REQ-ai-chat-050: システムプロンプト組立
 

@@ -1,42 +1,26 @@
 {{--
     面談予約フォーム画面。カレンダーで日付を選び、空き時刻スロットを選択して 60 分面談を予約する。
-    構成: パンくず → ヘッダ(残り面談回数 + 追加購入リンク) → 資格切替(inline) → 自動コーチ割当の案内カード → 残数不足アラート(条件) → 予約フォーム[左: 月送りカレンダー + 時刻スロット / 右: 選択内容サマリ + 相談内容 textarea + 送信ボタン]
+    構成: パンくず → 予約/履歴タブ(+残り面談回数・追加購入) → 見出し → 資格切替(inline) → 自動コーチ割当の案内カード → 残数不足アラート(条件) → 予約フォーム[左: 月送りカレンダー + 時刻スロット / 右: 選択内容サマリ + 相談内容 textarea + 送信ボタン]
     フロント挙動: 素の JS でカレンダー日付セルと時刻スロットを描画し、日付選択→その日の空きスロット表示→スロット選択で右サマリ更新 + 送信ボタン活性化(hidden input に選択日時を反映)。月の前後送り / 今日ボタンあり。
 --}}
 @extends('layouts.app')
 
 @section('title', '面談を予約する')
 
-@php
-    use App\Services\MeetingQuotaService;
-
-    $remaining = app(MeetingQuotaService::class)->remaining(auth()->user());
-@endphp
-
 @section('content')
     <x-breadcrumb :items="[
         ['label' => 'ダッシュボード', 'href' => route('dashboard.index')],
-        ['label' => '面談履歴', 'href' => route('meetings.index')],
-        ['label' => '予約する'],
+        ['label' => '面談'],
     ]" />
 
-    <div class="mt-4 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-            <div class="text-xs font-semibold tracking-wider text-primary-700 uppercase">面談予約</div>
-            <h1 class="mt-1 text-2xl font-bold text-ink-900">担当コーチと面談を予約する</h1>
-            <p class="mt-1 text-sm text-ink-500">
-                空き枠から日時を選んで予約してください。コーチは自動で割り当てられます。
-            </p>
-        </div>
-        <div class="text-right">
-            <div class="text-[10px] uppercase tracking-wider text-ink-500">残り面談回数</div>
-            <div class="font-display text-3xl font-bold text-primary-700 tabular-nums">{{ $remaining }}</div>
-            @if (Route::has('meeting-quota.checkout.select'))
-                <a href="{{ route('meeting-quota.checkout.select') }}" class="mt-1 inline-block text-xs text-primary-700 hover:underline">
-                    追加面談を購入する →
-                </a>
-            @endif
-        </div>
+    @include('meeting._partials.nav-tabs', ['meetingsRemaining' => $meetingsRemaining])
+
+    <div class="mt-4">
+        <div class="text-xs font-semibold tracking-wider text-primary-700 uppercase">面談予約</div>
+        <h1 class="mt-1 text-2xl font-bold text-ink-900">担当コーチと面談を予約する</h1>
+        <p class="mt-1 text-sm text-ink-500">
+            空き枠から日時を選んで予約してください。コーチは自動で割り当てられます。
+        </p>
     </div>
 
     {{-- inline Switcher (v3.5、予約画面のみ埋込) --}}
@@ -62,7 +46,7 @@
         </div>
     </div>
 
-    @if ($remaining < 1)
+    @if ($meetingsRemaining < 1)
         <div class="mt-6">
             <x-alert type="warning">
                 <x-slot:title>残面談回数が不足しています</x-slot:title>
@@ -76,7 +60,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('meetings.store', $enrollment) }}" id="meeting-store-form"
+    <form novalidate method="POST" action="{{ route('meetings.store', $enrollment) }}" id="meeting-store-form"
           class="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
         @csrf
 

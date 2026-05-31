@@ -47,10 +47,10 @@
 
 ## Step 5: HTTP 層
 
-- [x] `App\Http\Controllers\NotificationController`(`index` / `popover` / `markAsRead` / `markAllAsRead`)
+- [x] `App\Http\Controllers\NotificationController`(`index` / `show` / `popover` / `markAsRead` / `markAllAsRead`)
 - [x] `App\Http\Controllers\AnnouncementController`(`index` / `create` / `store` / `show`)
 - [x] `routes/web.php`:
-  - `auth` group: `notifications.index` / `notifications.popover` / `notifications.markAsRead` / `notifications.markAllAsRead`
+  - `auth` group: `notifications.index` / `notifications.show` / `notifications.popover` / `notifications.markAsRead` / `notifications.markAllAsRead`
   - `auth + role:admin` group: `Route::resource('announcements')->only(['index', 'create', 'store', 'show'])`
 - [x] `routes/channels.php`: `Broadcast::channel('notifications.{userId}', fn (User $user, $userId) => (string) $user->id === $userId)`
 
@@ -94,6 +94,7 @@
 - [x] `app/View/Composers/NotificationBadgeComposer`(未読件数 + 99+ 表示、未認証時 0)
 - [x] `AppServiceProvider::boot()` に Composer 登録
 - [x] `views/notifications/index.blade.php`(`<x-tabs>` で 全件 / 未読切替、行クリックで markAsRead + 遷移、「全件既読」ボタン)
+- [x] `views/notifications/show.blade.php`(通知詳細ページ。遷移先となる業務画面を持たない自己完結通知=お知らせ等の本文全文表示、開封時に既読化)
 - [x] `views/notifications/_partials/notification-row.blade.php`(種別アイコン + タイトル + プレビュー + 経過時間 + 未読バッジ)
 - [x] `views/notifications/_partials/notification-popover.blade.php`(**ベル横アンカー Popover**、**素の JS** で open/tab/items/loading 管理、`absolute right-0 mt-2 w-[400px] max-w-[calc(100vw-1rem)] max-h-[70vh] rounded-lg shadow-lg border bg-white`、Tailwind `transition opacity, translate-y duration-150` で `opacity-0 -translate-y-1` ↔ `opacity-100 translate-y-0` フェード + 微スライド、ESC / 外側クリック / フッターリンクで close、ヘッダ: 全件/未読タブ + 全件既読ボタン、ボディ: 最新 20 件(内部スクロール)、フッター: 「すべての通知を見る →」リンク)
 - [x] `resources/js/notification/notification-popover.js`(**素の JS、frontend-javascript.md 規約に合わせて Alpine.js 不採用**: open/tab/items 管理 + タブ切替 `GET /notifications/popover?tab=...` fetch + 行クリック既読化 + 遷移前 close + `bumpBadge(delta)` export 関数を realtime.js から呼ぶ)

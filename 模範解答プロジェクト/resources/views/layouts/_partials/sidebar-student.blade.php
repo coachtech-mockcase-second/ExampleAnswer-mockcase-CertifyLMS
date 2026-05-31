@@ -6,13 +6,13 @@
         <x-nav.item route="certifications.index" icon="magnifying-glass" label="資格カタログ" />
         <x-nav.item route="enrollments.index" icon="clipboard-document-list" label="受講中資格" />
         <x-nav.item route="learning.index" icon="book-open" label="教材・演習" />
-        <x-nav.item route="mock-exam.fallback.index" icon="clipboard-document-check" label="模試" />
+        <x-nav.item route="mock-exam.fallback.index" icon="clipboard-document-check" label="模試" :active="request()->routeIs('mock-exam.*', 'mock-exam-sessions.*')" />
 
         <x-nav.section title="相談" :routes="['chat.index', 'qa-board.index', 'ai-chat.index', 'meetings.index', 'meetings.fallback.create', 'meetings.create', 'meetings.show']" />
         <x-nav.item route="chat.index" icon="chat-bubble-left-right" label="chat" :badge="$sidebarBadges['unattendedChat'] ?? 0" />
         <x-nav.item route="qa-board.index" icon="question-mark-circle" label="質問掲示板" />
         <x-nav.item route="ai-chat.index" icon="sparkles" label="AI 相談" />
-        <x-nav.item route="meetings.fallback.create" icon="calendar-days" label="面談予約" />
+        <x-nav.item route="meetings.fallback.create" icon="calendar-days" label="面談予約" :active="request()->routeIs('meetings.*')" />
 
         <x-nav.section title="共通" :routes="['notifications.index', 'settings.profile.edit']" />
         <x-nav.item route="notifications.index" icon="bell" label="通知" />

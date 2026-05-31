@@ -31,7 +31,7 @@
     ];
 @endphp
 
-<form method="POST" action="{{ $action }}" class="space-y-4">
+<form novalidate method="POST" action="{{ $action }}" class="space-y-4">
     @csrf
     @if ($method === 'PATCH')
         @method('PATCH')

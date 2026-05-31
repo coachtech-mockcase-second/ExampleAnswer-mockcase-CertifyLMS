@@ -4,7 +4,7 @@
     フロント観点: data-modal-trigger で開くモーダル(JS あり)。確定で POST フォーム送信(@method('DELETE'))。
 --}}
 <x-modal id="delete-confirm-modal" title="資格を削除しますか？" size="md">
-    <form method="POST" action="{{ route('admin.certifications.destroy', $certification) }}" id="delete-confirm-form">
+    <form novalidate method="POST" action="{{ route('admin.certifications.destroy', $certification) }}" id="delete-confirm-form">
         @csrf
         @method('DELETE')
 

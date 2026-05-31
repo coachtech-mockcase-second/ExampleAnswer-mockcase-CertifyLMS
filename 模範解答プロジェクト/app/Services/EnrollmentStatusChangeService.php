@@ -8,12 +8,16 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Enrollment;
 use App\Models\EnrollmentStatusLog;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Enrollment 状態遷移の監査ログ(`EnrollmentStatusLog`)を INSERT する Service。
  *
  * 呼出側 Action がトランザクション内で recordStatusChange() を呼ぶ前提。本 Service 自体は
  * DB::transaction() を持たない(`backend-services.md` の規約準拠、ステートレス INSERT only)。
+ *
+ * 受講状態の遷移は管理者ダッシュボードの集計(全体 KPI / 資格別修了率)を変えるため、状態遷移の
+ * 記録時に該当集計キャッシュを無効化し、次回ダッシュボード表示で最新値を再計算させる。
  *
  * `final` 不採用: Mockery で recordStatusChange を mock してトランザクション原子性の rollback 検証を
  * Action テストで行う可能性があるため(`UserStatusChangeService` と同じ判断軸)。
@@ -34,6 +38,11 @@ final class EnrollmentStatusChangeService
         ?User $changedBy,
         ?string $reason = null,
     ): EnrollmentStatusLog {
+        // 受講状態の遷移で管理者ダッシュボードの集計値(全体 KPI / 資格別修了率)が変わるため、
+        // 集計キャッシュを無効化して次回表示で最新値を再計算させる。
+        Cache::forget(config('dashboard.admin_kpi_cache_key'));
+        Cache::forget(config('dashboard.admin_completion_rate_cache_key'));
+
         return $enrollment->statusLogs()->create([
             'from_status' => $fromStatus?->value,
             'to_status' => $toStatus->value,

@@ -1,4 +1,4 @@
-# T-A-03 Google Calendar 外部連携を Service 分離
+# T-A-03 Google Calendar 連携を Service へ分離
 
 ## メタ情報
 
@@ -37,7 +37,8 @@
 
 ## 受け入れ条件
 
-- [ ] 認可フロー(認可 URL 発行 / トークン交換 / トークン取消 / 共通クライアント生成)と Calendar 操作(空き時刻取得 / 予定作成 / 予定削除 + トークン期限切れ自動リフレッシュ)がそれぞれ専用 Service(`app/Services/Google/` 配下の 2 クラス)に集約され、Google API ライブラリの直接参照が `app/Services/Google/` 配下以外(空き枠集計 Service / 予約 Action / キャンセル Action / 連携設定 Controller)に存在しない
+- [ ] Google 連携の認可フローと Calendar 操作がそれぞれ専用 Service(`app/Services/Google/` 配下の 2 クラス)に集約され、それ以外の箇所(空き枠集計 Service・予約/キャンセル Action・連携設定 Controller 等)から Google API ライブラリが直接呼ばれていない
+  - 確認方法（コード）: `app/Services/Google/` 以外に Google API ライブラリの参照が無いことをコード検索(grep)で確認
 - [ ] 外部 API 失敗時のフォールバック(空き時刻取得失敗 → 空配列 / 予定作成失敗 → null / 予定削除失敗(既削除含む)→ ログのみで継続)とトークン期限切れ時の自動リフレッシュが Calendar 操作 Service 内に閉じ込められ、利用側に失敗 / 成功を区別する分岐コードがない
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている(抽出した各 Service の単体テストを含む)
 

@@ -251,17 +251,18 @@ class NotifyMeetingReminderAction
 
 ### 管理者お知らせ Controller / Action
 
-(変更なし、既存通り `AnnouncementController` + `Announcement\StoreAction`)
+`AnnouncementController` + `Announcement\StoreAction`(配信側)。受講生の閲覧側は、`AnnouncementNotification` の `link_route='notifications.show'` により通知行クリックで **通知詳細ページ**(`NotificationController::show` + `views/notifications/show.blade.php`)へ遷移し、通知ペイロードの本文全文を表示する。お知らせは遷移先となる業務画面を持たない自己完結通知のため、エンティティ単独画面ではなく通知単位の詳細ページを閲覧面とする(認可は `NotificationPolicy::view` = 受信者本人かのみ、一覧 / ポップオーバー経由は既読化済だがメール内リンクからの直接遷移にも対応するため表示時にも既読化)。
 
-### UI 表面: 通知ポップオーバー / フルページ / バッジ
+### UI 表面: 通知ポップオーバー / フルページ / 詳細ページ / バッジ
 
-通知の閲覧表面は 3 つ。**通知ポップオーバー(ベル横アンカー)** を主表面とし、深掘り用の **フルページ** とバッジ表示を補助とする。
+通知の閲覧表面は 4 つ。**通知ポップオーバー(ベル横アンカー)** を主表面とし、深掘り用の **フルページ**、遷移先業務画面を持たない自己完結通知(お知らせ等)の本文閲覧用の **詳細ページ**、バッジ表示を補助とする。
 
 | # | 表面 | 用途 | 実装 |
 |---|---|---|---|
 | 1 | **通知ポップオーバー(ベル横ドロップダウン Popover)** | 主表面。学習中のチラ見・素早い既読化(全利用シーンの ~80%) | `views/notifications/_partials/notification-popover.blade.php` + `resources/js/notification/notification-popover.js`(素の JS + Sanctum SPA Cookie 認証 + Tailwind fade-in / translate-y アニメーション) |
 | 2 | `/notifications` フルページ | 深掘り / 履歴閲覧 / URL 共有 / モバイル長文閲覧 | `views/notifications/index.blade.php`(既設) |
 | 3 | TopBar / サイドバーバッジ | 未読件数の常時可視化 | `NotificationBadgeComposer` + `topbar.blade.php` / `sidebar-*.blade.php` |
+| 4 | `/notifications/{notification}` 詳細ページ | 遷移先業務画面を持たない自己完結通知(お知らせ等)の本文全文閲覧。通知行クリックの遷移先 | `views/notifications/show.blade.php` + `NotificationController::show`(認可は `NotificationPolicy::view`、表示時に既読化) |
 
 **通知ポップオーバーの仕様**:
 
@@ -322,7 +323,7 @@ sequenceDiagram
 | REQ-notification-071 | `NotifyMeetingCanceledAction` |
 | REQ-notification-072〜074 | `NotifyMeetingReminderAction` + `SendMeetingRemindersCommand` |
 | REQ-notification-075 | 各 `MeetingRequested/Approved/Rejected` 関連を **持たない**(v3 撤回) |
-| REQ-notification-080〜089 | `AnnouncementController` + `StoreAction` |
+| REQ-notification-080〜089 | `AnnouncementController` + `StoreAction` + `NotificationController::show`(REQ-087、通知詳細ページ) + `views/notifications/show.blade.php` |
 | REQ-notification-090〜094 | `NotificationController::index/markAsRead/markAllAsRead` + `views/notifications/index.blade.php` |
 | REQ-notification-100〜102 | `NotificationBadgeComposer` + `topbar.blade.php` / `sidebar-*.blade.php` バッジ |
 | REQ-notification-103〜106 | `Api\V1\NotificationController::index` (Sanctum SPA Cookie 認証) + `_partials/notification-popover.blade.php` (Popover) + `notification-popover.js` (素 JS + `Sanctum::stateful()` + `fetch` with `credentials: 'include'`) + `realtime.js` (Pusher 受信時 DOM 同期) |

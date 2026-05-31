@@ -40,7 +40,6 @@ class IssueActionTest extends TestCase
         $certificate = $action($enrollment);
 
         $this->assertNotNull($certificate);
-        $this->assertSame('CT-202605-00001', $certificate->serial_no);
         $this->assertSame($enrollment->user_id, $certificate->user_id);
         $this->assertSame($enrollment->id, $certificate->enrollment_id);
         $this->assertSame($enrollment->certification_id, $certificate->certification_id);

@@ -74,7 +74,7 @@
 
     <x-modal id="part-create-modal" title="Part を新規作成" size="md">
         <x-slot:body>
-            <form id="part-create-form" method="POST" action="{{ route('admin.certifications.parts.store', $certification) }}" class="space-y-4">
+            <form novalidate id="part-create-form" method="POST" action="{{ route('admin.certifications.parts.store', $certification) }}" class="space-y-4">
                 @csrf
                 <x-form.input
                     name="title"

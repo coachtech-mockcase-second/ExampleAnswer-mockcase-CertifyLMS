@@ -35,7 +35,7 @@
                         </div>
                     </div>
                     @can('detachCoach', $certification)
-                        <form method="POST" action="{{ route('admin.certifications.coaches.detach', ['certification' => $certification, 'coach' => $coach]) }}" class="shrink-0">
+                        <form novalidate method="POST" action="{{ route('admin.certifications.coaches.detach', ['certification' => $certification, 'coach' => $coach]) }}" class="shrink-0">
                             @csrf
                             @method('DELETE')
                             <x-button type="submit" variant="ghost" size="sm">

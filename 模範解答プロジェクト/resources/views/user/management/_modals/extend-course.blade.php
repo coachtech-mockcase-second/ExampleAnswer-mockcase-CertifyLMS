@@ -20,7 +20,7 @@
 @endphp
 
 <x-modal id="extend-course-modal" title="プランを延長" size="md">
-    <form method="POST" action="{{ route('admin.users.extendCourse', $user) }}" id="extend-course-form" class="space-y-4">
+    <form novalidate method="POST" action="{{ route('admin.users.extendCourse', $user) }}" id="extend-course-form" class="space-y-4">
         @csrf
 
         <p class="text-sm text-ink-700 leading-relaxed">

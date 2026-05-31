@@ -16,7 +16,7 @@
     <h1 class="text-2xl font-bold mt-4">コーチメモを編集</h1>
 
     <x-card class="mt-6" padding="lg" shadow="sm">
-        <form method="POST" action="{{ route('enrollment-notes.update', $note) }}" class="space-y-4">
+        <form novalidate method="POST" action="{{ route('enrollment-notes.update', $note) }}" class="space-y-4">
             @csrf
             @method('PATCH')
 

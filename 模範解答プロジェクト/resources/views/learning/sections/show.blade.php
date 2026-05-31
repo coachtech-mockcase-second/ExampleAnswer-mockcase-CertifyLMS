@@ -45,7 +45,7 @@
             <div class="mt-9 grid grid-cols-1 gap-3.5 border-t border-subtle pt-6 sm:grid-cols-2">
                 <div class="sm:col-span-2 flex justify-center mb-1">
                     @if ($completed)
-                        <form method="POST" action="{{ route('learning.sections.unmarkRead', $section) }}">
+                        <form novalidate method="POST" action="{{ route('learning.sections.unmarkRead', $section) }}">
                             @csrf
                             @method('DELETE')
                             <button type="submit"
@@ -55,7 +55,7 @@
                             </button>
                         </form>
                     @else
-                        <form method="POST" action="{{ route('learning.sections.markRead', $section) }}">
+                        <form novalidate method="POST" action="{{ route('learning.sections.markRead', $section) }}">
                             @csrf
                             <button type="submit"
                                 class="inline-flex items-center gap-2 rounded-full bg-primary-600 px-8 py-3 text-sm font-bold text-white shadow-[0_6px_16px_-6px_rgba(13,148,136,0.4)] transition-all hover:bg-primary-700 hover:-translate-y-px">

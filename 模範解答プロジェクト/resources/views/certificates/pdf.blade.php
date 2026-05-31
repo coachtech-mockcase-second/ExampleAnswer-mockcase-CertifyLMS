@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>修了証 — {{ $certificate->serial_no }}</title>
+    <title>修了証</title>
     <style>
         body {
             color: #0F2E2A;
@@ -28,11 +28,6 @@
         .topline .brand-lms {
             color: #0F766E;
             font-weight: normal;
-        }
-        .topline td.serial {
-            text-align: right;
-            font-size: 9pt;
-            color: #6B8783;
         }
         .label-cert {
             text-align: center;
@@ -131,7 +126,6 @@
         <table class="topline">
             <tr>
                 <td class="brand">Certify <span class="brand-lms">LMS</span></td>
-                <td class="serial">SERIAL: {{ $certificate->serial_no }}</td>
             </tr>
         </table>
 
@@ -153,10 +147,7 @@
                 <td class="center">
                     <span class="seal">Certify<br>LMS</span>
                 </td>
-                <td class="right">
-                    <div class="meta-label">証書番号</div>
-                    <div class="meta-value">{{ $certificate->serial_no }}</div>
-                </td>
+                <td class="right"></td>
             </tr>
         </table>
     </div>

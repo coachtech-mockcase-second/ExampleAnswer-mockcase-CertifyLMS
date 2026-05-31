@@ -30,7 +30,7 @@ final class FakeLlmRepository implements LlmRepositoryInterface
         private string $failureMessage = 'Gemini API failed: HTTP 503',
     ) {}
 
-    public static function withContent(string $content, string $model = 'gemini-2.5-flash'): self
+    public static function withContent(string $content, string $model = 'gemini-2.5-flash-lite'): self
     {
         return new self(new LlmChatResponse(
             content: $content,

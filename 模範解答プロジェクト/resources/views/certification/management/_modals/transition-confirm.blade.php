@@ -4,7 +4,7 @@
     フロント観点: data-modal-trigger で開くモーダル(JS あり)。確定で POST フォーム送信。
 --}}
 <x-modal :id="$id" :title="$title" size="md">
-    <form method="POST" action="{{ $action }}" id="{{ $id }}-form">
+    <form novalidate method="POST" action="{{ $action }}" id="{{ $id }}-form">
         @csrf
         <p class="text-sm text-ink-700 leading-relaxed">{{ $description }}</p>
     </form>

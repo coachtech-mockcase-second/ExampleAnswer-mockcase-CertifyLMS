@@ -45,7 +45,7 @@
     </div>
 
     <x-card class="mt-6" padding="sm" shadow="sm">
-        <form method="GET" action="{{ route('admin.sections.questions.index', $section) }}" class="grid gap-3 sm:grid-cols-[1fr_160px_auto]">
+        <form novalidate method="GET" action="{{ route('admin.sections.questions.index', $section) }}" class="grid gap-3 sm:grid-cols-[1fr_160px_auto]">
             <select name="category_id" class="text-sm py-2 px-3 rounded-md bg-white border border-ink-200 text-ink-900 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20">
                 <option value="">全分野</option>
                 @foreach ($categories as $c)

@@ -28,7 +28,7 @@
 
     {{-- フィルタ --}}
     <x-card class="mt-6" padding="sm" shadow="sm">
-        <form method="GET" action="{{ route('admin.mock-exam-sessions.index') }}" class="grid gap-3 sm:grid-cols-[1fr_1fr_140px_140px_auto]">
+        <form novalidate method="GET" action="{{ route('admin.mock-exam-sessions.index') }}" class="grid gap-3 sm:grid-cols-[1fr_1fr_140px_140px_auto]">
             <select name="certification_id" class="text-sm py-2 px-3 rounded-md bg-white border border-ink-200 focus:outline-none focus:border-primary-500">
                 <option value="">全資格</option>
                 @foreach ($certifications as $c)

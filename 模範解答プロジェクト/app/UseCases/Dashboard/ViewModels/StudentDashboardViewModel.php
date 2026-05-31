@@ -21,13 +21,15 @@ use Illuminate\Support\Collection;
 final readonly class StudentDashboardViewModel
 {
     /**
-     * @param Collection<int, StudentEnrollmentCard> $enrollmentCards 受講中(learning + passed)資格カード一覧
+     * @param ?ResumeCard $resume 前回の続き(学習履歴が無い / 取得失敗時 null)
+     * @param Collection<int, StudentEnrollmentCard> $enrollmentCards 受講中(learning)の資格カード一覧
      * @param EloquentCollection<int, Enrollment> $passedEnrollments 修了済資格セクション(passed_at DESC)
      * @param ?Collection<int, EnrollmentGoal> $goalTimeline 個人目標タイムライン(取得失敗時 null)
      * @param ?Collection<int, Meeting> $upcomingMeetings 今後の面談予定(取得失敗時 null)
      */
     public function __construct(
         public ?PlanInfoPanel $planInfo,
+        public ?ResumeCard $resume,
         public Collection $enrollmentCards,
         public EloquentCollection $passedEnrollments,
         public ?StreakSummary $streak,

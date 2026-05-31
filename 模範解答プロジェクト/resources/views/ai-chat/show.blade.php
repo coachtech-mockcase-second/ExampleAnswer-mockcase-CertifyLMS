@@ -103,7 +103,7 @@
                 </div>
 
                 <div class="ml-auto flex gap-1.5">
-                    <form method="POST" action="{{ route('ai-chat.conversations.destroy', $conversation) }}"
+                    <form novalidate method="POST" action="{{ route('ai-chat.conversations.destroy', $conversation) }}"
                         onsubmit="return confirm('この会話を削除しますか? 履歴は残りません。');"
                         class="inline-flex">
                         @csrf
@@ -140,7 +140,7 @@
     {{-- Rename modal --}}
     <x-modal id="rename-ai-chat-modal" title="タイトルを編集" size="sm">
         <x-slot:body>
-            <form method="POST" action="{{ route('ai-chat.conversations.update', $conversation) }}" id="rename-ai-chat-form">
+            <form novalidate method="POST" action="{{ route('ai-chat.conversations.update', $conversation) }}" id="rename-ai-chat-form">
                 @csrf
                 @method('PATCH')
                 <x-form.input

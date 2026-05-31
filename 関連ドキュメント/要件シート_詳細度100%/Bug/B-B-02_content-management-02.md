@@ -1,4 +1,4 @@
-# B-B-02 教材管理の階層一覧(Part / Chapter / Section)が並び順を無視して表示される
+# B-B-02 教材管理の階層一覧（Part / Chapter / Section）が並び順を無視して表示される
 
 ## メタ情報
 
@@ -40,7 +40,6 @@
   - Part 一覧画面の Part
   - Part 詳細画面の Chapter 一覧
   - Chapter 詳細画面の Section 一覧
-- [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
 

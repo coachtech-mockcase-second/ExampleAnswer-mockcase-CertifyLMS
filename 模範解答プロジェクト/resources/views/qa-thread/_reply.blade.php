@@ -49,7 +49,7 @@
             @endif
             {{-- 削除はフォーム送信 + confirm() --}}
             @if ($canDelete)
-                <form
+                <form novalidate
                     method="POST"
                     action="{{ route($destroyRoute, ['thread' => $reply->qa_thread_id, 'reply' => $reply->id]) }}"
                     onsubmit="return confirm('この回答を削除しますか？');"

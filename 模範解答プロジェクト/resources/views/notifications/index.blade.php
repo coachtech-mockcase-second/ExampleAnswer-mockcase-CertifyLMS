@@ -21,7 +21,7 @@
                 </p>
             </div>
             @if ($unreadCount > 0)
-                <form method="POST" action="{{ route('notifications.markAllAsRead') }}">
+                <form novalidate method="POST" action="{{ route('notifications.markAllAsRead') }}">
                     @csrf
                     <x-button type="submit" variant="outline" size="sm">全件既読にする</x-button>
                 </form>

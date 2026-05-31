@@ -66,7 +66,7 @@
                                 <x-link-button href="{{ route('admin.mock-exam-questions.edit', $question) }}" variant="outline" size="sm">
                                     <x-icon name="pencil-square" class="w-4 h-4" />
                                 </x-link-button>
-                                <form method="POST" action="{{ route('admin.mock-exam-questions.destroy', $question) }}"
+                                <form novalidate method="POST" action="{{ route('admin.mock-exam-questions.destroy', $question) }}"
                                       onsubmit="return confirm('この問題を削除しますか?過去のセッションには影響しません。');">
                                     @csrf
                                     @method('DELETE')

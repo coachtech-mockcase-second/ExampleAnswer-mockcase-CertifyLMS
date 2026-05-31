@@ -221,7 +221,7 @@
             {{-- アクション --}}
             <x-card padding="md" shadow="sm">
                 <div class="space-y-2">
-                    <form method="POST" action="{{ route('mock-exam.sessions.store', ['enrollment' => $session->enrollment, 'mockExam' => $session->mockExam]) }}">
+                    <form novalidate method="POST" action="{{ route('mock-exam.sessions.store', ['enrollment' => $session->enrollment, 'mockExam' => $session->mockExam]) }}">
                         @csrf
                         <x-button type="submit" variant="outline" size="md" class="w-full">
                             <x-icon name="arrow-path" class="w-4 h-4" />

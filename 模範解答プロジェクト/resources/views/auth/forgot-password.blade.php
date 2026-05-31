@@ -13,7 +13,7 @@
         登録メールアドレスを入力してください。再設定用のリンクをお送りします。
     </p>
 
-    <form method="POST" action="{{ route('password.email') }}" class="flex flex-col gap-3.5">
+    <form novalidate method="POST" action="{{ route('password.email') }}" class="flex flex-col gap-3.5">
         @csrf
 
         <x-form.input

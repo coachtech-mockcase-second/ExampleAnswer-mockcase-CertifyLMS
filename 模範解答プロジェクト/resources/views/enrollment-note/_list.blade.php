@@ -13,7 +13,7 @@
     <x-slot:header>コーチメモ</x-slot:header>
 
     @can('create', [EnrollmentNote::class, $enrollment])
-        <form method="POST" action="{{ route('enrollments.notes.store', $enrollment) }}" class="space-y-3 pb-4 border-b border-ink-100">
+        <form novalidate method="POST" action="{{ route('enrollments.notes.store', $enrollment) }}" class="space-y-3 pb-4 border-b border-ink-100">
             @csrf
             <x-form.textarea
                 name="body"
@@ -49,7 +49,7 @@
                                 </x-link-button>
                             @endcan
                             @can('delete', $note)
-                                <form
+                                <form novalidate
                                     method="POST"
                                     action="{{ route('enrollment-notes.destroy', $note) }}"
                                     onsubmit="return confirm('このメモを削除しますか？');"

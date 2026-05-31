@@ -41,7 +41,7 @@
         <p class="mt-1.5 text-sm text-ink-600">{{ $enrollment->certification->name }} に紐づく問題の解答履歴です。</p>
     </header>
 
-    <form method="GET" action="{{ route('quiz.history.index', $enrollment) }}" class="mt-6 grid gap-3 md:grid-cols-4 rounded-2xl border border-subtle bg-white p-4">
+    <form novalidate method="GET" action="{{ route('quiz.history.index', $enrollment) }}" class="mt-6 grid gap-3 md:grid-cols-4 rounded-2xl border border-subtle bg-white p-4">
         <label class="text-xs">
             <span class="block text-ink-600">正誤</span>
             <select name="is_correct" class="mt-1 w-full rounded-md border border-ink-200 px-3 py-2 text-sm">
