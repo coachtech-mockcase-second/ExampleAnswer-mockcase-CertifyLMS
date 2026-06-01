@@ -7,9 +7,7 @@ namespace Tests\Feature\Http\QaReply;
 use App\Models\Certification;
 use App\Models\QaThread;
 use App\Models\User;
-use App\Notifications\QaBoard\QaReplyReceivedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -29,8 +27,6 @@ class StoreTest extends TestCase
 
     public function test_student_can_post_reply_in_published_certification(): void
     {
-        Notification::fake();
-
         $author = User::factory()->student()->create();
         $replier = User::factory()->student()->create();
         $cert = Certification::factory()->published()->create();
@@ -46,13 +42,10 @@ class StoreTest extends TestCase
             'user_id' => $replier->id,
             'body' => '回答本文',
         ]);
-        Notification::assertSentTo($author, QaReplyReceivedNotification::class);
     }
 
     public function test_coach_can_post_reply_in_assigned_certification(): void
     {
-        Notification::fake();
-
         $author = User::factory()->student()->create();
         $coach = User::factory()->coach()->create();
         $cert = Certification::factory()->published()->create();
@@ -68,7 +61,6 @@ class StoreTest extends TestCase
             'qa_thread_id' => $thread->id,
             'user_id' => $coach->id,
         ]);
-        Notification::assertSentTo($author, QaReplyReceivedNotification::class);
     }
 
     public function test_coach_cannot_post_reply_in_unassigned_certification(): void
@@ -98,10 +90,8 @@ class StoreTest extends TestCase
         $this->assertContains($response->status(), [403, 404]);
     }
 
-    public function test_self_reply_does_not_send_notification(): void
+    public function test_self_reply_is_allowed(): void
     {
-        Notification::fake();
-
         $author = User::factory()->student()->create();
         $cert = Certification::factory()->published()->create();
         $thread = QaThread::factory()->forCertification($cert)->byUser($author)->create();
@@ -111,7 +101,6 @@ class StoreTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        Notification::assertNotSentTo($author, QaReplyReceivedNotification::class);
         $this->assertDatabaseHas('qa_replies', ['qa_thread_id' => $thread->id, 'user_id' => $author->id]);
     }
 

@@ -10,10 +10,8 @@ use App\Models\ChatMember;
 use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\User;
-use App\Notifications\Chat\ChatMessageReceivedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -24,16 +22,15 @@ use Tests\TestCase;
  * - 担当コーチ 0 件で 422 を返す
  * - 非 ChatMember は 403
  * - 編集 / 削除エンドポイントは存在しない(404)
- * - 送信成功で ChatMessageSent Event + ChatMessageReceivedNotification が発火する
+ * - 送信成功で ChatMessageSent Event が発火する
  */
 class StoreMessageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_student_can_send_message_and_dispatches_event_and_notification(): void
+    public function test_student_can_send_message_and_dispatches_event(): void
     {
         Event::fake([ChatMessageSent::class]);
-        Notification::fake();
 
         $student = User::factory()->student()->inProgress()->create();
         $coach = User::factory()->coach()->inProgress()->create();
@@ -64,8 +61,6 @@ class StoreMessageTest extends TestCase
         ]);
 
         Event::assertDispatched(ChatMessageSent::class);
-        Notification::assertSentTo($coach, ChatMessageReceivedNotification::class);
-        Notification::assertNotSentTo($student, ChatMessageReceivedNotification::class);
     }
 
     public function test_body_required(): void

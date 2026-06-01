@@ -25,8 +25,6 @@ use App\Services\MeetingAvailabilityService;
 use App\Services\MeetingQuotaService;
 use App\UseCases\MeetingQuota\ConsumeQuotaAction;
 use App\UseCases\MeetingQuota\RefundQuotaAction;
-use App\UseCases\Notification\NotifyMeetingCanceledAction;
-use App\UseCases\Notification\NotifyMeetingReservedAction;
 use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -169,7 +167,6 @@ class MeetingController extends Controller
         CoachMeetingLoadService $coachLoadService,
         MeetingQuotaService $quotaService,
         ConsumeQuotaAction $consumeAction,
-        NotifyMeetingReservedAction $notifyReserved,
     ): RedirectResponse {
         $scheduledAt = Carbon::parse($request->validated('scheduled_at'));
         $topic = $request->validated('topic');
@@ -184,7 +181,6 @@ class MeetingController extends Controller
             $coachLoadService,
             $quotaService,
             $consumeAction,
-            $notifyReserved,
         ) {
             if ($quotaService->remaining($student) < 1) {
                 throw new InsufficientMeetingQuotaException;
@@ -217,16 +213,12 @@ class MeetingController extends Controller
             $transaction = ($consumeAction)($student, $meeting->id);
             $meeting->update(['meeting_quota_transaction_id' => $transaction->id]);
 
-            DB::afterCommit(function () use ($meeting, $notifyReserved): void {
-                ($notifyReserved)($meeting);
-            });
-
             return $meeting->fresh();
         });
 
         return redirect()
             ->route('meetings.show', $meeting)
-            ->with('success', '面談を予約しました。担当コーチに通知を送信しました。');
+            ->with('success', '面談を予約しました。');
     }
 
     /**
@@ -236,13 +228,12 @@ class MeetingController extends Controller
     public function cancel(
         Meeting $meeting,
         RefundQuotaAction $refundAction,
-        NotifyMeetingCanceledAction $notifyCanceled,
     ): RedirectResponse {
         $this->authorize('cancel', $meeting);
 
         $actor = auth()->user();
 
-        DB::transaction(function () use ($meeting, $actor, $refundAction, $notifyCanceled) {
+        DB::transaction(function () use ($meeting, $actor, $refundAction) {
             $locked = Meeting::query()->whereKey($meeting->id)->lockForUpdate()->first();
             if ($locked === null || $locked->status !== MeetingStatus::Reserved) {
                 throw MeetingStatusTransitionException::forCancel();
@@ -257,10 +248,6 @@ class MeetingController extends Controller
                 'canceled_by_user_id' => $actor->id,
                 'canceled_at' => now(),
             ]);
-
-            DB::afterCommit(function () use ($locked, $actor, $notifyCanceled): void {
-                ($notifyCanceled)($locked, $actor);
-            });
         });
 
         return redirect()

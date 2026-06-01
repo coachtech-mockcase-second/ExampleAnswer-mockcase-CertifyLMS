@@ -30,7 +30,6 @@ use App\Http\Controllers\MockExamController;
 use App\Http\Controllers\MockExamQuestionController;
 use App\Http\Controllers\MockExamSessionController;
 use App\Http\Controllers\MockExamSessionMonitorController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\QaReplyController;
@@ -87,12 +86,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('avatar', [SettingsAvatarController::class, 'destroy'])->name('avatar.destroy');
         Route::put('password', [SettingsPasswordController::class, 'update'])->name('password.update');
     });
-
-    // 通知
-    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
-    Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
-    Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 
     // 修了証配信(graduated 受講生でも DL 可、active-learning 非適用)
     Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
