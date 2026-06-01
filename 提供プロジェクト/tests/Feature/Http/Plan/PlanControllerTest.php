@@ -40,8 +40,14 @@ class PlanControllerTest extends TestCase
         Plan::factory()->draft()->create(['name' => 'Draft Plan']);
         Plan::factory()->published()->create(['name' => 'Published Plan']);
 
-        $response = $this->actingAs($admin)->get(route('admin.plans.index', ['status' => 'draft']));
+        // 公開中フィルタ: 公開中のみ表示・下書きは非表示(絞り込み条件が下書き固定だとここで落ちる)
+        $response = $this->actingAs($admin)->get(route('admin.plans.index', ['status' => 'published']));
+        $response->assertOk();
+        $response->assertSee('Published Plan');
+        $response->assertDontSee('Draft Plan');
 
+        // 下書きフィルタ: 下書きのみ表示・公開中は非表示
+        $response = $this->actingAs($admin)->get(route('admin.plans.index', ['status' => 'draft']));
         $response->assertOk();
         $response->assertSee('Draft Plan');
         $response->assertDontSee('Published Plan');
