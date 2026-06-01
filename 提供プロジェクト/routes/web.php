@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AiChatConversationController;
 use App\Http\Controllers\AiChatMessageController;
-use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CertificateController;
@@ -248,12 +247,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->name('admin.enrollments.updateExamDate');
     Route::post('enrollments/{enrollment}/fail', [EnrollmentManagementController::class, 'fail'])
         ->name('admin.enrollments.fail');
-
-    // 管理者お知らせ配信(全 in_progress 受講生 / 資格別 / ユーザー指定)
-    Route::resource('announcements', AnnouncementController::class)
-        ->only(['index', 'create', 'store', 'show'])
-        ->parameters(['announcements' => 'announcement'])
-        ->names('admin.announcements');
 });
 
 // ============================================================
