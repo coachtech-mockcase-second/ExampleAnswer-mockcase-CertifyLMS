@@ -37,6 +37,7 @@
 
 - [ ] 受講生が、自分が受講登録していない資格の教材詳細(Part / Chapter / Section)の URL に直接アクセスすると 403 が返る
 - [ ] 受講登録済み(受講中 / 合格)の資格の教材詳細は従来どおり閲覧できる
+- [ ] 同梱 `tests/Feature/Http/Learning/BrowseControllerTest.php::test_show_part_forbidden_for_non_enrolled_student`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 

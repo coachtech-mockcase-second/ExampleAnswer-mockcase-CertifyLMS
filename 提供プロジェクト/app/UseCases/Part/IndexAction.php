@@ -20,7 +20,6 @@ final class IndexAction
     {
         return $certification->parts()
             ->with(['chapters' => fn ($q) => $q->ordered()->withCount('sections')])
-            ->ordered()
             ->get();
     }
 }
