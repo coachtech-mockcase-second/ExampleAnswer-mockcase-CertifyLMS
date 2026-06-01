@@ -25,8 +25,3 @@ Broadcast::channel('chat-room.{chatRoomId}', function (User $user, string $chatR
         ->where('user_id', $user->id)
         ->exists();
 });
-
-// 通知のリアルタイム push 用 Private チャネル。自分宛の userId のみ subscribe 可。
-Broadcast::channel('notifications.{userId}', function (User $user, string $userId): bool {
-    return (string) $user->id === $userId;
-});
