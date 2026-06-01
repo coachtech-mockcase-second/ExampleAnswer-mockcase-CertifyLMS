@@ -9,7 +9,6 @@ use App\Enums\MeetingQuotaTransactionType;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\CoachAvailability;
-use App\Models\CoachGoogleCredential;
 use App\Models\Enrollment;
 use App\Models\Meeting;
 use App\Models\MeetingMemo;
@@ -25,7 +24,6 @@ use Illuminate\Database\Seeder;
  *
  * - **CoachAvailability 投入**: 受講生が予約画面を開いたとき空き枠が表示される状態を作る。固定コーチに加え、
  *   デモコーチ全員に最低 1 件の枠を入れて自動コーチ割当の動作確認をしやすくする。
- * - **CoachGoogleCredential 投入**: coach@ に連携済(ダミートークン)、coach2@ は未連携とし、連携あり / なし両方の予約フォールバック動線を動作確認できるようにする。
  * - **Meeting 状態網羅**: 履歴 UI の各ステータスバッジ・フィルタ・状態遷移ボタンが見える状態を作る。
  *   reserved(今後数日) / completed(過去、メモあり) / canceled(refund 流れ済) の 3 状態を散らす。
  * - **固定 student に最低 1 件ずつ**: 動作確認・スクショ撮影で安定して参照できるよう reserved × 1 / completed × 1 を確実に作る。
@@ -38,27 +36,8 @@ final class MentoringSeeder extends Seeder
     public function run(): void
     {
         $this->seedCoachAvailabilities();
-        $this->seedCoachGoogleCredentials();
         $this->seedFixedStudentMeetings();
         $this->seedDemoMeetings();
-    }
-
-    /**
-     * Google カレンダー連携情報を投入する。
-     *
-     * coach@ に連携済(ダミートークン)を 1 件作り、coach2@ は未連携のまま残す。これにより面談予約時の
-     * 「連携済(ダミートークン経由)コーチ → 連携 API フォールバック」と「未連携コーチ → フォールバック」の
-     * 両ルートを動作確認できる構成にする。
-     */
-    private function seedCoachGoogleCredentials(): void
-    {
-        $coach1 = User::query()->where('email', 'coach@certify-lms.test')->first();
-
-        if ($coach1 !== null) {
-            CoachGoogleCredential::factory()
-                ->forCoach($coach1)
-                ->create();
-        }
     }
 
     /**

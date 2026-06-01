@@ -39,17 +39,4 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
-    'google' => [
-        // OAuth クライアント ID / シークレットは Google Cloud Console > OAuth 2.0 クライアント ID から取得。
-        // redirect は本番 / 開発でドメインだけ差し替える前提で env から構成する。
-        'client_id' => env('GOOGLE_OAUTH_CLIENT_ID'),
-        'client_secret' => env('GOOGLE_OAUTH_CLIENT_SECRET'),
-        'redirect_uri' => env('GOOGLE_OAUTH_REDIRECT_URI', 'http://localhost:8000/settings/google-calendar/callback'),
-        // calendar.readonly: freebusy 取得 / calendar.events: event 作成・削除に最小限必要なスコープ
-        'scopes' => [
-            'https://www.googleapis.com/auth/calendar.readonly',
-            'https://www.googleapis.com/auth/calendar.events',
-        ],
-    ],
-
 ];

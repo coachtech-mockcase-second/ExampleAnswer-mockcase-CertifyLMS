@@ -13,7 +13,6 @@ use App\Models\Enrollment;
 use App\Models\Meeting;
 use App\Models\User;
 use App\Services\CoachMeetingLoadService;
-use App\Services\Google\GoogleCalendarService;
 use App\Services\MeetingAvailabilityService;
 use App\Services\MeetingQuotaService;
 use App\UseCases\MeetingQuota\ConsumeQuotaAction;
@@ -47,7 +46,6 @@ final class StoreAction
         private readonly MeetingQuotaService $quotaService,
         private readonly ConsumeQuotaAction $consumeAction,
         private readonly NotifyMeetingReservedAction $notifyReserved,
-        private readonly GoogleCalendarService $googleCalendarService,
     ) {}
 
     /**
@@ -91,15 +89,8 @@ final class StoreAction
             $transaction = ($this->consumeAction)($student, $meeting->id);
             $meeting->update(['meeting_quota_transaction_id' => $transaction->id]);
 
-            // GCal 連携済コーチなら event を作成して event_id を焼き込む。GCal は付加機能のため失敗しても予約は成立扱い。
-            DB::afterCommit(function () use ($meeting, $coach): void {
-                $credential = $coach->googleCredential;
-                if ($credential !== null) {
-                    $eventId = $this->googleCalendarService->insertEvent($credential, $meeting);
-                    if ($eventId !== null) {
-                        $meeting->update(['google_event_id' => $eventId]);
-                    }
-                }
+            // 通知は予約本体の整合性に影響しない付加処理のため、commit 後に発火する。
+            DB::afterCommit(function () use ($meeting): void {
                 ($this->notifyReserved)($meeting);
             });
 

@@ -9,7 +9,6 @@
 
     /** @var \App\Models\User $user */
     /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\CoachAvailability> $availabilities */
-    $credential = $user->googleCredential;
 
     $dayLabels = [
         0 => '日',
@@ -78,7 +77,9 @@
 @endphp
 
 <div class="space-y-6">
-    {{-- Google カレンダー連携セクション --}}
+    {{-- Google カレンダー連携セクション(連携ルートが未登録の環境では非表示) --}}
+    @if (Route::has('settings.google-calendar.redirect'))
+        @php $credential = $user->googleCredential; @endphp
     <x-card padding="md" shadow="sm">
         <x-slot:header>
             <div class="flex items-center justify-between gap-3">
@@ -140,6 +141,7 @@
             </div>
         @endif
     </x-card>
+    @endif
 
     {{-- 面談可能時間枠カレンダー --}}
     <x-card padding="md" shadow="sm">

@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -265,17 +264,6 @@ class User extends Authenticatable
     public function coachAvailabilities(): HasMany
     {
         return $this->hasMany(CoachAvailability::class, 'coach_id');
-    }
-
-    /**
-     * コーチの Google Calendar OAuth 認証情報(1 コーチ : 1 認証情報)。連携解除時は SoftDelete されるため、
-     * このリレーション経由で取得した行が NULL or trashed なら未連携と判定する。
-     *
-     * @return HasOne<CoachGoogleCredential, $this>
-     */
-    public function googleCredential(): HasOne
-    {
-        return $this->hasOne(CoachGoogleCredential::class, 'coach_id');
     }
 
     /**

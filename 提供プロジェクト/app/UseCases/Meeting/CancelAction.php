@@ -9,7 +9,6 @@ use App\Exceptions\Mentoring\MeetingAlreadyStartedException;
 use App\Exceptions\Mentoring\MeetingStatusTransitionException;
 use App\Models\Meeting;
 use App\Models\User;
-use App\Services\Google\GoogleCalendarService;
 use App\UseCases\MeetingQuota\RefundQuotaAction;
 use App\UseCases\Notification\NotifyMeetingCanceledAction;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +31,6 @@ final class CancelAction
     public function __construct(
         private readonly RefundQuotaAction $refundAction,
         private readonly NotifyMeetingCanceledAction $notifyCanceled,
-        private readonly GoogleCalendarService $googleCalendarService,
     ) {}
 
     /**
@@ -62,14 +60,6 @@ final class CancelAction
             ($this->refundAction)($locked->student, $locked->id);
 
             DB::afterCommit(function () use ($locked, $actor): void {
-                // GCal に event がある場合は削除する。連携解除済 / event 未作成のケースは何もしない。
-                $eventId = $locked->google_event_id;
-                if ($eventId !== null) {
-                    $credential = $locked->coach?->googleCredential;
-                    if ($credential !== null) {
-                        $this->googleCalendarService->deleteEvent($credential, $eventId);
-                    }
-                }
                 ($this->notifyCanceled)($locked, $actor);
             });
 
