@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Meeting;
 
+use App\Enums\MeetingQuotaTransactionType;
 use App\Enums\MeetingStatus;
 use App\Models\Certification;
 use App\Models\CoachAvailability;
@@ -295,5 +296,29 @@ class MeetingControllerTest extends TestCase
             Meeting::query()->where('status', MeetingStatus::Reserved->value)->count(),
             '同コーチ・同時刻の二重予約は (coach_id, scheduled_at) UNIQUE で阻止されるはず',
         );
+    }
+
+    public function test_cancel_refunds_meeting_quota(): void
+    {
+        // Arrange: 予約済(残数消費済)面談 1 件。キャンセルで返却記録が作られることを確認する。
+        Notification::fake();
+        $student = User::factory()->student()->inProgress()->create(['max_meetings' => 5]);
+        $coach = User::factory()->coach()->create();
+        $meeting = Meeting::factory()->reserved()->forCoach($coach)->forStudent($student)->create([
+            'scheduled_at' => now()->addDays(3)->startOfHour(),
+        ]);
+
+        // Act
+        $response = $this->actingAs($student)->post(route('meetings.cancel', $meeting));
+
+        // Assert: キャンセル成立 + 消費分 1 回が返却記録として作られる
+        $response->assertRedirect();
+        $this->assertSame(MeetingStatus::Canceled, $meeting->fresh()->status);
+        $this->assertDatabaseHas('meeting_quota_transactions', [
+            'user_id' => $student->id,
+            'related_meeting_id' => $meeting->id,
+            'type' => MeetingQuotaTransactionType::Refunded->value,
+            'amount' => 1,
+        ]);
     }
 }

@@ -258,8 +258,6 @@ class MeetingController extends Controller
                 'canceled_at' => now(),
             ]);
 
-            ($refundAction)($locked->student, $locked->id);
-
             DB::afterCommit(function () use ($locked, $actor, $notifyCanceled): void {
                 ($notifyCanceled)($locked, $actor);
             });
