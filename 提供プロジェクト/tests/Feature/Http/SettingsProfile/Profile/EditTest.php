@@ -112,14 +112,13 @@ class EditTest extends TestCase
         $response->assertDontSeeText('面談設定');
     }
 
-    public function test_meeting_tab_renders_calendar_and_google_section_for_coach(): void
+    public function test_meeting_tab_renders_calendar_for_coach(): void
     {
         $coach = User::factory()->coach()->create();
 
         $response = $this->actingAs($coach)->get(route('settings.profile.edit', ['tab' => 'meeting']));
 
         $response->assertOk();
-        $response->assertSeeText('Googleカレンダー連携');
         $response->assertSeeText('面談可能時間枠');
         $response->assertSeeText('時間枠を追加');
     }
