@@ -38,6 +38,7 @@
 
 - [ ] オンボーディング完了後に利用状態が在籍中(受講中)へ切り替わり、ログアウトしても設定した認証情報で再ログインできる
 - [ ] オンボーディング完了後、在籍ユーザー向けのプラン機能にアクセスできる
+- [ ] 同梱 `tests/Feature/UseCases/Auth/OnboardActionTest.php::test_transitions_user_to_in_progress_and_persists_profile`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 
