@@ -122,7 +122,7 @@
 
         <x-card padding="md" shadow="sm">
             <x-slot:header>購入数</x-slot:header>
-            <div class="text-3xl font-bold text-ink-900 tabular-nums">{{ $plan->payments->count() }}</div>
+            <div class="text-3xl font-bold text-ink-900 tabular-nums">{{ class_exists(\App\Models\Payment::class) ? $plan->payments->count() : 0 }}</div>
             <div class="text-sm text-ink-500">件(直近 20 件のみ表示)</div>
         </x-card>
     </div>
@@ -130,7 +130,7 @@
     <x-card class="mt-6" padding="md" shadow="sm">
         <x-slot:header>購入履歴(直近 20 件)</x-slot:header>
 
-        @if ($plan->payments->isEmpty())
+        @if (! class_exists(\App\Models\Payment::class) || $plan->payments->isEmpty())
             <p class="text-sm text-ink-500 py-4 text-center">この SKU の購入はまだありません。</p>
         @else
             <x-table>
