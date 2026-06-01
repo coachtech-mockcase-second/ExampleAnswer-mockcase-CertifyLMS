@@ -19,7 +19,6 @@ use App\Models\Invitation;
 use App\Models\LearningHourTarget;
 use App\Models\LearningSession;
 use App\Models\Meeting;
-use App\Models\MeetingPack;
 use App\Models\MockExam;
 use App\Models\MockExamQuestion;
 use App\Models\MockExamSession;
@@ -49,7 +48,6 @@ use App\Policies\EnrollmentPolicy;
 use App\Policies\InvitationPolicy;
 use App\Policies\LearningHourTargetPolicy;
 use App\Policies\LearningSessionPolicy;
-use App\Policies\MeetingPackPolicy;
 use App\Policies\MeetingPolicy;
 use App\Policies\MeetingQuotaPolicy;
 use App\Policies\MockExamPolicy;
@@ -95,7 +93,6 @@ class AuthServiceProvider extends ServiceProvider
         SectionImage::class => SectionImagePolicy::class,
         SectionQuestion::class => SectionQuestionPolicy::class,
         QuestionCategory::class => QuestionCategoryPolicy::class,
-        MeetingPack::class => MeetingPackPolicy::class,
         MockExam::class => MockExamPolicy::class,
         MockExamQuestion::class => MockExamQuestionPolicy::class,
         MockExamSession::class => MockExamSessionPolicy::class,
