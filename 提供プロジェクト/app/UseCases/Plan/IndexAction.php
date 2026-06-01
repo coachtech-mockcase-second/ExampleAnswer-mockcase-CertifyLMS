@@ -25,7 +25,7 @@ final class IndexAction
         }
 
         if ($status !== null) {
-            $query->where('status', $status->value);
+            $query->where('status', PlanStatus::Draft->value);
         }
 
         $driver = $query->getConnection()->getDriverName();

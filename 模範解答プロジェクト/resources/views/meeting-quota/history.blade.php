@@ -34,10 +34,12 @@
                 <span class="font-semibold text-ink-900 tabular-nums">{{ $remaining }} 回</span>
             </p>
         </div>
-        <x-link-button href="{{ route('meeting-quota.checkout.select') }}" variant="primary">
-            <x-icon name="plus" class="w-4 h-4" />
-            追加面談を購入
-        </x-link-button>
+        @if (Route::has('meeting-quota.checkout.select'))
+            <x-link-button href="{{ route('meeting-quota.checkout.select') }}" variant="primary">
+                <x-icon name="plus" class="w-4 h-4" />
+                追加面談を購入
+            </x-link-button>
+        @endif
     </div>
 
     <x-card class="mt-6" padding="sm" shadow="sm">
@@ -98,7 +100,7 @@
                         </x-table.cell>
                         <x-table.cell>
                             <div class="text-sm text-ink-700">
-                                @if ($tx->relatedPayment)
+                                @if (class_exists(\App\Models\Payment::class) && $tx->relatedPayment)
                                     {{ $tx->relatedPayment->meetingPack?->name ?? '—' }}
                                 @elseif ($tx->note)
                                     {{ $tx->note }}

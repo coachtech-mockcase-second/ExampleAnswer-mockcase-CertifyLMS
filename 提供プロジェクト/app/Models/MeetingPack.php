@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * 追加面談購入用の SKU マスタ。受講生が dashboard から購入する都度購入型の面談回数パック。
@@ -19,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * 価格は円単位(unit_amount にそのまま渡す)。Stripe Price ID を事前作成済みの場合は紐付けられるが、
  * 現状は Checkout Session の都度生成(price_data 動的)で運用する。
  *
- * 関連: User(created_by / updated_by) / Payment(購入履歴)
+ * 関連: User(created_by / updated_by)
  */
 class MeetingPack extends Model
 {
@@ -58,14 +57,6 @@ class MeetingPack extends Model
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by_user_id');
-    }
-
-    /**
-     * @return HasMany<Payment, $this>
-     */
-    public function payments(): HasMany
-    {
-        return $this->hasMany(Payment::class);
     }
 
     /**

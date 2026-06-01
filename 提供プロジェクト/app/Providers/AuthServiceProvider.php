@@ -19,7 +19,6 @@ use App\Models\Invitation;
 use App\Models\LearningHourTarget;
 use App\Models\LearningSession;
 use App\Models\Meeting;
-use App\Models\MeetingPack;
 use App\Models\MockExam;
 use App\Models\MockExamQuestion;
 use App\Models\MockExamSession;
@@ -49,7 +48,6 @@ use App\Policies\EnrollmentPolicy;
 use App\Policies\InvitationPolicy;
 use App\Policies\LearningHourTargetPolicy;
 use App\Policies\LearningSessionPolicy;
-use App\Policies\MeetingPackPolicy;
 use App\Policies\MeetingPolicy;
 use App\Policies\MeetingQuotaPolicy;
 use App\Policies\MockExamPolicy;
@@ -95,7 +93,6 @@ class AuthServiceProvider extends ServiceProvider
         SectionImage::class => SectionImagePolicy::class,
         SectionQuestion::class => SectionQuestionPolicy::class,
         QuestionCategory::class => QuestionCategoryPolicy::class,
-        MeetingPack::class => MeetingPackPolicy::class,
         MockExam::class => MockExamPolicy::class,
         MockExamQuestion::class => MockExamQuestionPolicy::class,
         MockExamSession::class => MockExamSessionPolicy::class,
@@ -121,8 +118,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // 追加面談購入動線(購入 / 履歴閲覧)は Model に直接紐づかない受講生 Ability として Gate 登録する
-        Gate::define('purchase-meeting-quota', [MeetingQuotaPolicy::class, 'purchase']);
+        // 面談回数履歴の閲覧は Model に直接紐づかない受講生 Ability として Gate 登録する
         Gate::define('view-meeting-quota-history', [MeetingQuotaPolicy::class, 'viewHistory']);
 
         // 受講生視点の教材閲覧認可: 既存の admin / coach 用 PartPolicy / ChapterPolicy / SectionPolicy が

@@ -39,7 +39,7 @@ class Handler extends ExceptionHandler
      * 403 (`AccessDeniedHttpException`) は対象外: Policy 拒否は Laravel デフォルトの 403 エラーページに任せる。
      * 「他ロールが admin 専用画面にアクセス → 403 ページ」がセキュリティ的にもユーザー体験的にも自然(redirect だと
      * 「なぜ戻されたか」が伝わりにくい)。403 で redirect したい個別ドメイン例外は、例外クラス側に `render()` メソッドを
-     * 生やして個別対応する(例: `App\Exceptions\MeetingQuota\UserNotInProgressException`)。
+     * 生やして個別対応する。
      *
      * @var array<int, int>
      */

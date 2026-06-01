@@ -48,11 +48,13 @@
 
         <div class="flex flex-col gap-1.5 items-end">
             @if ($panel->meetingPacks->isNotEmpty())
-                <a href="{{ route('meeting-quota.checkout.select') }}"
-                   class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white text-primary-700 rounded-[10px] text-sm font-bold shadow-sm hover:bg-primary-50 hover:-translate-y-0.5 transition-all duration-fast">
-                    <x-icon name="plus" class="w-3.5 h-3.5" />
-                    面談回数を購入
-                </a>
+                @if (Route::has('meeting-quota.checkout.select'))
+                    <a href="{{ route('meeting-quota.checkout.select') }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white text-primary-700 rounded-[10px] text-sm font-bold shadow-sm hover:bg-primary-50 hover:-translate-y-0.5 transition-all duration-fast">
+                        <x-icon name="plus" class="w-3.5 h-3.5" />
+                        面談回数を購入
+                    </a>
+                @endif
                 <span class="text-[11px] text-ink-900/70">{{ $panel->meetingPacks->count() }} 種類のプラン</span>
             @else
                 <span class="text-[11px] text-ink-900/70">面談パックは現在用意されていません。</span>

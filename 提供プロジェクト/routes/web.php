@@ -23,9 +23,6 @@ use App\Http\Controllers\EnrollmentNoteController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LearningHourTargetController;
 use App\Http\Controllers\MeetingController;
-use App\Http\Controllers\MeetingPackController;
-use App\Http\Controllers\MeetingPackStatusController;
-use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
 use App\Http\Controllers\MockExamAnswerController;
 use App\Http\Controllers\MockExamCatalogController;
@@ -36,7 +33,6 @@ use App\Http\Controllers\MockExamSessionMonitorController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
-use App\Http\Controllers\PlanStatusController;
 use App\Http\Controllers\QaReplyController;
 use App\Http\Controllers\QaThreadController;
 use App\Http\Controllers\QuestionCategoryController;
@@ -58,7 +54,6 @@ use App\Http\Controllers\Settings\SettingsDefaultEnrollmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeakDrillController;
 use App\Http\Controllers\WeakDrillResultController;
-use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -228,16 +223,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('users/{user}/resend-invitation', [InvitationController::class, 'resend'])->name('admin.invitations.resend');
     Route::delete('invitations/{invitation}', [InvitationController::class, 'destroy'])->name('admin.invitations.destroy');
 
-    // プラン管理(受講プラン マスタ + 状態遷移)
-    Route::resource('plans', PlanController::class)
-        ->parameters(['plans' => 'plan'])
-        ->names('admin.plans');
-    Route::post('plans/{plan}/publish', [PlanStatusController::class, 'publish'])
-        ->name('admin.plans.publish');
-    Route::post('plans/{plan}/archive', [PlanStatusController::class, 'archive'])
-        ->name('admin.plans.archive');
-    Route::post('plans/{plan}/unarchive', [PlanStatusController::class, 'unarchive'])
-        ->name('admin.plans.unarchive');
+    // プラン管理(受講プラン マスタ)
+    Route::get('plans', [PlanController::class, 'index'])->name('admin.plans.index');
 
     // 資格マスタ管理(資格本体の CRUD + 状態遷移、admin のみ)
     Route::resource('certifications', CertificationController::class)
@@ -262,17 +249,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->parameters(['certification-categories' => 'category'])
         ->except(['show', 'create', 'edit'])
         ->names('admin.certification-categories');
-
-    // 面談パック管理(SKU マスタ + 状態遷移)
-    Route::resource('meeting-packs', MeetingPackController::class)
-        ->parameters(['meeting-packs' => 'plan'])
-        ->names('admin.meeting-packs');
-    Route::post('meeting-packs/{plan}/publish', [MeetingPackStatusController::class, 'publish'])
-        ->name('admin.meeting-packs.publish');
-    Route::post('meeting-packs/{plan}/archive', [MeetingPackStatusController::class, 'archive'])
-        ->name('admin.meeting-packs.archive');
-    Route::post('meeting-packs/{plan}/unarchive', [MeetingPackStatusController::class, 'unarchive'])
-        ->name('admin.meeting-packs.unarchive');
 
     // 受講登録管理 — 試験日変更 / 手動学習中止のみ admin 専用(一覧 / 詳細は全ロール共有 group 側に定義)
     Route::patch('enrollments/{enrollment}/exam-date', [EnrollmentManagementController::class, 'updateExamDate'])
@@ -555,11 +531,6 @@ Route::middleware(['auth', 'role:coach'])
 // 受講生専用ルート(受講中=in_progress のみ通過)
 // ============================================================
 Route::middleware(['auth', 'role:student', 'active-learning'])->prefix('meeting-quota')->name('meeting-quota.')->group(function () {
-    // 追加面談購入動線(Stripe Checkout への遷移)
-    Route::get('checkout', [MeetingQuotaCheckoutController::class, 'select'])->name('checkout.select');
-    Route::post('checkout', [MeetingQuotaCheckoutController::class, 'create'])->name('checkout.create');
-    Route::get('success', [MeetingQuotaCheckoutController::class, 'success'])->name('success');
-
     // 面談回数履歴
     Route::get('history', [MeetingQuotaHistoryController::class, 'index'])->name('history');
 });
@@ -615,14 +586,6 @@ if ((bool) config('ai-chat.enabled', true)) {
             });
         });
 }
-
-// ============================================================
-// Webhook(認証なし、署名検証 + CSRF 除外)
-// ============================================================
-// Stripe Webhook: 追加面談購入の決済確定通知を受け取る(VerifyStripeSignature middleware で署名検証)
-Route::post('webhooks/stripe', [StripeWebhookController::class, 'handle'])
-    ->middleware('stripe.signature')
-    ->name('webhooks.stripe');
 
 // ============================================================
 // 開発専用: 共通コンポーネントショーケース(APP_ENV=local のみ表示)
