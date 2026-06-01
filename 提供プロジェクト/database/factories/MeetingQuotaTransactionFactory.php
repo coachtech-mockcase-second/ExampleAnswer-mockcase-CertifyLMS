@@ -6,7 +6,6 @@ namespace Database\Factories;
 
 use App\Enums\MeetingQuotaTransactionType;
 use App\Models\MeetingQuotaTransaction;
-use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -41,10 +40,10 @@ class MeetingQuotaTransactionFactory extends Factory
 
     public function purchased(int $amount = 5, ?string $paymentId = null): static
     {
-        return $this->state(fn (array $attrs) => [
+        return $this->state(fn () => [
             'type' => MeetingQuotaTransactionType::Purchased->value,
             'amount' => $amount,
-            'related_payment_id' => $paymentId ?? Payment::factory()->create()->id,
+            'related_payment_id' => $paymentId,
         ]);
     }
 

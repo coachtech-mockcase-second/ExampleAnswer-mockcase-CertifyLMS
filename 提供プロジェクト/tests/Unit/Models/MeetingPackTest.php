@@ -6,14 +6,13 @@ namespace Tests\Unit\Models;
 
 use App\Enums\MeetingPackStatus;
 use App\Models\MeetingPack;
-use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * MeetingPack モデルのリレーション・Scope・Cast を検証する Unit テスト。
- * 3 リレーション (createdBy / updatedBy / payments) + 2 scope (published / ordered) +
+ * 2 リレーション (createdBy / updatedBy) + 2 scope (published / ordered) +
  * 4 cast (status enum / meeting_count int / price int / sort_order int) を網羅する。
  * 追加面談 SKU マスタ。
  */
@@ -32,20 +31,6 @@ class MeetingPackTest extends TestCase
 
         // Assert
         $this->assertTrue($creator->is($admin));
-    }
-
-    public function test_payments_relation_returns_attached_payments(): void
-    {
-        // Arrange
-        $pack = MeetingPack::factory()->published()->create();
-        Payment::factory()->for($pack)->create();
-        Payment::factory()->for($pack)->create();
-
-        // Act
-        $payments = $pack->payments;
-
-        // Assert
-        $this->assertCount(2, $payments);
     }
 
     public function test_scope_published_filters_only_published(): void

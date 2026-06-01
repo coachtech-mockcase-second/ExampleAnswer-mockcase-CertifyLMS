@@ -52,9 +52,13 @@ final class MeetingQuotaService
         ?MeetingQuotaTransactionType $type = null,
         int $perPage = 20,
     ): LengthAwarePaginator {
-        // 面談予約 Feature(Meeting Model) 未実装環境では relatedMeeting の Eager Loading は省略する。
-        // Meeting Model 導入後は relatedMeeting.enrollment.certification まで一括ロードされる。
-        $with = ['relatedPayment.meetingPack', 'grantedBy'];
+        // 追加面談購入 Feature(Payment Model) / 面談予約 Feature(Meeting Model) が未実装の環境では、
+        // それぞれの関連の Eager Loading を省略する(belongsTo の class 解決は relation 実行時まで遅延されるため、
+        // Eager Loading しない限り未定義クラスを参照しない)。
+        $with = ['grantedBy'];
+        if (class_exists('App\\Models\\Payment')) {
+            $with[] = 'relatedPayment.meetingPack';
+        }
         if (class_exists('App\\Models\\Meeting')) {
             $with[] = 'relatedMeeting.enrollment.certification';
         }

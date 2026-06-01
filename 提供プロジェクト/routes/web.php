@@ -23,7 +23,6 @@ use App\Http\Controllers\EnrollmentNoteController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LearningHourTargetController;
 use App\Http\Controllers\MeetingController;
-use App\Http\Controllers\MeetingQuotaCheckoutController;
 use App\Http\Controllers\MeetingQuotaHistoryController;
 use App\Http\Controllers\MockExamAnswerController;
 use App\Http\Controllers\MockExamCatalogController;
@@ -56,7 +55,6 @@ use App\Http\Controllers\Settings\SettingsDefaultEnrollmentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeakDrillController;
 use App\Http\Controllers\WeakDrillResultController;
-use App\Http\Controllers\Webhooks\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -542,11 +540,6 @@ Route::middleware(['auth', 'role:coach'])
 // 受講生専用ルート(受講中=in_progress のみ通過)
 // ============================================================
 Route::middleware(['auth', 'role:student', 'active-learning'])->prefix('meeting-quota')->name('meeting-quota.')->group(function () {
-    // 追加面談購入動線(Stripe Checkout への遷移)
-    Route::get('checkout', [MeetingQuotaCheckoutController::class, 'select'])->name('checkout.select');
-    Route::post('checkout', [MeetingQuotaCheckoutController::class, 'create'])->name('checkout.create');
-    Route::get('success', [MeetingQuotaCheckoutController::class, 'success'])->name('success');
-
     // 面談回数履歴
     Route::get('history', [MeetingQuotaHistoryController::class, 'index'])->name('history');
 });
@@ -602,14 +595,6 @@ if ((bool) config('ai-chat.enabled', true)) {
             });
         });
 }
-
-// ============================================================
-// Webhook(認証なし、署名検証 + CSRF 除外)
-// ============================================================
-// Stripe Webhook: 追加面談購入の決済確定通知を受け取る(VerifyStripeSignature middleware で署名検証)
-Route::post('webhooks/stripe', [StripeWebhookController::class, 'handle'])
-    ->middleware('stripe.signature')
-    ->name('webhooks.stripe');
 
 // ============================================================
 // 開発専用: 共通コンポーネントショーケース(APP_ENV=local のみ表示)

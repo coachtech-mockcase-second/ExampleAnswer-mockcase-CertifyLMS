@@ -17,7 +17,8 @@ return new class extends Migration
             $table->integer('amount');
             // related_meeting_id: meetings テーブル(mentoring Feature 所有)未作成時の依存回避のため FK 制約は別 Migration で追加する
             $table->ulid('related_meeting_id')->nullable();
-            $table->foreignUlid('related_payment_id')->nullable()->constrained('payments')->nullOnDelete();
+            // related_payment_id: payments テーブル(追加面談購入 Feature 所有)未作成のため FK 制約は付けない(payments 導入時に追加する)
+            $table->ulid('related_payment_id')->nullable();
             $table->foreignUlid('granted_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('note', 500)->nullable();
             $table->timestamp('occurred_at');

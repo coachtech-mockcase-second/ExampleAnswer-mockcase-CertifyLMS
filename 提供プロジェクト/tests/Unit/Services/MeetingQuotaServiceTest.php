@@ -6,7 +6,6 @@ namespace Tests\Unit\Services;
 
 use App\Enums\MeetingQuotaTransactionType;
 use App\Models\MeetingQuotaTransaction;
-use App\Models\Payment;
 use App\Models\User;
 use App\Services\MeetingQuotaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,13 +36,12 @@ class MeetingQuotaServiceTest extends TestCase
     {
         $user = User::factory()->student()->create(['max_meetings' => 4]);
         $admin = User::factory()->admin()->create();
-        $payment = Payment::factory()->succeeded()->state(['user_id' => $user->id])->create();
 
         MeetingQuotaTransaction::factory()->grantedInitial(4)->state(['user_id' => $user->id])->create();
         MeetingQuotaTransaction::factory()->consumed()->state(['user_id' => $user->id])->create();
         MeetingQuotaTransaction::factory()->consumed()->state(['user_id' => $user->id])->create();
         MeetingQuotaTransaction::factory()->refunded()->state(['user_id' => $user->id])->create();
-        MeetingQuotaTransaction::factory()->purchased(5, $payment->id)->state(['user_id' => $user->id])->create();
+        MeetingQuotaTransaction::factory()->purchased(5)->state(['user_id' => $user->id])->create();
         MeetingQuotaTransaction::factory()->adminGrant($admin, 2)->state(['user_id' => $user->id])->create();
 
         // 4 (max) + (-1) + (-1) + 1 + 5 + 2 = 10
@@ -112,33 +110,27 @@ class MeetingQuotaServiceTest extends TestCase
         }
     }
 
-    public function test_history_eager_loads_related_payment_and_granted_by_to_avoid_n_plus_one(): void
+    public function test_history_eager_loads_granted_by_to_avoid_n_plus_one(): void
     {
         $user = User::factory()->student()->create();
         $admin = User::factory()->admin()->create();
 
-        // 5 件の admin_grant + 5 件の purchased を作成
-        MeetingQuotaTransaction::factory()->adminGrant($admin, 1)->count(5)
+        // 10 件の admin_grant を作成
+        MeetingQuotaTransaction::factory()->adminGrant($admin, 1)->count(10)
             ->state(['user_id' => $user->id])->create();
-        foreach (range(1, 5) as $_) {
-            $payment = Payment::factory()->succeeded()->state(['user_id' => $user->id])->create();
-            MeetingQuotaTransaction::factory()->purchased(1, $payment->id)
-                ->state(['user_id' => $user->id])->create();
-        }
 
         DB::enableQueryLog();
         $page = app(MeetingQuotaService::class)->history($user);
         foreach ($page->items() as $tx) {
             // Eager Load 済みなので追加クエリは発生しないはず
             $tx->grantedBy?->name;
-            $tx->relatedPayment?->meetingPack?->name;
         }
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
 
-        // count + select の paginate 2 クエリ + Eager Load 用の数本のクエリ(関連の階層分)で済む想定。
-        // N+1 が走ると transaction 件数 × 関連数で 30+ になる。20 件未満を許容上限とする。
-        $this->assertLessThan(20, count($queries), '想定より多いクエリが発行された(N+1 の可能性)');
+        // count + select の paginate 2 クエリ + grantedBy Eager Load 1 クエリ程度で済む想定。
+        // N+1 が走ると transaction 件数分の追加クエリで 10+ になる。
+        $this->assertLessThan(10, count($queries), '想定より多いクエリが発行された(N+1 の可能性)');
     }
 
     public function test_history_paginates_at_specified_perpage(): void
