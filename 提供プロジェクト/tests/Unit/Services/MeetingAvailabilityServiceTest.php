@@ -7,15 +7,12 @@ namespace Tests\Unit\Services;
 use App\Exceptions\Mentoring\MeetingOutOfAvailabilityException;
 use App\Models\Certification;
 use App\Models\CoachAvailability;
-use App\Models\CoachGoogleCredential;
 use App\Models\Meeting;
 use App\Models\User;
-use App\Services\Google\GoogleCalendarService;
 use App\Services\MeetingAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Mockery\MockInterface;
 use Tests\TestCase;
 
 class MeetingAvailabilityServiceTest extends TestCase
@@ -124,45 +121,5 @@ class MeetingAvailabilityServiceTest extends TestCase
         // 例外が起きないことを確認
         app(MeetingAvailabilityService::class)->validateSlot($certification, Carbon::parse('2026-06-01 09:00:00'));
         $this->addToAssertionCount(1);
-    }
-
-    public function test_excludes_slot_overlapping_with_gcal_busy_for_credentialed_coach(): void
-    {
-        $certification = Certification::factory()->published()->create();
-        $coach = User::factory()->coach()->create();
-        $this->attachCoach($certification, $coach);
-        CoachGoogleCredential::factory()->forCoach($coach)->create();
-
-        $date = Carbon::parse('2026-06-01');
-        CoachAvailability::factory()->forCoach($coach)->onDay(1)->timeRange('09:00:00', '12:00:00')->create();
-
-        $this->mock(GoogleCalendarService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('freebusy')->once()->andReturn([
-                ['start' => Carbon::parse('2026-06-01 10:00:00'), 'end' => Carbon::parse('2026-06-01 11:00:00')],
-            ]);
-        });
-
-        $slots = app(MeetingAvailabilityService::class)->slotsForCertification($certification, $date);
-        $times = $slots->map(fn (array $s) => $s['slot_start']->format('H:i'))->all();
-
-        // 10:00 が GCal busy にぶつかるので除外 → 09:00 / 11:00 のみ残る
-        $this->assertEquals(['09:00', '11:00'], $times);
-    }
-
-    public function test_does_not_call_gcal_for_uncredentialed_coach(): void
-    {
-        $certification = Certification::factory()->published()->create();
-        $coach = User::factory()->coach()->create();
-        $this->attachCoach($certification, $coach);
-
-        $date = Carbon::parse('2026-06-01');
-        CoachAvailability::factory()->forCoach($coach)->onDay(1)->timeRange('09:00:00', '11:00:00')->create();
-
-        $this->mock(GoogleCalendarService::class, function (MockInterface $mock) {
-            $mock->shouldNotReceive('freebusy');
-        });
-
-        $slots = app(MeetingAvailabilityService::class)->slotsForCertification($certification, $date);
-        $this->assertCount(2, $slots);
     }
 }

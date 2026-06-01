@@ -52,7 +52,6 @@ use App\Http\Controllers\SectionQuizController;
 use App\Http\Controllers\SectionQuizResultController;
 use App\Http\Controllers\Settings\AvailabilityController as SettingsAvailabilityController;
 use App\Http\Controllers\Settings\AvatarController as SettingsAvatarController;
-use App\Http\Controllers\Settings\CoachGoogleCredentialController;
 use App\Http\Controllers\Settings\PasswordController as SettingsPasswordController;
 use App\Http\Controllers\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Settings\SettingsDefaultEnrollmentController;
@@ -537,15 +536,6 @@ Route::middleware(['auth', 'role:coach'])->prefix('coach')->name('coach.')->grou
     // 面談管理
     Route::get('meetings', [MeetingController::class, 'indexAsCoach'])->name('meetings.index');
     Route::put('meetings/{meeting}/memo', [MeetingController::class, 'upsertMemo'])->name('meetings.memo');
-});
-
-// ============================================================
-// コーチ専用ルート — Google カレンダー連携
-// ============================================================
-Route::middleware(['auth', 'role:coach'])->prefix('settings/google-calendar')->name('settings.google-calendar.')->group(function () {
-    Route::get('connect', [CoachGoogleCredentialController::class, 'redirect'])->name('redirect');
-    Route::get('callback', [CoachGoogleCredentialController::class, 'callback'])->name('callback');
-    Route::delete('/', [CoachGoogleCredentialController::class, 'destroy'])->name('destroy');
 });
 
 // ============================================================

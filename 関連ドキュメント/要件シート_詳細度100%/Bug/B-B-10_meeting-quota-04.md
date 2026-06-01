@@ -37,6 +37,7 @@
 ## 受け入れ条件
 
 - [ ] 予約済み面談をキャンセルすると、消費されていた面談回数 1 回分が残数に返却される(キャンセル後の残数 = キャンセル前 + 1)
+  - 確認方法（テスト）: 同梱の `tests/Feature/Http/Meeting/MeetingControllerTest.php::test_cancel_refunds_meeting_quota`(修正前は失敗)が pass する
 - [ ] 面談のキャンセル状態への遷移自体は従来どおり成功する(正常系が維持されている)
 
 ## 実装方針(参考)

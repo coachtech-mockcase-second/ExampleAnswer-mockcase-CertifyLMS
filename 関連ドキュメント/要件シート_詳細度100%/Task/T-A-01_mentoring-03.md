@@ -37,7 +37,7 @@
 - [ ] 担当コーチが複数名いる資格の空き枠取得で、コーチごとに個別クエリが発火せず N+1 が解消されている(コーチ集合・空き枠・既存予約が一括取得される)
   - 確認方法（テスト）: 同梱の `tests/Unit/Services/MeetingAvailabilityQueryCountTest.php::test_slots_query_count_does_not_grow_with_coach_count`(修正前は失敗)が pass する
 - [ ] 複数コーチ(Google 連携済 / 未連携が混在)の資格でも空き枠が正しく表示される(未連携コーチは Google を参照せず面談可能時間枠 + 既存予約のみで判定される)
-  - 確認方法（テスト）: 同梱の `tests/Unit/Services/MeetingAvailabilityServiceTest.php::test_does_not_call_gcal_for_uncredentialed_coach`(未連携コーチに外部 API を発行しないことを検証、修正前は失敗)が pass する
+  - 確認方法（コード）: 空き枠取得で Google 連携済コーチにのみ外部 API を呼び出し、未連携コーチには発行しないことをコード検索で確認
 
 ## 実装方針(参考)
 

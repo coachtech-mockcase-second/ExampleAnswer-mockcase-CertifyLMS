@@ -36,7 +36,7 @@
 ## 受け入れ条件
 
 - [ ] 同じコーチの同じ時刻枠に複数の予約がほぼ同時に走っても、予約は 1 件しか成立しない。2 件目以降は「空きコーチなし」として 409 で拒否され、同一コーチが同時刻に二重予約されない
-  - 確認方法（テスト）: 同梱の `tests/Feature/UseCases/Meeting/StoreActionTest.php::test_unique_constraint_race_condition_converts_to_no_available_coach`(修正前は失敗)が pass する
+  - 確認方法（テスト）: 同梱の `tests/Feature/Http/Meeting/MeetingControllerTest.php::test_store_blocks_double_booking_for_same_coach_and_slot`(修正前は失敗)が pass する
 - [ ] 単発の正常な予約・残数 0 での予約拒否・キャンセル → 返却 などの単発系の挙動は従来どおり維持されている
 
 ## 実装方針(参考)
