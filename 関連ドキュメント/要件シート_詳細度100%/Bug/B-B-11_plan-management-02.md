@@ -37,6 +37,7 @@
 
 - [ ] 状態フィルタで「公開中 / 下書き / アーカイブ」を選ぶと、選んだ状態のプランのみが一覧に表示される
 - [ ] 状態フィルタを指定しないときは全状態のプランが表示される(正常系が維持されている)
+- [ ] 同梱 `tests/Feature/Http/Plan/PlanControllerTest.php::test_status_filter_returns_only_matching_plans`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 
