@@ -48,6 +48,7 @@
   - 確認方法（コード・動作確認）: `QUEUE_CONNECTION=database` で配信ジョブが queue に積まれ HTTP 応答を待たせず、worker(`queue:work`)稼働後に各受講生へ通知・メールが届く
 - [ ] 通知 / メールの送信が一時的に失敗した場合は自動でリトライされ、リトライ上限を超えた送信は失敗ジョブとして記録されて後から再投入できる
   - 確認方法（コード）: リトライ上限を超えたジョブが `failed_jobs` テーブルに記録され、`queue:retry` で再投入できることを確認
+- [ ] 同梱 `tests/Unit/Mail/InvitationMailTest.php` の `test_mailable_implements_should_queue_for_async_delivery`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 
