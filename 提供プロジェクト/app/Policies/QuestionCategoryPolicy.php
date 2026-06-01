@@ -42,7 +42,7 @@ class QuestionCategoryPolicy
     {
         return match ($auth->role) {
             UserRole::Admin => true,
-            UserRole::Coach => $certification->coaches()->where('users.id', $auth->id)->exists(),
+            UserRole::Coach => false,
             default => false,
         };
     }

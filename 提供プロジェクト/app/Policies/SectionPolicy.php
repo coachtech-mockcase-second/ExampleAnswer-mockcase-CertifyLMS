@@ -24,7 +24,7 @@ class SectionPolicy
     {
         return match ($auth->role) {
             UserRole::Admin => true,
-            UserRole::Coach => $this->assignedCoach($auth, $chapter->part->certification),
+            UserRole::Coach => false,
             default => false,
         };
     }
@@ -36,7 +36,7 @@ class SectionPolicy
         }
 
         if ($auth->role === UserRole::Coach) {
-            return $this->assignedCoach($auth, $section->chapter->part->certification);
+            return false;
         }
 
         return $section->status === ContentStatus::Published
@@ -83,7 +83,7 @@ class SectionPolicy
     {
         return match ($auth->role) {
             UserRole::Admin => true,
-            UserRole::Coach => $this->assignedCoach($auth, $certification),
+            UserRole::Coach => false,
             default => false,
         };
     }
