@@ -37,6 +37,7 @@
 
 - [ ] オンボーディングを完了した招待 URL に再アクセスすると 410 が返り、オンボーディングを再実行できない
 - [ ] 未使用の有効な招待 URL からのオンボーディングは従来どおり完了できる(正常系が維持されている)
+- [ ] 同梱 `tests/Feature/UseCases/Auth/OnboardActionTest.php::test_marks_invitation_accepted`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 

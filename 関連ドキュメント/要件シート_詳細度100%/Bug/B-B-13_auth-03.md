@@ -37,6 +37,7 @@
 
 - [ ] 「パスワード」と「確認用パスワード」が一致しない場合、422 が返りオンボーディングが完了しない
 - [ ] 両者が一致している場合は従来どおりオンボーディングが完了する(正常系が維持されている)
+- [ ] 同梱 `tests/Feature/Auth/OnboardingTest.php::test_store_rejects_mismatched_password_confirmation`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 

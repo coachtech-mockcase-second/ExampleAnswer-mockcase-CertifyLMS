@@ -255,6 +255,23 @@ class OnboardingTest extends TestCase
         ]);
     }
 
+    public function test_store_rejects_mismatched_password_confirmation(): void
+    {
+        $invitation = $this->freshInvitation();
+
+        $response = $this->from($this->signedShowUrl($invitation))->post($this->postUrl($invitation), [
+            'name' => '受講太郎',
+            'password' => 'secret-pass',
+            'password_confirmation' => 'different-pass',
+        ]);
+
+        $response->assertSessionHasErrors('password');
+        $this->assertDatabaseHas('users', [
+            'id' => $invitation->user_id,
+            'status' => UserStatus::Invited->value,
+        ]);
+    }
+
     public function test_store_requires_meeting_url_for_coach_invitation(): void
     {
         $invitation = $this->freshInvitation(role: UserRole::Coach);
