@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\AiChatConversationController;
-use App\Http\Controllers\AiChatMessageController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CertificateController;
@@ -488,28 +486,6 @@ Route::middleware(['auth', 'role:student', 'active-learning'])->prefix('meeting-
     // 面談回数履歴
     Route::get('history', [MeetingQuotaHistoryController::class, 'index'])->name('history');
 });
-
-// ============================================================
-// 受講生専用 — AI 相談
-// ============================================================
-if ((bool) config('ai-chat.enabled', true)) {
-    Route::middleware(['auth', 'role:student', 'active-learning'])
-        ->prefix('ai-chat')
-        ->name('ai-chat.')
-        ->group(function () {
-            Route::get('/', [AiChatConversationController::class, 'index'])->name('index');
-            Route::post('conversations', [AiChatConversationController::class, 'store'])->name('conversations.store');
-            Route::get('conversations/{conversation}', [AiChatConversationController::class, 'show'])->name('conversations.show');
-            Route::patch('conversations/{conversation}', [AiChatConversationController::class, 'update'])->name('conversations.update');
-            Route::delete('conversations/{conversation}', [AiChatConversationController::class, 'destroy'])->name('conversations.destroy');
-
-            // メッセージ送信は throttle:ai-chat で日次上限を適用
-            Route::middleware('throttle:ai-chat')->group(function () {
-                Route::post('conversations/{conversation}/messages', [AiChatMessageController::class, 'store'])
-                    ->name('conversations.messages.store');
-            });
-        });
-}
 
 // ============================================================
 // 開発専用: 共通コンポーネントショーケース(APP_ENV=local のみ表示)
