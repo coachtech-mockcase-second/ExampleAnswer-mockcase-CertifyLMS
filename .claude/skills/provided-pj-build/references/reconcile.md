@@ -76,6 +76,13 @@
 **対処**: まず **基盤に同型の cross-feature 参照が既に decouple されていないか**を探す(別 Feature のテーブルを `class_exists` / 動的クラス名 / `Route::has` / 遅延 FK migration で feature-aware にしている箇所)。あれば **その確立パターンに揃えて当該データ層も decouple** し、gut しても基盤が休眠する(存在下では透過)状態にする → 提供 PJ で削除可能に。同型パターンが無い / decouple が広範すぎるなら **B: データ層を基盤として残す**(schema 提供の give-away を許容)か **C: 相談**。模範解答を feature-aware 化するなら Phase 3-B(要確認・両スイート検証)。
 **教訓**: 新規機能 gut の前に「このデータ層は誰が参照しているか」を grep(FK / リレーション / Service / テスト / Blade)。基盤が参照していれば単純削除は不可。
 
+### 横断 Feature の gut で、消費側 KEPT Feature の「テスト」がクラスごと落ちる → 結合除去(gut の一部)
+
+**症状**: 新規機能を gut(クラス削除)した瞬間、**別の(残す)Feature のテスト**が「赤」ですらなく **suite ロード時に fatal**(`Class ... not found`)になり、そのテストファイル群が丸ごと走らなくなる。
+**原因**: gut した Feature が「他 Feature に消費される横断 Feature」(通知 / イベント / 共通 Service 等)で、消費側の KEPT テストがその Feature のクラスを `use` / `assertSentTo($x, DeletedNotification::class)` 等で**直接参照**している。クラスを消すと PHP がそのテストファイルをロードできず fatal。bucket② の「gut した Feature **自身**のテストは削除」とは別軸(消費側は KEPT Feature のテストなので削除はできない)。
+**対処**: 消費側 KEPT テストから **gut クラスへの結合だけを外科的に除去**(削除クラスの `import` + `assertSentTo`/`assertNotSentTo` 行を削る。発火を抑えていた `Notification::fake()` 等も不要なら除去)。**その Feature 本来の assert は残す**。除去でメソッドが空になるなら本来 Feature 由来の assert に縮小 or メソッド削除(受講生が gut Feature を再構築する際に再追加する結合なので提供 PJ では外して可)。これは「gut の一部」(発火フック除去と対)であって A/B/C reconcile ではない — 黙って外して可。
+**教訓**: gut 前に「このクラスを **テストで** 参照している KEPT Feature」を grep(`grep -rl "DeletedClass" tests/`、gut Feature 自身のテスト dir 以外がヒットしたら結合除去対象)。Blade/コードだけでなく**テストの横断参照**も洗う。
+
 ### citation テストがバグの「失敗ケース」を踏まず偶然 PASS → テスト強化(B)
 
 **症状**: Bug を仕込んだのに、citation 候補の同梱テストが **赤にならず緑のまま**。テスト自体は存在し該当挙動を assert もしている(assert 欠落の silent gap とは別)。

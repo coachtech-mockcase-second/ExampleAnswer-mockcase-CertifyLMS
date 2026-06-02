@@ -30,6 +30,8 @@
 > **データ層を削除する前に、それを参照する KEPT 基盤コードを grep する**(基盤テーブルの FK / 基盤 Model のリレーション / 基盤 Service の Eager Load / 基盤テスト / 残す Blade)。参照ゼロなら素直に全削除。基盤が参照していると単純削除で `migrate:fresh` FK 切れ・未定義クラス参照・基盤ページ 500 になる → **references/reconcile.md「新規機能のデータ層が基盤に織り込まれている」** で feature-aware 化(基盤の同型 decouple パターンに揃える)or 相談。
 > データ層を例外的に残すのは「フレームワーク標準スキーマ × 残すプラミングがそれに依存」する時だけ(例: 全ページ実行の topbar Composer が触るテーブル)。その場合は **模範解答側を feature-aware に小改修**して、テーブル/ルート未作成でも 500 しないようにしてから削る。
 
+> **Model / Policy / Enum を削除したら、それを登録している箇所も外す**(`AuthServiceProvider` の `$policies` 配列 / `config/*` / `bootstrap/`)。残すと未定義クラス参照で **boot fatal**(`artisan about` / `route:list` で検出されるが、削除と同時に登録も grep して外せば手戻りが減る)。
+
 ### 既存機能の拡張
 
 土台(提供 PJ の所与)は残し、**この Story が足した差分だけ巻き戻す**(diff スタイル):

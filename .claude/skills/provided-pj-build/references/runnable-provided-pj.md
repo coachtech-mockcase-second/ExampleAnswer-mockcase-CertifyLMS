@@ -18,7 +18,7 @@ MA=../模範解答プロジェクト
 [ -f .env ]          || cp $MA/.env .env
 [ -d vendor ]        || cp -r $MA/vendor vendor
 [ -d public/build ]  || cp -r $MA/public/build public/build   # FE は同一なので流用可
-# FE を改修するクラスタは node_modules も流用(cp -r $MA/node_modules node_modules) or `sail npm ci` してから build。FE 無改修なら public/build 流用で build 不要(verification-gate 参照)
+# FE を改修するクラスタは node_modules を用意してから build。⚠️ `cp -r $MA/node_modules` は vite の `.bin/*` symlink を壊し `ERR_MODULE_NOT_FOUND`(vite 起動不可)になるので、**コンテナ内 `sail npm ci`**(確実)or `cp -a`(symlink 保持)を使う。FE 無改修なら public/build 流用で build 不要(verification-gate 参照)
 
 # 2. storage / bootstrap-cache の骨格を用意(コピー除外されている場合)
 mkdir -p storage/framework/{cache/data,sessions,testing,views} storage/app/public storage/logs bootstrap/cache
