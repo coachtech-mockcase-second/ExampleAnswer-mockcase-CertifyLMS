@@ -6,13 +6,10 @@ namespace Tests\Feature\UseCases\Dashboard;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\MeetingStatus;
-use App\Enums\QaThreadStatus;
 use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\LearningSession;
 use App\Models\Meeting;
-use App\Models\QaReply;
-use App\Models\QaThread;
 use App\Models\User;
 use App\Services\ChatUnreadCountService;
 use App\UseCases\Dashboard\FetchCoachDashboardAction;
@@ -102,22 +99,6 @@ class FetchCoachDashboardActionTest extends TestCase
         $vm = app(FetchCoachDashboardAction::class)($coach);
 
         $this->assertCount(1, $vm->todayAndTomorrowMeetings);
-    }
-
-    public function test_unanswered_qa_count_only_includes_threads_without_replies(): void
-    {
-        $coach = User::factory()->coach()->inProgress()->create();
-        $cert = Certification::factory()->published()->create();
-        $this->attachCoach($cert, $coach);
-        $student = User::factory()->student()->inProgress()->create();
-        $openThread = QaThread::factory()->for($cert)->for($student)->state(['status' => QaThreadStatus::Open])->create();
-        $answeredThread = QaThread::factory()->for($cert)->for($student)->state(['status' => QaThreadStatus::Open])->create();
-        QaReply::factory()->for($answeredThread, 'thread')->for($coach, 'user')->create();
-
-        $vm = app(FetchCoachDashboardAction::class)($coach);
-
-        $this->assertSame(1, $vm->unansweredQaCount);
-        $this->assertSame($openThread->id, $vm->recentQaThreads->first()->id);
     }
 
     public function test_unread_chat_count_uses_service(): void

@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\ChatUnreadCountService;
 use App\UseCases\Dashboard\ViewModels\CoachDashboardViewModel;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Route;
 
 /**
  * コーチダッシュボードの ViewModel を組み立てる Action。
@@ -92,6 +93,11 @@ final class FetchCoachDashboardAction
      */
     private function fetchUnansweredQaCount(array $certificationIds): int
     {
+        // 質問掲示板ルートが未登録の環境では集計しない（機能未提供時の防御、件数 0）
+        if (! Route::has('qa-board.index')) {
+            return 0;
+        }
+
         return QaThread::query()
             ->whereIn('certification_id', $certificationIds)
             ->where('status', QaThreadStatus::Open)
@@ -108,6 +114,11 @@ final class FetchCoachDashboardAction
      */
     private function fetchRecentUnansweredQaThreads(array $certificationIds): Collection
     {
+        // 質問掲示板ルートが未登録の環境では空一覧を返す（機能未提供時の防御）
+        if (! Route::has('qa-board.index')) {
+            return collect();
+        }
+
         return QaThread::query()
             ->whereIn('certification_id', $certificationIds)
             ->where('status', QaThreadStatus::Open)
