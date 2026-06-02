@@ -38,7 +38,7 @@
 - [ ] 管理者ダッシュボードの全体 KPI と資格別修了率が一定時間キャッシュされ、短時間に連続表示しても重い集計クエリが再実行されない(キャッシュ保存中はデータを直接増やしても表示件数・修了率が変わらない)
 - [ ] 同梱 `tests/Feature/UseCases/Dashboard/AdminDashboardCacheTest.php` の `test_admin_kpi_is_served_from_cache_on_second_fetch` / `test_completion_rate_is_served_from_cache_on_second_fetch`(キャッシュ未実装では赤)が pass する
 - [ ] 受講状態の遷移後にダッシュボードを開くと、全体 KPI と資格別修了率がともに無効化され最新の集計値が表示される(古い件数・古い修了率が残らない)
-- [ ] 同梱 `tests/Feature/UseCases/Dashboard/AdminDashboardCacheTest.php` の `test_admin_kpi_cache_is_invalidated_on_enrollment_status_change` / `test_completion_rate_cache_is_invalidated_on_enrollment_status_change`(無効化未実装では赤)が pass する
+- [ ] 同梱 `tests/Feature/UseCases/Dashboard/AdminDashboardCacheTest.php` の `test_admin_kpi_cache_is_invalidated_on_enrollment_status_change` / `test_completion_rate_cache_is_invalidated_on_enrollment_status_change`(キャッシュ実装済で無効化未実装だと赤)が pass する
 
 ## 実装方針(参考)
 
