@@ -38,6 +38,7 @@
 
 - [ ] 資格分類の削除に成功すると、一覧画面にリダイレクトされ、成功メッセージ(フラッシュ)が表示される
 - [ ] 追加・更新時の成功メッセージ表示は従来どおり維持されている
+- [ ] 同梱 `tests/Feature/Http/CertificationCategory/DestroyTest.php::test_admin_can_soft_delete_unused_category`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 

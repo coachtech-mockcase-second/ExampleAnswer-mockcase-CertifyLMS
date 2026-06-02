@@ -129,7 +129,7 @@ Story Basic (9) → Bug Basic (16) → Task Basic (3) → ★ Basic 完成
 | `B-B-11` | `plan-management-02` | プラン管理一覧の状態フィルタが正しく絞り込めない | データ(クエリ条件誤り) | 3h | `Plan\IndexAction`(または `PlanController::index`)の status フィルタ条件で、`PlanStatus::Published` を指定したのに `where('status', PlanStatus::Draft->value)` を書いてしまう enum 値コピペミス(公開中プランが draft 扱いで非表示)。S-B-03(プラン管理 Admin UI)直後の連続学習として配置 |
 | `B-B-12` | `auth-02` | オンボーディング完了後に再ログインできなくなる | 機能(状態遷移) | 3h | `Auth\OnboardAction` の `$user->update(['status' => UserStatus::InProgress])` 行を削除 |
 | `B-B-13` | `auth-03` | オンボーディングで確認用パスワードが一致しなくても登録できる | データ(バリデーション) | 2h | FormRequest の `'password' => 'confirmed'` ルールを抜く |
-| `B-B-14` | `chat-01` | チャットの未読バッジに自分の発言までカウントされる | データ(クエリ条件誤り) | 3h | `ChatUnreadCountService` の未読集計 query で `where('sender_id', '!=', auth()->id())` 漏れ |
+| `B-B-14` | `chat-01` | チャットの未読バッジに自分の発言までカウントされる | データ(クエリ条件誤り) | 3h | `ChatUnreadCountService` の3メソッド(`messageCountInRoom` / `messageCountsByRoomForUser` / `roomCountForUser`)から送信者除外条件 `where('sender_user_id', '!=', $user->id)` を削除(同条件が3箇所に分散) |
 | `B-B-15` | `auth-04` | コーチが管理者専用の管理画面にアクセスできてしまう | 認可・認証(Middleware チェック漏れ) | 3h | admin 専用ルート群(`routes/web.php`)の `role:admin` を `role:admin,coach` に書き換え(隣接する共有ルート群からのコピペミスを模す → コーチが管理者専用エリアに混入、受講生は引き続き 403)。**旧案「withdrawn ログイン可能」から差し替え**(2026-05-24): 退会ユーザーは必ず SoftDelete されログインクエリから除外されるため、status チェックを消しても観測不能 → 観測可能な role ガード漏れに変更 |
 | `B-B-16` | `auth-05` | 修了したユーザーがプラン機能にアクセスできてしまう | 認可・認証(Middleware チェック漏れ) | 3h | 既存 `EnsureActiveLearning` Middleware から status 判定行を削除 |
 

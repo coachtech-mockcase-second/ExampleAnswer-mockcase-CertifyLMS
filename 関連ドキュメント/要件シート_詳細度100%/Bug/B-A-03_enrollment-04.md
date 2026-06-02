@@ -38,6 +38,7 @@
 
 - [ ] 受験セッションを作成→キャンセルし、進行中の模試が 1 件も無くなると学習タームが **基礎ターム** に戻る。受験中・提出済・採点完了 のセッションが 1 件でも残る間は **実践ターム** のまま
 - [ ] 受験セッションを作成→受験開始した瞬間に学習タームが **実践ターム** に切り替わる（既存挙動の維持）
+- [ ] 同梱 `tests/Unit/Services/TermJudgementServiceTest.php::test_returns_basic_learning_when_only_canceled_session_exists`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 
