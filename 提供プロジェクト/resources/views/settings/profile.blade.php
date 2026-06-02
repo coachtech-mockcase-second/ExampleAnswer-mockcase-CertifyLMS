@@ -1,28 +1,20 @@
 {{--
-    プロフィール設定画面。タブ切替で「プロフィール / パスワード / 面談設定」の各 partial を出し分けるホスト。
+    プロフィール設定画面。タブ切替で「プロフィール / パスワード」の各 partial を出し分けるホスト。
     構成: パンくず → ヘッダ（タイトル + ロール / ステータスバッジ）→ タブ → 選択中タブの内容（_partials を @include）。
-    面談設定タブはコーチのみ表示。タブは ?tab= のクエリで切替（不正値はプロフィールに丸める）。
-    面談設定タブのときだけカレンダー操作用の JS を読み込む。
+    タブは ?tab= のクエリで切替（不正値はプロフィールに丸める）。JS なし。
 --}}
 @extends('layouts.app')
 
 @section('title', 'プロフィール設定')
 
 @php
-    use App\Enums\UserRole;
-
-    $isCoach = $user->role === UserRole::Coach;
-
-    $allowedTabs = $isCoach ? ['profile', 'password', 'meeting'] : ['profile', 'password'];
+    $allowedTabs = ['profile', 'password'];
     $activeTab = request()->query('tab', 'profile');
     if (! in_array($activeTab, $allowedTabs, true)) {
         $activeTab = 'profile';
     }
 
     $tabs = ['profile' => 'プロフィール', 'password' => 'パスワード'];
-    if ($isCoach) {
-        $tabs['meeting'] = '面談設定';
-    }
 @endphp
 
 @section('content')
@@ -36,7 +28,7 @@
         <div>
             <h1 class="text-2xl font-bold text-ink-900">プロフィール設定</h1>
             <p class="mt-1 text-sm text-ink-500">
-                氏名 / 自己紹介 / アイコン画像とパスワード{{ $isCoach ? ' / 面談設定' : '' }} を管理します。
+                氏名 / 自己紹介 / アイコン画像とパスワード を管理します。
                 メールアドレスとロールの変更は管理者にご依頼ください。
             </p>
         </div>
@@ -57,17 +49,6 @@
             @include('settings._partials.tab-profile', ['user' => $user])
         @elseif ($activeTab === 'password')
             @include('settings._partials.tab-password')
-        @elseif ($activeTab === 'meeting' && $isCoach)
-            @include('settings._partials.tab-meeting', [
-                'user' => $user,
-                'availabilities' => $availabilities ?? collect(),
-            ])
         @endif
     </div>
 @endsection
-
-@push('scripts')
-    @if ($isCoach && $activeTab === 'meeting')
-        @vite('resources/js/settings-profile/availability-calendar.js')
-    @endif
-@endpush
