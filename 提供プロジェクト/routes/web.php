@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\BrowseController;
-use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\CertificationCatalogController;
 use App\Http\Controllers\CertificationCategoryController;
 use App\Http\Controllers\CertificationCoachAssignmentController;
@@ -79,10 +78,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('avatar', [SettingsAvatarController::class, 'destroy'])->name('avatar.destroy');
         Route::put('password', [SettingsPasswordController::class, 'update'])->name('password.update');
     });
-
-    // 修了証配信(graduated 受講生でも DL 可、active-learning 非適用)
-    Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
-        ->name('certificates.download');
 
     // 受講登録(3 ロール共有: student=自分のみ / coach=担当範囲 / admin=全件)。
     // 認可は EnrollmentPolicy::viewAny / view で 3 ロール対応済。閲覧範囲は EnrollmentController で

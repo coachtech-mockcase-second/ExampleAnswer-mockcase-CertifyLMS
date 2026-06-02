@@ -14,7 +14,6 @@ use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\EnrollmentStatusLog;
 use App\Models\User;
-use App\Services\CertificatePdfService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -215,8 +214,5 @@ final class EnrollmentSeeder extends Seeder
             ->create([
                 'issued_at' => $passedAt ?? now(),
             ]);
-
-        // 修了証 DL の実機確認用に PDF 実体まで生成する(発行フロー外での補完のため Service を直接呼ぶ)
-        app(CertificatePdfService::class)->generate($certificate);
     }
 }
