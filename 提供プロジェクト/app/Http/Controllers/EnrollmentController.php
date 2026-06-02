@@ -106,10 +106,7 @@ class EnrollmentController extends Controller
 
         // staff(admin / coach)時のみ進捗集計とコーチメモを eager-load
         if (in_array($user->role, [UserRole::Coach, UserRole::Admin], true)) {
-            $enrollment->loadMissing([
-                'user',
-                'notes' => fn ($q) => $q->with('author')->latest(),
-            ]);
+            $enrollment->loadMissing(['user']);
             $progress = $progressService->summarize($enrollment);
         }
 

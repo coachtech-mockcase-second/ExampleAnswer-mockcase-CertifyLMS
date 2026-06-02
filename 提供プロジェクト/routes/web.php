@@ -17,7 +17,6 @@ use App\Http\Controllers\ContentSearchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EnrollmentManagementController;
-use App\Http\Controllers\EnrollmentNoteController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LearningHourTargetController;
 use App\Http\Controllers\MeetingController;
@@ -165,20 +164,6 @@ Route::middleware(['auth', 'role:student', 'active-learning'])
         Route::delete('enrollments/{enrollment}/hour-target', [LearningHourTargetController::class, 'destroy'])
             ->name('hourTarget.destroy');
     });
-
-// ============================================================
-// admin + コーチ共有ルート(コーチメモ: coach は担当資格内のみ、admin は越境可)
-// ============================================================
-Route::middleware(['auth', 'role:admin,coach'])->group(function () {
-    Route::post('enrollments/{enrollment}/notes', [EnrollmentNoteController::class, 'store'])
-        ->name('enrollments.notes.store');
-    Route::get('enrollment-notes/{note}/edit', [EnrollmentNoteController::class, 'edit'])
-        ->name('enrollment-notes.edit');
-    Route::patch('enrollment-notes/{note}', [EnrollmentNoteController::class, 'update'])
-        ->name('enrollment-notes.update');
-    Route::delete('enrollment-notes/{note}', [EnrollmentNoteController::class, 'destroy'])
-        ->name('enrollment-notes.destroy');
-});
 
 // ============================================================
 // admin 専用ルート
