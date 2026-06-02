@@ -48,7 +48,7 @@
                             <p class="text-[11px] text-ink-500 mt-0.5">{{ $passedAt->format('Y/m/d') }} 修了 · 経過 {{ $daysSince }} 日</p>
                         </div>
                         <x-badge variant="success" size="sm">修了</x-badge>
-                        @if ($certificate !== null)
+                        @if ($certificate !== null && Route::has('certificates.download'))
                             <a href="{{ route('certificates.download', $certificate) }}"
                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary-600 hover:bg-secondary-700 text-white rounded-lg text-xs font-semibold transition-colors">
                                 <x-icon name="document-text" class="w-3 h-3" />

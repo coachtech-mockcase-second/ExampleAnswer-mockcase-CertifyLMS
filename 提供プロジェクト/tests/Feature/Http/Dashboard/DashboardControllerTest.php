@@ -96,7 +96,7 @@ class DashboardControllerTest extends TestCase
         $response->assertSee(route('learning.sections.show', $section->id));
     }
 
-    public function test_student_dashboard_passed_section_links_to_enrollment_review_and_certificate(): void
+    public function test_student_dashboard_passed_section_links_to_enrollment_review(): void
     {
         // Arrange: 修了済資格 + 発行済み修了証
         $plan = Plan::factory()->published()->create();
@@ -110,11 +110,10 @@ class DashboardControllerTest extends TestCase
         // Act
         $response = $this->actingAs($student)->get(route('dashboard.index'));
 
-        // Assert: 修了済セクションが 資格名→受講登録詳細 / 復習→教材 / 修了証 PDF の 3 導線を描画
+        // Assert: 修了済セクションが 資格名→受講登録詳細 / 復習→教材 の導線を描画
         $response->assertOk();
         $response->assertSee(route('enrollments.show', $enrollment->id));
         $response->assertSee(route('learning.enrollments.show', $enrollment->id));
-        $response->assertSee('修了証 PDF');
     }
 
     public function test_admin_dashboard_renders_even_when_kpi_service_throws(): void

@@ -37,7 +37,7 @@
                             <x-icon name="book-open" class="w-3 h-3" />
                             復習
                         </a>
-                        @if ($certificate !== null)
+                        @if ($certificate !== null && Route::has('certificates.download'))
                             <a href="{{ route('certificates.download', $certificate) }}"
                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary-600 hover:bg-secondary-700 text-white rounded-lg text-xs font-semibold transition-colors">
                                 <x-icon name="document-text" class="w-3 h-3" />

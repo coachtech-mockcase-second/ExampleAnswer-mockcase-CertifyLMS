@@ -26,9 +26,13 @@
                     </div>
                     <div class="text-right shrink-0">
                         <div class="text-xs text-ink-500 font-mono tabular-nums">{{ $cert->issued_at?->format('Y-m-d') }}</div>
-                        <a href="{{ route('certificates.download', $cert) }}" class="text-xs text-primary-700 font-semibold hover:underline">
-                            PDF をダウンロード
-                        </a>
+                        @if (Route::has('certificates.download'))
+                            <a href="{{ route('certificates.download', $cert) }}" class="text-xs text-primary-700 font-semibold hover:underline">
+                                PDF をダウンロード
+                            </a>
+                        @else
+                            <span class="text-xs text-ink-500">PDF 準備中</span>
+                        @endif
                     </div>
                 </li>
             @endforeach
