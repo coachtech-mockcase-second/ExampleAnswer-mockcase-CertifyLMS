@@ -51,7 +51,7 @@ final class GradeAction
 
         $totalQuestions = $session->total_questions;
         $scorePercentage = $totalQuestions > 0
-            ? round($totalCorrect / $totalQuestions * 100, 2)
+            ? round($totalCorrect / $totalQuestions, 2)
             : 0.0;
         $pass = $scorePercentage >= (float) $session->passing_score_snapshot;
 
