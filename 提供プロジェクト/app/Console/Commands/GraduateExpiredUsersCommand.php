@@ -28,20 +28,17 @@ class GraduateExpiredUsersCommand extends Command
     {
         $count = 0;
 
-        // 件数無制限になり得る対象を chunkById で分割処理。foreach 内で status を InProgress → Graduated に
-        // 更新する(WHERE 条件カラムと同じ)ため、offset ベースの chunk だと取りこぼしが発生する → chunkById 必須。
-        User::query()
+        $users = User::query()
             ->with('plan')
             ->where('status', UserStatus::InProgress->value)
             ->whereNotNull('plan_expires_at')
             ->where('plan_expires_at', '<', now())
-            ->orderBy('id')
-            ->chunkById(100, function ($users) use ($action, &$count): void {
-                foreach ($users as $user) {
-                    $action($user);
-                    $count++;
-                }
-            });
+            ->get();
+
+        foreach ($users as $user) {
+            $action($user);
+            $count++;
+        }
 
         $this->info("Graduated {$count} expired users.");
 

@@ -13,8 +13,7 @@ use Illuminate\Console\Command;
  * `scheduled_at + 60 分` を過ぎた reserved 面談を completed に一括遷移する Schedule Command。
  *
  * 15 分間隔で起動し、終了時刻超過の予約を即時に履歴側へ送り出す(運用上のリアルタイム性確保)。
- * 大量データ対応のため `chunkById` で処理し、AutoCompleteMeetingAction が行レベルロック + 状態再確認で
- * 二重遷移を防ぐ(冪等)。
+ * AutoCompleteMeetingAction が行レベルロック + 状態再確認で二重遷移を防ぐ(冪等)。
  */
 class AutoCompleteMeetingsCommand extends Command
 {
@@ -26,16 +25,15 @@ class AutoCompleteMeetingsCommand extends Command
     {
         $count = 0;
 
-        Meeting::query()
+        $meetings = Meeting::query()
             ->where('status', MeetingStatus::Reserved->value)
             ->where('scheduled_at', '<', now()->subMinutes(60))
-            ->orderBy('id')
-            ->chunkById(100, function ($meetings) use ($action, &$count): void {
-                foreach ($meetings as $meeting) {
-                    $action($meeting);
-                    $count++;
-                }
-            });
+            ->get();
+
+        foreach ($meetings as $meeting) {
+            $action($meeting);
+            $count++;
+        }
 
         $this->info("自動完了した面談を {$count} 件処理しました。");
 
