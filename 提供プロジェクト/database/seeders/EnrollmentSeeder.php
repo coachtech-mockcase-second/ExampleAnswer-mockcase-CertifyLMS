@@ -12,7 +12,6 @@ use App\Enums\UserStatus;
 use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\Enrollment;
-use App\Models\EnrollmentGoal;
 use App\Models\EnrollmentNote;
 use App\Models\EnrollmentStatusLog;
 use App\Models\User;
@@ -113,17 +112,6 @@ final class EnrollmentSeeder extends Seeder
                     'changed_reason' => '新規登録',
                 ],
             );
-
-            if ($index === 0 && $enrollment->goals()->doesntExist()) {
-                EnrollmentGoal::factory()->for($enrollment)->achieved()->create([
-                    'title' => '参考書 1 冊を読破する',
-                    'achieved_at' => now()->subDays(5),
-                ]);
-                EnrollmentGoal::factory()->for($enrollment)->create([
-                    'title' => '過去問 3 年分を解く',
-                    'target_date' => now()->addDays(30)->toDateString(),
-                ]);
-            }
 
             $this->seedNotesForEnrollment($enrollment, $admin);
         }

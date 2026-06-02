@@ -9,7 +9,7 @@ use App\Models\Enrollment;
 /**
  * Enrollment 詳細取得 Action。受講生 / コーチ / admin 共通(認可は Controller の Policy で済ませる前提)。
  *
- * 詳細ビューで必要な goals / coaches / 修了証 / 最新の状態遷移ログを eager load する。
+ * 詳細ビューで必要な coaches / 修了証 / 最新の状態遷移ログを eager load する。
  */
 final class ShowAction
 {
@@ -20,7 +20,6 @@ final class ShowAction
             'certification.coaches',
             'certificate',
             'latestStatusLog.changedBy',
-            'goals' => fn ($q) => $q->displayOrder(),
         ]);
     }
 }

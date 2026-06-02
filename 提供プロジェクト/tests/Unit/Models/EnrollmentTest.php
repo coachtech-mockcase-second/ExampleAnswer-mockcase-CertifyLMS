@@ -10,7 +10,6 @@ use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\CertificationCoachAssignment;
 use App\Models\Enrollment;
-use App\Models\EnrollmentGoal;
 use App\Models\EnrollmentStatusLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,7 +18,7 @@ use Tests\TestCase;
 
 /**
  * Enrollment モデルの主要リレーション・Scope・Cast・SoftDelete を検証する Unit テスト。
- * 6 主要リレーション + 4 scope (learning / passed / failed / forUser) + 4 cast + SoftDelete を網羅する。
+ * 5 主要リレーション + 4 scope (learning / passed / failed / forUser) + 4 cast + SoftDelete を網羅する。
  */
 class EnrollmentTest extends TestCase
 {
@@ -63,23 +62,6 @@ class EnrollmentTest extends TestCase
         // Assert
         $this->assertNotNull($issued, 'passed enrollment は Certificate を 1 件持つはず');
         $this->assertTrue($issued->is($certificate));
-    }
-
-    public function test_goals_relation_returns_only_attached_goals(): void
-    {
-        // Arrange
-        $enrollment = Enrollment::factory()->create();
-        $goalA = EnrollmentGoal::factory()->for($enrollment)->create();
-        $goalB = EnrollmentGoal::factory()->for($enrollment)->create();
-        EnrollmentGoal::factory()->create(); // 別 enrollment の goal、混入しないはず
-
-        // Act
-        $goals = $enrollment->goals;
-
-        // Assert
-        $this->assertCount(2, $goals, '対象 enrollment の goal だけが取得されるはず');
-        $this->assertTrue($goals->contains($goalA));
-        $this->assertTrue($goals->contains($goalB));
     }
 
     public function test_status_logs_relation_returns_history(): void
