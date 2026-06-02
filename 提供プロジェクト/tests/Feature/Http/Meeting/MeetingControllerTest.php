@@ -129,8 +129,9 @@ class MeetingControllerTest extends TestCase
         CoachAvailability::factory()->forCoach($coach)->onDay(1)->timeRange('09:00:00', '18:00:00')->create();
         $enrollment = Enrollment::factory()->for($student, 'user')->for($certification)->learning()->create();
 
+        $scheduledAt = now()->startOfDay()->next(Carbon::MONDAY)->setTime(10, 30); // 次の月曜 10:30(分が 0 でない=不正)
         $response = $this->actingAs($student)->post(route('meetings.store', $enrollment), [
-            'scheduled_at' => '2026-06-01T10:30:00',  // 分単位が 30
+            'scheduled_at' => $scheduledAt->format('Y-m-d\TH:i:s'),
             'topic' => '相談したい',
         ]);
 
@@ -230,8 +231,9 @@ class MeetingControllerTest extends TestCase
         CoachAvailability::factory()->forCoach($coach)->onDay(1)->timeRange('09:00:00', '12:00:00')->create();
         $enrollment = Enrollment::factory()->for($student, 'user')->for($certification)->learning()->create();
 
+        $date = now()->startOfDay()->next(Carbon::MONDAY)->format('Y-m-d'); // 次の月曜(未来)
         $response = $this->actingAs($student)->getJson(
-            route('meetings.availability', $enrollment).'?date=2026-06-01'
+            route('meetings.availability', $enrollment)."?date={$date}"
         );
 
         $response->assertOk();
