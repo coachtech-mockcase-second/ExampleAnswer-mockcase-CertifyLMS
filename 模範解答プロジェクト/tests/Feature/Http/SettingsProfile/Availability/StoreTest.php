@@ -23,7 +23,7 @@ class StoreTest extends TestCase
             'is_active' => '1',
         ]);
 
-        $response->assertRedirect(route('settings.profile.edit', ['tab' => 'meeting']));
+        $response->assertRedirect(route('settings.availability.index'));
         $response->assertSessionHas('success', '面談可能時間枠を追加しました。');
 
         $this->assertDatabaseHas('coach_availabilities', [

@@ -82,48 +82,6 @@ class EditTest extends TestCase
         $response->assertSeeText('新しいパスワード');
     }
 
-    public function test_coach_sees_meeting_tab_in_tab_list(): void
-    {
-        $coach = User::factory()->coach()->create();
-
-        $response = $this->actingAs($coach)->get(route('settings.profile.edit'));
-
-        $response->assertOk();
-        $response->assertSeeText('面談設定');
-    }
-
-    public function test_student_does_not_see_meeting_tab(): void
-    {
-        $student = User::factory()->student()->create();
-
-        $response = $this->actingAs($student)->get(route('settings.profile.edit'));
-
-        $response->assertOk();
-        $response->assertDontSeeText('面談設定');
-    }
-
-    public function test_admin_does_not_see_meeting_tab(): void
-    {
-        $admin = User::factory()->admin()->create();
-
-        $response = $this->actingAs($admin)->get(route('settings.profile.edit'));
-
-        $response->assertOk();
-        $response->assertDontSeeText('面談設定');
-    }
-
-    public function test_meeting_tab_renders_calendar_and_google_section_for_coach(): void
-    {
-        $coach = User::factory()->coach()->create();
-
-        $response = $this->actingAs($coach)->get(route('settings.profile.edit', ['tab' => 'meeting']));
-
-        $response->assertOk();
-        $response->assertSeeText('Googleカレンダー連携');
-        $response->assertSeeText('面談可能時間枠');
-        $response->assertSeeText('時間枠を追加');
-    }
-
     public function test_meeting_tab_query_for_non_coach_falls_back_to_profile_tab(): void
     {
         $student = User::factory()->student()->create([
