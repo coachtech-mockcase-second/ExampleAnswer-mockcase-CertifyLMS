@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AiChatConversationController;
 use App\Http\Controllers\AiChatMessageController;
-use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\Auth\OnboardingController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CertificateController;
@@ -30,7 +29,6 @@ use App\Http\Controllers\MockExamController;
 use App\Http\Controllers\MockExamQuestionController;
 use App\Http\Controllers\MockExamSessionController;
 use App\Http\Controllers\MockExamSessionMonitorController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\QaReplyController;
@@ -87,12 +85,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('avatar', [SettingsAvatarController::class, 'destroy'])->name('avatar.destroy');
         Route::put('password', [SettingsPasswordController::class, 'update'])->name('password.update');
     });
-
-    // 通知
-    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
-    Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
-    Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 
     // 修了証配信(graduated 受講生でも DL 可、active-learning 非適用)
     Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
@@ -255,12 +247,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         ->name('admin.enrollments.updateExamDate');
     Route::post('enrollments/{enrollment}/fail', [EnrollmentManagementController::class, 'fail'])
         ->name('admin.enrollments.fail');
-
-    // 管理者お知らせ配信(全 in_progress 受講生 / 資格別 / ユーザー指定)
-    Route::resource('announcements', AnnouncementController::class)
-        ->only(['index', 'create', 'store', 'show'])
-        ->parameters(['announcements' => 'announcement'])
-        ->names('admin.announcements');
 });
 
 // ============================================================

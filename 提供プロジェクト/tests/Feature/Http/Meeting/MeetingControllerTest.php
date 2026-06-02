@@ -11,10 +11,8 @@ use App\Models\CoachAvailability;
 use App\Models\Enrollment;
 use App\Models\Meeting;
 use App\Models\User;
-use App\Notifications\Mentoring\MeetingReservedNotification;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -91,7 +89,6 @@ class MeetingControllerTest extends TestCase
 
     public function test_store_creates_meeting_for_owner(): void
     {
-        Notification::fake();
         $student = User::factory()->student()->inProgress()->create(['max_meetings' => 3]);
         $admin = User::factory()->admin()->create();
         $coach = User::factory()->coach()->inProgress()->create([
@@ -116,7 +113,6 @@ class MeetingControllerTest extends TestCase
             'enrollment_id' => $enrollment->id,
             'status' => MeetingStatus::Reserved->value,
         ]);
-        Notification::assertSentTo($coach, MeetingReservedNotification::class);
     }
 
     public function test_store_rejects_non_zero_minutes(): void
@@ -156,7 +152,6 @@ class MeetingControllerTest extends TestCase
 
     public function test_cancel_allows_owner(): void
     {
-        Notification::fake();
         $student = User::factory()->student()->inProgress()->create(['max_meetings' => 5]);
         $coach = User::factory()->coach()->create();
         $meeting = Meeting::factory()->reserved()->forCoach($coach)->forStudent($student)->create([
@@ -265,7 +260,6 @@ class MeetingControllerTest extends TestCase
         // Arrange: 予約可能コンテキスト + 同コーチ・同時刻に canceled 面談を 1 件先在させる。
         // canceled は候補抽出(予約済コーチ除外)をすり抜けるが、(coach_id, scheduled_at) UNIQUE は
         // status を問わず効くため、並行を起こさず決定論的に二重予約の衝突を再現できる。
-        Notification::fake();
         $student = User::factory()->student()->inProgress()->create(['max_meetings' => 3]);
         $otherStudent = User::factory()->student()->create();
         $admin = User::factory()->admin()->create();
@@ -303,7 +297,6 @@ class MeetingControllerTest extends TestCase
     public function test_cancel_refunds_meeting_quota(): void
     {
         // Arrange: 予約済(残数消費済)面談 1 件。キャンセルで返却記録が作られることを確認する。
-        Notification::fake();
         $student = User::factory()->student()->inProgress()->create(['max_meetings' => 5]);
         $coach = User::factory()->coach()->create();
         $meeting = Meeting::factory()->reserved()->forCoach($coach)->forStudent($student)->create([

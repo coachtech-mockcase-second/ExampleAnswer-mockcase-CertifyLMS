@@ -9,18 +9,16 @@ use App\Models\ChatMember;
 use App\Models\ChatRoom;
 use App\Models\Enrollment;
 use App\Models\User;
-use App\Notifications\Chat\ChatMessageReceivedNotification;
 use App\UseCases\Chat\StoreMessageAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 /**
  * StoreMessageAction の責務:
  *
  * - ChatMessage INSERT + 送信者の ChatMember.last_read_at = now() 更新
- * - DB::afterCommit() で ChatMessageSent broadcast + NotifyChatMessageReceivedAction 呼出
+ * - DB::afterCommit() で ChatMessageSent broadcast を発火
  * - シグネチャは `__invoke(User, ChatRoom, array)`(E-3 撤回後の単一形態)
  */
 class StoreMessageActionTest extends TestCase
@@ -30,7 +28,6 @@ class StoreMessageActionTest extends TestCase
     public function test_insert_message_and_update_sender_last_read_at(): void
     {
         Event::fake([ChatMessageSent::class]);
-        Notification::fake();
 
         $sender = User::factory()->student()->inProgress()->create();
         $coach = User::factory()->coach()->inProgress()->create();
@@ -59,7 +56,6 @@ class StoreMessageActionTest extends TestCase
         $this->assertNotNull($senderMember->fresh()->last_read_at);
 
         Event::assertDispatched(ChatMessageSent::class);
-        Notification::assertSentTo($coach, ChatMessageReceivedNotification::class);
     }
 
     public function test_signature_is_user_chat_room_array(): void
