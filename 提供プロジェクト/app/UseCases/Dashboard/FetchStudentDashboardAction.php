@@ -28,6 +28,7 @@ use App\UseCases\Dashboard\ViewModels\StudentDashboardViewModel;
 use App\UseCases\Dashboard\ViewModels\StudentEnrollmentCard;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 /**
  * 受講生ダッシュボードの ViewModel を組み立てる Action。
@@ -241,6 +242,11 @@ final class FetchStudentDashboardAction
      */
     private function buildGoalTimeline(User $student): Collection
     {
+        // 個人目標ルートが未登録の環境では空タイムラインを返す（機能未提供時の防御）
+        if (! Route::has('enrollments.goals.store')) {
+            return collect();
+        }
+
         return EnrollmentGoal::query()
             ->whereHas('enrollment', fn ($q) => $q->where('user_id', $student->id))
             ->with('enrollment.certification')

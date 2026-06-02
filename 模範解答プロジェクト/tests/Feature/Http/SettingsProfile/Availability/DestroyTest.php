@@ -20,7 +20,7 @@ class DestroyTest extends TestCase
 
         $response = $this->actingAs($coach)->delete(route('settings.availability.destroy', $availability));
 
-        $response->assertRedirect(route('settings.profile.edit', ['tab' => 'meeting']));
+        $response->assertRedirect(route('settings.availability.index'));
         $response->assertSessionHas('success', '面談可能時間枠を削除しました。');
 
         $this->assertDatabaseMissing('coach_availabilities', ['id' => $availability->id]);

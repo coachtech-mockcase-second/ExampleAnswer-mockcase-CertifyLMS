@@ -19,15 +19,15 @@ use Illuminate\Http\Request;
  * - `callback`: Google からの callback を受けて `code` をトークンに交換し、`state.redirect_path` に戻す
  * - `destroy`: 既存連携を revoke + SoftDelete
  *
- * 連携状態の確認 UI 自体は `/settings/profile?tab=meeting` の面談設定タブが所有しており、
+ * 連携状態の確認 UI 自体は `/settings/availability` の面談設定タブが所有しており、
  * 本 Controller には独立した `index` 画面を持たない。
  */
 class CoachGoogleCredentialController extends Controller
 {
     public function redirect(FetchAuthUrlAction $action): RedirectResponse
     {
-        $redirectPath = request()->query('redirect_path', '/settings/profile?tab=meeting');
-        $url = $action(request()->user(), is_string($redirectPath) ? $redirectPath : '/settings/profile?tab=meeting');
+        $redirectPath = request()->query('redirect_path', '/settings/availability');
+        $url = $action(request()->user(), is_string($redirectPath) ? $redirectPath : '/settings/availability');
 
         return redirect()->away($url);
     }
@@ -51,7 +51,7 @@ class CoachGoogleCredentialController extends Controller
 
         $action($request->user(), $code, $state);
 
-        $redirectPath = is_string($state['redirect_path'] ?? null) ? $state['redirect_path'] : '/settings/profile?tab=meeting';
+        $redirectPath = is_string($state['redirect_path'] ?? null) ? $state['redirect_path'] : '/settings/availability';
 
         return redirect($redirectPath)->with('success', 'Googleカレンダーと連携しました。');
     }
@@ -66,7 +66,7 @@ class CoachGoogleCredentialController extends Controller
         }
 
         return redirect()
-            ->route('settings.profile.edit', ['tab' => 'meeting'])
+            ->route('settings.availability.index')
             ->with('success', 'Googleカレンダー連携を解除しました。');
     }
 }

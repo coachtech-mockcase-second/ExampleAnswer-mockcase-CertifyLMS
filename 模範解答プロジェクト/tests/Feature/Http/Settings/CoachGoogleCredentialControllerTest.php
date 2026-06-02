@@ -51,7 +51,7 @@ class CoachGoogleCredentialControllerTest extends TestCase
 
         $response = $this->actingAs($coach)->delete(route('settings.google-calendar.destroy'));
 
-        $response->assertRedirect(route('settings.profile.edit', ['tab' => 'meeting']));
+        $response->assertRedirect(route('settings.availability.index'));
         $this->assertDatabaseMissing('coach_google_credentials', ['id' => $credential->id]);
     }
 
@@ -68,7 +68,7 @@ class CoachGoogleCredentialControllerTest extends TestCase
         $response->assertStatus(400);
     }
 
-    public function test_callback_redirects_to_meeting_tab_by_default(): void
+    public function test_callback_redirects_to_availability_page_by_default(): void
     {
         $coach = User::factory()->coach()->create();
         $state = json_encode(['coach_id' => $coach->id]);
@@ -86,8 +86,8 @@ class CoachGoogleCredentialControllerTest extends TestCase
             route('settings.google-calendar.callback').'?code=xyz&state='.urlencode($state)
         );
 
-        // state.redirect_path 未設定なら meeting タブへ
+        // state.redirect_path 未設定なら面談設定ページへ
         $this->assertSame(302, $response->status());
-        $this->assertStringContainsString('/settings/profile?tab=meeting', $response->headers->get('Location'));
+        $this->assertStringContainsString('/settings/availability', $response->headers->get('Location'));
     }
 }

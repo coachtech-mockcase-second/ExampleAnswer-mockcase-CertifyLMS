@@ -9,24 +9,30 @@ use App\Http\Requests\Availability\StoreRequest;
 use App\Http\Requests\Availability\UpdateRequest;
 use App\Models\CoachAvailability;
 use App\UseCases\Availability\DestroyAction;
+use App\UseCases\Availability\IndexAction;
 use App\UseCases\Availability\StoreAction;
 use App\UseCases\Availability\UpdateAction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 /**
- * コーチが面談可能時間枠(`CoachAvailability`)を CRUD するエントリポイント。
+ * コーチが面談可能時間枠(`CoachAvailability`)を管理する専用画面 (`/settings/availability`)。
  *
- * 編集 UI 本体は `/settings/profile?tab=meeting` の面談設定タブが所有しており、
- * 本 Controller は **POST / PATCH / DELETE のみを受け持つ API 的エンドポイント**(本 Feature の Blade form の送信先)。
- * `GET /settings/availability` (`index`) は面談設定タブ (`/settings/profile?tab=meeting`) への互換リダイレクト。直接 URL アクセスや旧ブックマークを正しい編集画面へ 302 で誘導する。
+ * `index` が面談設定ページ(Google カレンダー連携 + 週間カレンダー)を描画し、
+ * `store` / `update` / `destroy` が枠の CRUD を受け持つ(Blade form の送信先)。
  * `role:coach` middleware で他ロールは 403。本人所有確認は `CoachAvailabilityPolicy` を経由する。
  */
 class AvailabilityController extends Controller
 {
-    public function index(): RedirectResponse
+    public function index(Request $request, IndexAction $action): View
     {
-        return redirect()->route('settings.profile.edit', ['tab' => 'meeting']);
+        $user = $request->user();
+
+        return view('settings.availability', [
+            'user' => $user,
+            'availabilities' => $action($user),
+        ]);
     }
 
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse
@@ -34,7 +40,7 @@ class AvailabilityController extends Controller
         $action($request->user(), $request->validated());
 
         return redirect()
-            ->route('settings.profile.edit', ['tab' => 'meeting'])
+            ->route('settings.availability.index')
             ->with('success', '面談可能時間枠を追加しました。');
     }
 
@@ -46,7 +52,7 @@ class AvailabilityController extends Controller
         $action($availability, $request->validated());
 
         return redirect()
-            ->route('settings.profile.edit', ['tab' => 'meeting'])
+            ->route('settings.availability.index')
             ->with('success', '面談可能時間枠を更新しました。');
     }
 
@@ -60,7 +66,7 @@ class AvailabilityController extends Controller
         $action($availability);
 
         return redirect()
-            ->route('settings.profile.edit', ['tab' => 'meeting'])
+            ->route('settings.availability.index')
             ->with('success', '面談可能時間枠を削除しました。');
     }
 }

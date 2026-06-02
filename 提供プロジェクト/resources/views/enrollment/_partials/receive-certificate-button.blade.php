@@ -57,9 +57,13 @@
     <div class="mt-4">
         <x-alert type="success">
             <x-slot:title>修了済み</x-slot:title>
-            <a href="{{ route('certificates.download', $enrollment->certificate) }}" class="underline font-semibold">
-                修了証 PDF をダウンロード
-            </a>
+            @if (Route::has('certificates.download'))
+                <a href="{{ route('certificates.download', $enrollment->certificate) }}" class="underline font-semibold">
+                    修了証 PDF をダウンロード
+                </a>
+            @else
+                修了証 PDF は準備中です。
+            @endif
         </x-alert>
     </div>
 @endif

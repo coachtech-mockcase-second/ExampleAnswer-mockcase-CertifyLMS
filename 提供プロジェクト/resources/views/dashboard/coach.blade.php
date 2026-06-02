@@ -64,10 +64,12 @@
                 'totalCount' => $viewModel->unreadChatCount,
             ])
 
-            @include('dashboard._partials.coach.qa-thread-summary', [
-                'threads' => $viewModel->recentQaThreads,
-                'totalCount' => $viewModel->unansweredQaCount,
-            ])
+            @if (Route::has('qa-board.index'))
+                @include('dashboard._partials.coach.qa-thread-summary', [
+                    'threads' => $viewModel->recentQaThreads,
+                    'totalCount' => $viewModel->unansweredQaCount,
+                ])
+            @endif
 
             <x-card padding="md">
                 <div class="flex items-baseline gap-2 mb-3">

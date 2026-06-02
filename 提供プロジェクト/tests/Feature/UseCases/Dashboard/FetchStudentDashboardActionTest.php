@@ -10,7 +10,6 @@ use App\Models\Certificate;
 use App\Models\Certification;
 use App\Models\Chapter;
 use App\Models\Enrollment;
-use App\Models\EnrollmentGoal;
 use App\Models\LearningSession;
 use App\Models\MeetingPack;
 use App\Models\Part;
@@ -194,33 +193,6 @@ class FetchStudentDashboardActionTest extends TestCase
 
         // Assert
         $this->assertNull($vm->learningCalendar);
-    }
-
-    public function test_goal_timeline_is_ordered_by_display_order(): void
-    {
-        // Arrange: 受講中 enrollment に 達成済(期日最短) + 未達成(期日遠 / 近) を投入
-        $student = $this->makeStudentWithPlan();
-        $cert = Certification::factory()->published()->create();
-        $enrollment = Enrollment::factory()->for($student)->for($cert)->learning()->create();
-        EnrollmentGoal::factory()->for($enrollment)->achieved()->create([
-            'title' => 'achieved', 'target_date' => now()->addDay()->toDateString(),
-        ]);
-        EnrollmentGoal::factory()->for($enrollment)->create([
-            'title' => 'far', 'target_date' => now()->addDays(30)->toDateString(), 'achieved_at' => null,
-        ]);
-        EnrollmentGoal::factory()->for($enrollment)->create([
-            'title' => 'near', 'target_date' => now()->addDays(5)->toDateString(), 'achieved_at' => null,
-        ]);
-
-        // Act
-        $vm = app(FetchStudentDashboardAction::class)($student);
-
-        // Assert
-        $this->assertSame(
-            ['near', 'far', 'achieved'],
-            $vm->goalTimeline->pluck('title')->all(),
-            'goalTimeline は未達成優先 → 期日昇順 → 達成済末尾で並ぶはず',
-        );
     }
 
     public function test_has_no_enrollment_is_false_for_passed_only_student(): void

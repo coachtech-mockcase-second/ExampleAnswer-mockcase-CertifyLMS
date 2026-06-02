@@ -22,7 +22,7 @@ use Tests\TestCase;
  * User モデルの主要リレーション・Scope・Cast・SoftDelete を検証する Unit テスト。
  * User は 24+ リレーションを持つため、Pivot を含む代表 9 リレーション +
  * scopeActive + 主要 6 cast (role / status enum + datetime + bool + hashed) + SoftDelete を網羅する。
- * 残りのリレーション (chatMembers, sentChatMessages, aiChatConversations 等) は対応する Feature 側のテストで間接検証される。
+ * 残りのリレーション (chatMembers, sentChatMessages 等) は対応する Feature 側のテストで間接検証される。
  */
 class UserTest extends TestCase
 {

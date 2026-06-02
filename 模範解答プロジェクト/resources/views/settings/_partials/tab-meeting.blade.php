@@ -131,7 +131,7 @@
                 </div>
 
                 <x-link-button
-                    href="{{ route('settings.google-calendar.redirect', ['redirect_path' => '/settings/profile?tab=meeting']) }}"
+                    href="{{ route('settings.google-calendar.redirect', ['redirect_path' => '/settings/availability']) }}"
                     variant="primary"
                     size="sm"
                 >
