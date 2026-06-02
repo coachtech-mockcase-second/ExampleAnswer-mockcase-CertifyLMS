@@ -16,8 +16,7 @@ use App\UseCases\Dashboard\ViewModels\AdminDashboardViewModel;
  * 修了申請待ち一覧 / プラン期限切れ / 滞留検知 / 直近通知は本ロールでは表示しない
  * (admin 宛通知は notification spec で発火しないため、admin 通知導線は実用上死に機能になる)。
  *
- * 重い集計の一定時間キャッシュは集計を所有する EnrollmentStatsService 側で行う。本 Action は集計の
- * 取得とセクション単位の例外フォールバック(safe)のみを担い、キャッシュ機構は持たない(薄い集約に保つ)。
+ * 本 Action は集計の取得とセクション単位の例外フォールバック(safe)のみを担う(薄い集約に保つ)。
  *
  * @see DashboardController::index()
  */
