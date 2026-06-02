@@ -36,6 +36,7 @@
 
 - [ ] 未読バッジ(サイドバーの未読ルーム数 / チャット画面のルーム別未読件数)が、自分が送ったメッセージをカウントしない
 - [ ] 相手から届いた未読メッセージは従来どおりカウントされ、ルームを開いて既読化すると未読から外れる(正常系が維持されている)
+- [ ] 同梱 `tests/Unit/Services/ChatUnreadCountServiceTest.php::test_message_count_in_room_excludes_own_and_pre_read`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 

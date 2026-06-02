@@ -44,6 +44,18 @@ class TermJudgementServiceTest extends TestCase
         $this->assertSame(TermType::BasicLearning, $term);
     }
 
+    public function test_returns_basic_learning_when_only_canceled_session_exists(): void
+    {
+        $enrollment = Enrollment::factory()->create(['current_term' => TermType::MockPractice->value]);
+        $exam = MockExam::factory()->for($enrollment->certification)->create();
+        MockExamSession::factory()->for($enrollment)->for($exam)->create(['status' => 'canceled']);
+
+        $term = $this->service->recalculate($enrollment);
+
+        $this->assertSame(TermType::BasicLearning, $term);
+        $this->assertSame(TermType::BasicLearning, $enrollment->refresh()->current_term);
+    }
+
     public function test_returns_mock_practice_when_in_progress_session_exists(): void
     {
         $enrollment = Enrollment::factory()->create(['current_term' => TermType::BasicLearning->value]);
