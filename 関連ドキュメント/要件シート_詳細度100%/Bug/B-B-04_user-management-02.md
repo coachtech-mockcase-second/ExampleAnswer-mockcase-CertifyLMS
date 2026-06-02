@@ -37,6 +37,7 @@
 
 - [ ] 状態フィルタなし、および在籍系の状態(受講中 / 卒業)で絞り込んだとき、退会済みユーザーが一覧に表示されない
 - [ ] 状態フィルタを「退会済」にしたときのみ退会済みユーザーが一覧に表示される(正常系が維持されている)
+- [ ] 同梱 `tests/Feature/Http/User/IndexTest.php::test_status_filter_excludes_withdrawn_by_default`(修正前は赤)が pass する
 
 ## 実装方針(参考)
 
