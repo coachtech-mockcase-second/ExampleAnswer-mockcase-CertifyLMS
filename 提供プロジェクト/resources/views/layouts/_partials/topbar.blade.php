@@ -1,7 +1,7 @@
 {{--
     認証後ヘッダ（全画面共通）。
     左: モバイル用ハンバーガー + 教材検索バー（受講生のみ表示）。
-    右: 通知ベル（クリックで通知一覧へ遷移、未読バッジ表示）+ ユーザーピル（ドロップダウン）。
+    右: 通知ベル（未読バッジ + 通知ポップオーバー partial を内包）+ ユーザーピル（ドロップダウン）。
 --}}
 @php
     $user = auth()->user();
@@ -43,23 +43,32 @@
 
     <div class="flex-1"></div>
 
-    {{-- 通知ベル(クリックで通知一覧へ遷移、未読バッジ表示) --}}
+    {{-- 通知ベル + 通知ポップオーバー(ベル横アンカー) --}}
     @if (Route::has('notifications.index'))
-        <a
-            href="{{ route('notifications.index') }}"
-            aria-label="通知 ({{ $notificationBadge }} 件未読)"
-            class="relative inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-ink-700 bg-white/50 border border-subtle hover:bg-white hover:border-primary-200 hover:text-primary-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 transition-all"
-        >
-            <x-icon name="bell" class="w-[18px] h-[18px]" />
-            <span
-                @class([
-                    'absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] font-bold font-display tnum border-2 border-surface-canvas',
-                    'hidden' => $notificationBadge <= 0,
-                ])
+        <div class="relative" data-notification-popover-root>
+            <button
+                type="button"
+                data-notification-popover-trigger
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                aria-controls="notification-popover-panel"
+                aria-label="通知 ({{ $notificationBadge }} 件未読)"
+                class="relative inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-ink-700 bg-white/50 border border-subtle hover:bg-white hover:border-primary-200 hover:text-primary-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 transition-all"
             >
-                {{ $notificationBadge > 99 ? '99+' : $notificationBadge }}
-            </span>
-        </a>
+                <x-icon name="bell" class="w-[18px] h-[18px]" />
+                <span
+                    data-notification-popover-badge
+                    @class([
+                        'absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] font-bold font-display tnum border-2 border-surface-canvas',
+                        'hidden' => $notificationBadge <= 0,
+                    ])
+                >
+                    {{ $notificationBadge > 99 ? '99+' : $notificationBadge }}
+                </span>
+            </button>
+
+            @include('notifications._partials.notification-popover')
+        </div>
     @endif
 
     {{-- ユーザーピル (アバター + 名前 + ▼) --}}
