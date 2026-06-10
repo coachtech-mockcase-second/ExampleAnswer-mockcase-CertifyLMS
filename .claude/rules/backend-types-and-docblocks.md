@@ -66,12 +66,12 @@ $user->update(['status' => UserStatus::InProgress]);
 
 ## コードコメントで使わない構築側メタ情報
 
-本プロジェクトは **構築側メタ階層**（`docs/specs/` / `docs/foundation/` / `docs/steering/` / `.claude/rules/` / `関連ドキュメント/要件シート_100%.md` 等）と **受講生に渡るコードベース** が物理的に分離している（AssignedProject リポへの配置時に `docs/` `.claude/` が除外）。**構築側メタ情報がコードコメントに漏れると、受講生視点で意味不明な `dangling reference` になる**。以下の表現はコードコメント（`/** */` / `//` 両方）で使用禁止。
+本プロジェクトは **構築側メタ階層**（`docs/specs/` / `docs/steering/` / `.claude/rules/` / `関連ドキュメント/要件シート_100%.md` 等）と **受講生に渡るコードベース** が物理的に分離している（AssignedProject リポへの配置時に `docs/` `.claude/` が除外）。**構築側メタ情報がコードコメントに漏れると、受講生視点で意味不明な `dangling reference` になる**。以下の表現はコードコメント（`/** */` / `//` 両方）で使用禁止。
 
 | 禁止表現 | 理由 | 代替 |
 |---|---|---|
 | `[[feature-name]]` wikilink（例: `[[plan-management]]` / `[[auth]]`）| 元の spec ドキュメント（`docs/specs/{name}/`）を受講生は見れない | クラス・メソッド参照（`\App\UseCases\Auth\IssueInvitationAction`）または自然な責務記述（「Plan ドメインで...」「招待取消フローで...」等） |
-| `docs/specs/` / `docs/foundation/` / `docs/steering/` / `.claude/rules/` パス参照 | 構築側メタ階層 | 削除、または `@see` でクラス参照のみ |
+| `docs/specs/` / `docs/steering/` / `.claude/rules/` パス参照 | 構築側メタ階層 | 削除、または `@see` でクラス参照のみ |
 | 改修フェーズ用語（`v3 改修` / `2026-05-XX 対応` / `P1-X 対応` / `段階 X` / `Step N` 等）| 受講生視点で意味不明、変更履歴は **git log** で見るのが筋 | 削除（コードコメントは「現在の意図」を書く場所、履歴は書かない） |
 | 構築側組織用語（`COACHTECH` / `Pro 生` / `模擬案件` / `構築側` 等）| 受講生コンテキストに不要 | 削除または LMS 業務用語に置換 |
 | 歴史的記述（「旧 ... メソッド」「過去の実装」「以前は ... だった」等）| git log / blame で見るべき情報、コード現在地の意図ではない | 削除、現在の責務のみ記述。後方互換の存在理由を残したい場合は理由を抽象化（例: `Mailable 互換性のため public 維持`） |

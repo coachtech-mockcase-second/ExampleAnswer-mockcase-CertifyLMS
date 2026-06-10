@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
  *
  * 受講生の予約画面が「該当資格の担当コーチ全員の有効枠 Union」を 1 日単位で取得し、
  * 既存予約済時刻 を除外して各スロットの「予約可能なコーチ数」を返す。受講生にコーチ個別は提示せず、
- * `Meeting\StoreAction` が予約確定時に自動割当する。
+ * 予約確定時にコーチを自動割当する。
  */
 final class MeetingAvailabilityService
 {

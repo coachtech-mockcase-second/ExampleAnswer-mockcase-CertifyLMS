@@ -31,12 +31,10 @@
                 <span class="font-semibold text-ink-700">{{ $plans->total() }} 件</span>
             </p>
         </div>
-        @if (Route::has('admin.plans.create'))
-            <x-link-button href="{{ route('admin.plans.create') }}" variant="primary">
-                <x-icon name="plus" class="w-4 h-4" />
-                新規プラン
-            </x-link-button>
-        @endif
+        <x-link-button href="{{ route('admin.plans.create') }}" variant="primary">
+            <x-icon name="plus" class="w-4 h-4" />
+            新規プラン
+        </x-link-button>
     </div>
 
     {{-- フィルタ --}}
@@ -85,14 +83,12 @@
                     title="該当するプランがありません"
                     description="条件を変えるか、新しくプランを作成してみてください。"
                 >
-                    @if (Route::has('admin.plans.create'))
-                        <x-slot:action>
-                            <x-link-button href="{{ route('admin.plans.create') }}" variant="primary">
-                                <x-icon name="plus" class="w-4 h-4" />
-                                新規プラン
-                            </x-link-button>
-                        </x-slot:action>
-                    @endif
+                    <x-slot:action>
+                        <x-link-button href="{{ route('admin.plans.create') }}" variant="primary">
+                            <x-icon name="plus" class="w-4 h-4" />
+                            新規プラン
+                        </x-link-button>
+                    </x-slot:action>
                 </x-empty-state>
             </x-card>
         </div>
@@ -114,19 +110,12 @@
                     @php $sb = $statusBadge($plan->status); @endphp
                     <x-table.row>
                         <x-table.cell>
-                            @if (Route::has('admin.plans.show'))
-                                <a href="{{ route('admin.plans.show', $plan) }}" class="block group">
-                                    <div class="text-sm font-semibold text-ink-900 group-hover:text-primary-700 transition-colors">{{ $plan->name }}</div>
-                                    @if ($plan->description)
-                                        <div class="text-xs text-ink-500 mt-0.5 line-clamp-1">{{ $plan->description }}</div>
-                                    @endif
-                                </a>
-                            @else
-                                <div class="text-sm font-semibold text-ink-900">{{ $plan->name }}</div>
+                            <a href="{{ route('admin.plans.show', $plan) }}" class="block group">
+                                <div class="text-sm font-semibold text-ink-900 group-hover:text-primary-700 transition-colors">{{ $plan->name }}</div>
                                 @if ($plan->description)
                                     <div class="text-xs text-ink-500 mt-0.5 line-clamp-1">{{ $plan->description }}</div>
                                 @endif
-                            @endif
+                            </a>
                         </x-table.cell>
                         <x-table.cell class="text-right">
                             <span class="text-sm text-ink-700 tabular-nums">{{ number_format($plan->duration_days) }} 日</span>
@@ -146,12 +135,10 @@
                             <span class="text-xs text-ink-500 font-mono tabular-nums">{{ $plan->users_count ?? 0 }} 名</span>
                         </x-table.cell>
                         <x-table.cell class="text-right">
-                            @if (Route::has('admin.plans.show'))
-                                <x-link-button href="{{ route('admin.plans.show', $plan) }}" variant="ghost" size="sm">
-                                    <x-icon name="eye" class="w-4 h-4" />
-                                    詳細
-                                </x-link-button>
-                            @endif
+                            <x-link-button href="{{ route('admin.plans.show', $plan) }}" variant="ghost" size="sm">
+                                <x-icon name="eye" class="w-4 h-4" />
+                                詳細
+                            </x-link-button>
                         </x-table.cell>
                     </x-table.row>
                 @endforeach

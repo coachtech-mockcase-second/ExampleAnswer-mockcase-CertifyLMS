@@ -79,7 +79,7 @@
   - 価格: 必須 / 0〜1,000,000 円の整数
   - Stripe 価格 ID: 任意 / 255 文字以内
   - 並び順: 任意 / 0 以上の整数
-- [ ] 受講生 / コーチが面談パック管理画面の全操作(一覧 / 詳細 / 新規作成 / 編集 / 削除 / 状態遷移)にアクセスすると 403
+- [ ] 受講生 / コーチが面談パック管理の画面(一覧 / 詳細 / 新規作成 / 編集)の URL に直接アクセスすると 403 が返る
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
@@ -145,7 +145,7 @@
 **Policy** (`app/Policies/`)
 - `MeetingPackPolicy` — 全 8 操作とも admin 真偽判定のみ(状態ベースガードは Action 側に委譲)
 
-**Model + Enum** (`app/Models/`, `app/Enums/`)
+**Model + Enum** (`app/Models/`, `app/Enums/`、既存)
 - `MeetingPack` / `MeetingPackStatus`
 
 **View**(既存、ロック対象)

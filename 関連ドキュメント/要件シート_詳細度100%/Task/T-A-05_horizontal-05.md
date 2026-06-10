@@ -45,9 +45,7 @@
 ## 受け入れ条件
 
 - [ ] 管理者が全受講生へお知らせを一斉配信したとき、配信処理がリクエストをブロックせずに即座に完了し(送信はバックグラウンドで処理)、worker 稼働後に対象の各受講生へ通知が届く
-  - 確認方法（コード・動作確認）: `QUEUE_CONNECTION=database` で配信ジョブが queue に積まれ HTTP 応答を待たせず、worker(`queue:work`)稼働後に各受講生へ通知・メールが届く
 - [ ] 通知 / メールの送信が一時的に失敗した場合は自動でリトライされ、リトライ上限を超えた送信は失敗ジョブとして記録されて後から再投入できる
-  - 確認方法（コード）: リトライ上限を超えたジョブが `failed_jobs` テーブルに記録され、`queue:retry` で再投入できることを確認
 - [ ] 同梱 `tests/Unit/Mail/InvitationMailTest.php` の `test_mailable_implements_should_queue_for_async_delivery`(修正前は赤)が pass する
 
 ## 実装方針(参考)

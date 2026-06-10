@@ -9,8 +9,8 @@ namespace App\Enums;
  *
  * 状態遷移は受講生の予約 / 当事者キャンセル / 自動完了の 3 経路で構成される。
  *
- * - [*] → Reserved: Meeting\StoreAction(時刻選択 → 自動コーチ割当 → 面談回数 -1 消費)
- * - Reserved → Canceled: Meeting\CancelAction(当事者キャンセル、scheduled_at まで + 面談回数 +1 返却)
+ * - [*] → Reserved: 受講生の予約確定(時刻選択 → 自動コーチ割当 → 面談回数 -1 消費)
+ * - Reserved → Canceled: 当事者キャンセル(scheduled_at まで + 面談回数 +1 返却)
  * - Reserved → Completed: AutoCompleteMeetingAction(scheduled_at + 60 分経過で Schedule Command が遷移)
  *
  * 終端: Canceled / Completed (再開や delete からの復帰はない)。

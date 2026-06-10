@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * 1. CompletionEligibilityService::isEligible でガード(false なら CompletionNotEligibleException 409)
  * 2. Enrollment を status=passed / passed_at=now() に更新
  * 3. EnrollmentStatusLog 記録(from=learning / to=passed / changed_by=本人 / reason='受講生による修了証受領')
- * 4. IssueCertificateAction を呼んで Certificate 発行 + PDF 生成
+ * 4. IssueCertificateAction を呼んで Certificate 発行
  *
  * 修了通知は送らない: 本人の操作直後のリダイレクト先画面で修了証 PDF DL リンクを提示するため、別途通知は冗長。
  */

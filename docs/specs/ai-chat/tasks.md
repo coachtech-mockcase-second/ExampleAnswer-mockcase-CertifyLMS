@@ -292,7 +292,7 @@
   - メッセージ送信 → 同期応答が user / assistant バブルとして追記表示される様子
   - FAB クリック → ウィジェット展開 → 教材 Section コンテキストでメッセージ送信
   - 初回メッセージ送信後にタイトルが自動更新される様子（応答後に DOM が書き換わる）
-- [x] PR 説明（`tech.md`「PR 記述 7 セクション必須」準拠）:
+- [x] PR 説明（`tech.md`「PR記述」セクション準拠、当時の 7 セクション構成で記述）:
   1. **関連チケット**: 要件シート側の該当チケット（提供時に紐付け）
   2. **調査内容**: `docs/specs/ai-chat/*.md`、`backend-repositories.md`、`frontend-blade.md`、COACHTECH LMS の `AiChatbot*` 一式、iField LMS の `semantic-search/` spec
   3. **原因分析 / 設計判断**: Why の言語化（design.md「主要な設計判断」セクションを PR 内で再掲、特に Gemini Repository 抽象 / 応答方式の選定（同期 HTTP のみ・SSE 不採用の理由）/ Section コンテキスト注入の経緯）

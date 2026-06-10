@@ -70,7 +70,6 @@
 ## 受け入れ条件
 
 - [ ] `php artisan notifications:send-meeting-reminders --window=eve` を実行すると、翌日(00:00-23:59)に予約されている面談の当事者(受講生 + 担当コーチ)に DB + メール通知が発火する
-  - 確認方法（メール）: 画面内通知は通知一覧で、メール送信は Mailpit 等で確認。件名が「【Certify LMS】前日リマインド」「【Certify LMS】1時間前リマインド」プレフィックスで始まることも確認(one_hour_before 配信のメールも共通)
 - [ ] `php artisan notifications:send-meeting-reminders --window=one_hour_before` を実行すると、開始 55-65 分後に予約されている面談の当事者に DB + メール通知が発火する
 - [ ] 同じ面談・同じ配信タイミングで既にリマインダー通知が存在する場合、再実行しても通知は重複して作られない
 - [ ] 受信者の利用状態が「受講中」でない(退会済 / 修了済 / 招待中)場合は配信スキップされる

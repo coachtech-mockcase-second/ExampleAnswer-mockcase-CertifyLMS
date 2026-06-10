@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * 候補コーチ集合から、過去 30 日の completed 件数が最少のコーチを 1 名選出する Service。
  *
- * 自動コーチ割当の負荷分散ロジックを担う。`Meeting\StoreAction` が空き枠と空きコーチを抽出した後、
+ * 自動コーチ割当の負荷分散ロジックを担う。予約確定処理が空き枠と空きコーチを抽出した後、
  * 本 Service の `leastLoadedCoach` で 1 名に絞り込む。同数の場合は ULID 昇順で先頭を選ぶことで決定論的に
  * 同じ結果を返す(race condition 時に同じ INSERT が走るのを抑止する効果も得る)。
  */

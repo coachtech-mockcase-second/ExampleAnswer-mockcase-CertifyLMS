@@ -223,7 +223,7 @@ class MeetingController extends Controller
 
     /**
      * 当事者(受講生 or コーチ)による面談キャンセル。
-     * reserved かつ開始前のみキャンセル可。消費済の面談回数 1 回分を返却し、相手方に通知する。
+     * reserved かつ開始前のみキャンセル可。消費済の面談回数 1 回分を返却する。
      */
     public function cancel(
         Meeting $meeting,
@@ -233,7 +233,7 @@ class MeetingController extends Controller
 
         $actor = auth()->user();
 
-        DB::transaction(function () use ($meeting, $actor, $refundAction) {
+        DB::transaction(function () use ($meeting, $actor) {
             $locked = Meeting::query()->whereKey($meeting->id)->lockForUpdate()->first();
             if ($locked === null || $locked->status !== MeetingStatus::Reserved) {
                 throw MeetingStatusTransitionException::forCancel();

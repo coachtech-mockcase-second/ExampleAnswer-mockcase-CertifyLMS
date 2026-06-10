@@ -10,7 +10,7 @@ use Throwable;
 /**
  * 受講生が指定した開始時刻が、担当コーチ集合の有効な面談可能時間枠の外だった場合の例外。
  *
- * `Meeting\StoreAction` の枠検証で発火する。HTTP 422 として Handler が redirect+flash に変換する。
+ * 予約確定時の枠検証で発火する。HTTP 422 として Handler が redirect+flash に変換する。
  */
 final class MeetingOutOfAvailabilityException extends UnprocessableEntityHttpException
 {

@@ -84,7 +84,7 @@
 ## 受け入れ条件
 
 - [ ] 未認証クライアントが通知 JSON API(`GET /api/v1/notifications` / 単一既読化 / 全件既読化)に直叩きすると 401、認証済受講生 / コーチは自分の通知一覧 JSON を取得でき、認証済ユーザー A が他者(B)の通知 ID を指定して既読化 API を叩くと 403 が返る
-- [ ] 認証済の管理者が通知一覧 API を取得すると、エラーにならず 0 件の JSON が返る(管理者は通知の受信対象外)
+- [ ] 認証済の管理者でも TopBar のベルからポップオーバーを開くとエラーにならず「通知はありません。」の空状態が表示される(管理者は通知の受信対象外で、一覧 API は 0 件の JSON を返す)
 - [ ] `/sanctum/csrf-cookie` を GET すると XSRF-TOKEN Cookie がブラウザにセットされ、JS フロントは CSRF Cookie 取得後の POST リクエスト(既読化 / 全件既読化)を CSRF トークン付きで通せる(トークンなしの POST は CSRF 検証失敗)
 - [ ] 認証済受講生 / コーチが一覧 API を取得すると、通知種別 / タイトル / プレビュー / 遷移先ルート + パラメータ / 既読化日時 / 作成日時 等の整形フィールドを含む JSON が時系列降順で返る
 - [ ] 一覧 API にて、クエリパラメータにバリデーションが行われ、ルール違反時に 422 + JSON 形式の日本語エラーレスポンスが返るか:
@@ -141,13 +141,13 @@
 **Policy** (`app/Policies/`、既存)
 - `NotificationPolicy::update` — 単一既読化対象が認証ユーザー本人宛か検証
 
-**Blade コンポーネント**(新規)
+**Blade コンポーネント**(既存、ロック対象)
 - `resources/views/notifications/_partials/notification-popover.blade.php` — ポップオーバー HTML 構造 + 通知行テンプレ
-- `resources/views/layouts/_partials/topbar.blade.php`(既存) — ベルアイコンに data 属性 + ポップオーバー組込
+- `resources/views/layouts/_partials/topbar.blade.php` — ベルアイコンの data 属性 + ポップオーバー組込済み
 
 **JS フロント** (`resources/js/`、新規)
 - `notification/notification-popover.js` — ポップオーバー制御(タブ切替 / 行クリック / 全件既読 / バッジ動的更新 / 遷移先 URL 解決)
-- `utils/fetch-json.js` — CSRF Cookie 取得管理 + JSON ヘッダ統一 wrapper
+- `utils/fetch-json.js`(既存共有ユーティリティ) — CSRF Cookie 取得管理 + JSON ヘッダ統一 wrapper
 - `app.js`(既存) — `DOMContentLoaded` 時に管理者以外でポップオーバー初期化呼出を追加
 
 **Sanctum 認証層**(構成変更)

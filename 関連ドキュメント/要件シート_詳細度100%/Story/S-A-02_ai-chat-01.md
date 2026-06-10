@@ -149,7 +149,7 @@
 
 **Enum**:
 
-- 発言者 (`AiChatMessageRole`): 受講生 (`Student`) / AI (`Ai`)
+- 発言者 (`AiChatMessageRole`): 受講生 (`User`) / AI (`Assistant`)
 - メッセージ状態 (`AiChatMessageStatus`): 処理待ち (`Pending`) / 完了 (`Completed`) / エラー (`Error`)
 
 **インデックス用途**:

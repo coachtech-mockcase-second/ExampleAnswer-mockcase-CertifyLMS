@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  *
  * 1 件 = 60 分固定の単発予約で、受講生 / 担当コーチ / 紐づく受講登録の 3 者と、面談回数履歴の
  * 消費トランザクションを参照する。コーチは予約時に自動割当されるため、受講生フローから coach_id を
- * 直接指定することはない(`Meeting\StoreAction` で決定)。
+ * 直接指定することはない(予約処理が自動決定する)。
  *
  * 関連: Enrollment(受講登録) / User(coach / student / canceledBy) / MeetingMemo(1:1) / MeetingQuotaTransaction(消費トランザクション)
  * scope: upcoming / past / forCoach(coach) / forStudent(student)
