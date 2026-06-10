@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Learning;
 
 /**
- * ProgressService::summarize の戻り値 DTO。
+ * 学習進捗集計の戻り値 DTO。
  * Section / Chapter / Part / 資格 4 階層の完了数・総数・比率を保持する。
  * overall_completion_ratio は Section 単位の比率(教材最小単位の進捗が最も実態に近いため)。
  */

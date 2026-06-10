@@ -23,7 +23,6 @@ return new class extends Migration
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
 
-            $table->index(['chapter_id', 'order']);
             $table->index(['chapter_id', 'status']);
             $table->index('title');
         });

@@ -39,37 +39,42 @@ final class MeetingAvailabilityService
             return collect();
         }
 
+        $coachIds = $coaches->pluck('id')->all();
+
+        $availabilities = CoachAvailability::query()
+            ->whereIn('coach_id', $coachIds)
+            ->where('day_of_week', $dayOfWeek)
+            ->where('is_active', true)
+            ->get();
+
+        $existingMeetings = Meeting::query()
+            ->whereIn('coach_id', $coachIds)
+            ->whereBetween('scheduled_at', [$dayStart, $dayEnd])
+            ->whereIn('status', [MeetingStatus::Reserved->value, MeetingStatus::Completed->value])
+            ->get(['coach_id', 'scheduled_at']);
+
+        // 予約済スロットを (coach_id => Set<H:i>) で索引化
+        $bookedByCoach = $existingMeetings
+            ->groupBy('coach_id')
+            ->map(fn ($rows) => $rows->map(fn (Meeting $m) => $m->scheduled_at->format('H:i'))->all());
+
         /** @var array<string, int> $slotCounts スロット開始時刻(H:i) → available coach 数 */
         $slotCounts = [];
 
-        foreach ($coaches as $coach) {
-            $availabilities = CoachAvailability::query()
-                ->where('coach_id', $coach->id)
-                ->where('day_of_week', $dayOfWeek)
-                ->where('is_active', true)
-                ->get();
+        foreach ($availabilities as $availability) {
+            $slot = Carbon::parse($date->format('Y-m-d').' '.$availability->start_time);
+            $end = Carbon::parse($date->format('Y-m-d').' '.$availability->end_time);
 
-            $booked = Meeting::query()
-                ->where('coach_id', $coach->id)
-                ->whereBetween('scheduled_at', [$dayStart, $dayEnd])
-                ->whereIn('status', [MeetingStatus::Reserved->value, MeetingStatus::Completed->value])
-                ->get(['scheduled_at'])
-                ->map(fn (Meeting $m) => $m->scheduled_at->format('H:i'))
-                ->all();
+            while ($slot->copy()->addHour() <= $end) {
+                $slotKey = $slot->format('H:i');
+                $coachId = $availability->coach_id;
+                $booked = $bookedByCoach[$coachId] ?? [];
 
-            foreach ($availabilities as $availability) {
-                $slot = Carbon::parse($date->format('Y-m-d').' '.$availability->start_time);
-                $end = Carbon::parse($date->format('Y-m-d').' '.$availability->end_time);
-
-                while ($slot->copy()->addHour() <= $end) {
-                    $slotKey = $slot->format('H:i');
-
-                    if (! in_array($slotKey, $booked, true)) {
-                        $slotCounts[$slotKey] = ($slotCounts[$slotKey] ?? 0) + 1;
-                    }
-
-                    $slot->addHour();
+                if (! in_array($slotKey, $booked, true)) {
+                    $slotCounts[$slotKey] = ($slotCounts[$slotKey] ?? 0) + 1;
                 }
+
+                $slot->addHour();
             }
         }
 

@@ -79,11 +79,11 @@ class IndexTest extends TestCase
         Certification::factory()->published()->create(['name' => 'Published One']);
         Certification::factory()->archived()->create(['name' => 'Archived One']);
 
-        $response = $this->actingAs($admin)->get(route('admin.certifications.index', ['status' => 'draft']));
+        $response = $this->actingAs($admin)->get(route('admin.certifications.index', ['status' => 'published']));
 
         $response->assertOk();
-        $response->assertSee('Draft One');
-        $response->assertDontSee('Published One');
+        $response->assertSee('Published One');
+        $response->assertDontSee('Draft One');
         $response->assertDontSee('Archived One');
     }
 

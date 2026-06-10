@@ -22,7 +22,6 @@ return new class extends Migration
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
 
-            $table->index(['part_id', 'order']);
             $table->index(['part_id', 'status']);
         });
     }

@@ -11,7 +11,7 @@
 | サブカテゴリ | リファクタリング |
 | 難易度 | Advance |
 | 工数 (h) | 5.5 |
-| 依存チケット | `S-A-01`(Google Calendar 連携) / `S-A-02`(Gemini AI チャット) / `S-A-03`(Stripe 連携) / `T-A-03`(Google Calendar 連携の Service 分離後を対象) |
+| 依存チケット | `S-A-01`(Google Calendar 連携) / `S-A-02`(Gemini AI チャット) / `S-A-03`(Stripe 連携) |
 
 ## 概要
 
@@ -63,7 +63,7 @@
 
 - **対象**: 新規 `tests/Unit/Services/Google/GoogleOAuthServiceTest.php` / `GoogleCalendarServiceTest.php`(`App\Services\Google\GoogleOAuthService` / `GoogleCalendarService` を Mockery で `Google\Client` スタブ化)+ 拡充 `tests/Unit/Services/MeetingAvailabilityServiceTest.php` / `tests/Feature/UseCases/Meeting/{Store,Cancel}ActionTest.php` / `tests/Feature/Http/Settings/CoachGoogleCredentialControllerTest.php`(`$this->mock(GoogleCalendarService::class, ...)` で境界ケース拡充)+ 既存(参照)`tests/Unit/Repositories/GeminiLlmRepositoryTest.php`(`Http::fake` / `fakeSequence` / `assertSent`)/ `tests/Feature/Http/Webhooks/StripeWebhookControllerTest.php`(`sign()` HMAC ヘルパー)+ 基盤 `tests/TestCase.php`(各外部依存テストの `setUp()` でも可)
 - **変更前→後**: 外部連携には正常系中心のテストはあるが Google 連携 Service の単体テスト(`tests/Unit/Services/Google/`)が無く `Http::preventStrayRequests()` / `#[Group('external')]` も未組込み(未モック通信が実呼出される + CI 除外手段なし)→ 3 系統のモックテストが揃い、Google 連携 Service 単体テスト新設、`Http::preventStrayRequests()` で未モック通信を遮断、`#[Group('external')]` で `--exclude-group external` の分離実行が可能になる
-- **判断理由**: モック手法をライブラリ特性で使い分ける(1 手法統一不可)。Service(Google Calendar / OAuth)= Mockery(`google/apiclient` が独自 HTTP クライアントで `Http::fake` が効かない、`final` は別 Task で除去済)/ Repository(Gemini)= `Http::fake`(`Http` Facade 経由で完全モック可)/ Webhook(Stripe)= 受信側のため HMAC-SHA256 署名(`hash_hmac('sha256', $timestamp.'.'.$payload, $secret)`)を自前生成。利用側で `Google\Client` を直接モックしないのは業務ロジックが「正しく Service を呼ぶか」の検証に集中しライブラリ低レベル詳細との結合を避けるため。`#[Group('external')]` は実行時間ではなく「外部 API 実呼出リスク」で分類
+- **判断理由**: モック手法をライブラリ特性で使い分ける(1 手法統一不可)。Service(Google Calendar / OAuth)= Mockery(`google/apiclient` が独自 HTTP クライアントで `Http::fake` が効かない、連携 Service は S-A-01 で `final` 不採用=Mockery 互換に実装される前提)/ Repository(Gemini)= `Http::fake`(`Http` Facade 経由で完全モック可)/ Webhook(Stripe)= 受信側のため HMAC-SHA256 署名(`hash_hmac('sha256', $timestamp.'.'.$payload, $secret)`)を自前生成。利用側で `Google\Client` を直接モックしないのは業務ロジックが「正しく Service を呼ぶか」の検証に集中しライブラリ低レベル詳細との結合を避けるため。`#[Group('external')]` は実行時間ではなく「外部 API 実呼出リスク」で分類
 - **テスト**: Gemini リトライは `Http::fakeSequence()->push(...,503)->push(...,200)` で 1 回目失敗 → 2 回目成功 / payload は `Http::assertSent()` で `systemInstruction`・`contents`・role 変換(assistant → model)を assert / Stripe 冪等性は同一イベント 2 回 POST で INSERT 1 件のまま / Google Calendar は freebusy 正常・リフレッシュ成功と失敗・イベント作成成功と失敗(null)・削除 410 Gone 成功扱いを網羅。既存正常系テストの pass(振る舞い不変)
 
 ## 補足
@@ -73,7 +73,7 @@
 | 質問 | 回答 |
 |---|---|
 | 外部 API ごとに使うモック手法は? | Service(Google Calendar / Google OAuth)= Mockery(`google/apiclient` が独自 HTTP クライアントを使い `Http::fake` が効かないため)/ Repository(Gemini)= `Http::fake` / `Http::fakeSequence`(`Http` Facade 経由で完全モック可)/ Webhook(Stripe)= 受信側なので HMAC-SHA256 署名生成ヘルパーを自前で用意 |
-| Service の `final` は外すのか? | 外す(別の Refactoring Task で対応済の前提)。Mockery はファイナルクラスをモックできないため。Interface を切る選択肢もあるが、本プロジェクトは「Interface は Feature 横断時のみ」の方針のため Google 連携には Interface 不要 |
+| Service の `final` は外すのか? | 連携 Service は S-A-01 が `final` 不採用(Mockery 互換)で実装する前提。Mockery はファイナルクラスをモックできないため。Interface を切る選択肢もあるが、本プロジェクトは「Interface は Feature 横断時のみ」の方針のため Google 連携には Interface 不要 |
 | 利用側(予約 / キャンセル等)のテストで外部ライブラリを直接モックする? | しない。Calendar 操作 Service のまとまり単位でスタブ化する。ライブラリの低レベル詳細(イベント組み立て等)を利用側テストに混ぜると、テストが内部実装に強く結合する |
 | 外部 API への実通信を防ぐ仕組みはどこに書く? | テスト基底クラスの `setUp()` で全テスト共通に呼ぶか、外部 API 依存テストの `setUp()` で個別に呼ぶ。未モック通信があればテスト失敗となり、API キー漏洩・レート制限消費を防ぐ最終ラインになる |
 | 外部 API 依存テストの分離実行はどう実現する? | 外部 API モックを使うテストクラスにグループ指定を付け、CI で当該グループを除外実行できるようにする。モック構造はライブラリ更新で壊れやすく、未モック時に実通信するリスクがあるため分類しておく |

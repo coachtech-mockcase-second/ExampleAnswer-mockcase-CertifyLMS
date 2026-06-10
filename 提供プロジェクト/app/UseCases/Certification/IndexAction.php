@@ -33,7 +33,7 @@ final class IndexAction
         $query->keyword($keyword);
 
         if ($status !== null) {
-            $query->where('status', $status->value);
+            $query->where('status', CertificationStatus::Draft->value);
         }
 
         if ($categoryId !== null && $categoryId !== '') {

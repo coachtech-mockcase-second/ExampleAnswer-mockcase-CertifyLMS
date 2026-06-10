@@ -21,7 +21,6 @@ use App\Services\CompletionEligibilityService;
 use App\Services\Contracts\WeaknessAnalysisServiceContract;
 use App\Services\Learning\LearningCalendar;
 use App\Services\LearningCalendarService;
-use App\Services\ProgressService;
 use App\Services\StreakService;
 use App\UseCases\Dashboard\FetchStudentDashboardAction;
 use App\UseCases\Dashboard\ViewModels\ResumeCard;
@@ -121,21 +120,6 @@ class FetchStudentDashboardActionTest extends TestCase
         // Assert: 修了条件達成の学習中カードのみ「修了証を受け取る」可能
         $this->assertTrue($vm->enrollmentCards->firstWhere('enrollmentId', $eligible->id)->canReceiveCertificate);
         $this->assertFalse($vm->enrollmentCards->firstWhere('enrollmentId', $notYet->id)->canReceiveCertificate);
-    }
-
-    public function test_batch_calculate_is_used_so_progress_query_does_not_grow_per_enrollment(): void
-    {
-        $student = $this->makeStudentWithPlan();
-        for ($i = 0; $i < 5; $i++) {
-            $cert = Certification::factory()->published()->create();
-            Enrollment::factory()->for($student)->for($cert)->learning()->create();
-        }
-
-        $progressMock = Mockery::mock(ProgressService::class);
-        $progressMock->shouldReceive('batchCalculate')->once()->andReturn([]);
-        $this->app->instance(ProgressService::class, $progressMock);
-
-        app(FetchStudentDashboardAction::class)($student);
     }
 
     public function test_safe_helper_returns_null_when_streak_service_throws(): void
