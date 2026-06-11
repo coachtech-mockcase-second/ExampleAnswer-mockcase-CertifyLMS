@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
 
     /**
      * 固定アカウント(deterministic email + password='password')。
-     * 動作確認・PR スクショ・要件シート例示で安定して参照される。
+     * 動作確認や PR のスクリーンショットで安定して参照される。
      */
     private function createFixedAccounts(): void
     {
