@@ -107,7 +107,11 @@
 既存 `users` テーブルの `name` / `bio` / `meeting_url` / `avatar_url` / `password` カラムの読み書きのみで、テーブル / Model / Enum の新規追加はない。`email` / `role` / `status` は読み取りのみ。
 
 - **アバターストレージ**: `Storage::disk('public')` の `avatars/{ulid}.{ext}` に保存し、`/storage/avatars/...` の publicUrl で配信(`php artisan storage:link` 済を同梱)。`avatar_url` が NULL のときはアイコンコンポーネントがイニシャル表示にフォールバック
-- **初期データ Seeder**: 既存 `UserSeeder` で各ロール(受講生 / コーチ / 管理者)+ 修了済受講生 + アバター設定済 / 未設定が揃っていれば本チケットの動作確認は可能。新規 Seeder は不要
+
+**初期データ**:
+
+- 各ロール（受講生 / コーチ / 管理者）と修了済の受講生が揃っている（各ロールでの表示・編集を確認）
+- アバター設定済 / 未設定のユーザーが混在している（アイコンの差し替え・削除・未設定時の表示を確認）
 
 ### コンポーネント
 

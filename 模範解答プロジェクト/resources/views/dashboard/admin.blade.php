@@ -34,7 +34,9 @@
         >
             <x-slot:action>
                 <div class="flex gap-2 justify-center">
-                    <x-link-button href="{{ route('admin.plans.index') }}" variant="outline">プラン管理</x-link-button>
+                    @if (Route::has('admin.plans.index'))
+                        <x-link-button href="{{ route('admin.plans.index') }}" variant="outline">プラン管理</x-link-button>
+                    @endif
                     <x-link-button href="{{ route('admin.users.index') }}">ユーザー管理</x-link-button>
                 </div>
             </x-slot:action>

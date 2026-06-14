@@ -35,7 +35,7 @@
 
 ## 受け入れ条件
 
-- [ ] 受講登録済みの受講生が、公開中でない(アーカイブ / 下書き)資格の教材詳細(Part / Chapter / Section)にアクセスすると 404 が返る
+- [ ] 受講登録済みの受講生は、公開中でない(アーカイブ / 下書き)資格の教材詳細(Part / Chapter / Section)を閲覧できない
 - [ ] 公開中の資格については、受講登録済みの受講生が従来どおり教材詳細を閲覧できる(本修正で正常系が壊れていない)
 - [ ] 同梱 `tests/Feature/Http/Learning/BrowseControllerTest.php::test_show_part_404_when_certification_archived`(修正前は赤)が pass する
 
