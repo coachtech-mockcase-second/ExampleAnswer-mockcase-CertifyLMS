@@ -24,6 +24,9 @@ use Illuminate\View\View;
  */
 class AiChatConversationController extends Controller
 {
+    /**
+     * 受講生本人の最新の AI 相談会話へリダイレクトする。会話が 0 件なら空状態画面を表示する。
+     */
     public function index(): View|RedirectResponse
     {
         $this->authorize('viewAny', AiChatConversation::class);
@@ -40,6 +43,9 @@ class AiChatConversationController extends Controller
         return view('ai-chat.empty-state');
     }
 
+    /**
+     * AI 相談会話の詳細(過去メッセージ含む)を表示する。XHR からは会話とメッセージを JSON で返す。
+     */
     public function show(AiChatConversation $conversation, ShowAction $action, Request $request): View|JsonResponse
     {
         $this->authorize('view', $conversation);
@@ -70,6 +76,9 @@ class AiChatConversationController extends Controller
         ]);
     }
 
+    /**
+     * 新しい AI 相談会話を開始する(ウィジェット経由は既存会話を再利用)。XHR からは会話を JSON で返す。
+     */
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse|JsonResponse
     {
         $validated = $request->validated();
@@ -95,6 +104,9 @@ class AiChatConversationController extends Controller
             ->with('success', $result['was_reused'] ? '会話を再開しました。' : '新しい相談を開始しました。');
     }
 
+    /**
+     * AI 相談会話のタイトルを更新する。
+     */
     public function update(AiChatConversation $conversation, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
         $action($conversation, $request->validated());
@@ -104,6 +116,9 @@ class AiChatConversationController extends Controller
             ->with('success', 'タイトルを更新しました。');
     }
 
+    /**
+     * AI 相談会話を削除し、AI 相談トップへリダイレクトする。
+     */
     public function destroy(AiChatConversation $conversation, DestroyAction $action, Request $request): RedirectResponse
     {
         $this->authorize('delete', $conversation);

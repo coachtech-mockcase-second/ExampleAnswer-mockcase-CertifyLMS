@@ -8,6 +8,7 @@ use App\Enums\MeetingStatus;
 use App\Exceptions\MeetingQuota\InsufficientMeetingQuotaException;
 use App\Exceptions\Mentoring\MeetingNoAvailableCoachException;
 use App\Exceptions\Mentoring\MeetingOutOfAvailabilityException;
+use App\Http\Controllers\MeetingController;
 use App\Models\Certification;
 use App\Models\Enrollment;
 use App\Models\Meeting;
@@ -37,7 +38,7 @@ use Illuminate\Support\Facades\DB;
  *
  * 全ステップを単一 DB トランザクション内で実行し、通知は `DB::afterCommit` で commit 後に発火する。
  *
- * @see \App\Http\Controllers\MeetingController::store()
+ * @see MeetingController::store()
  */
 final class StoreAction
 {

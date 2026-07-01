@@ -35,7 +35,7 @@ class AnnouncementController extends Controller
         $this->authorize('create', Announcement::class);
 
         return view('announcement.management.create', [
-            'certifications' => Certification::query()->orderBy('name')->get(['id', 'name']),
+            'certifications' => Certification::query()->published()->orderBy('name')->get(['id', 'name']),
             'students' => User::query()
                 ->where('role', UserRole::Student)
                 ->where('status', UserStatus::InProgress)

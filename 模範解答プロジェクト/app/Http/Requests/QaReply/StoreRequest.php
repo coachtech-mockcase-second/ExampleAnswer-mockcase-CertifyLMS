@@ -37,7 +37,18 @@ class StoreRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'body.required' => '回答本文を入力してください。',
             'body.not_regex' => '回答本文を入力してください。',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'body' => '回答本文',
         ];
     }
 }

@@ -30,6 +30,7 @@
                     :value="old('title')"
                     :error="$errors->first('title')"
                     placeholder="例: 年末年始の運営休止について"
+                    maxlength="200"
                     required
                 />
 

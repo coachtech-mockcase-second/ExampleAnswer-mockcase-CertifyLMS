@@ -35,7 +35,8 @@
 
 ## 受け入れ条件
 
-- [ ] 教材管理の各階層一覧(Part 一覧 / Part 詳細の Chapter 一覧 / Chapter 詳細の Section 一覧)が、いずれも並び順(`order` の昇順)で表示される
+- [ ] 【管理者・コーチ】教材管理の階層一覧が並び順で表示される
+  1. 資格管理マスタの各階層一覧(Part 一覧 / Part 詳細の Chapter 一覧 / Chapter 詳細の Section 一覧)が、いずれも並び順(`order` の昇順)で表示される
 - [ ] 同梱の並び順テスト(修正前は赤)が pass する
   - 確認方法（テスト）: `tests/Feature/Http/Part/IndexTest.php::test_parts_are_listed_in_order_ascending`(Part 一覧) / `tests/Feature/Http/Part/ShowTest.php::test_chapters_are_listed_in_order_ascending`(Chapter 一覧) / `tests/Feature/Http/Chapter/ShowTest.php::test_sections_are_listed_in_order_ascending`(Section 一覧)
 

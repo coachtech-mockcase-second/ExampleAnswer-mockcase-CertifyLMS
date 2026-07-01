@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Policies;
 
-use App\Enums\MeetingStatus;
 use App\Models\Meeting;
 use App\Models\User;
 use App\Policies\MeetingPolicy;

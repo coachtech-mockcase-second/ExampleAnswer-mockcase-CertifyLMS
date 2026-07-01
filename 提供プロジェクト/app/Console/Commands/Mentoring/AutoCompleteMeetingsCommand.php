@@ -25,15 +25,16 @@ class AutoCompleteMeetingsCommand extends Command
     {
         $count = 0;
 
-        $meetings = Meeting::query()
+        Meeting::query()
             ->where('status', MeetingStatus::Reserved->value)
             ->where('scheduled_at', '<', now()->subMinutes(60))
-            ->get();
-
-        foreach ($meetings as $meeting) {
-            $action($meeting);
-            $count++;
-        }
+            ->orderBy('id')
+            ->chunk(100, function ($meetings) use ($action, &$count): void {
+                foreach ($meetings as $meeting) {
+                    $action($meeting);
+                    $count++;
+                }
+            });
 
         $this->info("自動完了した面談を {$count} 件処理しました。");
 

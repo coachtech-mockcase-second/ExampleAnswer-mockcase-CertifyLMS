@@ -165,11 +165,11 @@ class StoreRequestTest extends TestCase
     public static function invalidEmailOrRolePayloads(): array
     {
         return [
-            'メール未指定で 422'           => [['role' => 'coach'], 'email'],
-            'メール形式不正で 422'         => [['email' => 'not-an-email', 'role' => 'coach'], 'email'],
-            'メール 256 文字超で 422'      => [['email' => str_repeat('a', 247).'@example.test', 'role' => 'coach'], 'email'],
-            'ロール未指定で 422'           => [['email' => 'x@example.test'], 'role'],
-            'ロール許容外の値で 422'       => [['email' => 'x@example.test', 'role' => 'admin'], 'role'],
+            'メール未指定で 422' => [['role' => 'coach'], 'email'],
+            'メール形式不正で 422' => [['email' => 'not-an-email', 'role' => 'coach'], 'email'],
+            'メール 256 文字超で 422' => [['email' => str_repeat('a', 247).'@example.test', 'role' => 'coach'], 'email'],
+            'ロール未指定で 422' => [['email' => 'x@example.test'], 'role'],
+            'ロール許容外の値で 422' => [['email' => 'x@example.test', 'role' => 'admin'], 'role'],
         ];
     }
 }

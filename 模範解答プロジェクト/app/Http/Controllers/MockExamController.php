@@ -24,6 +24,9 @@ use Illuminate\View\View;
  */
 class MockExamController extends Controller
 {
+    /**
+     * 模試マスタを名前キーワード・資格・公開状態で絞り込んで一覧表示する。
+     */
     public function index(IndexRequest $request, IndexAction $action): View
     {
         $validated = $request->validated();
@@ -47,6 +50,9 @@ class MockExamController extends Controller
         ]);
     }
 
+    /**
+     * 模試マスタの詳細を表示する。
+     */
     public function show(MockExam $mockExam, ShowAction $action): View
     {
         $this->authorize('view', $mockExam);
@@ -56,6 +62,9 @@ class MockExamController extends Controller
         ]);
     }
 
+    /**
+     * 模試マスタの新規作成フォームを表示する。
+     */
     public function create(): View
     {
         $this->authorize('viewAny', MockExam::class);
@@ -65,6 +74,9 @@ class MockExamController extends Controller
         ]);
     }
 
+    /**
+     * 模試マスタを新規作成し、作成した詳細画面へリダイレクトする。
+     */
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse
     {
         $mockExam = $action($request->user(), $request->validated());
@@ -74,6 +86,9 @@ class MockExamController extends Controller
             ->with('success', '模試マスタを作成しました。');
     }
 
+    /**
+     * 模試マスタの編集フォームを表示する。
+     */
     public function edit(MockExam $mockExam): View
     {
         $this->authorize('update', $mockExam);
@@ -83,6 +98,9 @@ class MockExamController extends Controller
         ]);
     }
 
+    /**
+     * 模試マスタの内容を更新し、詳細画面へリダイレクトする。
+     */
     public function update(MockExam $mockExam, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
         $action($mockExam, $request->user(), $request->validated());
@@ -92,6 +110,9 @@ class MockExamController extends Controller
             ->with('success', '模試マスタを更新しました。');
     }
 
+    /**
+     * 模試マスタを削除し、一覧画面へリダイレクトする。
+     */
     public function destroy(MockExam $mockExam, DestroyAction $action): RedirectResponse
     {
         $this->authorize('delete', $mockExam);
@@ -103,6 +124,9 @@ class MockExamController extends Controller
             ->with('success', '模試マスタを削除しました。');
     }
 
+    /**
+     * 模試を公開状態に切り替え、詳細画面へリダイレクトする。
+     */
     public function publish(MockExam $mockExam, PublishAction $action): RedirectResponse
     {
         $this->authorize('publish', $mockExam);
@@ -114,6 +138,9 @@ class MockExamController extends Controller
             ->with('success', '模試を公開しました。');
     }
 
+    /**
+     * 模試を非公開状態に切り替え、詳細画面へリダイレクトする。
+     */
     public function unpublish(MockExam $mockExam, UnpublishAction $action): RedirectResponse
     {
         $this->authorize('unpublish', $mockExam);

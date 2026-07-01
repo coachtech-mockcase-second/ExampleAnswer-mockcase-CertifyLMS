@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Models;
 
 use App\Enums\AnswerSource;
-use App\Models\Enrollment;
-use App\Models\QuestionCategory;
 use App\Models\Section;
 use App\Models\SectionQuestion;
 use App\Models\SectionQuestionAnswer;

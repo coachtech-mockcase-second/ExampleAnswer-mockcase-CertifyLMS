@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use App\Enums\MeetingPackStatus;
 use App\Enums\MeetingQuotaTransactionType;
-use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\MeetingPack;
@@ -76,7 +75,7 @@ final class PaymentSeeder extends Seeder
     /**
      * 固定 student に succeeded + pending + admin_grant を投入。
      *
-     * @param  Collection<int, MeetingPack>  $packs
+     * @param Collection<int, MeetingPack> $packs
      */
     private function seedFixedStudentPayments(User $student, Collection $packs, User $admin): void
     {
@@ -91,8 +90,8 @@ final class PaymentSeeder extends Seeder
     /**
      * demo student × 6 に対し status / type を散らす。
      *
-     * @param  Collection<int, User>  $students
-     * @param  Collection<int, MeetingPack>  $packs
+     * @param Collection<int, User> $students
+     * @param Collection<int, MeetingPack> $packs
      */
     private function seedDemoStudentPayments(Collection $students, Collection $packs, User $admin): void
     {

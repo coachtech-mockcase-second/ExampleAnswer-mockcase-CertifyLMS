@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\EnrollmentStatus;
 use App\Models\Enrollment;
 use App\Models\MockExam;
+use App\Models\User;
 use App\UseCases\MockExamCatalog\IndexAction;
 use App\UseCases\MockExamCatalog\ShowAction;
 use Illuminate\Http\Request;
@@ -60,7 +61,7 @@ class MockExamCatalogController extends Controller
      */
     public function fallbackIndex(Request $request): View
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $enrollments = $user->enrollments()

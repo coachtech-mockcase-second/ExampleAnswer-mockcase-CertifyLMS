@@ -19,11 +19,17 @@ use Illuminate\View\View;
  */
 class ProfileController extends Controller
 {
+    /**
+     * 本人のプロフィール設定画面を、`?tab=profile|password` のタブ切替状態で表示する。
+     */
     public function edit(Request $request): View
     {
         return view('settings.profile', ['user' => $request->user()]);
     }
 
+    /**
+     * 本人の name / bio（コーチは meeting_url も）を更新し、プロフィールタブへ戻す。
+     */
     public function update(UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
         $action($request->user(), $request->validated());

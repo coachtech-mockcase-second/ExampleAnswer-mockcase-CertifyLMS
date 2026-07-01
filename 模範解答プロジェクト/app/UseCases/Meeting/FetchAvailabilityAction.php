@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Meeting;
 
+use App\Http\Controllers\MeetingController;
 use App\Models\Enrollment;
 use App\Services\MeetingAvailabilityService;
 use Carbon\Carbon;
@@ -15,7 +16,7 @@ use Illuminate\Support\Collection;
  * 指定 Enrollment の担当コーチ集合について、指定日 1 日分の 60 分単位空きスロット集合を返す。
  * コーチ個別は受講生に見せず、`available_coach_count` (予約可能なコーチ数) のみヒント表示する。
  *
- * @see \App\Http\Controllers\MeetingController::fetchAvailability()
+ * @see MeetingController::fetchAvailability()
  */
 final class FetchAvailabilityAction
 {

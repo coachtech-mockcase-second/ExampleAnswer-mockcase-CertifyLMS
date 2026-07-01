@@ -122,14 +122,14 @@ class CertificationPolicyTest extends TestCase
     public static function viewMatrix(): array
     {
         return [
-            'admin は draft も view 可'              => ['admin',   'draft',     false, true],
-            'admin は published も view 可'          => ['admin',   'published', false, true],
-            'admin は archived も view 可'           => ['admin',   'archived',  false, true],
+            'admin は draft も view 可' => ['admin',   'draft',     false, true],
+            'admin は published も view 可' => ['admin',   'published', false, true],
+            'admin は archived も view 可' => ['admin',   'archived',  false, true],
             'coach は担当資格 (published) を view 可' => ['coach',   'published', true,  true],
-            'coach は非担当資格を view 不可'         => ['coach',   'published', false, false],
-            'student は published を view 可'        => ['student', 'published', false, true],
-            'student は draft を view 不可'          => ['student', 'draft',     false, false],
-            'student は archived を view 不可'       => ['student', 'archived',  false, false],
+            'coach は非担当資格を view 不可' => ['coach',   'published', false, false],
+            'student は published を view 可' => ['student', 'published', false, true],
+            'student は draft を view 不可' => ['student', 'draft',     false, false],
+            'student は archived を view 不可' => ['student', 'archived',  false, false],
         ];
     }
 

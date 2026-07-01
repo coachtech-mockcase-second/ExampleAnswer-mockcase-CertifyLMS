@@ -50,7 +50,8 @@ class EnrollmentGoal extends Model
      * 個人目標の表示順。未達成を先頭にし、その中で目標期日が近い順(期日未設定は末尾)、
      * 同条件は新しく作成した順に並べる。受講登録詳細とダッシュボードの目標一覧で共用する。
      *
-     * @param  Builder<EnrollmentGoal>  $query
+     * @param Builder<EnrollmentGoal> $query
+     *
      * @return Builder<EnrollmentGoal>
      */
     public function scopeDisplayOrder(Builder $query): Builder

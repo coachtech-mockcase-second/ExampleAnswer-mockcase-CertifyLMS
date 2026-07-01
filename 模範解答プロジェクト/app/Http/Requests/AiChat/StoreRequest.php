@@ -31,4 +31,29 @@ class StoreRequest extends FormRequest
             'source' => ['nullable', 'string', 'in:widget,full-screen'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'section_id.exists' => '指定したセクションが見つかりません。',
+            'message.min' => 'メッセージを入力してください。',
+            'message.max' => 'メッセージは2000文字以内で入力してください。',
+            'source.in' => '相談の開始元が不正です。',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'section_id' => 'セクション',
+            'message' => 'メッセージ',
+            'source' => '相談の開始元',
+        ];
+    }
 }

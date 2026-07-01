@@ -79,6 +79,6 @@ class EnrollmentGoalController extends Controller
 
         return redirect()
             ->route('enrollments.show', $goal->enrollment_id)
-            ->with('success', '目標の達成マークを取り消しました。');
+            ->with('success', '目標を未達成に戻しました。');
     }
 }

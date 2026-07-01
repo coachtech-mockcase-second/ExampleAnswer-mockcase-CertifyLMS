@@ -79,7 +79,7 @@
                             <form novalidate method="POST" action="{{ route('enrollment-goals.unmarkAchieved', $goal) }}">
                                 @csrf
                                 @method('DELETE')
-                                <x-button type="submit" variant="ghost" size="sm">取消</x-button>
+                                <x-button type="submit" variant="ghost" size="sm">未達成</x-button>
                             </form>
                         @endcan
                     @else

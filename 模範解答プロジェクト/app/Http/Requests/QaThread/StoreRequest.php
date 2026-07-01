@@ -44,9 +44,24 @@ class StoreRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'certification_id.required' => '資格を選択してください。',
             'certification_id.exists' => '選択した資格は現在投稿を受け付けていません。公開中の資格を選んでください。',
+            'title.required' => 'タイトルを入力してください。',
             'title.not_regex' => 'タイトルを入力してください。',
+            'body.required' => '本文を入力してください。',
             'body.not_regex' => '本文を入力してください。',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'certification_id' => '資格',
+            'title' => 'タイトル',
+            'body' => '本文',
         ];
     }
 }

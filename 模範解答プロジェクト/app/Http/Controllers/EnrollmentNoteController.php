@@ -22,6 +22,9 @@ use Illuminate\View\View;
  */
 class EnrollmentNoteController extends Controller
 {
+    /**
+     * 受講登録に対するコーチ / admin の受講生メモを追加し、受講生詳細画面へ戻す。
+     */
     public function store(Enrollment $enrollment, StoreRequest $request, StoreAction $action): RedirectResponse
     {
         $action($enrollment, auth()->user(), $request->validated());
@@ -29,6 +32,9 @@ class EnrollmentNoteController extends Controller
         return back()->with('success', 'メモを追加しました。');
     }
 
+    /**
+     * 受講生メモの編集フォームを表示する。
+     */
     public function edit(EnrollmentNote $note): View
     {
         $this->authorize('update', $note);
@@ -38,6 +44,9 @@ class EnrollmentNoteController extends Controller
         ]);
     }
 
+    /**
+     * 受講生メモの内容を更新し、受講生詳細画面へリダイレクトする。
+     */
     public function update(EnrollmentNote $note, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
         $action($note, $request->validated());
@@ -47,6 +56,9 @@ class EnrollmentNoteController extends Controller
             ->with('success', 'メモを更新しました。');
     }
 
+    /**
+     * 受講生メモを削除し、直前の画面へ戻す。
+     */
     public function destroy(EnrollmentNote $note, DestroyAction $action): RedirectResponse
     {
         $this->authorize('delete', $note);

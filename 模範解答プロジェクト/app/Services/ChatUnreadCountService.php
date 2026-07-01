@@ -51,7 +51,8 @@ class ChatUnreadCountService
      * room_id をキー、未読件数(0 以上)を値とした連想配列を返す。
      * rooms-pane の各ルーム行で O(1) ルックアップしてバッジ表示する用途で、N+1 を回避する。
      *
-     * @param  iterable<ChatRoom>  $rooms
+     * @param iterable<ChatRoom> $rooms
+     *
      * @return array<string, int>
      */
     public function messageCountsByRoomForUser(iterable $rooms, User $user): array

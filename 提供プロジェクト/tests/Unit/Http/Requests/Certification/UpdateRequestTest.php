@@ -85,8 +85,8 @@ class UpdateRequestTest extends TestCase
     public static function invalidPayloads(): array
     {
         return [
-            'name 未指定で 422'           => [['name' => ''], 'name'],
-            'difficulty 不正値で 422'     => [['difficulty' => 'unknown'], 'difficulty'],
+            'name 未指定で 422' => [['name' => ''], 'name'],
+            'difficulty 不正値で 422' => [['difficulty' => 'unknown'], 'difficulty'],
             'category_id ulid 不正で 422' => [['category_id' => 'not-ulid'], 'category_id'],
         ];
     }

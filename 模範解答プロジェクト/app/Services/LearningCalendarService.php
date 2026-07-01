@@ -67,7 +67,7 @@ class LearningCalendarService
     /**
      * 日別マップから今日が属する月の学習時間合計 (分) を取り出す。
      *
-     * @param  array<string, int>  $minutesByDate
+     * @param array<string, int> $minutesByDate
      */
     private function currentMonthMinutes(array $minutesByDate, CarbonImmutable $today): int
     {

@@ -67,8 +67,8 @@
 
 | コマンド | 配信タイミング |
 |---|---|
-| `php artisan notifications:send-meeting-reminders --window=eve` | 前日 |
-| `php artisan notifications:send-meeting-reminders --window=one_hour_before` | 1 時間前 |
+| `sail artisan notifications:send-meeting-reminders --window=eve` | 前日 |
+| `sail artisan notifications:send-meeting-reminders --window=one_hour_before` | 1 時間前 |
 
 定期実行のスケジュールは前日分・1 時間前分でそれぞれ登録する。ローカルでは定期実行を待たず、コマンドを手動実行して動作確認する。
 

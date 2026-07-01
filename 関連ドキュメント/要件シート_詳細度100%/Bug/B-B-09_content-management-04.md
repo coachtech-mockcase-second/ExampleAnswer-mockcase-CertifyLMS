@@ -35,8 +35,10 @@
 
 ## 受け入れ条件
 
-- [ ] 受講生は、自分が受講登録していない資格の教材詳細(Part / Chapter / Section)を閲覧できない
-- [ ] 受講登録済み(受講中 / 合格)の資格の教材詳細は従来どおり閲覧できる
+- [ ] 【受講生】未登録資格の教材を閲覧できない
+  1. 受講生は、自分が受講登録していない資格の教材詳細(Part / Chapter / Section)を閲覧できない
+- [ ] 【受講生】受講登録済み資格の教材閲覧の維持
+  1. 受講登録済み(受講中 / 合格)の資格の教材詳細は従来どおり閲覧できる
 - [ ] 同梱 `tests/Feature/Http/Learning/BrowseControllerTest.php::test_show_part_forbidden_for_non_enrolled_student`(修正前は赤)が pass する
 
 ## 実装方針(参考)

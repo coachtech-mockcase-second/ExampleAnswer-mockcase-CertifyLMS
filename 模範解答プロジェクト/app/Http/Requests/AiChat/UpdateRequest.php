@@ -29,4 +29,26 @@ class UpdateRequest extends FormRequest
             'title' => ['required', 'string', 'min:1', 'max:100'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'title.required' => 'タイトルを入力してください。',
+            'title.min' => 'タイトルを入力してください。',
+            'title.max' => 'タイトルは100文字以内で入力してください。',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'title' => 'タイトル',
+        ];
+    }
 }

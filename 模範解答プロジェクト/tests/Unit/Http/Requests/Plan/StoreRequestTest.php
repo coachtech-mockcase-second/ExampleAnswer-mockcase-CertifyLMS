@@ -104,15 +104,15 @@ class StoreRequestTest extends TestCase
         $baseline = self::validBaseline();
 
         return [
-            '名前未指定で 422'             => [['name' => '', 'duration_days' => 90, 'default_meeting_quota' => 6], 'name'],
-            '名前が 101 文字で 422'        => [['name' => str_repeat('a', 101), 'duration_days' => 90, 'default_meeting_quota' => 6], 'name'],
-            '説明が 2001 文字で 422'       => [array_merge($baseline, ['description' => str_repeat('b', 2001)]), 'description'],
-            'duration_days 未指定で 422'   => [['name' => 'X', 'default_meeting_quota' => 6], 'duration_days'],
-            'duration_days 0 で 422'       => [['name' => 'X', 'duration_days' => 0, 'default_meeting_quota' => 6], 'duration_days'],
-            'duration_days 3651 で 422'    => [['name' => 'X', 'duration_days' => 3651, 'default_meeting_quota' => 6], 'duration_days'],
-            'duration_days 非整数で 422'   => [['name' => 'X', 'duration_days' => 'abc', 'default_meeting_quota' => 6], 'duration_days'],
-            'meeting_quota 負数で 422'     => [['name' => 'X', 'duration_days' => 90, 'default_meeting_quota' => -1], 'default_meeting_quota'],
-            'meeting_quota 1001 で 422'    => [['name' => 'X', 'duration_days' => 90, 'default_meeting_quota' => 1001], 'default_meeting_quota'],
+            '名前未指定で 422' => [['name' => '', 'duration_days' => 90, 'default_meeting_quota' => 6], 'name'],
+            '名前が 101 文字で 422' => [['name' => str_repeat('a', 101), 'duration_days' => 90, 'default_meeting_quota' => 6], 'name'],
+            '説明が 2001 文字で 422' => [array_merge($baseline, ['description' => str_repeat('b', 2001)]), 'description'],
+            'duration_days 未指定で 422' => [['name' => 'X', 'default_meeting_quota' => 6], 'duration_days'],
+            'duration_days 0 で 422' => [['name' => 'X', 'duration_days' => 0, 'default_meeting_quota' => 6], 'duration_days'],
+            'duration_days 3651 で 422' => [['name' => 'X', 'duration_days' => 3651, 'default_meeting_quota' => 6], 'duration_days'],
+            'duration_days 非整数で 422' => [['name' => 'X', 'duration_days' => 'abc', 'default_meeting_quota' => 6], 'duration_days'],
+            'meeting_quota 負数で 422' => [['name' => 'X', 'duration_days' => 90, 'default_meeting_quota' => -1], 'default_meeting_quota'],
+            'meeting_quota 1001 で 422' => [['name' => 'X', 'duration_days' => 90, 'default_meeting_quota' => 1001], 'default_meeting_quota'],
         ];
     }
 

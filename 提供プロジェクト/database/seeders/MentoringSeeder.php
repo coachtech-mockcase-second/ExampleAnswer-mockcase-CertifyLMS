@@ -37,6 +37,7 @@ final class MentoringSeeder extends Seeder
     {
         $this->seedCoachAvailabilities();
         $this->seedFixedStudentMeetings();
+        $this->seedNoQuotaStudentMeetings();
         $this->seedDemoMeetings();
     }
 
@@ -148,6 +149,49 @@ final class MentoringSeeder extends Seeder
     }
 
     /**
+     * 面談残数 0 の受講生に、付与された面談回数と同数の完了済み面談を投入し残数を 0 にする。
+     *
+     * 「残数 0 での予約拒否」を実機確認するためのデータ。過去日の completed を max_meetings 件作り、
+     * それぞれ消費トランザクションを起票する(付与 max_meetings − 消費 max_meetings = 残数 0)。
+     */
+    private function seedNoQuotaStudentMeetings(): void
+    {
+        $student = User::query()->where('email', 'student-noquota@certify-lms.test')->first();
+        $coach = User::query()->where('email', 'coach@certify-lms.test')->first();
+
+        if ($student === null || $coach === null) {
+            return;
+        }
+
+        $enrollment = Enrollment::query()
+            ->where('user_id', $student->id)
+            ->where('status', EnrollmentStatus::Learning->value)
+            ->orderBy('created_at')
+            ->first();
+
+        if ($enrollment === null) {
+            return;
+        }
+
+        // 付与された面談回数と同数を消費して残数 0 にする。既存メンタリングデータと衝突しない遠い過去日 + 20:00 を使う。
+        for ($i = 0; $i < $student->max_meetings; $i++) {
+            $past = now()->copy()->startOfDay()->subDays(150 + $i * 10)->setTime(20, 0, 0);
+            $completed = Meeting::factory()
+                ->completed()
+                ->forCoach($coach)
+                ->forStudent($student)
+                ->forEnrollment($enrollment)
+                ->create([
+                    'scheduled_at' => $past,
+                    'completed_at' => $past->copy()->addHour(),
+                    'topic' => '過去に実施済みの面談。',
+                ]);
+
+            $this->insertConsumedTransaction($student, $completed, occurredAt: $past->copy()->subDay());
+        }
+    }
+
+    /**
      * 履歴 UI のバリエーション demo(reserved 複数 / completed 複数 / canceled 数件)を投入する。
      */
     private function seedDemoMeetings(): void
@@ -162,7 +206,7 @@ final class MentoringSeeder extends Seeder
 
         $demoEnrollments = Enrollment::query()
             ->where('status', EnrollmentStatus::Learning->value)
-            ->whereHas('user', fn ($q) => $q->where('email', '!=', 'student@certify-lms.test'))
+            ->whereHas('user', fn ($q) => $q->whereNotIn('email', ['student@certify-lms.test', 'student-noquota@certify-lms.test']))
             ->with('user')
             ->take(6)
             ->get();

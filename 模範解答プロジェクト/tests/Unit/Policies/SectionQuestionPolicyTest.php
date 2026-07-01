@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Policies;
 
-use App\Enums\ContentStatus;
 use App\Models\Certification;
 use App\Models\CertificationCoachAssignment;
+use App\Models\Chapter;
 use App\Models\Enrollment;
+use App\Models\Part;
 use App\Models\Section;
 use App\Models\SectionQuestion;
 use App\Models\User;
@@ -81,8 +82,8 @@ class SectionQuestionPolicyTest extends TestCase
         ]);
         $assignedQuestion = SectionQuestion::factory()->published()->create([
             'section_id' => Section::factory()->state(fn () => [
-                'chapter_id' => \App\Models\Chapter::factory()
-                    ->for(\App\Models\Part::factory()->for($assignedCert))
+                'chapter_id' => Chapter::factory()
+                    ->for(Part::factory()->for($assignedCert))
                     ->create()->id,
             ]),
         ]);

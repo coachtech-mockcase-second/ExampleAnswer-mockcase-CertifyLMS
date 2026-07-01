@@ -46,7 +46,7 @@
 
 ### Schedule 登録
 
-- リマインダー配信コマンド `php artisan notifications:send-meeting-reminders` を配信タイミング(`--window=eve` = 前日 / `--window=one_hour_before` = 1 時間前)で切替起動
+- リマインダー配信コマンド `sail artisan notifications:send-meeting-reminders` を配信タイミング(`--window=eve` = 前日 / `--window=one_hour_before` = 1 時間前)で切替起動
 - 前日リマインド: 毎日 18:00 に実行
 - 1 時間前リマインド: 5 分間隔で実行
 - 両方とも同時起動防止設定を付与
@@ -69,11 +69,14 @@
 
 ## 受け入れ条件
 
-- [ ] `php artisan notifications:send-meeting-reminders --window=eve` を実行すると、翌日(00:00-23:59)に予約されている面談の当事者(受講生 + 担当コーチ)に DB + メール通知が発火する
-- [ ] `php artisan notifications:send-meeting-reminders --window=one_hour_before` を実行すると、開始 55-65 分後に予約されている面談の当事者に DB + メール通知が発火する
-- [ ] 同じ面談・同じ配信タイミングで既にリマインダー通知が存在する場合、再実行しても通知は重複して作られない
-- [ ] 受信者の利用状態が「受講中」でない(退会済 / 修了済 / 招待中)場合は配信スキップされる
-- [ ] 予約済み以外の面談(キャンセル済み / 完了済み)はリマインダー対象外で、当事者に通知が発火しない
+- [ ] 【システム】前日リマインダーの発火
+  1. `sail artisan notifications:send-meeting-reminders --window=eve` を実行すると、翌日(00:00-23:59)に予約されている面談の当事者(受講生 + 担当コーチ)に DB + メール通知が発火する
+- [ ] 【システム】1 時間前リマインダーの発火
+  1. `sail artisan notifications:send-meeting-reminders --window=one_hour_before` を実行した時刻を基準に、開始 55-65 分後に予約されている面談の当事者に DB + メール通知が発火する
+- [ ] 【システム】リマインダーの重複防止
+  1. 同じ面談・同じ配信タイミングで既にリマインダー通知が存在する場合、再実行しても通知は重複して作られない
+- [ ] 【システム】対象外面談の除外
+  1. 予約済み以外の面談(キャンセル済み / 完了済み)はリマインダー対象外で、当事者に通知が発火しない
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
@@ -86,8 +89,8 @@
 
 | コマンド | オプション | 動作 |
 |---|---|---|
-| `php artisan notifications:send-meeting-reminders` | `--window=eve` | 翌日(`now` の翌日 00:00..23:59)に予約されている面談の当事者(受講生 + 担当コーチ)にリマインダー配信 |
-| `php artisan notifications:send-meeting-reminders` | `--window=one_hour_before` | 開始 55-65 分後(`now+55min`..`now+65min`)に予約されている面談の当事者にリマインダー配信 |
+| `sail artisan notifications:send-meeting-reminders` | `--window=eve` | 翌日(`now` の翌日 00:00..23:59)に予約されている面談の当事者(受講生 + 担当コーチ)にリマインダー配信 |
+| `sail artisan notifications:send-meeting-reminders` | `--window=one_hour_before` | 開始 55-65 分後(`now+55min`..`now+65min`)に予約されている面談の当事者にリマインダー配信 |
 
 **実行タイミング(Schedule 登録、`app/Console/Kernel.php` の `schedule()` メソッドに追記)**:
 

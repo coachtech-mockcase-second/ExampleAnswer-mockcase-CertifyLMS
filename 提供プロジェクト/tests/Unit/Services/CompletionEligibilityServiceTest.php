@@ -80,5 +80,4 @@ class CompletionEligibilityServiceTest extends TestCase
 
         $this->assertTrue($this->service->isEligible($enrollment));
     }
-
 }

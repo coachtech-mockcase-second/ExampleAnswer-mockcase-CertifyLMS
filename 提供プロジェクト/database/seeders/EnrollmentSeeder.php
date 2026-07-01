@@ -52,11 +52,11 @@ final class EnrollmentSeeder extends Seeder
 
         $fixedStudent = User::query()->where('email', 'student@certify-lms.test')->first();
         // UserSeeder で投入される in_progress 受講生 demo の件数(8 件)に合わせて取得。
-        // 固定 student は別ハンドリングするので whereNot で除外し、残り 8 件を循環パターンに割当てる。
+        // 固定 student と面談残数 0 の固定 student は別ハンドリングするので whereNotIn で除外し、残り 8 件を循環パターンに割当てる。
         $demoStudents = User::query()
             ->where('role', UserRole::Student->value)
             ->where('status', UserStatus::InProgress->value)
-            ->whereNot('email', 'student@certify-lms.test')
+            ->whereNotIn('email', ['student@certify-lms.test', 'student-noquota@certify-lms.test'])
             ->limit(8)
             ->get();
 
@@ -73,6 +73,48 @@ final class EnrollmentSeeder extends Seeder
         }
 
         $this->enrollDemoStudents($demoStudents, $publishedCertifications, $admin);
+        $this->enrollNoQuotaStudent($publishedCertifications);
+    }
+
+    /**
+     * 面談残数 0 の受講生を公開資格 1 件に learning で登録する。
+     *
+     * 面談予約画面は学習中の受講登録を前提とするため、残数 0 での予約拒否を実機確認できるよう
+     * 受講登録を 1 件用意する(面談回数の消化は MentoringSeeder が行う)。
+     *
+     * @param Collection<int, Certification> $publishedCerts
+     */
+    private function enrollNoQuotaStudent($publishedCerts): void
+    {
+        $student = User::query()->where('email', 'student-noquota@certify-lms.test')->first();
+        $certification = $publishedCerts->first();
+
+        if ($student === null || $certification === null) {
+            return;
+        }
+
+        $enrollment = Enrollment::firstOrCreate(
+            [
+                'user_id' => $student->id,
+                'certification_id' => $certification->id,
+            ],
+            [
+                'status' => EnrollmentStatus::Learning->value,
+                'current_term' => TermType::BasicLearning->value,
+                'exam_date' => now()->addMonths(2)->toDateString(),
+                'passed_at' => null,
+            ],
+        );
+
+        EnrollmentStatusLog::firstOrCreate(
+            ['enrollment_id' => $enrollment->id, 'to_status' => EnrollmentStatus::Learning->value],
+            [
+                'from_status' => null,
+                'changed_by_user_id' => $student->id,
+                'changed_at' => now()->subDays(20),
+                'changed_reason' => '新規登録',
+            ],
+        );
     }
 
     /**
@@ -196,7 +238,6 @@ final class EnrollmentSeeder extends Seeder
             ]);
         }
     }
-
 
     /**
      * passed Enrollment に対し、修了証(`certificates`)行を INSERT し PDF 実体も生成する。

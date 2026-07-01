@@ -28,17 +28,18 @@ class GraduateExpiredUsersCommand extends Command
     {
         $count = 0;
 
-        $users = User::query()
+        User::query()
             ->with('plan')
             ->where('status', UserStatus::InProgress->value)
             ->whereNotNull('plan_expires_at')
             ->where('plan_expires_at', '<', now())
-            ->get();
-
-        foreach ($users as $user) {
-            $action($user);
-            $count++;
-        }
+            ->orderBy('id')
+            ->chunk(100, function ($users) use ($action, &$count): void {
+                foreach ($users as $user) {
+                    $action($user);
+                    $count++;
+                }
+            });
 
         $this->info("Graduated {$count} expired users.");
 

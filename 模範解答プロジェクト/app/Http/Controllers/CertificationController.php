@@ -29,6 +29,9 @@ use Illuminate\View\View;
  */
 class CertificationController extends Controller
 {
+    /**
+     * 資格マスタを名前キーワード・公開ステータス・カテゴリ・難易度で絞り込んで一覧表示する。
+     */
     public function index(IndexRequest $request, IndexAction $action): View
     {
         $validated = $request->validated();
@@ -51,6 +54,9 @@ class CertificationController extends Controller
         ]);
     }
 
+    /**
+     * 資格マスタの詳細を、担当コーチ選択候補とあわせて表示する。
+     */
     public function show(Certification $certification, ShowAction $action): View
     {
         $this->authorize('view', $certification);
@@ -66,6 +72,9 @@ class CertificationController extends Controller
         ]);
     }
 
+    /**
+     * 資格マスタの新規作成フォームを表示する。
+     */
     public function create(): View
     {
         $this->authorize('create', Certification::class);
@@ -75,6 +84,9 @@ class CertificationController extends Controller
         ]);
     }
 
+    /**
+     * 資格マスタを新規作成し、作成した詳細画面へリダイレクトする。
+     */
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse
     {
         $certification = $action($request->user(), $request->validated());
@@ -84,6 +96,9 @@ class CertificationController extends Controller
             ->with('success', '資格マスタを作成しました。');
     }
 
+    /**
+     * 資格マスタの編集フォームを表示する。
+     */
     public function edit(Certification $certification): View
     {
         $this->authorize('update', $certification);
@@ -94,6 +109,9 @@ class CertificationController extends Controller
         ]);
     }
 
+    /**
+     * 資格マスタの内容を更新し、詳細画面へリダイレクトする。
+     */
     public function update(Certification $certification, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
         $action($certification, $request->user(), $request->validated());
@@ -103,6 +121,9 @@ class CertificationController extends Controller
             ->with('success', '資格マスタを更新しました。');
     }
 
+    /**
+     * 資格マスタを削除し、一覧画面へリダイレクトする。
+     */
     public function destroy(Certification $certification, DestroyAction $action): RedirectResponse
     {
         $this->authorize('delete', $certification);
@@ -114,6 +135,9 @@ class CertificationController extends Controller
             ->with('success', '資格マスタを削除しました。');
     }
 
+    /**
+     * 資格を公開状態に切り替え、詳細画面へリダイレクトする。
+     */
     public function publish(Certification $certification, PublishAction $action): RedirectResponse
     {
         $this->authorize('publish', $certification);
@@ -125,6 +149,9 @@ class CertificationController extends Controller
             ->with('success', '資格マスタを公開しました。');
     }
 
+    /**
+     * 資格を非公開状態に切り替え、詳細画面へリダイレクトする。
+     */
     public function unpublish(Certification $certification, UnpublishAction $action): RedirectResponse
     {
         $this->authorize('unpublish', $certification);
@@ -136,6 +163,9 @@ class CertificationController extends Controller
             ->with('success', '資格マスタの公開を停止しました。');
     }
 
+    /**
+     * 資格をアーカイブ状態に切り替え、詳細画面へリダイレクトする。
+     */
     public function archive(Certification $certification, ArchiveAction $action): RedirectResponse
     {
         $this->authorize('archive', $certification);

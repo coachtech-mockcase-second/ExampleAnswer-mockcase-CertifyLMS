@@ -34,7 +34,8 @@ use Illuminate\Support\Str;
  *    サイドバーバッジ / TopBar ベルポップオーバー / 通知一覧画面の各表示パターンを実機確認できるようにする。
  * 2. **既読/未読 半々**: read_at を null と過去日付で半々に振り、未読バッジ件数 / 未読フィルタが動くことを担保する。
  * 3. **固定 student / 固定 coach への手厚い投入**: 動作確認・PR スクショで安定して参照できるよう、
- *    両アカウントには 6 種すべてのタイプを最低 1 件ずつ投入する。
+ *    固定 coach には 6 種すべてを、固定 student には受講生が受信し得る 5 種(MeetingReserved は
+ *    予約を受けたコーチ宛の通知のため除く)を最低 1 件ずつ投入する。
  *
  * 実装上の選択: `Notification::send()` 経由ではなく `notifications` テーブルへの直接 INSERT で投入する。
  * 理由は (1) Queue / Mail / Broadcast 等の副作用を発火させない (2) 既存 Seeder で投入済のドメインデータに紐づく
@@ -53,7 +54,7 @@ final class NotificationSeeder extends Seeder
         $demoStudents = User::query()
             ->where('role', UserRole::Student->value)
             ->where('status', UserStatus::InProgress->value)
-            ->whereNot('email', 'student@certify-lms.test')
+            ->whereNotIn('email', ['student@certify-lms.test', 'student-noquota@certify-lms.test'])
             ->orderBy('created_at')
             ->take(6)
             ->get();
@@ -86,8 +87,9 @@ final class NotificationSeeder extends Seeder
     private function seedAllTypesForStudent(User $student): void
     {
         $this->insertAnnouncementNotification($student, daysAgo: 1, read: false);
-        $this->insertChatMessageNotification($student, daysAgo: 2, read: true);
-        $this->insertMeetingReservedNotificationForStudent($student, daysAgo: 3, read: true);
+        $this->insertChatMessageNotification($student, daysAgo: 2, read: false);
+        // MeetingReserved(面談予約が入りました) は予約を受けたコーチ宛の通知。受講生には投入しない
+        // (受講生宛に入れると本人が受信者かつ本文の主体になり、押下時にコーチ用画面へ遷移して閲覧できない)。
         $this->insertMeetingReminderNotification($student, daysAgo: 1, read: false, window: MeetingReminderWindow::OneHourBefore);
         $this->insertMeetingCanceledNotification($student, daysAgo: 5, read: true);
         $this->insertQaReplyNotification($student, daysAgo: 4, read: false);
@@ -192,22 +194,6 @@ final class NotificationSeeder extends Seeder
         }
 
         $this->insertMeetingReservedData($coach, $meeting, $daysAgo, $read);
-    }
-
-    private function insertMeetingReservedNotificationForStudent(User $student, int $daysAgo, bool $read): void
-    {
-        $meeting = Meeting::query()
-            ->where('student_id', $student->id)
-            ->where('status', MeetingStatus::Reserved->value)
-            ->with(['student', 'enrollment.certification'])
-            ->latest('created_at')
-            ->first();
-
-        if ($meeting === null) {
-            return;
-        }
-
-        $this->insertMeetingReservedData($student, $meeting, $daysAgo, $read);
     }
 
     private function insertMeetingReservedData(User $recipient, Meeting $meeting, int $daysAgo, bool $read): void
@@ -352,7 +338,7 @@ final class NotificationSeeder extends Seeder
     /**
      * `notifications` テーブルへ 1 行 INSERT する。
      *
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      */
     private function insertNotification(string $type, User $notifiable, array $data, int $daysAgo, bool $read): void
     {

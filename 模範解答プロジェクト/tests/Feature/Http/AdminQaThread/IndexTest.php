@@ -38,5 +38,4 @@ class IndexTest extends TestCase
             $this->assertContains($response->status(), [403, 404]);
         }
     }
-
 }

@@ -84,12 +84,12 @@ class StoreRequestTest extends TestCase
     public static function invalidPayloads(): array
     {
         return [
-            'name 未指定で 422'             => [['name' => ''], 'name'],
-            'name 101 文字で 422'           => [['name' => str_repeat('a', 101)], 'name'],
-            'category_id ulid 不正で 422'   => [['category_id' => 'not-ulid'], 'category_id'],
+            'name 未指定で 422' => [['name' => ''], 'name'],
+            'name 101 文字で 422' => [['name' => str_repeat('a', 101)], 'name'],
+            'category_id ulid 不正で 422' => [['category_id' => 'not-ulid'], 'category_id'],
             'category_id 存在しない ulid で 422' => [['category_id' => (string) Str::ulid()], 'category_id'],
-            'difficulty 不正値で 422'       => [['difficulty' => 'unknown'], 'difficulty'],
-            'description 1001 文字で 422'   => [['description' => str_repeat('b', 1001)], 'description'],
+            'difficulty 不正値で 422' => [['difficulty' => 'unknown'], 'difficulty'],
+            'description 1001 文字で 422' => [['description' => str_repeat('b', 1001)], 'description'],
         ];
     }
 }

@@ -20,6 +20,9 @@ use Illuminate\Notifications\DatabaseNotification;
  */
 class NotificationController extends Controller
 {
+    /**
+     * 認証ユーザー宛ての通知一覧を、タブ種別で絞り込んでページネーションして返す。
+     */
     public function index(IndexRequest $request, IndexAction $action): AnonymousResourceCollection
     {
         $tab = (string) $request->input('tab', 'all');
@@ -28,6 +31,9 @@ class NotificationController extends Controller
         return NotificationResource::collection($action($request->user(), $tab, $perPage));
     }
 
+    /**
+     * 指定した通知を 1 件既読にする。
+     */
     public function markAsRead(DatabaseNotification $notification, MarkAsReadAction $action): JsonResponse
     {
         $this->authorize('update', $notification);
@@ -36,6 +42,9 @@ class NotificationController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
+    /**
+     * 認証ユーザーの未読通知をすべて既読にし、既読件数を返す。
+     */
     public function markAllAsRead(Request $request, MarkAllAsReadAction $action): JsonResponse
     {
         $count = $action($request->user());

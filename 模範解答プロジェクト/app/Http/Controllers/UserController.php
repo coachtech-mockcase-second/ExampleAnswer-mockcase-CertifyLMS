@@ -29,6 +29,9 @@ use Illuminate\View\View;
  */
 class UserController extends Controller
 {
+    /**
+     * ユーザーを名前キーワード・ロール・ステータスで絞り込んで一覧表示する。
+     */
     public function index(IndexRequest $request, IndexAction $action): View
     {
         $validated = $request->validated();
@@ -48,6 +51,9 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * ユーザーの詳細を、残り面談回数とプラン延長候補とあわせて表示する。
+     */
     public function show(User $user, ShowAction $action, MeetingQuotaService $quotaService): View
     {
         $this->authorize('view', $user);
@@ -61,6 +67,9 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * 受講生を管理者操作で強制退会させ、一覧画面へリダイレクトする。
+     */
     public function withdraw(User $user, WithdrawRequest $request, WithdrawAction $action): RedirectResponse
     {
         $action($user, $request->user());
@@ -70,6 +79,9 @@ class UserController extends Controller
             ->with('success', 'ユーザーを退会させました。');
     }
 
+    /**
+     * 指定プランで受講生の受講期間を延長し、詳細画面へリダイレクトする。
+     */
     public function extendCourse(User $user, ExtendCourseRequest $request, ExtendCourseAction $action): RedirectResponse
     {
         $plan = Plan::query()->whereKey($request->validated('plan_id'))->firstOrFail();
@@ -81,6 +93,9 @@ class UserController extends Controller
             ->with('success', 'プランを延長しました。');
     }
 
+    /**
+     * 受講生に面談回数を手動付与し、詳細画面へリダイレクトする。
+     */
     public function grantMeetingQuota(User $user, GrantMeetingQuotaRequest $request, GrantMeetingQuotaAction $action): RedirectResponse
     {
         $action(

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Policies;
 
-use App\Enums\EnrollmentStatus;
 use App\Models\Certification;
 use App\Models\CertificationCoachAssignment;
 use App\Models\Enrollment;

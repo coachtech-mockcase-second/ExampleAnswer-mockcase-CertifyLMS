@@ -17,6 +17,7 @@ use App\Models\MockExamQuestionOption;
 use App\Models\MockExamSession;
 use App\Models\QuestionCategory;
 use App\Models\User;
+use App\Services\TermJudgementService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
@@ -81,6 +82,25 @@ final class MockExamSeeder extends Seeder
         }
 
         $this->seedSessionsForDemoStudents($mockExamsByCertification);
+
+        $this->recalculateEnrollmentTerms();
+    }
+
+    /**
+     * 模試セッション投入後、セッションを持つ受講登録の学習タームを実状態に合わせて再判定する。
+     *
+     * EnrollmentSeeder は current_term を基礎ターム(basic_learning)で固定投入するため、ここで
+     * 受験中 / 提出済 / 採点完了 のセッションを持つ受講登録を実践ターム(mock_practice)へ整合させる
+     * (採点完了済の模試があるのに基礎ターム表示のままになるデータ不整合を防ぐ)。
+     */
+    private function recalculateEnrollmentTerms(): void
+    {
+        $termJudgement = app(TermJudgementService::class);
+
+        Enrollment::query()
+            ->whereIn('id', MockExamSession::query()->select('enrollment_id')->distinct())
+            ->get()
+            ->each(fn (Enrollment $enrollment) => $termJudgement->recalculate($enrollment));
     }
 
     /**
@@ -270,7 +290,7 @@ final class MockExamSeeder extends Seeder
     {
         $demoEnrollments = Enrollment::query()
             ->whereIn('status', [EnrollmentStatus::Learning->value, EnrollmentStatus::Passed->value])
-            ->whereHas('user', fn ($q) => $q->where('email', '!=', 'student@certify-lms.test'))
+            ->whereHas('user', fn ($q) => $q->whereNotIn('email', ['student@certify-lms.test', 'student-noquota@certify-lms.test']))
             ->limit(8)
             ->with('user')
             ->get();

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\ViewComposers;
 
-use App\Models\User;
 use App\View\Composers\NotificationBadgeComposer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\View\View;

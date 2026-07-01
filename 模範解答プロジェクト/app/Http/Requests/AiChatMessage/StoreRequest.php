@@ -30,4 +30,26 @@ class StoreRequest extends FormRequest
             'content' => ['required', 'string', 'min:1', 'max:2000'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'content.required' => 'メッセージを入力してください。',
+            'content.min' => 'メッセージを入力してください。',
+            'content.max' => 'メッセージは2000文字以内で入力してください。',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'content' => 'メッセージ',
+        ];
+    }
 }

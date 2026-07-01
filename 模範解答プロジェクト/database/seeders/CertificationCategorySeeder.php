@@ -19,6 +19,8 @@ final class CertificationCategorySeeder extends Seeder
 {
     public function run(): void
     {
+        // ビジネス / マーケティング / その他 は資格を紐づけず、資格 0 件の分類(削除可能)を複数用意する。
+        // 分類削除の動作確認(資格が紐づく分類は削除拒否 / 紐づかない分類は削除可)を実機で再現するため。
         $data = [
             ['name' => 'IT 系', 'slug' => 'tech', 'sort_order' => 10],
             ['name' => '語学', 'slug' => 'language', 'sort_order' => 20],
@@ -26,6 +28,8 @@ final class CertificationCategorySeeder extends Seeder
             ['name' => '会計・金融', 'slug' => 'accounting', 'sort_order' => 40],
             ['name' => 'マネジメント', 'slug' => 'management', 'sort_order' => 50],
             ['name' => 'デザイン', 'slug' => 'design', 'sort_order' => 60],
+            ['name' => 'マーケティング', 'slug' => 'marketing', 'sort_order' => 70],
+            ['name' => 'その他', 'slug' => 'other', 'sort_order' => 80],
         ];
 
         foreach ($data as $row) {

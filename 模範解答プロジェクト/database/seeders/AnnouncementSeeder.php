@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Enums\AnnouncementTargetType;
 use App\Enums\CertificationStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
@@ -69,7 +68,7 @@ final class AnnouncementSeeder extends Seeder
             ],
             [
                 'title' => '面談クォータ追加購入機能の改善',
-                'body' => "追加面談の購入フローを刷新しました。決済完了後は自動的に残数が増えるため、購入直後すぐに予約が可能になります。",
+                'body' => '追加面談の購入フローを刷新しました。決済完了後は自動的に残数が増えるため、購入直後すぐに予約が可能になります。',
                 'daysAgo' => 14,
             ],
         ];
@@ -107,7 +106,7 @@ final class AnnouncementSeeder extends Seeder
             ],
             [
                 'title' => '【応用情報技術者試験】午後選択問題の傾向アップデート',
-                'body' => "直近 3 期の出題傾向を分析した教材を追加しました。データベース / 情報セキュリティの選択を検討中の方は確認をお願いします。",
+                'body' => '直近 3 期の出題傾向を分析した教材を追加しました。データベース / 情報セキュリティの選択を検討中の方は確認をお願いします。',
                 'daysAgo' => 10,
             ],
             [

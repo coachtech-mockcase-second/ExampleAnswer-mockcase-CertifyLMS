@@ -60,5 +60,4 @@ class DestroyActionTest extends TestCase
         $this->assertDatabaseMissing('qa_threads', ['id' => $thread->id]);
         $this->assertDatabaseMissing('qa_replies', ['qa_thread_id' => $thread->id]);
     }
-
 }

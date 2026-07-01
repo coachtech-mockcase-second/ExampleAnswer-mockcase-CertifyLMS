@@ -12,9 +12,9 @@ namespace App\Services\Learning;
 final readonly class LearningCalendar
 {
     /**
-     * @param  array<string, int>  $daysMap  'Y-m-d' → その日の学習時間 (分)
-     * @param  int  $monthTotalMinutes  今日が属する月の学習時間合計 (分)
-     * @param  string  $today  グリッドの基準日 ('Y-m-d')
+     * @param array<string, int> $daysMap 'Y-m-d' → その日の学習時間 (分)
+     * @param int $monthTotalMinutes 今日が属する月の学習時間合計 (分)
+     * @param string $today グリッドの基準日 ('Y-m-d')
      */
     public function __construct(
         public array $daysMap,

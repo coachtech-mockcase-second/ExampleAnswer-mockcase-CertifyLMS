@@ -40,7 +40,9 @@ class PlanSeeder extends Seeder
         }
 
         $publishedPlans = $this->createPublishedPlans($admin);
-        $this->createNonPublishedPlans($admin);
+        $draftPlan = $this->createNonPublishedPlans($admin);
+        $this->attachNoQuotaStudentPlan($publishedPlans);
+        $this->attachStudentToDraftPlan($draftPlan);
         $this->assignPlansToStudents($publishedPlans);
     }
 
@@ -74,10 +76,12 @@ class PlanSeeder extends Seeder
 
     /**
      * draft / archived Plan も少数投入(admin の Plan 一覧で status フィルタが効くことを実機確認するため)。
+     *
+     * 戻り値の draft Plan には後続で受講生 1 名を紐づけ、「受講者がいる下書きプランは削除できない」シナリオを作る。
      */
-    private function createNonPublishedPlans(User $admin): void
+    private function createNonPublishedPlans(User $admin): Plan
     {
-        Plan::factory()
+        $draft = Plan::factory()
             ->draft()
             ->state([
                 'name' => '新プラン(検討中)',
@@ -102,6 +106,49 @@ class PlanSeeder extends Seeder
                 'updated_by_user_id' => $admin->id,
             ])
             ->create();
+
+        return $draft;
+    }
+
+    /**
+     * 下書きプランに受講中受講生を 1 名紐づける。
+     *
+     * 「受講者が紐づく下書きプランは削除できない」(受講者 0 名の下書きのみ削除可) の動作確認を
+     * admin のプラン管理画面で実機再現するためのダミー。published プラン紐づけより先に 1 名を確保し、
+     * 二重紐づけ(同一受講生が複数プランに紐づく)を避ける。
+     */
+    private function attachStudentToDraftPlan(Plan $draftPlan): void
+    {
+        $student = User::query()
+            ->where('role', UserRole::Student->value)
+            ->where('status', UserStatus::InProgress->value)
+            ->whereNot('email', 'student@certify-lms.test')
+            ->whereNull('plan_id')
+            ->orderBy('created_at')
+            ->first();
+
+        if ($student !== null) {
+            $this->attachPlanWithProgress($student, $draftPlan, daysSinceStart: 5);
+        }
+    }
+
+    /**
+     * 面談残数 0 の受講生に 1 ヶ月プランを紐づける(受講登録・面談消化は依存 Seeder が行う)。
+     *
+     * plan_id を先に確定させることで、以降の受講生 × プラン紐づけ(attachStudentToDraftPlan /
+     * assignPlansToStudents の whereNull 抽出)から自然に除外される。
+     *
+     * @param array<int, Plan> $publishedPlans
+     */
+    private function attachNoQuotaStudentPlan(array $publishedPlans): void
+    {
+        [$plan1mo] = $publishedPlans;
+
+        $student = User::query()->where('email', 'student-noquota@certify-lms.test')->first();
+
+        if ($student !== null) {
+            $this->attachPlanWithProgress($student, $plan1mo, daysSinceStart: 10);
+        }
     }
 
     /**

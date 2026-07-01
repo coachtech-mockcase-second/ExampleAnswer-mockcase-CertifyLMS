@@ -37,8 +37,21 @@ class UpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'title.required' => 'タイトルを入力してください。',
             'title.not_regex' => 'タイトルを入力してください。',
+            'body.required' => '本文を入力してください。',
             'body.not_regex' => '本文を入力してください。',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'title' => 'タイトル',
+            'body' => '本文',
         ];
     }
 }

@@ -7,6 +7,7 @@ namespace App\UseCases\Meeting;
 use App\Enums\MeetingStatus;
 use App\Exceptions\Mentoring\MeetingAlreadyStartedException;
 use App\Exceptions\Mentoring\MeetingStatusTransitionException;
+use App\Http\Controllers\MeetingController;
 use App\Models\Meeting;
 use App\Models\User;
 use App\Services\Google\GoogleCalendarService;
@@ -25,7 +26,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Action 入口で `lockForUpdate()` を掛け、同時刻 race condition で 2 度キャンセルが走るのを防ぐ。
  *
- * @see \App\Http\Controllers\MeetingController::cancel()
+ * @see MeetingController::cancel()
  */
 final class CancelAction
 {

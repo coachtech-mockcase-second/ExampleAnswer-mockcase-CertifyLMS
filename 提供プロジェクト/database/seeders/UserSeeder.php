@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
  *    - admin@certify-lms.test (admin)
  *    - coach@certify-lms.test / coach2@certify-lms.test (coach、複数指導者シナリオ)
  *    - student@certify-lms.test (student、in_progress、Plan は PlanSeeder で紐づけ)
+ *    - student-noquota@certify-lms.test (student、in_progress、面談残数 0 = 予約拒否の確認用。Plan / 消化は依存 Seeder で紐づけ)
  *
  * 2. **状態網羅 demo データ**(Factory 生成): admin / coach 視点で「一覧画面に各 status が並ぶ」「フィルタが効く」を担保する。
  *    - student × invited × 2 (招待中、Plan 未確定)
@@ -93,6 +94,21 @@ class UserSeeder extends Seeder
                 'password' => $defaultPassword,
                 'status' => UserStatus::InProgress->value,
                 'bio' => '基本情報を 3 ヶ月で合格目標。',
+                'profile_setup_completed' => true,
+                'email_verified_at' => $now,
+            ])
+            ->create();
+
+        // 面談残数 0 の受講生(残数 0 での予約拒否を実機確認するためのアカウント)。
+        // Plan 紐づけ・受講登録・面談回数の消化は PlanSeeder / EnrollmentSeeder / MentoringSeeder が行う。
+        User::factory()
+            ->student()
+            ->state([
+                'name' => '受講生(面談残数なし)',
+                'email' => 'student-noquota@certify-lms.test',
+                'password' => $defaultPassword,
+                'status' => UserStatus::InProgress->value,
+                'bio' => '面談回数を使い切った状態の受講生。',
                 'profile_setup_completed' => true,
                 'email_verified_at' => $now,
             ])

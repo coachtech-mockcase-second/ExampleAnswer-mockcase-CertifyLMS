@@ -23,6 +23,9 @@ use Illuminate\View\View;
  */
 class MeetingPackController extends Controller
 {
+    /**
+     * 追加面談パックを名前キーワード・公開ステータスで絞り込んで一覧表示する。
+     */
     public function index(IndexRequest $request, IndexAction $action): View
     {
         $validated = $request->validated();
@@ -39,6 +42,9 @@ class MeetingPackController extends Controller
         ]);
     }
 
+    /**
+     * 追加面談パックの詳細を表示する。
+     */
     public function show(MeetingPack $plan, ShowAction $action): View
     {
         $this->authorize('view', $plan);
@@ -48,6 +54,9 @@ class MeetingPackController extends Controller
         ]);
     }
 
+    /**
+     * 追加面談パックの新規作成フォームを表示する。
+     */
     public function create(): View
     {
         $this->authorize('create', MeetingPack::class);
@@ -55,6 +64,9 @@ class MeetingPackController extends Controller
         return view('meeting-pack.management.create');
     }
 
+    /**
+     * 追加面談パックを下書き状態で新規作成し、作成した詳細画面へリダイレクトする。
+     */
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse
     {
         $plan = $action($request->user(), $request->validated());
@@ -64,6 +76,9 @@ class MeetingPackController extends Controller
             ->with('success', '面談パックを作成しました。');
     }
 
+    /**
+     * 追加面談パックの編集フォームを表示する。
+     */
     public function edit(MeetingPack $plan): View
     {
         $this->authorize('update', $plan);
@@ -73,6 +88,9 @@ class MeetingPackController extends Controller
         ]);
     }
 
+    /**
+     * 追加面談パックの内容を更新し、詳細画面へリダイレクトする。
+     */
     public function update(MeetingPack $plan, UpdateRequest $request, UpdateAction $action): RedirectResponse
     {
         $action($plan, $request->user(), $request->validated());
@@ -82,6 +100,9 @@ class MeetingPackController extends Controller
             ->with('success', '面談パックを更新しました。');
     }
 
+    /**
+     * 追加面談パックを削除し、一覧画面へリダイレクトする。
+     */
     public function destroy(MeetingPack $plan, DestroyAction $action): RedirectResponse
     {
         $this->authorize('delete', $plan);

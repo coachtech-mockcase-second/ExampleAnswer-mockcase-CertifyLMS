@@ -140,13 +140,13 @@ class StoreRequestTest extends TestCase
     public static function invalidFieldPayloads(): array
     {
         return [
-            'title 未指定で 422'       => ['title', ''],
-            'title 101 文字で 422'     => ['title', str_repeat('a', 101)],
+            'title 未指定で 422' => ['title', ''],
+            'title 101 文字で 422' => ['title', str_repeat('a', 101)],
             'description 2001 文字で 422' => ['description', str_repeat('b', 2001)],
-            'order 負数で 422'         => ['order', -1],
-            'order 65536 で 422'       => ['order', 65536],
-            'order 非整数で 422'       => ['order', 'abc'],
-            'passing_score 0 で 422'   => ['passing_score', 0],
+            'order 負数で 422' => ['order', -1],
+            'order 65536 で 422' => ['order', 65536],
+            'order 非整数で 422' => ['order', 'abc'],
+            'passing_score 0 で 422' => ['passing_score', 0],
             'passing_score 101 で 422' => ['passing_score', 101],
             'passing_score 非整数で 422' => ['passing_score', 'abc'],
         ];

@@ -74,8 +74,8 @@ final class QaBoardSeeder extends Seeder
     /**
      * 1 資格に対し 5-10 件のスレッドを投入する。固定 student の投稿を最低 1 件混ぜる(基本情報 / 応用情報 限定)。
      *
-     * @param  Collection<int, User>  $demoStudents
-     * @param  Collection<int, User>  $coaches
+     * @param Collection<int, User> $demoStudents
+     * @param Collection<int, User> $coaches
      */
     private function seedThreadsForCertification(
         Certification $certification,
@@ -128,7 +128,7 @@ final class QaBoardSeeder extends Seeder
     /**
      * スレッドに対し reply を生成し、最終 reply の時刻を返す(resolved_at に流用する)。
      *
-     * @param  Collection<int, User>  $demoStudents
+     * @param Collection<int, User> $demoStudents
      */
     private function seedReplies(
         QaThread $thread,
@@ -143,11 +143,11 @@ final class QaBoardSeeder extends Seeder
         }
 
         $replyBodies = [
-            'コーチからの回答: 教材の該当 Section をもう一度通して読んでみてください。' .
-                "そのうえで分からない点を具体例として挙げてもらえると、より深掘りした補足ができます。",
-            '受講生からの共有: 私も同じところで詰まりました。' .
+            'コーチからの回答: 教材の該当 Section をもう一度通して読んでみてください。'.
+                'そのうえで分からない点を具体例として挙げてもらえると、より深掘りした補足ができます。',
+            '受講生からの共有: 私も同じところで詰まりました。'.
                 '過去問の解説を 3 周してから本文に戻ったら腑に落ちました。同じ流れで試してみる価値はあると思います。',
-            'コーチ補足: 試験本番では時間配分が重要なので、' .
+            'コーチ補足: 試験本番では時間配分が重要なので、'.
                 'まずは標準時間より 20% 速く解く意識で過去問を回してみるとよいです。',
         ];
 

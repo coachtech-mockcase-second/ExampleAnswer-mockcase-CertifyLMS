@@ -14,8 +14,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 
+/**
+ * 招待された受講生 / コーチが初回パスワード等を設定して利用を開始する Onboarding Controller。
+ */
 class OnboardingController extends Controller
 {
+    /**
+     * 招待トークンを検証し、有効なら本人情報入力フォームを、無効なら招待無効画面を表示する。
+     */
     public function show(Request $request, Invitation $invitation, InvitationTokenService $tokenService): View
     {
         if (! $tokenService->verify($request, $invitation)) {
@@ -34,6 +40,9 @@ class OnboardingController extends Controller
         ]);
     }
 
+    /**
+     * 入力内容で招待を受諾してアカウントを有効化し、ダッシュボードへリダイレクトする。
+     */
     public function store(
         Invitation $invitation,
         OnboardingRequest $request,
