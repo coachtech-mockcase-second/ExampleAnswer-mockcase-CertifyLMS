@@ -130,7 +130,7 @@
        -u "$(id -u):$(id -g)" \
        -v "$(pwd):/var/www/html" \
        -w /var/www/html \
-       laravelsail/php85-composer:latest \
+       laravelsail/php84-composer:latest \
        composer install --ignore-platform-reqs
    ```
 
@@ -164,8 +164,10 @@
 7. **（任意）キューワーカー起動** — 通知・メールの実際の配信を確認したい場合は別ターミナルで起動する。
 
    ```bash
-   sail artisan queue:work
+   sail artisan queue:work --queue=default,notifications
    ```
+
+   > メール通知は `notifications` キューへ振り分けられるため、`--queue` 指定なし（既定キューのみ）ではメールが配信されない。
 
 8. **アクセス**
 

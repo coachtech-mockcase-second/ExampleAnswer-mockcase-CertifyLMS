@@ -57,7 +57,7 @@
 - **通知の非同期化**: 通知基底クラス `App\Notifications\BaseNotification` に `ShouldQueue` を実装する(全通知種別が継承)。メールチャネルは `viaQueues()` で専用キュー名 `notifications` に分離。招待メール `App\Mail\InvitationMail` も `ShouldQueue` 化する
 - **リトライ / バックオフ**: 通知・メールに `$tries`(最大試行回数)+ `backoff()`(段階的待機秒数、例 `[10, 30, 60]`)を設定。一時的な送信失敗を吸収し、上限超過分は `failed_jobs` へ記録する
 - **発火タイミング**: 一斉配信 `App\UseCases\Announcement\StoreAction` をはじめ、通知発火は `DB::afterCommit` 内で行う(既存)。`afterCommit` + `ShouldQueue` により、トランザクション commit 後にジョブが投入される(ロールバック時は投入されない)
-- **worker 運用**: `php artisan queue:work`(常駐 worker)でジョブを処理する。失敗ジョブは `queue:failed` で確認し `queue:retry` で再投入。起動手順・運用コマンドを README に記載する
+- **worker 運用**: `sail artisan queue:work`(常駐 worker)でジョブを処理する。失敗ジョブは `queue:failed` で確認し `queue:retry` で再投入。起動手順・運用コマンドを README に記載する
 - **判断理由(Why)**: 一斉配信は受講生数に比例して同期送信がリクエストをブロックし、途中の 1 件の失敗が配信全体・元リクエストに伝播する。各送信を独立したキュージョブに分割して worker で処理することで、(1) 発火元リクエストはジョブ投入のみで即応答し、(2) 1 件の送信失敗は当該ジョブだけがリトライ / 失敗記録され他に波及しない。`database` ドライバ採用は外部ミドルウェア(Redis 等)を増やさず開発環境のみで完結し、`jobs` / `failed_jobs` テーブルで投入・失敗を可視化できるため
 - **テスト観点**: `Queue::fake()` で「通知発火がジョブとしてキュー投入される(同期実行されない)」ことを `assertPushed` で検証 + `Notification::fake()` で送信対象・内容を検証。テスト環境はキュー接続が `sync` のため(`phpunit.xml`)、`Queue::fake` は接続設定に依らずジョブ投入を記録する。worker の実処理 / リトライ / 失敗ジョブの確認は動作確認(worker 稼働 + `jobs` / `failed_jobs` テーブルの増減)で示す
 
@@ -68,7 +68,7 @@
 | 質問 | 回答 |
 |---|---|
 | なぜ `database` ドライバ? | 外部ミドルウェア(Redis / SQS)を増やさず開発環境のみで完結する。`jobs` / `failed_jobs` テーブルで投入・失敗を可視化でき、運用・動作確認がしやすい |
-| worker はどう起動する? | `php artisan queue:work`(常駐)。開発中はコード変更を即反映する `queue:listen` も可。worker を起動しない間、ジョブは `jobs` テーブルに積まれたまま処理されない |
+| worker はどう起動する? | `sail artisan queue:work`(常駐)。開発中はコード変更を即反映する `queue:listen` も可。worker を起動しない間、ジョブは `jobs` テーブルに積まれたまま処理されない |
 | 送信が失敗したらどうなる? | `$tries` 回まで `backoff()` 秒の待機を挟んで自動リトライする。上限を超えた送信は `failed_jobs` に記録され、`queue:retry` で再投入できる |
 | 一斉配信の途中で 1 件失敗したら他の配信は止まる? | 止まらない。各受講生への送信は独立したジョブなので、1 件の失敗はそのジョブだけがリトライ / 失敗記録され、他の受講生への配信や元リクエストには波及しない |
 | 同期実行(現状)との違いは? | 現状は発火元リクエスト内で全送信を順次実行するため、人数分ブロック + 途中失敗が伝播する。非同期化後はリクエストはジョブ投入で即応答し、送信は worker が背景で処理する |
