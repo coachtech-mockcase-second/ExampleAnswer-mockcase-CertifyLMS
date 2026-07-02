@@ -23,6 +23,9 @@ use Illuminate\View\View;
  */
 class AnnouncementController extends Controller
 {
+    /**
+     * 配信済みお知らせの一覧 (配信履歴) を時系列降順で表示する。
+     */
     public function index(IndexAction $action): View
     {
         $this->authorize('viewAny', Announcement::class);
@@ -30,6 +33,9 @@ class AnnouncementController extends Controller
         return view('announcement.management.index', $action());
     }
 
+    /**
+     * お知らせ作成フォームを表示する。配信対象の選択肢として公開中の資格と受講中の受講生を渡す。
+     */
     public function create(IndexAction $action): View
     {
         $this->authorize('create', Announcement::class);
@@ -44,6 +50,9 @@ class AnnouncementController extends Controller
         ]);
     }
 
+    /**
+     * お知らせを作成して対象受講生へ配信し、配信件数付きフラッシュとともに詳細へリダイレクトする。
+     */
     public function store(StoreRequest $request, StoreAction $action): RedirectResponse
     {
         $announcement = $action($request->user(), $request->validated());
@@ -53,6 +62,9 @@ class AnnouncementController extends Controller
             ->with('success', "お知らせを配信しました ({$announcement->dispatched_count} 件)。");
     }
 
+    /**
+     * お知らせ配信の詳細 (配信内容・配信対象・配信件数) を表示する。
+     */
     public function show(Announcement $announcement, ShowAction $action): View
     {
         $this->authorize('view', $announcement);
