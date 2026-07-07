@@ -8,11 +8,17 @@
   - 評価シート  = `評価シート.md`
       → タブ「総合評価」「Story」「Bug」「Task」「横断品質」「誤答リスト」
 
+デザインは既存コース（BookShelf / ContactForm）のマスタに準拠:
+紺ヘッダー（要件 #002060 / 評価 #073763）+ 白太字 / 20pt グレータイトル + 二重下線バンド /
+要件系は左端スペーサー列のインデントレイアウト / 全表セル細罫線 / 評価詳細タブは 9pt + ヘッダー固定 /
+総合評価は「配点・正答数・正答率・スコア・評価・コメント」のハウス 7 列構成。
+
 コマンド:
   build requirement|evaluation|all   スプシを生成 / 全面再生成（冪等。ID は manifest に記録し URL 不変）
   links-sync                         チケット一覧のタイトル列 HYPERLINK を manifest と突合して差し替え
   verify                             スプシの集計値と md の集計を検算
   place                              Docs トップフォルダ + スプシ 2 枚を雛形シートフォルダ直下へ移動
+  share --role reader|writer         スプシ 2 枚へのリンク共有付与（明示実行専用）
 
 生成は「派生ビューの全面書き直し」であり、スプシ上の手編集は保持されない（md を直して再 build する）。
 セットアップ・運用ルールは ../README.md と ../運用ガイド.md を参照。
@@ -68,21 +74,26 @@ def color(hexstr: str) -> dict:
     }
 
 
-HEADER_BG = color("374151")
-HEADER_FG = color("FFFFFF")
-SECTION_BG = color("E5E7EB")
-ITEM_BG = color("F3F4F6")
+REQ_NAVY = color("002060")     # 要件系ヘッダー・ラベル（BookShelf 50% 準拠）
+EVAL_NAVY = color("073763")    # 評価系ヘッダー（BookShelf 評価シート準拠）
+TITLE_GRAY = color("3F3F3F")   # 20pt タイトル
+WHITE = color("FFFFFF")
 NOTE_FG = color("6B7280")
+SUBTOTAL_BG = color("EFEFEF")
 TYPE_BG = {"Story": color("DBEAFE"), "Bug": color("FEE2E2"), "Task": color("FEF3C7")}
 TAB_COLORS = {
-    TAB_REQ_GAIYOU: color("2563EB"), TAB_REQ_TICKETS: color("16A34A"),
-    TAB_SUMMARY: color("2563EB"), TAB_STORY: color("16A34A"), TAB_BUG: color("DC2626"),
+    TAB_REQ_GAIYOU: color("002060"), TAB_REQ_TICKETS: color("16A34A"),
+    TAB_SUMMARY: color("073763"), TAB_STORY: color("16A34A"), TAB_BUG: color("DC2626"),
     TAB_TASK: color("D97706"), TAB_CROSS: color("7C3AED"), TAB_WRONG: color("6B7280"),
 }
 
+THIN = {"style": "SOLID"}
+BOX = {"top": THIN, "bottom": THIN, "left": THIN, "right": THIN}
+DOUBLE_BOTTOM = {"bottom": {"style": "DOUBLE"}}
+
 
 def cell(value=None, formula=None, *, bold=False, bg=None, fg=None, wrap=True,
-         percent=False, italic=False, size=None, align=None):
+         percent=False, italic=False, size=None, align=None, borders=None, box=False):
     c: dict = {}
     if formula is not None:
         c["userEnteredValue"] = {"formulaValue": formula}
@@ -111,16 +122,35 @@ def cell(value=None, formula=None, *, bold=False, bg=None, fg=None, wrap=True,
         fmt["horizontalAlignment"] = align
     if percent:
         fmt["numberFormat"] = {"type": "PERCENT", "pattern": "0.0%"}
+    if box:
+        fmt["borders"] = BOX
+    elif borders:
+        fmt["borders"] = borders
     c["userEnteredFormat"] = fmt
     return c
 
 
-def hdr(text):
-    return cell(text, bold=True, bg=HEADER_BG, fg=HEADER_FG)
-
-
 def blank_row(n=1):
     return [{"values": [cell("")]} for _ in range(n)]
+
+
+def indent(cells):
+    """要件系タブの左端スペーサー列（ハウスレイアウト準拠）。"""
+    return [cell("")] + cells
+
+
+def title_band(title: str, desc: str, n_cols: int) -> tuple[list[dict], list[tuple]]:
+    """20pt グレータイトル + 説明行（二重下線バンド）。戻り値 = (rows, merges)。"""
+    rows = [
+        {"values": [cell("")]},
+        {"values": indent([cell(title, bold=True, size=20, fg=TITLE_GRAY)])},
+        {"values": [cell("", borders=DOUBLE_BOTTOM)]
+         + [cell(desc, bold=True, borders=DOUBLE_BOTTOM)]
+         + [cell("", borders=DOUBLE_BOTTOM) for _ in range(n_cols - 2)]},
+        {"values": [cell("")]},
+    ]
+    merges = [(1, 2, 1, n_cols), (2, 3, 1, n_cols)]
+    return rows, merges
 
 
 # ---------------------------------------------------------------- md パース
@@ -177,7 +207,7 @@ def parse_gaiyou():
         gaiyou_sections.append((name, table, subs))
 
     # シート2: チケット一覧 — 導入文 + 種別ブロック + サマリ
-    lead_lines, notes = [], {}
+    lead_lines = []
     tsec = split_sections("\n".join(sheets[t_key]), 3)
     for line in tsec[0][1]:
         line = line.strip()
@@ -196,96 +226,104 @@ def parse_gaiyou():
             "blocks": blocks, "summary": summary}
 
 
-REQ_INTRO = ("本書は課題全体のガイドです。各シートはスプレッドシートのタブに対応します。"
-             "個別チケットの要件は「シート2 チケット一覧」の各チケット（タイトルのリンク先ドキュメント）を参照してください。")
+REQ_INTRO = ("本書は課題全体のガイドです。個別チケットの要件は「シート2 チケット一覧」の"
+             "各チケット（タイトルのリンク先ドキュメント）を参照してください。")
 LEAD_DETAIL_REWRITE = "各チケットの詳細は、タイトルのリンク先（チケット詳細ドキュメント）を参照してください。"
 
 
 def build_requirement_tabs(manifest) -> list[dict]:
     data = parse_gaiyou()
 
-    # ---- シート1 概要
-    rows = [
-        {"values": [cell(data["h1"], bold=True, size=13)]},
-        {"values": [cell(REQ_INTRO, fg=NOTE_FG)]},
-    ]
-    merges_g = [(0, 1, 0, 2), (1, 2, 0, 2)]  # (r0,r1,c0,c1)
-    rows += blank_row()
+    # ---- シート1 概要（スペーサー列 + ラベル=紺 / 値=罫線のハウスレイアウト）
+    N = 3  # A スペーサー / B 項目 / C 内容
+    rows, merges_g = title_band("Certify LMS 開発参画", REQ_INTRO, N)
     for name, table, subs in data["gaiyou"]:
-        merges_g.append((len(rows), len(rows) + 1, 0, 2))
-        rows.append({"values": [cell(name, bold=True, bg=SECTION_BG, size=11)]})
+        merges_g.append((len(rows), len(rows) + 1, 1, N))
+        rows.append({"values": indent([cell(name, bold=True, size=14, fg=TITLE_GRAY)])})
+        HEADER_PAIRS = {("項目", "内容"), ("セクション", "書くこと")}
         for item, value in table:
-            rows.append({"values": [cell(md_text(item), bold=True, bg=ITEM_BG),
-                                    cell(md_text(value))]})
+            if (item, value) in HEADER_PAIRS:
+                continue  # ラベル/値レイアウトではヘッダー行は冗長（ハウス準拠）
+            rows.append({"values": indent([
+                cell(md_text(item), bold=True, bg=REQ_NAVY, fg=WHITE, box=True),
+                cell(md_text(value), box=True)])})
         for sub_name, sub_table, sub_notes in subs:
-            merges_g.append((len(rows), len(rows) + 1, 0, 2))
-            rows.append({"values": [cell(sub_name, bold=True, bg=SECTION_BG)]})
-            for i, (c1, c2) in enumerate(sub_table):
-                if i == 0:
-                    rows.append({"values": [cell(md_text(c1), bold=True, bg=ITEM_BG),
-                                            cell(md_text(c2), bold=True, bg=ITEM_BG)]})
-                else:
-                    rows.append({"values": [cell(md_text(c1), bold=True, bg=ITEM_BG),
-                                            cell(md_text(c2))]})
+            rows += blank_row()
+            merges_g.append((len(rows), len(rows) + 1, 1, N))
+            rows.append({"values": indent([cell(sub_name, bold=True, size=12, fg=TITLE_GRAY)])})
+            for c1, c2 in sub_table:
+                if (c1, c2) in HEADER_PAIRS:
+                    continue
+                rows.append({"values": indent([
+                    cell(md_text(c1), bold=True, bg=REQ_NAVY, fg=WHITE, box=True),
+                    cell(md_text(c2), box=True)])})
             for note in sub_notes:
-                merges_g.append((len(rows), len(rows) + 1, 0, 2))
-                rows.append({"values": [cell(md_text(note.lstrip("> ").strip()), fg=NOTE_FG, italic=True)]})
+                merges_g.append((len(rows), len(rows) + 1, 1, N))
+                rows.append({"values": indent([cell(md_text(note.lstrip("> ").strip()),
+                                                    fg=NOTE_FG, italic=True)])})
         rows += blank_row()
     gaiyou_tab = {
-        "title": TAB_REQ_GAIYOU, "rows": rows, "col_widths": [220, 900],
-        "merges": merges_g, "col_count": 2,
+        "title": TAB_REQ_GAIYOU, "rows": rows, "col_widths": [20, 175, 880],
+        "merges": merges_g, "col_count": N, "frozen": 0,
     }
 
-    # ---- シート2 チケット一覧
-    rows = [{"values": [cell("チケット一覧", bold=True, size=13)]}]
-    merges_t = [(0, 1, 0, 5)]
-    for line in data["lead"]:
+    # ---- シート2 チケット一覧（スペーサー列 + 種別ブロック + 紺ヘッダー行）
+    N = 6  # A スペーサー / B ID / C タイトル / D サブカテゴリ / E 難易度 / F 依存チケット
+    lead = data["lead"]
+    desc = lead[0] if lead else ""
+    rows, merges_t = title_band("チケット一覧", desc, N)
+    for line in lead[1:]:
         if line.startswith("- 各チケットの詳細は"):
             line = "- " + LEAD_DETAIL_REWRITE
-        merges_t.append((len(rows), len(rows) + 1, 0, 5))
-        rows.append({"values": [cell(line, fg=NOTE_FG)]})
+        merges_t.append((len(rows), len(rows) + 1, 1, N))
+        rows.append({"values": indent([cell(line, fg=NOTE_FG)])})
     rows += blank_row()
 
     warn_missing = []
     for name, table, note in data["blocks"]:
         type_name = name.split("（")[0]
-        merges_t.append((len(rows), len(rows) + 1, 0, 5))
-        rows.append({"values": [cell(name, bold=True, bg=TYPE_BG.get(type_name, SECTION_BG), size=11)]})
+        merges_t.append((len(rows), len(rows) + 1, 1, N))
+        rows.append({"values": indent([cell(name, bold=True, size=12,
+                                            bg=TYPE_BG.get(type_name), box=True)])})
         header, *body = table
-        rows.append({"values": [hdr(md_text(h)) for h in header[:-1]]})  # 末尾のチケット詳細列は Doc リンクに置換
+        rows.append({"values": indent([cell(md_text(h), bold=True, bg=REQ_NAVY, fg=WHITE, box=True)
+                                       for h in header[:-1]])})  # 末尾のチケット詳細列は Doc リンクに置換
         for r in body:
             ticket_id = md_text(r[0])
             entry = manifest["tickets"].get(ticket_id)
             if entry and entry.get("docUrl"):
-                title_cell = cell(formula=hyperlink_formula(entry, ticket_id))
+                title_cell = cell(formula=hyperlink_formula(entry, ticket_id), box=True)
             else:
                 warn_missing.append(ticket_id)
-                title_cell = cell(md_text(r[1]))
-            rows.append({"values": [
-                cell(ticket_id, align="CENTER"), title_cell,
-                cell(md_text(r[2])), cell(md_text(r[3]), align="CENTER"),
-                cell(md_text(r[4])),
-            ]})
+                title_cell = cell(md_text(r[1]), box=True)
+            rows.append({"values": indent([
+                cell(ticket_id, align="CENTER", box=True), title_cell,
+                cell(md_text(r[2]), box=True), cell(md_text(r[3]), align="CENTER", box=True),
+                cell(md_text(r[4]), box=True),
+            ])})
         if note:
-            merges_t.append((len(rows), len(rows) + 1, 0, 5))
-            rows.append({"values": [cell(note, fg=NOTE_FG, italic=True)]})
+            merges_t.append((len(rows), len(rows) + 1, 1, N))
+            rows.append({"values": indent([cell(note, fg=NOTE_FG, italic=True)])})
         rows += blank_row()
     if warn_missing:
         print(f"  ⚠ Doc 未生成のためタイトルをテキスト表示: {', '.join(warn_missing)}（push 後に再 build か links-sync）")
 
     name, table = data["summary"]
-    merges_t.append((len(rows), len(rows) + 1, 0, 5))
-    rows.append({"values": [cell(name, bold=True, bg=SECTION_BG, size=11)]})
+    merges_t.append((len(rows), len(rows) + 1, 1, N))
+    rows.append({"values": indent([cell(name, bold=True, size=12, fg=TITLE_GRAY)])})
     header, *body = table
-    rows.append({"values": [hdr(md_text(h)) for h in header]})
+    rows.append({"values": indent([cell(md_text(h), bold=True, bg=REQ_NAVY, fg=WHITE, box=True)
+                                   for h in header])})
     for r in body:
         bold = r[0].startswith("**")
-        rows.append({"values": [cell(md_text(c), bold=bold, align="CENTER" if i else None)
-                                for i, c in enumerate(r)]})
+        rows.append({"values": indent([cell(md_text(c), bold=bold, box=True,
+                                            bg=SUBTOTAL_BG if bold else None,
+                                            align="CENTER" if i else None)
+                                       for i, c in enumerate(r)])})
     tickets_tab = {
         "title": TAB_REQ_TICKETS, "rows": rows,
-        "col_widths": [80, 420, 190, 90, 240],
-        "merges": merges_t, "col_count": 5, "frozen": 0,
+        "col_widths": [20, 80, 430, 190, 90, 240],
+        "merges": merges_t, "col_count": N, "frozen": 0,
     }
     return [gaiyou_tab, tickets_tab]
 
@@ -306,12 +344,11 @@ def parse_eval():
         if not name:
             continue
         rows = parse_md_table(body)[1:]  # ヘッダ落とし
-        tab = EVAL_TAB_OF_TYPE[name[0] if name[0] in "SBT" else "S"]
         if name.startswith("Story"):
             tab = TAB_STORY
         elif name.startswith("Bug"):
             tab = TAB_BUG
-        elif name.startswith("Task"):
+        else:
             tab = TAB_TASK
         parsed = [(md_text(r[0]), md_text(r[1]), md_text(r[2]), float(r[3])) for r in rows]
         buckets[tab] += parsed
@@ -376,22 +413,31 @@ def selfcheck_eval(data) -> None:
           f"（Basic {basic_p:g} / Advance {adv_p:g}）")
 
 
+def eval_hdr(text):
+    return cell(text, bold=True, bg=EVAL_NAVY, fg=WHITE, box=True)
+
+
 def detail_tab(title, rows4) -> dict:
-    rows = [{"values": [hdr(h) for h in ["大項目", "中項目", "評価基準", "評価点", "可否", "点数"]]}]
+    rows = [{"values": [cell(h, bold=True, bg=EVAL_NAVY, fg=WHITE, size=9, box=True)
+                        for h in ["大項目", "中項目", "評価基準", "評価点", "可否", "点数"]]}]
     for i, (major, mid, crit, point) in enumerate(rows4):
         r = i + 2  # 1-indexed 行番号
         rows.append({"values": [
-            cell(major), cell(mid), cell(crit),
-            cell(point if point % 1 else int(point), align="CENTER"),
-            cell(False, align="CENTER"),
-            cell(formula=f"=IF(E{r},D{r},0)", align="CENTER"),
+            cell(major, size=9, box=True), cell(mid, size=9, box=True),
+            cell(crit, size=9, box=True),
+            cell(point if point % 1 else int(point), size=9, align="CENTER", box=True),
+            cell(False, size=9, align="CENTER", box=True),
+            cell(formula=f"=IF(E{r},D{r},0)", size=9, align="CENTER", box=True),
         ]})
     return {
         "title": title, "rows": rows,
-        "col_widths": [90, 160, 620, 60, 60, 60],
+        "col_widths": [90, 155, 620, 55, 55, 55],
         "frozen": 1, "col_count": 6,
         "checkbox": (1, len(rows4) + 1, 4, 5),  # E2:E{n+1}
     }
+
+
+GRADE_IFS = '=IFS(D{r}>=0.95,"S",D{r}>=0.85,"A",D{r}>=0.7,"B",D{r}>=0.5,"C",TRUE,"D")'
 
 
 def build_evaluation_tabs() -> tuple[list[dict], dict]:
@@ -399,15 +445,13 @@ def build_evaluation_tabs() -> tuple[list[dict], dict]:
     selfcheck_eval(data)
     b = data["buckets"]
 
-    def sumall(col):  # 全詳細タブ合算
-        return "+".join(f"SUM('{t}'!{col}2:{col})" for t in [TAB_STORY, TAB_BUG, TAB_TASK, TAB_CROSS])
-
     def sumtabs(col, tabs):
         return "+".join(f"SUM('{t}'!{col}2:{col})" for t in tabs)
 
     def sumif(tab, crit_col, crit, col):
         return f"SUMIF('{tab}'!${crit_col}$2:${crit_col},{crit},'{tab}'!${col}$2:${col})"
 
+    ALL_TABS = [TAB_STORY, TAB_BUG, TAB_TASK, TAB_CROSS]
     rows: list[dict] = []
     merges: list[tuple] = []
 
@@ -415,49 +459,55 @@ def build_evaluation_tabs() -> tuple[list[dict], dict]:
         rows.append({"values": values})
         return len(rows)  # 1-indexed 行番号
 
-    def section(label):
-        merges.append((len(rows), len(rows) + 1, 0, 6))
-        add([cell(label, bold=True, bg=SECTION_BG, size=11)])
+    def header_row(first_label, with_comment=True):
+        """ハウス流: ブロック見出しをヘッダー行の第 1 セルに置く紺行。"""
+        labels = [first_label, "配点", "正答数", "正答率", "スコア", "評価"]
+        labels.append("コメント" if with_comment else "")
+        add([eval_hdr(h) for h in labels])
 
-    add([hdr(h) for h in ["総合", "配点", "得点", "取得率", "評価", "コメント"]])
-    r_total = add([
-        cell("総合", bold=True),
-        cell(formula="=" + sumall("D"), bold=True, align="CENTER"),
-        cell(formula="=" + sumall("F"), bold=True, align="CENTER"),
-        cell(formula="=IFERROR(C2/B2,0)", bold=True, percent=True, align="CENTER"),
-        cell(formula='=IFS(D2>=0.95,"S",D2>=0.85,"A",D2>=0.7,"B",D2>=0.5,"C",TRUE,"D")',
-             bold=True, align="CENTER"),
-        cell(""),
-    ])
+    def score_cells(r, points_formula, earned_formula, *, bold=False, bg=None):
+        return [
+            cell(formula=points_formula, bold=bold, bg=bg, align="CENTER", box=True),
+            cell(formula=earned_formula, bold=bold, bg=bg, align="CENTER", box=True),
+            cell(formula=f"=IFERROR(C{r}/B{r},0)", bold=bold, bg=bg, percent=True,
+                 align="CENTER", box=True),
+            cell(formula=f"=5*D{r}", bold=bold, bg=bg, align="CENTER", box=True),
+            cell(formula=GRADE_IFS.format(r=r), bold=bold, bg=bg, align="CENTER", box=True),
+            cell("", bg=bg, box=True),
+        ]
+
+    # ---- 総合
+    header_row("総合")
+    r_total = len(rows) + 1
+    add([cell("総合", bold=True, box=True)]
+        + score_cells(r_total, "=" + sumtabs("D", ALL_TABS), "=" + sumtabs("F", ALL_TABS), bold=True))
     rows += blank_row()
 
-    section("評価ライン（COACHTECH 標準: S 95 / A 85 / B 70 / C 50）")
-    add([cell(h, bold=True, bg=ITEM_BG) for h in ["評価", "閾値", "必要点", "到達条件", "", ""]])
+    # ---- 評価ライン
+    add([eval_hdr(h) for h in
+         ["評価ライン（COACHTECH 標準: S 95 / A 85 / B 70 / C 50）", "閾値", "必要点", "到達条件", "", "", ""]])
+    merges.append((len(rows) - 1, len(rows), 3, 7))
     thresholds = {"S": 0.95, "A": 0.85, "B": 0.7, "C": 0.5}
     for line in data["line_rows"]:
-        grade = line[0]
-        cond = line[3] if len(line) > 3 else ""
-        merges.append((len(rows), len(rows) + 1, 3, 6))
-        if grade in thresholds:
-            add([cell(grade, bold=True, align="CENTER"), cell(line[1], align="CENTER"),
-                 cell(formula=f"=CEILING($B${r_total}*{thresholds[grade]},1)", align="CENTER"),
-                 cell(cond, fg=NOTE_FG)])
-        else:
-            add([cell(grade, bold=True, align="CENTER"), cell(line[1], align="CENTER"),
-                 cell("—", align="CENTER"), cell(cond, fg=NOTE_FG)])
+        grade, cond = line[0], (line[3] if len(line) > 3 else "")
+        merges.append((len(rows), len(rows) + 1, 3, 7))
+        need = (cell(formula=f"=CEILING($B${r_total}*{thresholds[grade]},1)", align="CENTER", box=True)
+                if grade in thresholds else cell("—", align="CENTER", box=True))
+        add([cell(grade, bold=True, align="CENTER", box=True),
+             cell(line[1], align="CENTER", box=True), need,
+             cell(cond, fg=NOTE_FG, box=True)])
     rows += blank_row()
 
-    section("大項目別")
-    add([cell(h, bold=True, bg=ITEM_BG) for h in ["大項目", "配点", "得点", "取得率", "", ""]])
+    # ---- 大項目別
+    header_row("大項目別")
     for label, tabs in [("チケット要件", [TAB_STORY, TAB_BUG, TAB_TASK]), ("横断品質", [TAB_CROSS])]:
         r = len(rows) + 1
-        add([cell(label), cell(formula="=" + sumtabs("D", tabs), align="CENTER"),
-             cell(formula="=" + sumtabs("F", tabs), align="CENTER"),
-             cell(formula=f"=IFERROR(C{r}/B{r},0)", percent=True, align="CENTER")])
+        add([cell(label, box=True)]
+            + score_cells(r, "=" + sumtabs("D", tabs), "=" + sumtabs("F", tabs)))
     rows += blank_row()
 
-    section("種別・難易度別")
-    add([cell(h, bold=True, bg=ITEM_BG) for h in ["区分", "配点", "得点", "取得率", "", ""]])
+    # ---- 種別・難易度別
+    header_row("種別・難易度別")
     basic_rows_idx, adv_rows_idx = [], []
     for label, tab, prefix in [
         ("Story（Basic）", TAB_STORY, "S-B-*"), ("Story（Advance）", TAB_STORY, "S-A-*"),
@@ -466,36 +516,31 @@ def build_evaluation_tabs() -> tuple[list[dict], dict]:
     ]:
         r = len(rows) + 1
         (basic_rows_idx if "Basic" in label else adv_rows_idx).append(r)
-        add([cell(label),
-             cell(formula="=" + sumif(tab, "B", f'"{prefix}"', "D"), align="CENTER"),
-             cell(formula="=" + sumif(tab, "B", f'"{prefix}"', "F"), align="CENTER"),
-             cell(formula=f"=IFERROR(C{r}/B{r},0)", percent=True, align="CENTER")])
-    r = len(rows) + 1
-    basic_rows_idx.append(r)
+        add([cell(label, box=True)]
+            + score_cells(r, "=" + sumif(tab, "B", f'"{prefix}"', "D"),
+                          "=" + sumif(tab, "B", f'"{prefix}"', "F")))
     cross_adv_d = sumif(TAB_CROSS, "C", '"（応用）*"', "D")
     cross_adv_f = sumif(TAB_CROSS, "C", '"（応用）*"', "F")
-    add([cell("横断品質（Basic）"),
-         cell(formula=f"=SUM('{TAB_CROSS}'!D2:D)-{cross_adv_d}", align="CENTER"),
-         cell(formula=f"=SUM('{TAB_CROSS}'!F2:F)-{cross_adv_f}", align="CENTER"),
-         cell(formula=f"=IFERROR(C{r}/B{r},0)", percent=True, align="CENTER")])
+    r = len(rows) + 1
+    basic_rows_idx.append(r)
+    add([cell("横断品質（Basic）", box=True)]
+        + score_cells(r, f"=SUM('{TAB_CROSS}'!D2:D)-{cross_adv_d}",
+                      f"=SUM('{TAB_CROSS}'!F2:F)-{cross_adv_f}"))
     r = len(rows) + 1
     adv_rows_idx.append(r)
-    add([cell("横断品質（応用）"),
-         cell(formula=f"={cross_adv_d}", align="CENTER"),
-         cell(formula=f"={cross_adv_f}", align="CENTER"),
-         cell(formula=f"=IFERROR(C{r}/B{r},0)", percent=True, align="CENTER")])
+    add([cell("横断品質（応用）", box=True)]
+        + score_cells(r, f"={cross_adv_d}", f"={cross_adv_f}"))
     for label, idx in [("Basic 計", basic_rows_idx), ("Advance 計", adv_rows_idx)]:
         r = len(rows) + 1
-        add([cell(label, bold=True, bg=ITEM_BG),
-             cell(formula="=" + "+".join(f"B{i}" for i in idx), bold=True, align="CENTER"),
-             cell(formula="=" + "+".join(f"C{i}" for i in idx), bold=True, align="CENTER"),
-             cell(formula=f"=IFERROR(C{r}/B{r},0)", bold=True, percent=True, align="CENTER")])
+        add([cell(label, bold=True, bg=SUBTOTAL_BG, box=True)]
+            + score_cells(r, "=" + "+".join(f"B{i}" for i in idx),
+                          "=" + "+".join(f"C{i}" for i in idx), bold=True, bg=SUBTOTAL_BG))
     rows += blank_row()
 
-    section("チケット別（採点の進み確認・フィードバック用コメント欄）")
-    add([cell(h, bold=True, bg=ITEM_BG) for h in ["中項目", "配点", "得点", "取得率", "", "コメント"]])
+    # ---- チケット別
+    header_row("チケット別")
     mid_order: list[tuple[str, str]] = []
-    for tab in [TAB_STORY, TAB_BUG, TAB_TASK, TAB_CROSS]:
+    for tab in ALL_TABS:
         seen = set()
         for _, mid, _, _ in b[tab]:
             if mid not in seen:
@@ -503,36 +548,37 @@ def build_evaluation_tabs() -> tuple[list[dict], dict]:
                 mid_order.append((tab, mid))
     for tab, mid in mid_order:
         r = len(rows) + 1
-        add([cell(mid),
-             cell(formula="=" + sumif(tab, "B", f"$A{r}", "D"), align="CENTER"),
-             cell(formula="=" + sumif(tab, "B", f"$A{r}", "F"), align="CENTER"),
-             cell(formula=f"=IFERROR(C{r}/B{r},0)", percent=True, align="CENTER"),
-             cell(""), cell("")])
+        add([cell(mid, box=True)]
+            + score_cells(r, "=" + sumif(tab, "B", f"$A{r}", "D"),
+                          "=" + sumif(tab, "B", f"$A{r}", "F")))
     rows += blank_row()
 
-    section("補足: 評価方式（評価シート.md「評価方式」より転記）")
+    # ---- 補足（ハウスの「補足」紺行 + 罫線付き本文）
+    merges.append((len(rows), len(rows) + 1, 0, 7))
+    add([eval_hdr("補足: 評価方式（評価シート.md「評価方式」より転記）")])
     for line in data["hoso"]:
-        merges.append((len(rows), len(rows) + 1, 0, 6))
-        add([cell(line, fg=NOTE_FG)])
+        merges.append((len(rows), len(rows) + 1, 0, 7))
+        add([cell(line, fg=NOTE_FG, box=True)])
 
     summary_tab = {
         "title": TAB_SUMMARY, "rows": rows,
-        "col_widths": [260, 90, 90, 90, 70, 480],
-        "merges": merges, "col_count": 6, "frozen": 0,
+        "col_widths": [250, 70, 70, 70, 70, 55, 460],
+        "merges": merges, "col_count": 7, "frozen": 0,
     }
 
-    detail_tabs = [detail_tab(t, b[t]) for t in [TAB_STORY, TAB_BUG, TAB_TASK, TAB_CROSS]]
+    detail_tabs = [detail_tab(t, b[t]) for t in ALL_TABS]
 
     wrong_query = (
-        '=IFERROR(QUERY({' + ";".join(f"'{t}'!A2:F" for t in [TAB_STORY, TAB_BUG, TAB_TASK, TAB_CROSS]) + "},"
+        '=IFERROR(QUERY({' + ";".join(f"'{t}'!A2:F" for t in ALL_TABS) + "},"
         '"select Col2, Col3, Col4 where Col5 = false and Col2 is not null",0),'
         '"（未達成の項目はありません）")'
     )
     wrong_tab = {
         "title": TAB_WRONG,
         "rows": [
-            {"values": [hdr(h) for h in ["中項目", "評価基準", "評価点"]]},
-            {"values": [cell(formula=wrong_query)]},
+            {"values": [cell(h, bold=True, bg=EVAL_NAVY, fg=WHITE, size=9, box=True)
+                        for h in ["中項目", "評価基準", "評価点"]]},
+            {"values": [cell(formula=wrong_query, size=9)]},
         ],
         "col_widths": [160, 640, 60], "frozen": 1, "col_count": 3,
         "extra_rows": 230,
@@ -678,7 +724,7 @@ def verify_evaluation(sheets, manifest) -> None:
     table = {str(r[0]).strip(): r for r in values if r and str(r[0]).strip()}
     problems = []
 
-    def chk(label, exp_points, exp_items=None):
+    def chk(label, exp_points):
         row = table.get(label)
         if not row or len(row) < 2 or not isinstance(row[1], (int, float)):
             problems.append(f"「{label}」行がスプシに見つからない")
@@ -698,6 +744,22 @@ def verify_evaluation(sheets, manifest) -> None:
           f"Basic {expectations['ba']['Basic'][1]:g} / Advance {expectations['ba']['Advance'][1]:g}")
 
 
+# チケット一覧タブの列位置（A=スペーサー / B=ID / C=タイトル）
+TICKETS_ID_COL, TICKETS_TITLE_COL = 1, 2
+
+
+def iter_ticket_rows(values):
+    """(行番号 1-indexed, チケットID, タイトルセルの現式) を列挙。"""
+    for i, row in enumerate(values, start=1):
+        if len(row) <= TICKETS_ID_COL:
+            continue
+        ticket_id = str(row[TICKETS_ID_COL]).strip()
+        if not re.fullmatch(r"[SBT]-[AB]-\d+", ticket_id):
+            continue
+        current = str(row[TICKETS_TITLE_COL]) if len(row) > TICKETS_TITLE_COL else ""
+        yield i, ticket_id, current
+
+
 def cmd_links_sync(args) -> None:
     manifest = load_manifest()
     entry = manifest.get("spreadsheets", {}).get("requirement")
@@ -706,25 +768,18 @@ def cmd_links_sync(args) -> None:
     sheets, _ = services()
     sid = entry["id"]
     res = sheets.spreadsheets().values().get(
-        spreadsheetId=sid, range=f"'{TAB_REQ_TICKETS}'!A1:B300",
+        spreadsheetId=sid, range=f"'{TAB_REQ_TICKETS}'!A1:C300",
         valueRenderOption="FORMULA").execute()
-    values = res.get("values", [])
     updates, seen = [], set()
-    for i, row in enumerate(values, start=1):
-        if not row:
-            continue
-        ticket_id = str(row[0]).strip()
-        if not re.fullmatch(r"[SBT]-[AB]-\d+", ticket_id):
-            continue
+    for i, ticket_id, current in iter_ticket_rows(res.get("values", [])):
         seen.add(ticket_id)
         t_entry = manifest["tickets"].get(ticket_id)
         if not t_entry or not t_entry.get("docUrl"):
             print(f"  ⚠ {ticket_id}: manifest に Doc が無い")
             continue
         want = hyperlink_formula(t_entry, ticket_id)
-        current = str(row[1]) if len(row) > 1 else ""
         if current != want:
-            updates.append({"range": f"'{TAB_REQ_TICKETS}'!B{i}", "values": [[want]]})
+            updates.append({"range": f"'{TAB_REQ_TICKETS}'!C{i}", "values": [[want]]})
             print(f"  ✓ {ticket_id}: タイトルリンクを差し替え")
     missing = sorted(set(manifest["tickets"]) - seen)
     if missing:
@@ -746,17 +801,13 @@ def cmd_verify(args) -> None:
     entry = manifest.get("spreadsheets", {}).get("requirement")
     if entry:
         res = sheets.spreadsheets().values().get(
-            spreadsheetId=entry["id"], range=f"'{TAB_REQ_TICKETS}'!A1:B300",
+            spreadsheetId=entry["id"], range=f"'{TAB_REQ_TICKETS}'!A1:C300",
             valueRenderOption="FORMULA").execute()
         mismatch = []
-        for i, row in enumerate(res.get("values", []), start=1):
-            if not row or not re.fullmatch(r"[SBT]-[AB]-\d+", str(row[0]).strip()):
-                continue
-            t = manifest["tickets"].get(str(row[0]).strip())
-            if t and t.get("docUrl"):
-                want = hyperlink_formula(t, str(row[0]).strip())
-                if (str(row[1]) if len(row) > 1 else "") != want:
-                    mismatch.append(str(row[0]).strip())
+        for i, ticket_id, current in iter_ticket_rows(res.get("values", [])):
+            t = manifest["tickets"].get(ticket_id)
+            if t and t.get("docUrl") and current != hyperlink_formula(t, ticket_id):
+                mismatch.append(ticket_id)
         if mismatch:
             sys.exit(f"NG: タイトルリンク不一致 {len(mismatch)} 件（links-sync を実行）: {', '.join(mismatch)}")
         print("  ✓ チケット一覧のタイトルリンク 全一致")
@@ -812,8 +863,8 @@ def main() -> None:
     p_share.add_argument("--role", choices=["reader", "writer"], required=True,
                          help="リンクを知っている全員に付与するロール")
     args = parser.parse_args()
-    {"build": cmd_build, "links-sync": cmd_links_sync,
-     "verify": cmd_verify, "place": cmd_place, "share": cmd_share}[args.command](args)
+    {"build": cmd_build, "links-sync": cmd_links_sync, "verify": cmd_verify,
+     "place": cmd_place, "share": cmd_share}[args.command](args)
 
 
 if __name__ == "__main__":

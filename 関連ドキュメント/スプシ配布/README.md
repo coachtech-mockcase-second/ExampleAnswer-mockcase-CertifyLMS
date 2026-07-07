@@ -73,6 +73,6 @@
 - **軽微**（誤字・表記ゆれ・書式など、仕様・採点に影響しない）= `push`（過去に開始した生徒にも反映される）/ **実質**（要件・振る舞い・スコープ・インターフェース・依存・工数）= `supersede`（過去生徒は旧版のまま）。**迷ったら supersede**
 - `supersede` 後は **`build_sheets.py links-sync`** でマスタスプシのタイトル列リンクを差し替える
 - 30% md の実質変更時は、100%版・評価シートとの派生整合（CLAUDE.md 修正波及表）を従来どおり同一作業単位で行い、評価シート.md が動いたら `build evaluation` も実行する
-- Claude Code では **Skill `/ticket-doc-sync <ID>`** が「軽微 / 実質の判定提案 → 実行 → links-sync → 検証」を一括で行う
+- Claude Code では **Skill `/distribution-sync [ID,...]`** が「ドリフト検査 → 軽微 / 実質の判定提案 → 実行 → links-sync / build → 検証」を一括で行う（引数省略で変更検出スイープ）
 
 詳細な判断基準・手順チートシート・トラブルシュートは `運用ガイド.md` に集約。
