@@ -1,10 +1,10 @@
-# S-B-08 受講生メモの管理（コーチ）
+# S-B-07 受講生メモの管理（コーチ）
 
 ## メタ情報
 
 | 項目 | 値 |
 |---|---|
-| チケット ID | `S-B-08` |
+| チケット ID | `S-B-07` |
 | Feature 連番 | `mentoring-06` |
 | Feature | mentoring(+ enrollment / user-management) |
 | 種別 | Story |

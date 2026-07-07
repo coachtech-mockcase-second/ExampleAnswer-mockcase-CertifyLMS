@@ -1,4 +1,4 @@
-# S-B-09 お知らせ配信（管理者）
+# S-B-08 お知らせ配信（管理者）
 
 ## 背景・目的
 
@@ -76,7 +76,7 @@
 
 | 項目 | 値 |
 |---|---|
-| チケット ID | `S-B-09` |
+| チケット ID | `S-B-08` |
 | Feature 連番 | `notification-05` |
 | Feature | notification(admin お知らせ拡張) |
 | 種別 | Story |

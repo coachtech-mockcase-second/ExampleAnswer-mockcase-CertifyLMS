@@ -1,10 +1,10 @@
-# S-B-06 個人学習目標の管理
+# S-B-05 個人学習目標の管理
 
 ## メタ情報
 
 | 項目 | 値 |
 |---|---|
-| チケット ID | `S-B-06` |
+| チケット ID | `S-B-05` |
 | Feature 連番 | `enrollment-03` |
 | Feature | enrollment |
 | 種別 | Story |

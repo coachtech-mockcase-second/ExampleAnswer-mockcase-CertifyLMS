@@ -1,10 +1,10 @@
-# S-B-07 設定・プロフィール
+# S-B-06 設定・プロフィール
 
 ## メタ情報
 
 | 項目 | 値 |
 |---|---|
-| チケット ID | `S-B-07` |
+| チケット ID | `S-B-06` |
 | Feature 連番 | `settings-profile-01` |
 | Feature | settings-profile |
 | 種別 | Story |

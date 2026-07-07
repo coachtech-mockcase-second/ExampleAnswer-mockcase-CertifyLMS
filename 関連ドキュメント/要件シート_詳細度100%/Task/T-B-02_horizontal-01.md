@@ -1,10 +1,10 @@
-# T-B-03 大量レコードを扱う定期実行処理のメモリ最適化（chunk 処理）
+# T-B-02 大量レコードを扱う定期実行処理のメモリ最適化（chunk 処理）
 
 ## メタ情報
 
 | 項目 | 値 |
 |---|---|
-| チケット ID | `T-B-03` |
+| チケット ID | `T-B-02` |
 | Feature 連番 | `horizontal-01` |
 | Feature | 横断(Schedule Command 群) |
 | 種別 | Task |

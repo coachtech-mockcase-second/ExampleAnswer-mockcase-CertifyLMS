@@ -56,65 +56,65 @@
       "syncedAt": "2026-07-07T19:01:24+09:00",
       "docModifiedTime": "2026-07-07T10:01:23.586Z"
     },
+    "S-B-05": {
+      "version": 1,
+      "history": [],
+      "path": "要件シート_詳細度30%/Story/S-B-05_enrollment-03.md",
+      "title": "S-B-05 個人学習目標の管理",
+      "docId": "1eKY3Pa8RvfCuw1O4x_q0vlg189S_jfuS1pUGyEGRwmw",
+      "docUrl": "https://docs.google.com/document/d/1eKY3Pa8RvfCuw1O4x_q0vlg189S_jfuS1pUGyEGRwmw/edit?usp=drivesdk",
+      "mdSha256": "4d4af0fdea1a285fec2d8941d6be972a2dbe63868ae18faa85feca06837bbb65",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:49:56+09:00",
+      "docModifiedTime": "2026-07-07T12:49:54.737Z"
+    },
     "S-B-06": {
       "version": 1,
       "history": [],
-      "path": "要件シート_詳細度30%/Story/S-B-06_enrollment-03.md",
-      "title": "S-B-06 個人学習目標の管理",
-      "docId": "1eKY3Pa8RvfCuw1O4x_q0vlg189S_jfuS1pUGyEGRwmw",
-      "docUrl": "https://docs.google.com/document/d/1eKY3Pa8RvfCuw1O4x_q0vlg189S_jfuS1pUGyEGRwmw/edit?usp=drivesdk",
-      "mdSha256": "af15f586d7a321314375c41af3616c84288e3e501f3e2218af0732356d397e96",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:01:27+09:00",
-      "docModifiedTime": "2026-07-07T10:01:26.397Z"
+      "path": "要件シート_詳細度30%/Story/S-B-06_settings-profile-01.md",
+      "title": "S-B-06 設定・プロフィール",
+      "docId": "1thoKsvkwXhitA0CJN39kz_CqLhZtCVO8mR5St2KYdjQ",
+      "docUrl": "https://docs.google.com/document/d/1thoKsvkwXhitA0CJN39kz_CqLhZtCVO8mR5St2KYdjQ/edit?usp=drivesdk",
+      "mdSha256": "1e2995c977964f0ca26fb93377749013ce6e17704cfba043dd0c39c857b3dd4e",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:49:59+09:00",
+      "docModifiedTime": "2026-07-07T12:49:58.670Z"
     },
     "S-B-07": {
       "version": 1,
       "history": [],
-      "path": "要件シート_詳細度30%/Story/S-B-07_settings-profile-01.md",
-      "title": "S-B-07 設定・プロフィール",
-      "docId": "1thoKsvkwXhitA0CJN39kz_CqLhZtCVO8mR5St2KYdjQ",
-      "docUrl": "https://docs.google.com/document/d/1thoKsvkwXhitA0CJN39kz_CqLhZtCVO8mR5St2KYdjQ/edit?usp=drivesdk",
-      "mdSha256": "ffaf54db2b32999ac1a05ffcbcbd45e57f045211dcaa576d3fccd5de38ec5e7c",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:01:30+09:00",
-      "docModifiedTime": "2026-07-07T10:01:29.237Z"
+      "path": "要件シート_詳細度30%/Story/S-B-07_mentoring-06.md",
+      "title": "S-B-07 受講生メモの管理（コーチ）",
+      "docId": "1IAlaaRs6UmptK2yfHgRU230hgQcy6Ys5Gx8Qq_jm48Y",
+      "docUrl": "https://docs.google.com/document/d/1IAlaaRs6UmptK2yfHgRU230hgQcy6Ys5Gx8Qq_jm48Y/edit?usp=drivesdk",
+      "mdSha256": "cf1307d967696cb6346c25b09f5f02192ab9895fff7136bb0275759e3ddcc338",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:50:03+09:00",
+      "docModifiedTime": "2026-07-07T12:50:01.867Z"
     },
     "S-B-08": {
       "version": 1,
       "history": [],
-      "path": "要件シート_詳細度30%/Story/S-B-08_mentoring-06.md",
-      "title": "S-B-08 受講生メモの管理（コーチ）",
-      "docId": "1IAlaaRs6UmptK2yfHgRU230hgQcy6Ys5Gx8Qq_jm48Y",
-      "docUrl": "https://docs.google.com/document/d/1IAlaaRs6UmptK2yfHgRU230hgQcy6Ys5Gx8Qq_jm48Y/edit?usp=drivesdk",
-      "mdSha256": "cbab27399efc34216e693731aa274a7f6ff7737b8e6b84bf12eb29db80428365",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:01:33+09:00",
-      "docModifiedTime": "2026-07-07T10:01:32.242Z"
+      "path": "要件シート_詳細度30%/Story/S-B-08_notification-05.md",
+      "title": "S-B-08 お知らせ配信（管理者）",
+      "docId": "1QlhjfqMwaPRtA1gq1LmDj9IQ10o4kUgdpQfe7AS_4Vg",
+      "docUrl": "https://docs.google.com/document/d/1QlhjfqMwaPRtA1gq1LmDj9IQ10o4kUgdpQfe7AS_4Vg/edit?usp=drivesdk",
+      "mdSha256": "a6f7c173d5f7d3d5fb3959cb011897d4f065a3b92db99749746ad5297f3d5ef8",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:50:05+09:00",
+      "docModifiedTime": "2026-07-07T12:50:04.749Z"
     },
     "S-B-09": {
       "version": 1,
       "history": [],
-      "path": "要件シート_詳細度30%/Story/S-B-09_notification-05.md",
-      "title": "S-B-09 お知らせ配信（管理者）",
-      "docId": "1QlhjfqMwaPRtA1gq1LmDj9IQ10o4kUgdpQfe7AS_4Vg",
-      "docUrl": "https://docs.google.com/document/d/1QlhjfqMwaPRtA1gq1LmDj9IQ10o4kUgdpQfe7AS_4Vg/edit?usp=drivesdk",
-      "mdSha256": "13231ee15ff841111011ce13690371390becb8448bdb956b31983489fc4c085c",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:01:37+09:00",
-      "docModifiedTime": "2026-07-07T10:01:34.908Z"
-    },
-    "S-B-10": {
-      "version": 1,
-      "history": [],
-      "path": "要件シート_詳細度30%/Story/S-B-10_notification-04.md",
-      "title": "S-B-10 面談リマインダー通知（前日・1時間前）",
+      "path": "要件シート_詳細度30%/Story/S-B-09_notification-04.md",
+      "title": "S-B-09 面談リマインダー通知（前日・1時間前）",
       "docId": "13IfoiXcd0d0P9mRvtbNe5b42tahPf1QhuBC6tIcx5vc",
       "docUrl": "https://docs.google.com/document/d/13IfoiXcd0d0P9mRvtbNe5b42tahPf1QhuBC6tIcx5vc/edit?usp=drivesdk",
-      "mdSha256": "3fd013b784deb737b873fa3bc284a2beb900db767cd14047838451bf0ceb7cc7",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:01:41+09:00",
-      "docModifiedTime": "2026-07-07T10:01:39.539Z"
+      "mdSha256": "c3f0dc81eaada840f70b8a69e64be45eb1aa30c6f539d8331cd10d33d61a86a3",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:50:09+09:00",
+      "docModifiedTime": "2026-07-07T12:50:08.133Z"
     },
     "S-A-01": {
       "version": 1,
@@ -171,10 +171,10 @@
       "title": "S-A-05 Sanctum Cookie 認証 + JS フロント通知表示",
       "docId": "1HtLpoo8_rMnC0BEAK0V2TPKwVh29-y9gO9NpuJEL9F8",
       "docUrl": "https://docs.google.com/document/d/1HtLpoo8_rMnC0BEAK0V2TPKwVh29-y9gO9NpuJEL9F8/edit?usp=drivesdk",
-      "mdSha256": "70d082627a3a604ec0d9562aaeecb7a606f1cb8b7a8e61f2e6ee17931b1b7191",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:01:56+09:00",
-      "docModifiedTime": "2026-07-07T10:01:54.799Z"
+      "mdSha256": "ed4481ab1da39cc68c171b2f3787755a28f0b79e481a60dca53b676c293175ea",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:50:12+09:00",
+      "docModifiedTime": "2026-07-07T12:50:11.402Z"
     },
     "B-B-01": {
       "version": 1,
@@ -404,7 +404,7 @@
       "syncedAt": "2026-07-07T19:02:51+09:00",
       "docModifiedTime": "2026-07-07T10:02:50.640Z"
     },
-    "T-B-02": {
+    "T-B-01": {
       "version": 2,
       "history": [
         {
@@ -417,26 +417,26 @@
           "reason": "運用開始前の差し替えリハーサル（内容変更なし・supersede→links-sync フローの通し検証）"
         }
       ],
-      "path": "要件シート_詳細度30%/Task/T-B-02_mentoring-05.md",
-      "title": "T-B-02 コーチダッシュボードの担当受講生一覧のクエリ最適化",
+      "path": "要件シート_詳細度30%/Task/T-B-01_mentoring-05.md",
+      "title": "T-B-01 コーチダッシュボードの担当受講生一覧のクエリ最適化",
       "docId": "1Qf2NkYWA0RFr63FZB3RGAzkfSxvbHQO1ogkwQO0GqJw",
       "docUrl": "https://docs.google.com/document/d/1Qf2NkYWA0RFr63FZB3RGAzkfSxvbHQO1ogkwQO0GqJw/edit?usp=drivesdk",
-      "mdSha256": "c470fef351902079b86892d4e110cc73cda9cfca8f302aa986436327cf0f7b74",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:06:23+09:00",
-      "docModifiedTime": "2026-07-07T10:06:22.704Z"
+      "mdSha256": "3e28e3c2eaf787cc02eed443a7d36115d0d475cab42296f99e7a1ba035903c24",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:50:15+09:00",
+      "docModifiedTime": "2026-07-07T12:50:14.234Z"
     },
-    "T-B-03": {
+    "T-B-02": {
       "version": 1,
       "history": [],
-      "path": "要件シート_詳細度30%/Task/T-B-03_horizontal-01.md",
-      "title": "T-B-03 大量レコードを扱う定期実行処理のメモリ最適化（chunk 処理）",
+      "path": "要件シート_詳細度30%/Task/T-B-02_horizontal-01.md",
+      "title": "T-B-02 大量レコードを扱う定期実行処理のメモリ最適化（chunk 処理）",
       "docId": "16Cz0YwoqUpU3odJw8F8Lkpn43bKRcc5OhVzZGD73taw",
       "docUrl": "https://docs.google.com/document/d/16Cz0YwoqUpU3odJw8F8Lkpn43bKRcc5OhVzZGD73taw/edit?usp=drivesdk",
-      "mdSha256": "ff4cad77f12afe4ebd1892d2eb64fc51d675ce7b537c1063f9b77ea55fda9f24",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:02:57+09:00",
-      "docModifiedTime": "2026-07-07T10:02:56.379Z"
+      "mdSha256": "1a8408de88f5be07f62d210f73fd77fcdf209bc36bfe0b710ecfecc91aaa9bd1",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:50:18+09:00",
+      "docModifiedTime": "2026-07-07T12:50:17.421Z"
     },
     "T-A-01": {
       "version": 1,
@@ -493,10 +493,10 @@
       "title": "T-A-05 通知・メール配信の非同期化（キュー）",
       "docId": "18lcknF8fvg3dxj9Lye69tHFyeIbKtPbcHx4lns05lT0",
       "docUrl": "https://docs.google.com/document/d/18lcknF8fvg3dxj9Lye69tHFyeIbKtPbcHx4lns05lT0/edit?usp=drivesdk",
-      "mdSha256": "9c741fc41ab73269262f87c1619e7d034490d2b3a62836450c006c1ac6e80eeb",
-      "gitCommit": "cdbed99+dirty",
-      "syncedAt": "2026-07-07T19:03:11+09:00",
-      "docModifiedTime": "2026-07-07T10:03:10.467Z"
+      "mdSha256": "9b33b7e46fe1077224690450d7e73f81c160eb898c83bf2e0cfe2fb1ee1751fc",
+      "gitCommit": "ab3ed64+dirty",
+      "syncedAt": "2026-07-07T21:50:21+09:00",
+      "docModifiedTime": "2026-07-07T12:50:20.394Z"
     },
     "T-A-06": {
       "version": 1,
@@ -516,13 +516,13 @@
       "id": "1Yg62eWfrCkFoZ7Je8cly5L5eyadqx3mq-EQUZZD8HP4",
       "url": "https://docs.google.com/spreadsheets/d/1Yg62eWfrCkFoZ7Je8cly5L5eyadqx3mq-EQUZZD8HP4/edit?ouid=108449928490564167898",
       "title": "模擬案件_CertifyLMS_要件シート（詳細度30%）",
-      "builtAt": "2026-07-07T19:25:54+09:00"
+      "builtAt": "2026-07-07T21:51:52+09:00"
     },
     "evaluation": {
       "id": "1lGF3pgH8bp_HJQjcCV6D31AV8rooN4Tax1-G22RTkao",
       "url": "https://docs.google.com/spreadsheets/d/1lGF3pgH8bp_HJQjcCV6D31AV8rooN4Tax1-G22RTkao/edit?ouid=108449928490564167898",
       "title": "模擬案件_CertifyLMS_評価シート",
-      "builtAt": "2026-07-07T19:24:08+09:00"
+      "builtAt": "2026-07-07T21:51:52+09:00"
     }
   }
 }
