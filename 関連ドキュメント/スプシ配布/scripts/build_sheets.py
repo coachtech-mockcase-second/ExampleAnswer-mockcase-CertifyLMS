@@ -670,6 +670,77 @@ def write_tabs(sheets, sid: str, tab_specs, tab_order: list[str]) -> None:
     sheets.spreadsheets().batchUpdate(spreadsheetId=sid, body={"requests": reqs}).execute()
 
 
+def set_anyone_reader(drive, fid: str) -> str:
+    """1 ファイルの「リンクを知っている全員」権限を閲覧者(reader)に揃える。
+
+    末端ファイル（Doc）に直接付与する前提。フォルダに付けると drive.file スコープ外の
+    子ファイルへカスケードして 403 になるため、フォルダには使わない。"""
+    perms = drive.permissions().list(
+        fileId=fid, fields="permissions(id,type,role)"
+    ).execute().get("permissions", [])
+    anyone = next((p for p in perms if p["type"] == "anyone"), None)
+    if anyone is None:
+        drive.permissions().create(fileId=fid, body={"type": "anyone", "role": "reader"}).execute()
+        return "created"
+    if anyone["role"] != "reader":
+        drive.permissions().update(
+            fileId=fid, permissionId=anyone["id"], body={"role": "reader"}
+        ).execute()
+        return "downgraded"
+    return "ok"
+
+
+def secure_docs(drive, manifest) -> None:
+    """Docs を「雛形シートの外・各 Doc = リンク共有 閲覧者」に是正する（受講生編集不可・匿名）。
+
+    雛形シートフォルダ（チーム共有 + 全員 writer）配下に置くと anyone:writer が継承され、
+    受講生がチケット Doc を編集できてしまう（My Drive の継承は親より弱くできない）。よって
+    ① トップフォルダを雛形シートの外（My Drive 直下）へ退避し ② 各 Doc に直接 anyone:reader を
+    付与する（フォルダ単位はスコープ外の子ファイルへカスケードして 403 になるため使わない）。
+    受講生は「リンクを知っている全員: 閲覧者」でアクセスするため、同時閲覧しても互いに匿名
+    （Anonymous Animal）で表示され、身元・アイコンは見えない（Google の公開リンク仕様）。"""
+    from googleapiclient.errors import HttpError
+
+    top = manifest["folders"]["top"]
+    parents = drive.files().get(fileId=top, fields="parents").execute().get("parents", [])
+    if HINAGATA_FOLDER_ID in parents:
+        drive.files().update(
+            fileId=top, addParents="root", removeParents=HINAGATA_FOLDER_ID, fields="id"
+        ).execute()
+        print("  ✓ Docs トップフォルダを雛形シートの外（My Drive 直下）へ移動（writer 継承を解消）")
+    else:
+        print("  = Docs トップフォルダは既に雛形シートの外")
+
+    doc_ids = []
+    for e in manifest["tickets"].values():
+        if e.get("docId"):
+            doc_ids.append(e["docId"])
+        for h in e.get("history", []):     # supersede で凍結された旧 Doc も閲覧者に揃える
+            if h.get("docId"):
+                doc_ids.append(h["docId"])
+    stats = {"created": 0, "downgraded": 0, "ok": 0}
+    errors = []
+    for fid in doc_ids:
+        try:
+            stats[set_anyone_reader(drive, fid)] += 1
+        except HttpError as ex:
+            errors.append(f"{fid}: {ex.status_code}")
+    print(f"  ✓ Docs {len(doc_ids)} 件を閲覧者に付与"
+          f"（新規 {stats['created']} / writer→reader 修正 {stats['downgraded']} / 既に閲覧者 {stats['ok']}）")
+    if errors:
+        print(f"  ⚠ 失敗 {len(errors)} 件: " + " / ".join(errors))
+
+    sample = doc_ids[0] if doc_ids else None
+    if sample:
+        sp = drive.permissions().list(
+            fileId=sample, fields="permissions(type,role)"
+        ).execute().get("permissions", [])
+        eff = next((p["role"] for p in sp if p["type"] == "anyone"), "なし")
+        mark = "✓" if eff == "reader" else "⚠"
+        print(f"  {mark} サンプル Doc の anyone ロール = {eff}"
+              + ("（受講生は閲覧のみ・匿名）" if eff == "reader" else ""))
+
+
 def try_move(drive, file_id: str, quiet=False) -> bool:
     """雛形シートフォルダ直下へ移動を試みる（drive.file スコープでは対象フォルダが見えず失敗しうる）。"""
     from googleapiclient.errors import HttpError
@@ -831,23 +902,30 @@ def cmd_share(args) -> None:
 
 
 def cmd_place(args) -> None:
+    """マスタスプシ 2 枚のみを雛形シート直下へ移動する。
+
+    Docs トップフォルダは雛形シートに入れない（入れると anyone:writer を継承して受講生が
+    編集可能になるため）。Docs 側の配置・共有は `secure-docs` が担当する。"""
     manifest = load_manifest()
     _, drive = services()
-    targets = []
-    if manifest.get("folders", {}).get("top"):
-        targets.append(("Docs トップフォルダ", manifest["folders"]["top"]))
+    ok = True
     for key, label in [("requirement", "要件シート"), ("evaluation", "評価シート")]:
         entry = manifest.get("spreadsheets", {}).get(key)
-        if entry:
-            targets.append((label, entry["id"]))
-    ok = True
-    for label, fid in targets:
-        moved = try_move(drive, fid)
+        if not entry:
+            continue
+        moved = try_move(drive, entry["id"])
         print(f"  {'✓' if moved else '✗'} {label}: {'雛形シート直下' if moved else '要手動ドラッグ'}")
         ok = ok and moved
     if not ok:
         print("→ 手動の場合: Drive で対象を選択し、雛形シートフォルダ"
               f"(https://drive.google.com/drive/folders/{HINAGATA_FOLDER_ID}) へドラッグ（ID・リンクは不変）")
+    print("  ─ Docs は雛形シートに入れない（受講生編集可を避けるため）。Docs の配置・共有是正は `secure-docs`")
+
+
+def cmd_secure_docs(args) -> None:
+    manifest = load_manifest()
+    _, drive = services()
+    secure_docs(drive, manifest)
 
 
 def main() -> None:
@@ -858,13 +936,14 @@ def main() -> None:
     p_build.add_argument("target", choices=["requirement", "evaluation", "all"])
     sub.add_parser("links-sync", help="チケット一覧のタイトル列リンクを manifest と同期")
     sub.add_parser("verify", help="スプシ集計 ⇔ md 集計の検算 + リンク一致確認")
-    sub.add_parser("place", help="Docs フォルダ + スプシ 2 枚を雛形シートフォルダへ移動")
+    sub.add_parser("place", help="マスタスプシ 2 枚を雛形シートフォルダへ移動")
+    sub.add_parser("secure-docs", help="Docs を雛形シートの外へ出し「全員: 閲覧者」に是正（受講生編集不可・匿名）")
     p_share = sub.add_parser("share", help="スプシ 2 枚へのリンク共有付与（明示実行専用）")
     p_share.add_argument("--role", choices=["reader", "writer"], required=True,
                          help="リンクを知っている全員に付与するロール")
     args = parser.parse_args()
     {"build": cmd_build, "links-sync": cmd_links_sync, "verify": cmd_verify,
-     "place": cmd_place, "share": cmd_share}[args.command](args)
+     "place": cmd_place, "secure-docs": cmd_secure_docs, "share": cmd_share}[args.command](args)
 
 
 if __name__ == "__main__":
