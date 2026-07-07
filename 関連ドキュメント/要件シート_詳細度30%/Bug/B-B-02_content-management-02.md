@@ -1,17 +1,4 @@
-# B-B-02 教材管理の階層一覧(Part / Chapter / Section)が並び順を無視して表示される
-
-## メタ情報
-
-| 項目 | 値 |
-|---|---|
-| チケット ID | `B-B-02` |
-| Feature 連番 | `content-management-02` |
-| Feature | content-management |
-| 種別 | Bug |
-| サブカテゴリ | 機能(ソート) |
-| 難易度 | Basic |
-| 工数 (h) | 3.5 |
-| 依存チケット | (なし) |
+# B-B-02 教材管理の階層一覧（Part / Chapter / Section）が並び順を無視して表示される
 
 ## 概要
 
@@ -31,3 +18,15 @@
 ## 実際の結果
 
 各階層の一覧が並び順を無視して登録順で表示され、コーチが設定した並び順が反映されない。
+
+## メタ情報
+
+| 項目 | 値 |
+|---|---|
+| チケット ID | `B-B-02` |
+| Feature 連番 | `content-management-02` |
+| Feature | content-management |
+| 種別 | Bug |
+| サブカテゴリ | 機能(ソート) |
+| 難易度 | Basic |
+| 依存チケット | (なし) |
