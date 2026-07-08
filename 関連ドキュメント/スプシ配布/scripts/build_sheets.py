@@ -74,7 +74,7 @@ def color(hexstr: str) -> dict:
     }
 
 
-REQ_NAVY = color("002060")     # 要件系の基調（ラベル文字・シート2 見出し）
+REQ_NAVY = color("073763")     # 要件系の基調（評価シートと同じ青に統一・ラベル文字/列見出し）
 EVAL_NAVY = color("073763")    # 評価系ヘッダー（BookShelf 評価シート準拠）
 TITLE_GRAY = color("3F3F3F")   # 20pt タイトル
 WHITE = color("FFFFFF")
@@ -241,9 +241,8 @@ def build_requirement_tabs(manifest) -> list[dict]:
     N = 3  # A スペーサー / B 項目 / C 内容
     rows, merges_g = title_band("Certify LMS 開発参画", REQ_INTRO, N)
     for name, table, subs in data["gaiyou"]:
-        merges_g.append((len(rows), len(rows) + 1, 1, N))
-        rows.append({"values": indent([
-            cell(name, bold=True, size=13, bg=BLOCK_BAND, fg=REQ_NAVY)])})
+        # ブロック見出し: 大きめの青文字を列 A に置き（背景バンドなし）、配下の項目を列 B へインデント
+        rows.append({"values": [cell(name, bold=True, size=15, fg=REQ_NAVY, wrap=False)]})
         HEADER_PAIRS = {("項目", "内容"), ("セクション", "書くこと"), ("ステップ", "内容")}
         for item, value in table:
             if (item, value) in HEADER_PAIRS:
@@ -253,9 +252,9 @@ def build_requirement_tabs(manifest) -> list[dict]:
                 cell(md_text(value), box=True)])})
         for sub_name, sub_table, sub_notes in subs:
             rows += blank_row()
-            merges_g.append((len(rows), len(rows) + 1, 1, N))
+            # サブ見出し: ブロックより 1 段インデント（列 B）した青文字
             rows.append({"values": indent([
-                cell(sub_name, bold=True, size=12, bg=LABEL_BG, fg=REQ_NAVY)])})
+                cell(sub_name, bold=True, size=13, fg=REQ_NAVY, wrap=False)])})
             for c1, c2 in sub_table:
                 if (c1, c2) in HEADER_PAIRS:
                     continue
@@ -268,7 +267,7 @@ def build_requirement_tabs(manifest) -> list[dict]:
                                                     fg=NOTE_FG, italic=True)])})
         rows += blank_row()
     gaiyou_tab = {
-        "title": TAB_REQ_GAIYOU, "rows": rows, "col_widths": [20, 175, 880],
+        "title": TAB_REQ_GAIYOU, "rows": rows, "col_widths": [28, 190, 870],
         "merges": merges_g, "col_count": N, "frozen": 0,
     }
 
@@ -286,10 +285,8 @@ def build_requirement_tabs(manifest) -> list[dict]:
 
     warn_missing = []
     for name, table, note in data["blocks"]:
-        type_name = name.split("（")[0]
-        merges_t.append((len(rows), len(rows) + 1, 1, N))
-        rows.append({"values": indent([cell(name, bold=True, size=12,
-                                            bg=TYPE_BG.get(type_name), box=True)])})
+        # 種別見出し: 大きめの青文字を列 A に置き、配下の表を列 B へインデント
+        rows.append({"values": [cell(name, bold=True, size=15, fg=REQ_NAVY, wrap=False)]})
         header, *body = table
         rows.append({"values": indent([cell(md_text(h), bold=True, bg=REQ_NAVY, fg=WHITE, box=True)
                                        for h in header[:-1]])})  # 末尾のチケット詳細列は Doc リンクに置換
@@ -314,8 +311,7 @@ def build_requirement_tabs(manifest) -> list[dict]:
         print(f"  ⚠ Doc 未生成のためタイトルをテキスト表示: {', '.join(warn_missing)}（push 後に再 build か links-sync）")
 
     name, table = data["summary"]
-    merges_t.append((len(rows), len(rows) + 1, 1, N))
-    rows.append({"values": indent([cell(name, bold=True, size=13, bg=BLOCK_BAND, fg=REQ_NAVY)])})
+    rows.append({"values": [cell(name, bold=True, size=15, fg=REQ_NAVY, wrap=False)]})
     header, *body = table
     rows.append({"values": indent([cell(md_text(h), bold=True, bg=REQ_NAVY, fg=WHITE, box=True)
                                    for h in header])})
@@ -327,7 +323,7 @@ def build_requirement_tabs(manifest) -> list[dict]:
                                        for i, c in enumerate(r)])})
     tickets_tab = {
         "title": TAB_REQ_TICKETS, "rows": rows,
-        "col_widths": [20, 80, 430, 190, 90, 240],
+        "col_widths": [28, 80, 430, 190, 90, 240],
         "merges": merges_t, "col_count": N, "frozen": 0,
     }
     return [gaiyou_tab, tickets_tab]
