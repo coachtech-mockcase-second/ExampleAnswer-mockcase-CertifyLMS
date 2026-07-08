@@ -74,12 +74,15 @@ def color(hexstr: str) -> dict:
     }
 
 
-REQ_NAVY = color("002060")     # 要件系ヘッダー・ラベル（BookShelf 50% 準拠）
+REQ_NAVY = color("002060")     # 要件系の基調（ラベル文字・シート2 見出し）
 EVAL_NAVY = color("073763")    # 評価系ヘッダー（BookShelf 評価シート準拠）
 TITLE_GRAY = color("3F3F3F")   # 20pt タイトル
 WHITE = color("FFFFFF")
 NOTE_FG = color("6B7280")
 SUBTOTAL_BG = color("EFEFEF")
+BLOCK_BAND = color("C9D4E8")   # 要件シートのブロック見出し帯（淡い紺）
+LABEL_BG = color("E4EAF4")     # 要件シートの項目ラベル（淡い青グレー・従来の紺ベタを軽量化）
+COMMENT_BG = color("FFFDF5")   # 採点者記入欄（うっすらクリーム）
 TYPE_BG = {"Story": color("DBEAFE"), "Bug": color("FEE2E2"), "Task": color("FEF3C7")}
 TAB_COLORS = {
     TAB_REQ_GAIYOU: color("002060"), TAB_REQ_TICKETS: color("16A34A"),
@@ -239,23 +242,25 @@ def build_requirement_tabs(manifest) -> list[dict]:
     rows, merges_g = title_band("Certify LMS 開発参画", REQ_INTRO, N)
     for name, table, subs in data["gaiyou"]:
         merges_g.append((len(rows), len(rows) + 1, 1, N))
-        rows.append({"values": indent([cell(name, bold=True, size=14, fg=TITLE_GRAY)])})
-        HEADER_PAIRS = {("項目", "内容"), ("セクション", "書くこと")}
+        rows.append({"values": indent([
+            cell(name, bold=True, size=13, bg=BLOCK_BAND, fg=REQ_NAVY)])})
+        HEADER_PAIRS = {("項目", "内容"), ("セクション", "書くこと"), ("ステップ", "内容")}
         for item, value in table:
             if (item, value) in HEADER_PAIRS:
                 continue  # ラベル/値レイアウトではヘッダー行は冗長（ハウス準拠）
             rows.append({"values": indent([
-                cell(md_text(item), bold=True, bg=REQ_NAVY, fg=WHITE, box=True),
+                cell(md_text(item), bold=True, bg=LABEL_BG, fg=REQ_NAVY, box=True),
                 cell(md_text(value), box=True)])})
         for sub_name, sub_table, sub_notes in subs:
             rows += blank_row()
             merges_g.append((len(rows), len(rows) + 1, 1, N))
-            rows.append({"values": indent([cell(sub_name, bold=True, size=12, fg=TITLE_GRAY)])})
+            rows.append({"values": indent([
+                cell(sub_name, bold=True, size=12, bg=LABEL_BG, fg=REQ_NAVY)])})
             for c1, c2 in sub_table:
                 if (c1, c2) in HEADER_PAIRS:
                     continue
                 rows.append({"values": indent([
-                    cell(md_text(c1), bold=True, bg=REQ_NAVY, fg=WHITE, box=True),
+                    cell(md_text(c1), bold=True, bg=LABEL_BG, fg=REQ_NAVY, box=True),
                     cell(md_text(c2), box=True)])})
             for note in sub_notes:
                 merges_g.append((len(rows), len(rows) + 1, 1, N))
@@ -310,7 +315,7 @@ def build_requirement_tabs(manifest) -> list[dict]:
 
     name, table = data["summary"]
     merges_t.append((len(rows), len(rows) + 1, 1, N))
-    rows.append({"values": indent([cell(name, bold=True, size=12, fg=TITLE_GRAY)])})
+    rows.append({"values": indent([cell(name, bold=True, size=13, bg=BLOCK_BAND, fg=REQ_NAVY)])})
     header, *body = table
     rows.append({"values": indent([cell(md_text(h), bold=True, bg=REQ_NAVY, fg=WHITE, box=True)
                                    for h in header])})
@@ -332,11 +337,6 @@ def build_requirement_tabs(manifest) -> list[dict]:
 def parse_eval():
     text = EVAL_PATH.read_text(encoding="utf-8")
     sections = {name: body for name, body in split_sections(text, 2)}
-
-    # 評価方式（補足転記用）: bullet と引用段落を行のまま保持
-    hoso = [md_text(l) for l in sections["評価方式"]
-            if (l.strip().startswith(("-", ">")) or re.match(r"^\s+-", l))
-            and set(l.strip()) != {"-"}]
 
     buckets = {TAB_STORY: [], TAB_BUG: [], TAB_TASK: [], TAB_CROSS: []}
     block_counts: dict[str, tuple[int, float]] = {}
@@ -371,7 +371,7 @@ def parse_eval():
         if name.startswith("評価ライン"):
             line_rows = [[md_text(c) for c in r] for r in parse_md_table(body)[1:]]
     return {"buckets": buckets, "block_counts": block_counts, "agg": agg,
-            "ba": ba, "line_rows": line_rows, "hoso": hoso}
+            "ba": ba, "line_rows": line_rows}
 
 
 def selfcheck_eval(data) -> None:
@@ -553,12 +553,13 @@ def build_evaluation_tabs() -> tuple[list[dict], dict]:
                           "=" + sumif(tab, "B", f"$A{r}", "F")))
     rows += blank_row()
 
-    # ---- 補足（ハウスの「補足」紺行 + 罫線付き本文）
+    # ---- 補足（採点者フリー記述欄・空欄）
     merges.append((len(rows), len(rows) + 1, 0, 7))
-    add([eval_hdr("補足: 評価方式（評価シート.md「評価方式」より転記）")])
-    for line in data["hoso"]:
-        merges.append((len(rows), len(rows) + 1, 0, 7))
-        add([cell(line, fg=NOTE_FG, box=True)])
+    add([eval_hdr("補足（採点者記入欄）")])
+    box_start = len(rows)
+    for _ in range(6):
+        add([cell("", bg=COMMENT_BG, box=True)] + [cell("", bg=COMMENT_BG, box=True) for _ in range(6)])
+    merges.append((box_start, box_start + 6, 0, 7))  # 6 行 × 7 列を 1 つの記入枠に
 
     summary_tab = {
         "title": TAB_SUMMARY, "rows": rows,
