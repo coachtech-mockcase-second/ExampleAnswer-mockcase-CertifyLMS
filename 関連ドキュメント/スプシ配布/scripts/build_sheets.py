@@ -142,16 +142,15 @@ def indent(cells):
     return [cell("")] + cells
 
 
-def title_band(title: str, desc: str, n_cols: int = None) -> tuple[list[dict], list[tuple]]:
-    """ドキュメント見出し: 20pt タイトル + サブタイトルを列 A に配置（枠線・二重線なし）。
-
-    テキストは列 A から OVERFLOW で右へ流し、二重下線バンドや余分な罫線は使わない
-    （ブロック見出しの青文字が構造を担うためタイトル直下の区切り線は不要）。"""
+def title_band(title: str, desc: str, n_cols: int) -> tuple[list[dict], list[tuple]]:
+    """ドキュメント見出し: 20pt タイトル + 太字サブタイトル + サブタイトル下に単線の区切り線。"""
+    under = {"bottom": THIN}
     return [
         {"values": [cell(title, bold=True, size=20, fg=TITLE_GRAY, wrap=False)]},
-        {"values": [cell(desc, fg=NOTE_FG, wrap=False)]},
+        {"values": [cell(desc, bold=True, borders=under)]
+         + [cell("", borders=under) for _ in range(n_cols - 1)]},
         {"values": [cell("")]},
-    ], []
+    ], [(1, 2, 0, n_cols)]
 
 
 # ---------------------------------------------------------------- md パース
@@ -271,15 +270,14 @@ def build_requirement_tabs(manifest) -> list[dict]:
 
     # ---- シート2 チケット一覧（スペーサー列 + 種別ブロック + 紺ヘッダー行）
     N = 6  # A スペーサー / B ID / C タイトル / D サブカテゴリ / E 難易度 / F 依存チケット
+    # 件数行 + 箇条書きを 1 つの導入ブロックにまとめる（区別せず一体で表示。シート1 と同じ体裁）
     lead = data["lead"]
-    desc = lead[0] if lead else ""
-    rows, merges_t = title_band("チケット一覧", desc, N)
+    intro_lines = list(lead[:1])
     for line in lead[1:]:
         if line.startswith("- 各チケットの詳細は"):
             line = "- " + LEAD_DETAIL_REWRITE
-        merges_t.append((len(rows), len(rows) + 1, 1, N))
-        rows.append({"values": indent([cell(line, fg=TITLE_GRAY)])})
-    rows += blank_row()
+        intro_lines.append(line)
+    rows, merges_t = title_band("チケット一覧", "\n".join(intro_lines), N)
 
     warn_missing = []
     for name, table, note in data["blocks"]:
