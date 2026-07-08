@@ -142,18 +142,16 @@ def indent(cells):
     return [cell("")] + cells
 
 
-def title_band(title: str, desc: str, n_cols: int) -> tuple[list[dict], list[tuple]]:
-    """20pt グレータイトル + 説明行（二重下線バンド）。戻り値 = (rows, merges)。"""
-    rows = [
+def title_band(title: str, desc: str, n_cols: int = None) -> tuple[list[dict], list[tuple]]:
+    """ドキュメント見出し: 20pt タイトル + サブタイトルを列 A に配置（枠線・二重線なし）。
+
+    テキストは列 A から OVERFLOW で右へ流し、二重下線バンドや余分な罫線は使わない
+    （ブロック見出しの青文字が構造を担うためタイトル直下の区切り線は不要）。"""
+    return [
+        {"values": [cell(title, bold=True, size=20, fg=TITLE_GRAY, wrap=False)]},
+        {"values": [cell(desc, fg=NOTE_FG, wrap=False)]},
         {"values": [cell("")]},
-        {"values": indent([cell(title, bold=True, size=20, fg=TITLE_GRAY)])},
-        {"values": [cell("", borders=DOUBLE_BOTTOM)]
-         + [cell(desc, bold=True, borders=DOUBLE_BOTTOM)]
-         + [cell("", borders=DOUBLE_BOTTOM) for _ in range(n_cols - 2)]},
-        {"values": [cell("")]},
-    ]
-    merges = [(1, 2, 1, n_cols), (2, 3, 1, n_cols)]
-    return rows, merges
+    ], []
 
 
 # ---------------------------------------------------------------- md パース
@@ -280,7 +278,7 @@ def build_requirement_tabs(manifest) -> list[dict]:
         if line.startswith("- 各チケットの詳細は"):
             line = "- " + LEAD_DETAIL_REWRITE
         merges_t.append((len(rows), len(rows) + 1, 1, N))
-        rows.append({"values": indent([cell(line, fg=NOTE_FG)])})
+        rows.append({"values": indent([cell(line, fg=TITLE_GRAY)])})
     rows += blank_row()
 
     warn_missing = []
@@ -634,9 +632,11 @@ def tab_write_requests(spec) -> list[dict]:
         {"updateSheetProperties": {
             "properties": {"sheetId": sheet_id, "title": spec["title"],
                            "gridProperties": {"rowCount": n_rows, "columnCount": n_cols,
-                                              "frozenRowCount": spec.get("frozen", 0)},
+                                              "frozenRowCount": spec.get("frozen", 0),
+                                              "hideGridlines": spec.get("hide_gridlines", True)},
                            "tabColor": TAB_COLORS.get(spec["title"])},
-            "fields": "title,gridProperties(rowCount,columnCount,frozenRowCount),tabColor"}},
+            "fields": ("title,gridProperties(rowCount,columnCount,frozenRowCount,"
+                       "hideGridlines),tabColor")}},
         {"updateCells": {"start": {"sheetId": sheet_id, "rowIndex": 0, "columnIndex": 0},
                          "rows": rows, "fields": "userEnteredValue,userEnteredFormat"}},
     ]
