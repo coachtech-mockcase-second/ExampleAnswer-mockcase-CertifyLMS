@@ -248,7 +248,7 @@ def build_requirement_tabs(manifest) -> list[dict]:
             if (item, value) in HEADER_PAIRS:
                 continue  # ラベル/値レイアウトではヘッダー行は冗長（ハウス準拠）
             rows.append({"values": indent([
-                cell(md_text(item), bold=True, bg=LABEL_BG, fg=REQ_NAVY, box=True),
+                cell(md_text(item), bold=True, bg=REQ_NAVY, fg=WHITE, box=True),
                 cell(md_text(value), box=True)])})
         for sub_name, sub_table, sub_notes in subs:
             rows += blank_row()
@@ -259,7 +259,7 @@ def build_requirement_tabs(manifest) -> list[dict]:
                 if (c1, c2) in HEADER_PAIRS:
                     continue
                 rows.append({"values": indent([
-                    cell(md_text(c1), bold=True, bg=LABEL_BG, fg=REQ_NAVY, box=True),
+                    cell(md_text(c1), bold=True, bg=REQ_NAVY, fg=WHITE, box=True),
                     cell(md_text(c2), box=True)])})
             for note in sub_notes:
                 merges_g.append((len(rows), len(rows) + 1, 1, N))
