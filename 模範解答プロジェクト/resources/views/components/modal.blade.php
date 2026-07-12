@@ -7,6 +7,7 @@
     'id',
     'title' => null,
     'size' => 'md',
+    'autoOpen' => false,
 ])
 
 @php
@@ -31,6 +32,7 @@
     aria-hidden="true"
     inert
     data-modal
+    @if ($autoOpen) data-auto-open @endif
     class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-ink-900/60 backdrop-blur-sm transition-opacity duration-normal"
 >
     <div class="w-full {{ $maxWidth }} bg-surface-raised rounded-3xl shadow-lg overflow-hidden">

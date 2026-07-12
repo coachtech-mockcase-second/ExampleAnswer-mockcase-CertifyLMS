@@ -83,4 +83,7 @@ export function initModals() {
             trapFocus(modal, event);
         });
     });
+
+    // data-auto-open: サーバ側でバリデーションエラー等により初期表示させたいモーダルを開く
+    document.querySelectorAll('[data-modal][data-auto-open]').forEach((modal) => open(modal));
 }

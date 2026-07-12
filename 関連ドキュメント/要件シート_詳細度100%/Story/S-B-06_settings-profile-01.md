@@ -48,7 +48,7 @@
 ### アバター画像(全ロール)
 
 - 画像のアップロード(PNG / JPEG / WebP / 2 MB 以下)と削除
-- アップロード成功時に旧画像を自動削除、削除時はアイコン未設定状態(イニシャル表示)に戻す
+- アップロード成功時に旧画像を自動削除、削除時はアイコン未設定状態(氏名の先頭 1 文字表示)に戻す
 
 ### タブ切替・共通
 
@@ -90,7 +90,7 @@
   1. アップロード成功でアイコンが新しい画像に差し替わり、プロフィールタブへリダイレクトし成功メッセージ「アバター画像を更新しました。」が表示される
   2. 画像でない形式 / 2 MB 超のファイルは拒否されエラーが表示される
 - [ ] 【受講生・コーチ・管理者】アバター画像の削除
-  1. 削除でアイコンが未設定状態(イニシャル表示)に戻り、プロフィールタブへリダイレクトし成功メッセージ「アバター画像を削除しました。」が表示される
+  1. 削除でアイコンが未設定状態(氏名の先頭 1 文字表示)に戻り、プロフィールタブへリダイレクトし成功メッセージ「アバター画像を削除しました。」が表示される
 - [ ] 本チケットの機能に対するテスト (Unit / Feature 等) が実装されている
 
 ## 実装方針(参考)
@@ -115,7 +115,7 @@
 
 既存 `users` テーブルの `name` / `bio` / `meeting_url` / `avatar_url` / `password` カラムの読み書きのみで、テーブル / Model / Enum の新規追加はない。`email` / `role` / `status` は読み取りのみ。
 
-- **アバターストレージ**: `Storage::disk('public')` の `avatars/{ulid}.{ext}` に保存し、`/storage/avatars/...` の publicUrl で配信(`php artisan storage:link` 済を同梱)。`avatar_url` が NULL のときはアイコンコンポーネントがイニシャル表示にフォールバック
+- **アバターストレージ**: `Storage::disk('public')` の `avatars/{ulid}.{ext}` に保存し、`/storage/avatars/...` の publicUrl で配信(`php artisan storage:link` 済を同梱)。`avatar_url` が NULL のときはアイコンコンポーネントが氏名の先頭 1 文字表示にフォールバック
 
 **初期データ**:
 
@@ -148,7 +148,7 @@
 
 **View**(既存、ロック対象)
 - `resources/views/settings/profile.blade.php` + `_partials/tab-profile.blade.php` / `_partials/tab-password.blade.php`
-- `resources/views/components/avatar.blade.php`(アイコン未設定時のイニシャル表示フォールバック)
+- `resources/views/components/avatar.blade.php`(アイコン未設定時の氏名の先頭 1 文字表示フォールバック)
 
 **例外** (`app/Exceptions/SettingsProfile/`)
 - `AvatarStorageFailedException`(任意、Storage 書込失敗時 500)

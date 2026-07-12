@@ -23,7 +23,7 @@ class IndexRequest extends FormRequest
     {
         return [
             'tab' => ['nullable', 'string', 'in:all,unread'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
             'page' => ['nullable', 'integer', 'min:1'],
         ];
     }

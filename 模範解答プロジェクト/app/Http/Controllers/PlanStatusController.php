@@ -10,6 +10,10 @@ use App\UseCases\Plan\PublishAction;
 use App\UseCases\Plan\UnarchiveAction;
 use Illuminate\Http\RedirectResponse;
 
+/**
+ * 受講プランの状態遷移（公開 / アーカイブ / 下書きへ戻す）を管理者操作で実行する Controller。
+ * 各遷移は対応する Action へ委譲し、遷移元の状態でのみ実行できるよう Policy で認可する。
+ */
 class PlanStatusController extends Controller
 {
     public function publish(Plan $plan, PublishAction $action): RedirectResponse

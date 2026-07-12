@@ -138,7 +138,7 @@
     </div>
 
     {{-- Rename modal --}}
-    <x-modal id="rename-ai-chat-modal" title="タイトルを編集" size="sm">
+    <x-modal id="rename-ai-chat-modal" title="タイトルを編集" size="sm" :auto-open="$errors->has('title')">
         <x-slot:body>
             <form novalidate method="POST" action="{{ route('ai-chat.conversations.update', $conversation) }}" id="rename-ai-chat-form">
                 @csrf
@@ -146,7 +146,8 @@
                 <x-form.input
                     name="title"
                     label="タイトル"
-                    :value="$conversation->title"
+                    :value="old('title', $conversation->title)"
+                    :error="$errors->first('title')"
                     :required="true"
                     :maxlength="100"
                 />

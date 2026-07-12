@@ -63,4 +63,23 @@ class IndexTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    public function test_validation_rejects_per_page_over_max(): void
+    {
+        $user = User::factory()->student()->inProgress()->create();
+
+        $response = $this->actingAs($user)->getJson(route('api.v1.notifications.index', ['per_page' => 51]));
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('per_page');
+    }
+
+    public function test_validation_accepts_per_page_at_max(): void
+    {
+        $user = User::factory()->student()->inProgress()->create();
+
+        $response = $this->actingAs($user)->getJson(route('api.v1.notifications.index', ['per_page' => 50]));
+
+        $response->assertOk();
+    }
 }
